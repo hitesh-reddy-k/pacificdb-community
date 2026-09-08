@@ -1581,8 +1581,8 @@ static void updateLatencyEwma(double latencyMs) {
     }
 }
 
-#ifdef __linux__
 static double sampleSystemCpuUsagePercent() {
+#ifdef __linux__
     static std::mutex cpuMu;
     static unsigned long long prevTotal = 0;
     static unsigned long long prevBusy = 0;
@@ -1612,8 +1612,10 @@ static double sampleSystemCpuUsagePercent() {
 
     if (deltaTotal == 0) return 0.0;
     return (static_cast<double>(deltaBusy) / static_cast<double>(deltaTotal)) * 100.0;
-}
+#else
+    return 0.0;
 #endif
+}
 
 struct HotDocEntry {
     json doc;
