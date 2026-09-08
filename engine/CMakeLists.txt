@@ -171,7 +171,7 @@ target_compile_definitions(pacificdb_engine_core PRIVATE
 )
 if(WIN32)
     target_link_libraries(pacificdb_engine_core PUBLIC
-        Ws2_32 psapi OpenSSL::SSL OpenSSL::Crypto
+        Ws2_32 psapi OpenSSL::SSL OpenSSL::Crypto ${LZ4_LIBRARY}
     )
 else()
     target_link_libraries(pacificdb_engine_core PUBLIC
@@ -185,6 +185,12 @@ target_link_libraries(db_engine PRIVATE pacificdb_engine_core)
 target_include_directories(db_engine PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/generated
 )
+
+add_executable(pacificdb src/shell.cpp)
+target_include_directories(pacificdb PRIVATE ${CMAKE_SOURCE_DIR}/include)
+if(WIN32)
+    target_link_libraries(pacificdb PRIVATE Ws2_32)
+endif()
 
 # ------------------ TEST EXECUTABLES ------------------
 function(add_pacificdb_engine_test target source)
@@ -237,3 +243,48 @@ if(ENABLE_LIBFUZZER)
         message(WARNING "libFuzzer builds are best supported with Clang")
     endif()
 endif()
+
+# ------------------ INSTALLERS ------------------
+include(GNUInstallDirs)
+install(TARGETS db_engine pacificdb RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+if(WIN32)
+    install(PROGRAMS ${CMAKE_SOURCE_DIR}/../packaging/pacificdb-local.cmd
+        DESTINATION ${CMAKE_INSTALL_BINDIR})
+else()
+    install(PROGRAMS ${CMAKE_SOURCE_DIR}/../packaging/pacificdb-local
+        DESTINATION ${CMAKE_INSTALL_BINDIR})
+endif()
+install(FILES
+    ${CMAKE_SOURCE_DIR}/../README.md
+    ${CMAKE_SOURCE_DIR}/../COMMUNITY_SCOPE.md
+    ${CMAKE_SOURCE_DIR}/../LICENSE
+    ${CMAKE_SOURCE_DIR}/.env.example
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/pacificdb
+)
+
+set(CPACK_PACKAGE_NAME "pacificdb-community")
+set(CPACK_PACKAGE_VENDOR "PacificDB")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "PacificDB Community distributed document database")
+set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/hitesh-reddy-k/pacificdb-community")
+set(CPACK_PACKAGE_VERSION "${PACIFICDB_ENGINE_VERSION}")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/../LICENSE")
+set(CPACK_PACKAGE_CHECKSUM SHA256)
+if(WIN32)
+    set(CPACK_GENERATOR NSIS)
+    set(CPACK_PACKAGE_INSTALL_DIRECTORY "PacificDB Community")
+    set(CPACK_NSIS_DISPLAY_NAME "PacificDB Community")
+    set(CPACK_NSIS_PACKAGE_NAME "PacificDB Community")
+    set(CPACK_NSIS_MODIFY_PATH ON)
+elseif(APPLE)
+    set(CPACK_GENERATOR productbuild)
+    set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local")
+    set(CPACK_PRODUCTBUILD_IDENTIFIER "com.pacificdb.community")
+else()
+    set(CPACK_GENERATOR DEB)
+    set(CPACK_PACKAGING_INSTALL_PREFIX "/usr")
+    set(CPACK_DEBIAN_PACKAGE_MAINTAINER "PacificDB Community")
+    set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+    string(REPLACE "-" "~" CPACK_DEBIAN_PACKAGE_VERSION
+        "${PACIFICDB_ENGINE_VERSION}")
+endif()
+include(CPack)

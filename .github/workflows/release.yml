@@ -1,0 +1,161 @@
+name: Build release installers
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to build without publishing
+        required: true
+        default: 0.1.0-beta.1
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y cmake g++ liblz4-dev libssl-dev
+      - name: Build Debian package
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          if [[ "$GITHUB_REF" != refs/tags/v* ]]; then version="${{ inputs.version }}"; fi
+          cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION="$version"
+          cmake --build build --config Release --target db_engine pacificdb -j2
+          cpack --config build/CPackConfig.cmake -G DEB -B dist
+          mv dist/*.deb "dist/pacificdb-community-$version-linux-amd64.deb"
+          scripts/test-native-package.sh "dist/pacificdb-community-$version-linux-amd64.deb"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-amd64
+          path: dist/*.deb
+
+  windows:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install packaging dependencies
+        shell: pwsh
+        run: |
+          choco install nsis -y --no-progress
+          vcpkg install openssl:x64-windows-static lz4:x64-windows-static
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME.TrimStart('v')
+          if (-not $env:GITHUB_REF.StartsWith('refs/tags/v')) { $version = '${{ inputs.version }}' }
+          cmake -S engine -B build -A x64 `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows-static `
+            -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded `
+            -DPACIFICDB_ENGINE_VERSION="$version"
+          cmake --build build --config Release --target db_engine pacificdb
+          $env:PACIFICDB_ENVIRONMENT = "development"
+          $env:DATA_ROOT = "$pwd/package-test/data"
+          $env:BACKUP_ROOT = "$pwd/package-test/backup"
+          $env:RESTORE_DIR = "$pwd/package-test/restore"
+          $env:ENGINE_BIND_HOST = "127.0.0.1"
+          $env:ENGINE_AUTH_REQUIRED = "0"
+          $env:RAFT_CLUSTER_ID = "pacificdb-local"
+          $env:RAFT_NODE_ID = "node-1"
+          $env:RAFT_IS_LEADER = "1"
+          $env:MIN_QUORUM_SIZE = "1"
+          $env:ENGINE_PORT = "19000"
+          $env:RAFT_LISTEN_PORT = "19001"
+          $env:ENGINE_CPU_CORES = "2"
+          $env:CONN_MIN_THREADS = "4"
+          $env:CONN_MAX_THREADS = "64"
+          $env:DBQ_SHARDS = "4"
+          $env:DBQ_WORKERS_PER_SHARD = "2"
+          New-Item -ItemType Directory -Force $env:DATA_ROOT,$env:BACKUP_ROOT,$env:RESTORE_DIR | Out-Null
+          $server = Start-Process -FilePath build/Release/db_engine.exe -PassThru `
+            -RedirectStandardOutput server.log -RedirectStandardError server-error.log
+          try {
+            $ready = $false
+            for ($i = 0; $i -lt 60; $i++) {
+              & build/Release/pacificdb.exe --port 19000 ping *> $null
+              if ($LASTEXITCODE -eq 0) { $ready = $true; break }
+              Start-Sleep -Milliseconds 250
+            }
+            if (-not $ready) { throw "PacificDB did not start" }
+          } finally {
+            Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
+          }
+          cpack --config build/CPackConfig.cmake -C Release -G NSIS -B dist
+          Rename-Item (Get-ChildItem dist/*.exe).FullName "pacificdb-community-$version-windows-x64.exe"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          path: dist/*.exe
+
+  macos:
+    strategy:
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x86_64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install cmake lz4 openssl@3
+      - name: Build macOS installer
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          if [[ "$GITHUB_REF" != refs/tags/v* ]]; then version="${{ inputs.version }}"; fi
+          cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release \
+            -DOPENSSL_ROOT_DIR="$(brew --prefix openssl@3)" \
+            -DLZ4_LIBRARY="$(brew --prefix lz4)/lib/liblz4.dylib" \
+            -DPACIFICDB_ENGINE_VERSION="$version"
+          cmake --build build --target db_engine pacificdb -j2
+          export PACIFICDB_ENVIRONMENT=development
+          export DATA_ROOT="$RUNNER_TEMP/package-test/data"
+          export BACKUP_ROOT="$RUNNER_TEMP/package-test/backup"
+          export RESTORE_DIR="$RUNNER_TEMP/package-test/restore"
+          export ENGINE_BIND_HOST=127.0.0.1 ENGINE_AUTH_REQUIRED=0
+          export RAFT_CLUSTER_ID=pacificdb-local RAFT_NODE_ID=node-1
+          export RAFT_IS_LEADER=1 MIN_QUORUM_SIZE=1
+          export ENGINE_PORT=19000 RAFT_LISTEN_PORT=19001 ENGINE_CPU_CORES=2
+          export CONN_MIN_THREADS=4 CONN_MAX_THREADS=64
+          export DBQ_SHARDS=4 DBQ_WORKERS_PER_SHARD=2
+          mkdir -p "$DATA_ROOT" "$BACKUP_ROOT" "$RESTORE_DIR"
+          build/db_engine >server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for _ in {1..60}; do
+            if build/pacificdb --port 19000 ping >/dev/null 2>&1; then break; fi
+            sleep 0.25
+          done
+          build/pacificdb --port 19000 ping | grep -q pong
+          cpack --config build/CPackConfig.cmake -G productbuild -B dist
+          mv dist/*.pkg "dist/pacificdb-community-$version-macos-${{ matrix.arch }}.pkg"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.arch }}
+          path: dist/*.pkg
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, windows, macos]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publish checksummed GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd dist
+          sha256sum * > SHA256SUMS
+          gh release create "$GITHUB_REF_NAME" * --repo "$GITHUB_REPOSITORY" \
+            --prerelease --generate-notes

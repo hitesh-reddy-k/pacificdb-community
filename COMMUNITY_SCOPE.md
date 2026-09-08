@@ -14,8 +14,8 @@
 | Security | TLS/mTLS transport, passwords/tokens, API keys, RBAC, tenant isolation, audit logs |
 | Backup | operator-triggered full snapshot, list, verify, delete and restore |
 | Operations | ping/health, metrics, Prometheus, logs and storage diagnostics |
-| Clients | JSON-over-TCP, CLI/shell, Node.js, Java and Python |
-| Deployment | Docker, Docker Compose, Kubernetes, Helm |
+| Clients | JSON-over-TCP, native CLI/shell, Node.js, Java and Python |
+| Deployment | Docker, Docker Compose, Kubernetes, Helm, and native release packaging |
 
 ## Not implemented in this beta
 

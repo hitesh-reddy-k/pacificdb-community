@@ -1,0 +1,27 @@
+@echo off
+setlocal
+if not defined PACIFICDB_HOME set "PACIFICDB_HOME=%LOCALAPPDATA%\PacificDB"
+if not defined PACIFICDB_ENVIRONMENT set "PACIFICDB_ENVIRONMENT=development"
+if not defined DATA_ROOT set "DATA_ROOT=%PACIFICDB_HOME%\data"
+if not defined BACKUP_ROOT set "BACKUP_ROOT=%PACIFICDB_HOME%\backup"
+if not defined RESTORE_DIR set "RESTORE_DIR=%PACIFICDB_HOME%\restore"
+if not defined ENGINE_BIND_HOST set "ENGINE_BIND_HOST=127.0.0.1"
+if not defined ENGINE_AUTH_REQUIRED set "ENGINE_AUTH_REQUIRED=0"
+if not defined RAFT_CLUSTER_ID set "RAFT_CLUSTER_ID=pacificdb-local"
+if not defined RAFT_NODE_ID set "RAFT_NODE_ID=node-1"
+if not defined RAFT_IS_LEADER set "RAFT_IS_LEADER=1"
+if not defined MIN_QUORUM_SIZE set "MIN_QUORUM_SIZE=1"
+if not defined ENGINE_CPU_CORES set "ENGINE_CPU_CORES=2"
+if not defined CONN_MIN_THREADS set "CONN_MIN_THREADS=4"
+if not defined CONN_MAX_THREADS set "CONN_MAX_THREADS=64"
+if not defined CONN_MAX_QUEUE set "CONN_MAX_QUEUE=2048"
+if not defined MAX_CONNECTIONS set "MAX_CONNECTIONS=256"
+if not defined ADAPTIVE_ADMISSION set "ADAPTIVE_ADMISSION=0"
+if not defined DBQ_SHARDS set "DBQ_SHARDS=4"
+if not defined DBQ_WORKERS_PER_SHARD set "DBQ_WORKERS_PER_SHARD=2"
+if not defined DBQ_MAX_QUEUE_PER_SHARD set "DBQ_MAX_QUEUE_PER_SHARD=2048"
+if not exist "%DATA_ROOT%" mkdir "%DATA_ROOT%"
+if not exist "%BACKUP_ROOT%" mkdir "%BACKUP_ROOT%"
+if not exist "%RESTORE_DIR%" mkdir "%RESTORE_DIR%"
+"%~dp0db_engine.exe" %*
+exit /b %ERRORLEVEL%

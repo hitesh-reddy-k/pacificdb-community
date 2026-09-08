@@ -58,6 +58,34 @@ Run the complete local startup and CRUD check with
 `scripts/test-local-compose.sh`. PacificDB Community is self-hosted; an
 Atlas-style managed service requires the separate PacificDB Cloud control plane.
 
+## Native downloads
+
+The release workflow builds separate packages for Linux (`.deb`), Windows
+(`.exe` installer), macOS Apple silicon (`arm64.pkg`), and macOS Intel
+(`x86_64.pkg`). The server and native `pacificdb` shell are included; Node.js
+is not required.
+
+On Ubuntu or Debian:
+
+```sh
+sudo apt install ./pacificdb-community-*-linux-amd64.deb
+pacificdb-local
+```
+
+On Windows, run the `.exe` installer and then start `pacificdb-local.cmd` from
+a new Command Prompt. On macOS, choose the package matching `uname -m`, install
+it, and run `pacificdb-local`. In a second terminal on any platform:
+
+```sh
+pacificdb ping
+pacificdb shell
+```
+
+The local launcher binds to `127.0.0.1`, stores data under the current user's
+application-data directory, and runs in the foreground. Release candidates
+must be code-signed and notarized before they are presented as trusted public
+installers.
+
 ## Build and test
 
 Requirements: CMake 3.20+, a C++17 compiler, OpenSSL, LZ4, Node.js 18+, Python
