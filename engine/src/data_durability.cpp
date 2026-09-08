@@ -629,7 +629,10 @@ bool DurableFileWriter::open() {
 #else
     int flags = O_WRONLY | O_CREAT | O_TRUNC;
     if (config_.directIO) {
-        flags |= O_DIRECT | O_SYNC;
+        flags |= O_SYNC;
+#ifdef O_DIRECT
+        flags |= O_DIRECT;
+#endif
     }
 
     fd_ = ::open(path_.c_str(), flags, 0644);
