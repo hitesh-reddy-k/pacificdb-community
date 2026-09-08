@@ -46,6 +46,7 @@ jobs:
       - name: Build Windows installer
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
           $version = $env:GITHUB_REF_NAME.TrimStart('v')
           if (-not $env:GITHUB_REF.StartsWith('refs/tags/v')) { $version = '${{ inputs.version }}' }
           cmake -S engine -B build -A x64 `

@@ -32,6 +32,7 @@ static std::atomic<uint64_t> g_walSeq{0};
 
 #ifdef _WIN32
 #include <windows.h>
+#undef DELETE
 #else
 #include <fcntl.h>
 #include <unistd.h>

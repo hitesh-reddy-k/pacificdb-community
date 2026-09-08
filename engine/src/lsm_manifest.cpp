@@ -14,6 +14,7 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#undef ERROR
 #else
 #include <fcntl.h>
 #include <unistd.h>
