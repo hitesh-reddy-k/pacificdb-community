@@ -1,0 +1,10 @@
+{
+  "name": "@pacificdb/cli",
+  "version": "0.1.0-beta.1",
+  "description": "PacificDB Community command-line client",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": { "pacificdb": "bin/pacificdb.js" },
+  "engines": { "node": ">=18" },
+  "scripts": { "test": "node --test test/*.test.js" }
+}

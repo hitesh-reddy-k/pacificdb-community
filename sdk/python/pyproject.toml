@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pacificdb"
+version = "0.1.0b1"
+description = "PacificDB Community Python client"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

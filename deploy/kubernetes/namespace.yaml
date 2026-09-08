@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: pacificdb
+  labels:
+    app.kubernetes.io/name: pacificdb
+    app.kubernetes.io/part-of: pacificdb

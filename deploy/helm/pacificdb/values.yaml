@@ -1,0 +1,14 @@
+replicaCount: 3
+image:
+  repository: pacificdb/community
+  tag: beta
+  pullPolicy: IfNotPresent
+storage:
+  className: ""
+  size: 20Gi
+resources:
+  requests: { cpu: 500m, memory: 1Gi }
+  limits: { cpu: "2", memory: 4Gi }
+security:
+  authRequired: false
+  accountsSecret: ""

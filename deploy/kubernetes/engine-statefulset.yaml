@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pacificdb-engine
+  namespace: pacificdb
+spec:
+  clusterIP: None
+  selector: { app: pacificdb-engine }
+  ports:
+    - { name: client, port: 9000 }
+    - { name: raft, port: 9001 }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pacificdb-engine
+  namespace: pacificdb
+spec:
+  serviceName: pacificdb-engine
+  replicas: 3
+  selector:
+    matchLabels: { app: pacificdb-engine }
+  template:
+    metadata:
+      labels: { app: pacificdb-engine }
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+    spec:
+      terminationGracePeriodSeconds: 60
+      securityContext: { runAsNonRoot: true, fsGroup: 10001 }
+      containers:
+        - name: engine
+          image: pacificdb/community:beta
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+            seccompProfile: { type: RuntimeDefault }
+          ports:
+            - { containerPort: 9000, name: client }
+            - { containerPort: 9001, name: raft }
+            - { containerPort: 9090, name: metrics }
+          env:
+            - { name: RAFT_CLUSTER_ID, value: pacificdb-community }
+            - name: RAFT_NODE_ID
+              valueFrom: { fieldRef: { fieldPath: metadata.name } }
+            - { name: DATA_ROOT, value: /var/lib/pacificdb/data }
+            - { name: BACKUP_ROOT, value: /var/lib/pacificdb/backup }
+            - { name: RESTORE_DIR, value: /var/lib/pacificdb/restore }
+            - { name: ENGINE_BIND_HOST, value: 0.0.0.0 }
+            - { name: ENGINE_PORT, value: "9000" }
+            - { name: RAFT_BIND_HOST, value: 0.0.0.0 }
+            - { name: RAFT_LISTEN_PORT, value: "9001" }
+            - { name: RAFT_REPLICATION_MODE, value: sync }
+            - { name: MIN_QUORUM_SIZE, value: "2" }
+            - name: RAFT_PEERS
+              value: pacificdb-engine-0@pacificdb-engine-0.pacificdb-engine.pacificdb.svc.cluster.local:9001,pacificdb-engine-1@pacificdb-engine-1.pacificdb-engine.pacificdb.svc.cluster.local:9001,pacificdb-engine-2@pacificdb-engine-2.pacificdb-engine.pacificdb.svc.cluster.local:9001
+            - { name: ENGINE_AUTH_REQUIRED, value: "false" }
+          resources:
+            requests: { cpu: 500m, memory: 1Gi }
+            limits: { cpu: "2", memory: 4Gi }
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/pacificdb }
+          readinessProbe: { tcpSocket: { port: client }, initialDelaySeconds: 5 }
+          livenessProbe: { tcpSocket: { port: client }, initialDelaySeconds: 15 }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources: { requests: { storage: 20Gi } }
