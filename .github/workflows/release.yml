@@ -137,8 +137,15 @@ jobs:
             sleep 0.25
           done
           build/pacificdb --port 19000 ping | grep -q pong
-          cpack --config build/CPackConfig.cmake -G productbuild -B dist
-          mv dist/*.pkg "dist/pacificdb-community-$version-macos-${{ matrix.arch }}.pkg"
+          package_root="$RUNNER_TEMP/package-root"
+          cmake --install build --prefix "$package_root/usr/local"
+          mkdir -p dist
+          package="dist/pacificdb-community-$version-macos-${{ matrix.arch }}.pkg"
+          pkgbuild --root "$package_root" --install-location / \
+            --identifier com.pacificdb.community --version "${version%%-*}" "$package"
+          pkgutil --payload-files "$package" | grep -q 'usr/local/bin/db_engine$'
+          pkgutil --payload-files "$package" | grep -q 'usr/local/bin/pacificdb$'
+          pkgutil --payload-files "$package" | grep -q 'usr/local/bin/pacificdb-local$'
       - uses: actions/upload-artifact@v4
         with:
           name: macos-${{ matrix.arch }}
