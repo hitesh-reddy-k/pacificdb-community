@@ -16,6 +16,7 @@ three-node release testing. Do not describe it as production-certified yet.
 - RF3 Raft consensus, elections, failover, snapshot catch-up, and repair diagnostics
 - Manual shard creation, placement, migration, splitting, merging, and rebalancing
 - Basic vector similarity search and metadata filtering
+- Replicated image, GIF, audio, video, and arbitrary binary document storage
 - Read-only natural-language query compilation and query explanations
 - TLS, password/token authentication, API keys, RBAC, tenant isolation, and local audit logging
 - Manual snapshot backup, verification, deletion, and restore
@@ -24,6 +25,13 @@ three-node release testing. Do not describe it as production-certified yet.
 - Dockerfile, Docker Compose, Kubernetes manifests, Helm chart, and reproducible YCSB binding
 
 The exact implemented scope and current gaps are in [COMMUNITY_SCOPE.md](COMMUNITY_SCOPE.md).
+
+Install the Node.js client or command-line package after a beta is published:
+
+```sh
+npm install @pacificdb/client@beta
+npm install --global @pacificdb/cli@beta
+```
 
 ## Run locally
 
@@ -79,6 +87,10 @@ it, and run `pacificdb-local`. In a second terminal on any platform:
 ```sh
 pacificdb ping
 pacificdb shell
+pacificdb put-media assets hero ./hero.gif --content-type image/gif --database app
+pacificdb get-media assets hero ./downloaded.gif --database app
+pacificdb put-vector embeddings hero-vector '[0.2,0.8]' --database app
+pacificdb query-vector embeddings '[0.2,0.8]' --k 5 --database app
 ```
 
 The local launcher binds to `127.0.0.1`, stores data under the current user's

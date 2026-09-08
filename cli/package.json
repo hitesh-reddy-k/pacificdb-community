@@ -5,6 +5,17 @@
   "license": "Apache-2.0",
   "type": "module",
   "bin": { "pacificdb": "bin/pacificdb.js" },
+  "files": ["bin", "src", "README.md", "LICENSE"],
+  "dependencies": { "@pacificdb/client": "0.1.0-beta.1" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hitesh-reddy-k/pacificdb-community.git",
+    "directory": "cli"
+  },
+  "publishConfig": { "access": "public" },
   "engines": { "node": ">=18" },
-  "scripts": { "test": "node --test test/*.test.js" }
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "prepublishOnly": "npm test"
+  }
 }

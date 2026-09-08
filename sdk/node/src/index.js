@@ -74,4 +74,42 @@ export class PacificDBClient {
   deleteOne(collection, filter) {
     return this.request({ action: 'deleteOne', collection, filter });
   }
+
+  putMedia(collection, id, data, metadata = {}) {
+    if (typeof id !== 'string' || !id) throw new TypeError('media id is required');
+    const bytes = Buffer.from(data);
+    return this.insert(collection, { ...metadata, id, kind: 'media',
+      dataBase64: bytes.toString('base64'), sizeBytes: bytes.length,
+      encoding: 'base64' });
+  }
+  updateMedia(collection, id, data, metadata = {}) {
+    return this.putMedia(collection, id, data, metadata);
+  }
+  async getMedia(collection, id) {
+    const response = await this.find(collection, { id }, { limit: 1 });
+    const document = Array.isArray(response) ? response[0] : response?.data?.[0];
+    if (!document || document.kind !== 'media' || typeof document.dataBase64 !== 'string') {
+      throw new Error(`media not found: ${id}`);
+    }
+    const { dataBase64, ...metadata } = document;
+    return { data: Buffer.from(dataBase64, 'base64'), metadata };
+  }
+  putVector(collection, id, vector, metadata = {}) {
+    if (typeof id !== 'string' || !id) throw new TypeError('vector id is required');
+    if (!Array.isArray(vector) || !vector.length ||
+        vector.some((value) => typeof value !== 'number' || !Number.isFinite(value))) {
+      throw new TypeError('vector must be a non-empty array of finite numbers');
+    }
+    return this.request({ action: 'insertVector', collection,
+      data: { ...metadata, id, kind: 'vector', vector } });
+  }
+  queryVector(collection, vector, { k = 10, metric = 'cosine',
+                                    filter = {}, modality } = {}) {
+    if (!Array.isArray(vector) || !vector.length ||
+        vector.some((value) => typeof value !== 'number' || !Number.isFinite(value))) {
+      throw new TypeError('vector must be a non-empty array of finite numbers');
+    }
+    return this.request({ action: 'queryVector', collection, vector, k, metric,
+      filter, ...(modality ? { modality } : {}) });
+  }
 }

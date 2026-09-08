@@ -3143,32 +3143,17 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
             if (!RaftCore::instance().isLeader()) {
                 res = { {"error", "not_leader"} };
             } else {
-            auto userId = req.value("userId", "system");
-            auto dbName = req["dbName"];
-            auto coll = req["collection"];
-            auto data = req["data"];
-            auto opId = ++g_opCounter;
-            std::string dbNameStr = dbName.get<std::string>();
-            std::string collStr = coll.get<std::string>();
-            std::string queueKey = buildQueueKey(userId, dbNameStr, collStr);
-
-            size_t vectorCost = std::max<size_t>(1, data.dump().size() / 1024);
-            bool enq = DBTaskQueuePartitioned::instance().enqueue([userId, dbName, coll, data, opId]() mutable {
                 try {
-                    DatabaseEngine::insertVector(userId, dbName, coll, data);
+                    auto data = req.at("data");
+                    DatabaseEngine::insertVector(
+                        req.value("userId", "system"), req.at("dbName"),
+                        req.at("collection"), data,
+                        buildRaftWriteMeta(req, requestId, traceId, traceParent));
                     EngineMetrics::recordInsert();
-                    setOpStatus(opId, "done");
-                } catch (...) {
-                    setOpStatus(opId, "error");
+                    res = {{"status", "ok"}, {"id", data.value("id", std::string(""))}};
+                } catch (const std::exception& error) {
+                    res = {{"error", error.what()}};
                 }
-            }, DBTaskQueuePartitioned::Priority::MEDIUM, queueKey, vectorCost);
-
-            if (enq) {
-                setOpStatus(opId, "pending");
-                res = { {"status", "accepted"}, {"opId", opId} };
-            } else {
-                res = { {"error", "server_busy"}, {"retry_after_ms", 100} };
-            }
             }
         }
 

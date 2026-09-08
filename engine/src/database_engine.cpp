@@ -1761,18 +1761,20 @@ json DatabaseEngine::insertMany(const std::string& userId,
 void DatabaseEngine::insertVector(const std::string& userId,
                                   const std::string& dbName,
                                   const std::string& collection,
-                                  const json& doc) {
+                                  const json& doc,
+                                  const json& raftMeta) {
     requireStorageNamespace(userId, dbName, collection);
-    // Expect doc to contain: id, vector (array), modality (optional), metadata (optional)
-    if (!doc.contains("vector")) {
-        std::cerr << "[ENGINE][INSERT VECTOR] missing vector field" << std::endl;
-        return;
+    if (!doc.contains("vector") || !doc["vector"].is_array() || doc["vector"].empty()) {
+        throw std::invalid_argument("vector must be a non-empty numeric array");
+    }
+    for (const auto& value : doc["vector"]) {
+        if (!value.is_number() || !std::isfinite(value.get<double>())) {
+            throw std::invalid_argument("vector must be a non-empty numeric array");
+        }
     }
     json toStore = doc;
     toStore["kind"] = "vector";
-    enforceTenantOnWrite(userId, toStore);
-    // reuse LSM path
-    LSM::put(userId, dbName, collection, toStore);
+    insert(userId, dbName, collection, std::move(toStore), raftMeta);
     invalidateVectorIndex(userId, dbName, collection);
 }
 

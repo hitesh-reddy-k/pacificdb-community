@@ -6,6 +6,16 @@
   "type": "module",
   "main": "src/index.js",
   "exports": "./src/index.js",
+  "files": ["src", "README.md", "LICENSE"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hitesh-reddy-k/pacificdb-community.git",
+    "directory": "sdk/node"
+  },
+  "publishConfig": { "access": "public" },
   "engines": { "node": ">=18" },
-  "scripts": { "test": "node --test test/*.test.js" }
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "prepublishOnly": "npm test"
+  }
 }

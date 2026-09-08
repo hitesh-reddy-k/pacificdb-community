@@ -39,4 +39,15 @@ done
 "$root/usr/bin/pacificdb" --port "$port" request \
   '{"action":"find","dbName":"package_test","collection":"users","filter":{"id":"1"}}' | grep -q 'Ada'
 
+printf '\000\001GIF89a\377' >"$home/input.gif"
+"$root/usr/bin/pacificdb" --port "$port" --database package_test \
+  put-media users hero "$home/input.gif" --content-type image/gif >/dev/null
+"$root/usr/bin/pacificdb" --port "$port" --database package_test \
+  get-media users hero "$home/output.gif" >/dev/null
+cmp "$home/input.gif" "$home/output.gif"
+"$root/usr/bin/pacificdb" --port "$port" --database package_test \
+  put-vector users hero-vector '[1,0]' --metadata '{"modality":"image"}' >/dev/null
+"$root/usr/bin/pacificdb" --port "$port" --database package_test \
+  query-vector users '[1,0]' --k 1 | grep -q 'hero-vector'
+
 echo "native package smoke passed"

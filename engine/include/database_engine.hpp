@@ -31,7 +31,7 @@ public:
     static json getDatabaseMetadata(const std::string& userId, const std::string& dbName);
     static void insert(const std::string& userId, const std::string& dbName, const std::string& collection, json doc, const json& raftMeta = json::object());
     static json insertMany(const std::string& userId, const std::string& dbName, const std::string& collection, std::vector<json> docs, const json& raftMeta = json::object());
-    static void insertVector(const std::string& userId, const std::string& dbName, const std::string& collection, const json& doc);
+    static void insertVector(const std::string& userId, const std::string& dbName, const std::string& collection, const json& doc, const json& raftMeta = json::object());
     static std::vector<json> find(const std::string& userId, const std::string& dbName, const std::string& collection, const json& filter, long long limit = -1, long long offset = 0);
     static size_t count(const std::string& userId, const std::string& dbName, const std::string& collection, const json& filter = json::object());
     static std::vector<json> queryVector(const std::string& userId, const std::string& dbName, const std::string& collection, const json& query);

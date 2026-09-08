@@ -1,0 +1,8 @@
+{
+  "name": "pacificdb-community",
+  "private": true,
+  "workspaces": ["sdk/node", "cli"],
+  "scripts": {
+    "test:npm": "npm test --workspace @pacificdb/client && npm test --workspace @pacificdb/cli"
+  }
+}

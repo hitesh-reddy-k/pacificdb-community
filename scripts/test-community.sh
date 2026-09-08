@@ -19,8 +19,8 @@ for test in \
   "$BUILD_DIR/$test"
 done
 node intelligence/test.js
-npm --prefix sdk/node test
-npm --prefix cli test
+npm install --ignore-scripts --no-audit --no-fund
+npm run test:npm
 PYTHONPATH=sdk/python python3 -m pytest -q sdk/python/tests
 mvn -q -f sdk/java/pom.xml test
 benchmarks/ycsb/test_binding.sh
