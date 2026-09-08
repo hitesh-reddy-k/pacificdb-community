@@ -54,7 +54,9 @@ jobs:
             -DVCPKG_TARGET_TRIPLET=x64-windows-static `
             -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded `
             -DPACIFICDB_ENGINE_VERSION="$version"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cmake --build build --config Release --target db_engine pacificdb
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:PACIFICDB_ENVIRONMENT = "development"
           $env:DATA_ROOT = "$pwd/package-test/data"
           $env:BACKUP_ROOT = "$pwd/package-test/backup"
@@ -87,6 +89,7 @@ jobs:
             Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
           }
           cpack --config build/CPackConfig.cmake -C Release -G NSIS -B dist
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Rename-Item (Get-ChildItem dist/*.exe).FullName "pacificdb-community-$version-windows-x64.exe"
       - uses: actions/upload-artifact@v4
         with:

@@ -31,6 +31,7 @@
     #include <ws2tcpip.h>
     #include <windows.h>
     #include <psapi.h>
+    #undef DELETE
     #pragma comment(lib, "Ws2_32.lib")
     typedef SOCKET socket_t;
     #define CLOSE_SOCKET closesocket
@@ -5956,7 +5957,8 @@ void startServer() {
 
     // Allow port reuse to avoid TIME_WAIT issues after crash/restart
     int optval = 1;
-    setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+    setsockopt(server, SOL_SOCKET, SO_REUSEADDR,
+               reinterpret_cast<const char*>(&optval), sizeof(optval));
 
     // Read ENGINE_PORT from environment (default 9000)
     int enginePort = 9000;
