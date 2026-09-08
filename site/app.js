@@ -1,19 +1,9 @@
-const repository = 'hitesh-reddy-k/pacificdb-community';
-const releasePage = `https://github.com/${repository}/releases`;
-let assets = [];
+const releaseBase = 'https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v0.1.0-beta.1';
 
 function updateDownloads() {
   for (const link of document.querySelectorAll('[data-platform]')) {
-    const asset = assets.find(item => item.name.endsWith(`-${link.dataset.platform}`));
-    // Only link to assets actually present in a public release for this repository.
-    const prefix = `https://github.com/${repository}/releases/download/`;
-    if (asset && asset.browser_download_url.startsWith(prefix)) {
-      link.href = asset.browser_download_url;
-      link.textContent = `Download ${link.dataset.platform.split('.').pop()} ↓`;
-    } else {
-      link.href = releasePage;
-      link.textContent = 'Check release availability ↗';
-    }
+    link.href = `${releaseBase}/pacificdb-community-0.1.0-beta.1-${link.dataset.platform}`;
+    link.textContent = `Download ${link.dataset.platform.split('.').pop()} ↓`;
   }
 }
 
@@ -41,26 +31,4 @@ for (const button of document.querySelectorAll('[data-copy]')) {
   });
 }
 
-async function loadRelease() {
-  const status = document.querySelector('#release-status');
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
-  try {
-    // The releases list includes prereleases; /latest excludes Community beta builds.
-    const response = await fetch(`https://api.github.com/repos/${repository}/releases?per_page=10`, {
-      signal: controller.signal, headers: { Accept: 'application/vnd.github+json' }
-    });
-    if (!response.ok) throw new Error('Release lookup unavailable');
-    const releases = await response.json();
-    const release = releases.find(item => !item.draft && item.assets?.some(asset => /\.(deb|exe|pkg)$/.test(asset.name)));
-    if (!release) throw new Error('Installers have not been published yet');
-    assets = release.assets;
-    status.textContent = `${release.tag_name} · Downloads available for published platforms`;
-  } catch {
-    status.textContent = 'Check GitHub Releases for available installers.';
-  } finally {
-    clearTimeout(timeout);
-    updateDownloads();
-  }
-}
-loadRelease();
+updateDownloads();

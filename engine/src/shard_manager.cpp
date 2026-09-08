@@ -8,6 +8,7 @@
 #include <limits>
 #include <cstdlib>
 #include <cstdint>
+#include <sstream>
 #include <string_view>
 
 namespace {

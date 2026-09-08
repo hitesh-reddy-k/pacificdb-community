@@ -86,10 +86,15 @@ endif()
 # Detect platform
 if(WIN32)
     set(PLATFORM_WINDOWS TRUE)
-    add_definitions(-D_WIN32_WINNT=0x0601)
+    add_definitions(-D_WIN32_WINNT=0x0601 -DNOMINMAX -DWIN32_LEAN_AND_MEAN)
 else()
     set(PLATFORM_LINUX TRUE)
     add_definitions(-DLINUX)
+endif()
+
+if(APPLE)
+    # macOS has fsync but no fdatasync; fsync provides the stronger guarantee.
+    add_compile_definitions(fdatasync=fsync)
 endif()
 
 

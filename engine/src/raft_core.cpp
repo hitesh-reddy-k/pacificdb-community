@@ -5978,7 +5978,17 @@ void RaftCore::recordSafetyAudit(const std::string& event,
             {"detail", detail},
         };
         const std::string line = rec.dump() + "\n";
-        int fd = ::open(path.c_str(), O_WRONLY | O_APPEND | O_CREAT, 0644);
+#ifdef _WIN32
+        HANDLE fd = CreateFileA(path.c_str(), FILE_APPEND_DATA, FILE_SHARE_READ,
+                                nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (fd != INVALID_HANDLE_VALUE) {
+            DWORD written = 0;
+            WriteFile(fd, line.data(), static_cast<DWORD>(line.size()), &written, nullptr);
+            FlushFileBuffers(fd);
+            CloseHandle(fd);
+        }
+#else
+        const int fd = ::open(path.c_str(), O_WRONLY | O_APPEND | O_CREAT, 0644);
         if (fd >= 0) {
             ssize_t off = 0;
             while (off < static_cast<ssize_t>(line.size())) {
@@ -5989,6 +5999,7 @@ void RaftCore::recordSafetyAudit(const std::string& event,
             ::fsync(fd);
             ::close(fd);
         }
+#endif
         MetricsExporter::incrementCounter("pacificdb_safety_audit_events_total", 1.0);
     } catch (...) {}
 }
