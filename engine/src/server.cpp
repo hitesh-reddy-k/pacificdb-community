@@ -41,7 +41,12 @@
     #ifdef __linux__
         #include <sys/epoll.h>
     #endif
-    #include <sys/sysinfo.h>
+    #ifdef __linux__
+        #include <sys/sysinfo.h>
+    #elif defined(__APPLE__)
+        #include <mach/mach.h>
+        #include <sys/sysctl.h>
+    #endif
     #include <netinet/in.h>
     #include <netinet/tcp.h>  // For TCP_NODELAY
     #include <arpa/inet.h>
@@ -6228,6 +6233,20 @@ void startServer() {
             DWORDLONG total = statex.ullTotalPhys;
             DWORDLONG avail = statex.ullAvailPhys;
             usedPercent = (int)(((double)(total - avail) / (double)total) * 100.0);
+#elif defined(__APPLE__)
+            std::uint64_t total = 0;
+            std::size_t totalSize = sizeof(total);
+            vm_size_t pageSize = 0;
+            vm_statistics64_data_t vm{};
+            mach_msg_type_number_t count = HOST_VM_INFO64_COUNT;
+            if (sysctlbyname("hw.memsize", &total, &totalSize, nullptr, 0) == 0 &&
+                host_page_size(mach_host_self(), &pageSize) == KERN_SUCCESS &&
+                host_statistics64(mach_host_self(), HOST_VM_INFO64,
+                    reinterpret_cast<host_info64_t>(&vm), &count) == KERN_SUCCESS && total > 0) {
+                const std::uint64_t available =
+                    (vm.free_count + vm.inactive_count) * static_cast<std::uint64_t>(pageSize);
+                usedPercent = static_cast<int>(100.0 * (total - available) / total);
+            }
 #else
             // Use /proc/meminfo MemAvailable — this correctly accounts for page cache & reclaimable
             // sysinfo::freeram is misleading (excludes buffers/cache that are reclaimable)
