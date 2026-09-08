@@ -4,6 +4,16 @@ import path from 'node:path';
 import { stdin, stdout } from 'node:process';
 import { PacificDBClient } from '@pacificdb/client';
 
+const shellHelp = `Shell commands:
+  help                         Show this help
+  quit | exit                  Close the shell
+  {"action":"ping"}          Check the server
+  {"action":"createDatabase","dbName":"app"}
+  {"action":"createCollection","dbName":"app","collection":"users"}
+  {"action":"insert","dbName":"app","collection":"users","data":{"id":"1","name":"Ada"}}
+  {"action":"find","dbName":"app","collection":"users","filter":{}}
+`;
+
 export async function main(args, streams = { input: stdin, output: stdout }) {
   const options = {};
   const positional = [];
@@ -58,9 +68,14 @@ export async function main(args, streams = { input: stdin, output: stdout }) {
   if (positional[0] !== 'shell')
     throw new Error('usage: pacificdb ping|request JSON|shell|put-media|get-media|put-vector|query-vector [options]');
   const prompt = readline.createInterface(streams);
+  streams.output.write('PacificDB shell. Type help for commands; quit to exit.\n');
   while (true) {
     const line = (await prompt.question('pacificdb> ')).trim();
     if (!line || line === 'exit' || line === 'quit') break;
+    if (line === 'help') {
+      streams.output.write(shellHelp);
+      continue;
+    }
     try {
       streams.output.write(JSON.stringify(await client.request(JSON.parse(line)), null, 2) + '\n');
     } catch (error) {

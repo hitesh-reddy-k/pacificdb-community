@@ -171,6 +171,18 @@ void usage() {
                  "ping|request JSON|shell|put-media|get-media|put-vector|query-vector\n";
 }
 
+void printShellHelp() {
+    std::cout <<
+        "Shell commands:\n"
+        "  help                         Show this help\n"
+        "  quit | exit                  Close the shell\n"
+        "  {\"action\":\"ping\"}          Check the server\n"
+        "  {\"action\":\"createDatabase\",\"dbName\":\"app\"}\n"
+        "  {\"action\":\"createCollection\",\"dbName\":\"app\",\"collection\":\"users\"}\n"
+        "  {\"action\":\"insert\",\"dbName\":\"app\",\"collection\":\"users\",\"data\":{\"id\":\"1\",\"name\":\"Ada\"}}\n"
+        "  {\"action\":\"find\",\"dbName\":\"app\",\"collection\":\"users\",\"filter\":{}}\n";
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -270,9 +282,14 @@ int main(int argc, char** argv) {
                 {"k", topK}, {"metric", metric}});
         }
         if (positional[0] == "shell" && positional.size() == 1) {
+            std::cout << "PacificDB shell. Type help for commands; quit to exit.\n";
             for (std::string line; std::cout << "pacificdb> " && std::getline(std::cin, line);) {
                 if (line == "exit" || line == "quit") break;
                 if (line.empty()) continue;
+                if (line == "help") {
+                    printShellHelp();
+                    continue;
+                }
                 try {
                     sendAndPrint(host, port, nlohmann::json::parse(line));
                 } catch (const std::exception& error) {

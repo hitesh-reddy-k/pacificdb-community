@@ -20,6 +20,7 @@ dpkg-deb -x "$package" "$root"
 test -x "$root/usr/bin/db_engine"
 test -x "$root/usr/bin/pacificdb"
 test -x "$root/usr/bin/pacificdb-local"
+printf 'help\nquit\n' | "$root/usr/bin/pacificdb" shell | grep -q 'Shell commands:'
 
 PACIFICDB_HOME="$home" ENGINE_PORT="$port" RAFT_LISTEN_PORT="$raft_port" \
   "$root/usr/bin/pacificdb-local" >"$home/server.log" 2>&1 &

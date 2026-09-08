@@ -13,6 +13,20 @@ test('rejects unknown commands with useful usage', async () => {
   }), /usage:/);
 });
 
+test('shell help lists commands without contacting the server', async () => {
+  const input = new PassThrough();
+  const output = new PassThrough();
+  let text = '';
+  output.on('data', (chunk) => { text += chunk; });
+  const running = main(['shell'], { input, output });
+  input.write('help\n');
+  await new Promise(setImmediate);
+  input.end('quit\n');
+  await running;
+  assert.match(text, /Shell commands:/);
+  assert.match(text, /createDatabase/);
+});
+
 test('uploads and downloads media files', async (t) => {
   const requests = [];
   const bytes = Buffer.from([0, 1, 2, 255]);
