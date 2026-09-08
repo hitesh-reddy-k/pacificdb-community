@@ -15,7 +15,7 @@
 | Backup | operator-triggered full snapshot, list, verify, delete and restore |
 | Operations | ping/health, metrics, Prometheus, logs and storage diagnostics |
 | Clients | JSON-over-TCP, CLI/shell, Node.js, Java and Python |
-| Deployment | Docker, Kubernetes, Helm |
+| Deployment | Docker, Docker Compose, Kubernetes, Helm |
 
 ## Not implemented in this beta
 

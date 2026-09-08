@@ -21,9 +21,42 @@ three-node release testing. Do not describe it as production-certified yet.
 - Manual snapshot backup, verification, deletion, and restore
 - Health, logs, engine metrics, and Prometheus output
 - JSON-over-TCP API, CLI/shell, Node.js, Java, and Python clients
-- Dockerfile, Kubernetes manifests, Helm chart, and reproducible YCSB binding
+- Dockerfile, Docker Compose, Kubernetes manifests, Helm chart, and reproducible YCSB binding
 
 The exact implemented scope and current gaps are in [COMMUNITY_SCOPE.md](COMMUNITY_SCOPE.md).
+
+## Run locally
+
+Install Docker with the Compose plugin, download this repository, and run:
+
+```sh
+docker compose up -d --build database
+docker compose run --rm shell
+```
+
+The shell connects to `database:9000`. Enter one JSON request per line:
+
+```json
+{"action":"createDatabase","dbName":"app"}
+{"action":"createCollection","dbName":"app","collection":"users"}
+{"action":"insert","dbName":"app","collection":"users","data":{"id":"1","name":"Ada"}}
+{"action":"find","dbName":"app","collection":"users","filter":{"id":"1"}}
+```
+
+Type `quit` to leave the shell. Data remains in the `pacificdb-data` Docker
+volume. Stop the database with `docker compose down`; add `-v` only when you
+also want to delete the local database and backups.
+
+To use the host CLI when Node.js 18+ is installed:
+
+```sh
+node cli/bin/pacificdb.js ping
+node cli/bin/pacificdb.js shell --database app
+```
+
+Run the complete local startup and CRUD check with
+`scripts/test-local-compose.sh`. PacificDB Community is self-hosted; an
+Atlas-style managed service requires the separate PacificDB Cloud control plane.
 
 ## Build and test
 

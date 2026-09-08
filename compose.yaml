@@ -1,0 +1,46 @@
+services:
+  database:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile
+    image: pacificdb/community:local
+    restart: unless-stopped
+    environment:
+      PACIFICDB_ENVIRONMENT: development
+      ENGINE_AUTH_REQUIRED: "0"
+      RAFT_CLUSTER_ID: pacificdb-local
+      RAFT_NODE_ID: node-1
+      RAFT_IS_LEADER: "1"
+      MIN_QUORUM_SIZE: "1"
+      ENGINE_CPU_CORES: "2"
+      CONN_MIN_THREADS: "4"
+      CONN_MAX_THREADS: "64"
+      CONN_MAX_QUEUE: "2048"
+      MAX_CONNECTIONS: "256"
+      ADAPTIVE_ADMISSION: "0"
+      DBQ_SHARDS: "4"
+      DBQ_WORKERS_PER_SHARD: "2"
+      DBQ_MAX_QUEUE_PER_SHARD: "2048"
+    ports:
+      - "127.0.0.1:9000:9000"
+    volumes:
+      - pacificdb-data:/var/lib/pacificdb/data
+      - pacificdb-backup:/var/lib/pacificdb/backup
+
+  shell:
+    image: node:22-alpine
+    profiles: [tools]
+    depends_on:
+      database:
+        condition: service_healthy
+    working_dir: /workspace
+    volumes:
+      - .:/workspace:ro
+    entrypoint: [node, cli/bin/pacificdb.js]
+    command: [shell, --host, database, --port, "9000"]
+    stdin_open: true
+    tty: true
+
+volumes:
+  pacificdb-data:
+  pacificdb-backup:
