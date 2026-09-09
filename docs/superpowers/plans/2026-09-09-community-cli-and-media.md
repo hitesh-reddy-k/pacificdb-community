@@ -38,7 +38,7 @@
 - Produces: `CommunityCatalog::recordRestore/listRestores`.
 - Persists in `pacificdb_meta.projects`, `database_projects`, `media_manifests`, and `media_chunks` through `DatabaseEngine`.
 
-- [ ] **Step 1: Write the failing catalog test**
+- [x] **Step 1: Write the failing catalog test**
 
 ```cpp
 int main() {
@@ -52,13 +52,13 @@ int main() {
 }
 ```
 
-- [ ] **Step 2: Run the focused target and verify RED**
+- [x] **Step 2: Run the focused target and verify RED**
 
 Run: `cmake -S engine -B build && cmake --build build -j2 --target db_engine_community_catalog_test`
 
 Expected: compilation fails because `community_catalog.hpp` and the target do not exist.
 
-- [ ] **Step 3: Implement the catalog and reserved request guard**
+- [x] **Step 3: Implement the catalog and reserved request guard**
 
 ```cpp
 namespace pacificdb::community {
@@ -88,7 +88,7 @@ the reserved schema on each node before reserved Raft entries are applied.
 Catalog methods call `DatabaseEngine` directly; its existing synchronous Raft
 path supplies durability. Use deterministic logical IDs.
 
-- [ ] **Step 4: Add media lifecycle assertions to the same focused test**
+- [x] **Step 4: Add media lifecycle assertions to the same focused test**
 
 ```cpp
 auto upload = catalog.beginMedia("system", "app", "photos", "movie.mp4",
@@ -102,7 +102,7 @@ assert(catalog.listMedia("system", false).empty());
 assert(catalog.finalizeMedia("system", upload.at("id")).at("status") == "ready");
 ```
 
-- [ ] **Step 5: Implement media catalog methods and server actions**
+- [x] **Step 5: Implement media catalog methods and server actions**
 
 Actions: `community_media_begin`, `community_media_put_chunk`,
 `community_media_finalize`, `community_media_list`, `community_media_get`,
@@ -110,7 +110,7 @@ Actions: `community_media_begin`, `community_media_put_chunk`,
 `community_media_cleanup`. Validate chunk index, encoded data type, declared
 size, and SHA-256; treat equal ID/checksum as idempotent and reject mismatch.
 
-- [ ] **Step 6: Run focused tests and commit**
+- [x] **Step 6: Run focused tests and commit**
 
 Run: `cmake --build build -j2 --target db_engine_community_catalog_test && ./build/db_engine_community_catalog_test`
 

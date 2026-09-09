@@ -561,6 +561,18 @@ bool DatabaseEngine::applyReplicatedEntry(const nlohmann::json& entry) {
         std::string userId = entry.value("userId", "system");
         std::string dbName = entry.value("db", "");
         std::string collection = entry.value("collection", "");
+
+        // Reserved Community documents use the normal replicated write path.
+        // Ensure followers have the local schema before applying the first entry.
+        if (dbName == "pacificdb_meta" && !collection.empty() &&
+            op != "CREATE_DB" && op != "DROP_DB" &&
+            op != "CREATE_COLLECTION" && op != "DROP_COLLECTION") {
+            if (!DatabaseEngine::createDatabase(userId, dbName, "binary") ||
+                DatabaseEngine::createCollection(userId, dbName, collection).empty()) {
+                std::cerr << "[ENGINE][APPLY] Could not initialize reserved Community schema\n";
+                return false;
+            }
+        }
         // Accept either "data" or the older/alternate "doc" key
         json data = json::object();
         if (entry.contains("data")) data = entry["data"];

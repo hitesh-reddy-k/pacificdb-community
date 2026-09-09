@@ -20,6 +20,7 @@
 #include "request_timing.hpp"
 #include "env_config.hpp"
 #include "data_durability.hpp"
+#include "community_catalog.hpp"
 #include "test_failpoint.hpp"
 #include "storage_path.hpp"
 #include "tls_transport.hpp"
@@ -842,6 +843,38 @@ static bool engineAuthEnabled() {
     return enabled;
 }
 
+static int configuredMaxRequestBytes() {
+    static const int bytes = []() -> int {
+        if (const char* mbEnv = std::getenv("MAX_REQUEST_SIZE_MB")) {
+            try {
+                const double mb = std::stod(mbEnv);
+                if (mb > 0.0 && mb <= 256.0)
+                    return static_cast<int>(mb * 1024 * 1024);
+            } catch (...) {}
+        }
+        if (const char* bytesEnv = std::getenv("ENGINE_MAX_PAYLOAD_BYTES")) {
+            try {
+                const int parsed = std::stoi(bytesEnv);
+                if (parsed >= 1024 && parsed <= 256 * 1024 * 1024) return parsed;
+            } catch (...) {}
+        }
+        return 16 * 1024 * 1024;
+    }();
+    return bytes;
+}
+
+static bool isCommunityAction(const std::string& action) {
+    return action.rfind("community_", 0) == 0;
+}
+
+static bool mayAccessReservedNamespace(const json& req) {
+    if (!req.value("internalAdmin", false)) return false;
+    const std::string token = req.value("token", "");
+    return !token.empty() &&
+           pacificdb::security::SecurityManager::instance().hasPermission(
+               token, pacificdb::security::Permission::ADMIN, "pacificdb_meta");
+}
+
 static bool isAuthExemptAction(const std::string& action) {
     return action == "ping" ||
            action == "observeLeaderTerm" || action == "observe_leader_term" ||
@@ -865,13 +898,21 @@ static std::optional<pacificdb::security::Permission> permissionForAction(const 
         action == "admin_storage_visibility_check" || action == "admin_replication_status" ||
         action == "admin_wal_status" || action == "admin_lsm_status" ||
         action == "admin_compaction_status" || action == "admin_replay_check" ||
-        action == "admin_storage_verify") {
+        action == "admin_storage_verify" ||
+        action == "community_project_list" || action == "community_project_get" ||
+        action == "community_database_project" ||
+        action == "community_media_list" || action == "community_media_get" ||
+        action == "community_media_get_chunk" || action == "community_capabilities") {
         return Permission::READ;
     }
-    if (action == "insert" || action == "updateOne" || action == "bulk") {
+    if (action == "insert" || action == "updateOne" || action == "bulk" ||
+        action == "community_project_create" || action == "community_database_map" ||
+        action == "community_media_begin" || action == "community_media_put_chunk" ||
+        action == "community_media_finalize") {
         return Permission::WRITE;
     }
-    if (action == "deleteOne") {
+    if (action == "deleteOne" || action == "community_project_delete" ||
+        action == "community_media_delete" || action == "community_media_cleanup") {
         return Permission::DELETE;
     }
     if (action == "createDatabase") {
@@ -1421,6 +1462,14 @@ static bool isWriteAction(const std::string& action) {
            action == "createIndex" || action == "dropIndex" ||
            action == "rebuildIndex" || action == "indexRebuild" ||
            action == "dropDatabase" || action == "dropCollection" ||
+           action == "community_project_create" ||
+           action == "community_project_delete" ||
+           action == "community_database_map" ||
+           action == "community_media_begin" ||
+           action == "community_media_put_chunk" ||
+           action == "community_media_finalize" ||
+           action == "community_media_delete" ||
+           action == "community_media_cleanup" ||
            action == "restore_backup" || action == "create_backup" || action == "migrate_shard";
 }
 
@@ -2008,24 +2057,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
     std::size_t framedRequestBytes = 0;
     // Phase 1 Hardening: Unified payload limit — matches payloadConfig.js
     // Priority: MAX_REQUEST_SIZE_MB > ENGINE_MAX_PAYLOAD_BYTES > 16MB default
-    static const int maxRequestBytes = []() -> int {
-        // Primary: MAX_REQUEST_SIZE_MB (shared with Node.js payloadConfig.js)
-        const char* mbEnv = std::getenv("MAX_REQUEST_SIZE_MB");
-        if (mbEnv) {
-            try {
-                double mb = std::stod(mbEnv);
-                if (mb > 0.0 && mb <= 256.0) return static_cast<int>(mb * 1024 * 1024);
-            } catch (...) {}
-        }
-        // Fallback: ENGINE_MAX_PAYLOAD_BYTES
-        if (const char* bytesEnv = std::getenv("ENGINE_MAX_PAYLOAD_BYTES")) {
-            try {
-                int parsed = std::stoi(bytesEnv);
-                if (parsed >= 1024 && parsed <= 256 * 1024 * 1024) return parsed;
-            } catch (...) {}
-        }
-        return 16 * 1024 * 1024; // 16 MB default (matches payloadConfig.js)
-    }();
+    static const int maxRequestBytes = configuredMaxRequestBytes();
 
     static const int maxInMemoryPayload = [] {
         if (const char* env = std::getenv("ENGINE_MAX_IN_MEMORY_PAYLOAD")) {
@@ -2298,6 +2330,13 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
         if (!res.is_null()) {
             // Auth/RBAC rejected the request.
         }
+        else if (!isCommunityAction(action) &&
+                 pacificdb::community::isReservedDatabase(
+                     req.value("dbName", req.value("db", std::string()))) &&
+                 !mayAccessReservedNamespace(req)) {
+            res = {{"error", "reserved_namespace"},
+                   {"message", "pacificdb_meta is reserved for Community metadata"}};
+        }
         else if (applyMemoryBackpressure(req, action, res)) {
             // v2.9R: memory backpressure rejected/paused this write (reads unaffected).
         }
@@ -2307,6 +2346,104 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                     {"leader_term", RaftCore::instance().getCurrentTerm()},
                     {"commit_index", RaftCore::instance().getCommitIndex()},
                     {"last_applied", RaftCore::instance().getLastApplied()} };
+        }
+
+        // ---------------- COMMUNITY METADATA AND MEDIA ----------------
+        else if (action == "community_capabilities") {
+            res = {{"status", "ok"},
+                   {"max_request_bytes", configuredMaxRequestBytes()},
+                   {"media_chunk_source_max_bytes", 4 * 1024 * 1024}};
+        }
+        else if (action == "community_project_create") {
+            const auto project = pacificdb::community::CommunityCatalog::instance()
+                                     .createProject(req.value("userId", "system"),
+                                                    req.value("name", ""));
+            res = {{"status", "ok"}, {"project", project}};
+        }
+        else if (action == "community_project_list") {
+            res = {{"status", "ok"},
+                   {"projects", pacificdb::community::CommunityCatalog::instance()
+                                    .listProjects(req.value("userId", "system"))}};
+        }
+        else if (action == "community_project_get") {
+            const auto project = pacificdb::community::CommunityCatalog::instance()
+                                     .getProject(req.value("userId", "system"),
+                                                 req.value("id", ""));
+            res = project.is_null() ? json{{"error", "project_not_found"}}
+                                    : json{{"status", "ok"}, {"project", project}};
+        }
+        else if (action == "community_project_delete") {
+            const bool deleted = pacificdb::community::CommunityCatalog::instance()
+                                     .deleteProject(req.value("userId", "system"),
+                                                    req.value("id", ""));
+            res = deleted ? json{{"status", "ok"}}
+                          : json{{"error", "project_not_found"}};
+        }
+        else if (action == "community_database_map") {
+            pacificdb::community::CommunityCatalog::instance().mapDatabase(
+                req.value("userId", "system"), req.value("project_id", ""),
+                req.value("database", ""));
+            res = {{"status", "ok"}};
+        }
+        else if (action == "community_database_project") {
+            const auto mapping = pacificdb::community::CommunityCatalog::instance()
+                                     .databaseProject(req.value("userId", "system"),
+                                                      req.value("database", ""));
+            res = mapping.is_null() ? json{{"error", "database_project_not_found"}}
+                                    : json{{"status", "ok"}, {"mapping", mapping}};
+        }
+        else if (action == "community_media_begin") {
+            const auto media = pacificdb::community::CommunityCatalog::instance().beginMedia(
+                req.value("userId", "system"), req.value("dbName", ""),
+                req.value("collection", ""), req.value("filename", ""),
+                req.value("content_type", "application/octet-stream"),
+                req.value("size_bytes", -1LL), req.value("chunk_count", 0LL),
+                req.value("sha256", ""), req.value("resume_id", ""));
+            res = {{"status", "ok"}, {"media", media}};
+        }
+        else if (action == "community_media_put_chunk") {
+            res = pacificdb::community::CommunityCatalog::instance().putMediaChunk(
+                req.value("userId", "system"), req.value("media_id", ""),
+                req.value("index", -1LL), req.value("data", ""),
+                req.value("size_bytes", -1LL), req.value("sha256", ""));
+            res["status"] = "ok";
+        }
+        else if (action == "community_media_finalize") {
+            res = {{"status", "ok"},
+                   {"media", pacificdb::community::CommunityCatalog::instance()
+                                 .finalizeMedia(req.value("userId", "system"),
+                                                req.value("media_id", ""))}};
+        }
+        else if (action == "community_media_list") {
+            res = {{"status", "ok"},
+                   {"media", pacificdb::community::CommunityCatalog::instance().listMedia(
+                                 req.value("userId", "system"), req.value("all", false),
+                                 req.value("dbName", ""), req.value("collection", ""))}};
+        }
+        else if (action == "community_media_get") {
+            const auto media = pacificdb::community::CommunityCatalog::instance().getMedia(
+                req.value("userId", "system"), req.value("media_id", ""));
+            res = media.is_null() ? json{{"error", "media_not_found"}}
+                                  : json{{"status", "ok"}, {"media", media}};
+        }
+        else if (action == "community_media_get_chunk") {
+            const auto chunk = pacificdb::community::CommunityCatalog::instance().getMediaChunk(
+                req.value("userId", "system"), req.value("media_id", ""),
+                req.value("index", -1LL));
+            res = chunk.is_null() ? json{{"error", "media_chunk_not_found"}}
+                                  : json{{"status", "ok"}, {"chunk", chunk}};
+        }
+        else if (action == "community_media_delete") {
+            const bool deleted = pacificdb::community::CommunityCatalog::instance().deleteMedia(
+                req.value("userId", "system"), req.value("media_id", ""));
+            res = deleted ? json{{"status", "ok"}}
+                          : json{{"error", "media_not_found"}};
+        }
+        else if (action == "community_media_cleanup") {
+            res = {{"status", "ok"},
+                   {"deleted", pacificdb::community::CommunityCatalog::instance().cleanupMedia(
+                                   req.value("userId", "system"),
+                                   req.value("media_id", ""))}};
         }
 
         // v3.8 Phase 2 — STALE-LEADER FENCING (in-core): the control plane pushes the
@@ -2903,6 +3040,10 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
             }
             if (res.is_null()) {
                 auto dbs = DatabaseEngine::listDatabases(userId);
+                if (!mayAccessReservedNamespace(req)) {
+                    dbs.erase(std::remove(dbs.begin(), dbs.end(), "pacificdb_meta"),
+                              dbs.end());
+                }
                 res = dbs; // respond as array
             }
         }

@@ -147,6 +147,7 @@ target_compile_definitions(v11_4_apply_exact_boundary_failpoints_test PRIVATE
 
 # ------------------ COMMUNITY FEATURES ------------------
 set(COMMUNITY_FEATURES
+    src/community_catalog.cpp
     src/data_durability.cpp
     src/security_manager.cpp
     src/btree_index.cpp
@@ -230,6 +231,8 @@ add_pacificdb_engine_test(db_engine_partitioned_queue_test test/test_db_task_que
 add_pacificdb_engine_test(db_engine_work_stealing_test test/test_db_task_queue_work_stealing.cpp)
 add_pacificdb_engine_test(db_engine_community_manual_operations_test
     test/community_manual_operations_test.cpp)
+add_pacificdb_engine_test(db_engine_community_catalog_test
+    test/community_catalog_test.cpp)
 
 add_executable(storage_path_security_test tests/storage_path_security_test.cpp)
 target_include_directories(storage_path_security_test PRIVATE
