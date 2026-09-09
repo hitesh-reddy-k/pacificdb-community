@@ -1,4 +1,6 @@
 #include "backup_manager.hpp"
+#include "community_catalog.hpp"
+#include "database_engine.hpp"
 #include "shard_manager.hpp"
 
 #include <cstdlib>
@@ -22,6 +24,8 @@ int main() {
     setenv("DATA_ROOT", (root / "data").string().c_str(), 1);
 #endif
 
+    DatabaseEngine::init((root / "data").string(), false);
+
     auto& backups = BackupManager::instance();
     backups.init((root / "data").string(), (root / "backups").string(),
                  (root / "restores").string());
@@ -30,6 +34,10 @@ int main() {
     const fs::path restored = root / "restores" / "restored";
     if (!backups.restoreFromBackup(id, restored.string()) ||
         !fs::exists(restored / "record.txt")) return 2;
+    auto& catalog = pacificdb::community::CommunityCatalog::instance();
+    const auto restore = catalog.recordRestore("system", id, restored.string(), true, "");
+    if (restore.value("backup_id", "") != id ||
+        catalog.listRestores("system").empty()) return 6;
 
     auto& shards = ShardManager::instance();
     shards.init();

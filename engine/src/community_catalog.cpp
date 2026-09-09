@@ -22,6 +22,7 @@ constexpr const char* kProjects = "projects";
 constexpr const char* kDatabaseProjects = "database_projects";
 constexpr const char* kMediaManifests = "media_manifests";
 constexpr const char* kMediaChunks = "media_chunks";
+constexpr const char* kRestoreJournal = "restore_journal";
 
 long long nowMs() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -102,7 +103,8 @@ void CommunityCatalog::initialize(const std::string& userId) {
         throw std::runtime_error("could not initialize community metadata database");
     }
     for (const char* collection : {kProjects, kDatabaseProjects,
-                                   kMediaManifests, kMediaChunks}) {
+                                   kMediaManifests, kMediaChunks,
+                                   kRestoreJournal}) {
         if (DatabaseEngine::createCollection(userId, kDatabase, collection).empty()) {
             throw std::runtime_error("could not initialize community metadata collection");
         }
@@ -367,6 +369,32 @@ long long CommunityCatalog::cleanupMedia(const std::string& userId,
         }
     }
     return deleted;
+}
+
+json CommunityCatalog::recordRestore(const std::string& userId,
+                                     const std::string& backupId,
+                                     const std::string& targetDirectory,
+                                     bool success,
+                                     const std::string& error) {
+    requireText(backupId, "backup id");
+    initialize(userId);
+    json record{{"id", IDGenerator::generatePrefixedId("restore")},
+                {"backup_id", backupId},
+                {"target_directory", targetDirectory},
+                {"status", success ? "completed" : "failed"},
+                {"error", error},
+                {"completed", nowMs()}};
+    DatabaseEngine::insert(userId, kDatabase, kRestoreJournal, record);
+    return record;
+}
+
+json CommunityCatalog::listRestores(const std::string& userId) {
+    initialize(userId);
+    auto rows = DatabaseEngine::find(userId, kDatabase, kRestoreJournal,
+                                     json::object());
+    json result = json::array();
+    for (auto& row : rows) result.push_back(publicDocument(std::move(row)));
+    return result;
 }
 
 }  // namespace pacificdb::community

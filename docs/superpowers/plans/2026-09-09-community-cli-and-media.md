@@ -189,7 +189,7 @@ Commit: `feat(security): add community API keys`
 - Produces: `explainFind(json filter)` that mirrors the actual equality-index/full-scan selection in `DatabaseEngine::find`.
 - Actions: `aggregate`, `explain`, `get_backup`, `delete_backup`, `list_restores`, and `export_backup_manifest`.
 
-- [ ] **Step 1: Write failing aggregation tests**
+- [x] **Step 1: Write failing aggregation tests**
 
 ```cpp
 json docs = {{{"id", "1"}, {"team", "a"}, {"score", 2}},
@@ -205,26 +205,26 @@ catch (...) { rejected = true; }
 assert(rejected);
 ```
 
-- [ ] **Step 2: Build and verify RED**
+- [x] **Step 2: Build and verify RED**
 
 Run: `cmake --build build -j2 --target db_engine_community_query_test`
 
 Expected: compilation fails because the query helper does not exist.
 
-- [ ] **Step 3: Implement only the certified aggregation subset**
+- [x] **Step 3: Implement only the certified aggregation subset**
 
 Support `$match`, inclusion `$project`, single/multi-field `$sort`, nonnegative
 `$skip`, positive `$limit`, and terminal `$count`. Return per-stage explain
 records. Reject unknown stages and malformed values before scanning.
 
-- [ ] **Step 4: Add engine actions and honest explain**
+- [x] **Step 4: Add engine actions and honest explain**
 
 `aggregate` reads through `DatabaseEngine::find` and passes results to the pure
 helper. `explain` reports `INDEX_LOOKUP` when the actual find path receives a
 simple scalar equality field and `FULL_SCAN` otherwise; include field, limit,
 offset, and consistency without inventing index names.
 
-- [ ] **Step 5: Add backup lifecycle actions and restore journal**
+- [x] **Step 5: Add backup lifecycle actions and restore journal**
 
 `get_backup` filters `listBackups()`. `delete_backup` calls
 `BackupManager::deleteBackup`. `restore_backup` remains synchronous and records
@@ -232,7 +232,7 @@ success/failure and counts in `CommunityCatalog::recordRestore`.
 `export_backup_manifest` returns one backup's real metadata/checksum manifest;
 the CLI writes it to a local file.
 
-- [ ] **Step 6: Run focused tests and commit**
+- [x] **Step 6: Run focused tests and commit**
 
 Run: `cmake --build build -j2 --target db_engine_community_query_test db_engine_community_manual_operations_test && ./build/db_engine_community_query_test && ./build/db_engine_community_manual_operations_test`
 

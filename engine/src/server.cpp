@@ -21,6 +21,7 @@
 #include "env_config.hpp"
 #include "data_durability.hpp"
 #include "community_catalog.hpp"
+#include "community_query.hpp"
 #include "test_failpoint.hpp"
 #include "storage_path.hpp"
 #include "tls_transport.hpp"
@@ -888,7 +889,8 @@ static bool isAuthExemptAction(const std::string& action) {
 static std::optional<pacificdb::security::Permission> permissionForAction(const std::string& action) {
     using pacificdb::security::Permission;
 
-    if (action == "find" || action == "count" || action == "collectionStats" || action == "listDatabases" ||
+    if (action == "find" || action == "count" || action == "aggregate" ||
+        action == "explain" || action == "collectionStats" || action == "listDatabases" ||
         action == "listCollections" || action == "listIndexes" ||
         action == "validateIndex" || action == "indexValidate" ||
         action == "admin_stable_payload_dump" || action == "admin_complete_payload_hash" ||
@@ -935,7 +937,10 @@ static std::optional<pacificdb::security::Permission> permissionForAction(const 
     if (action == "dropIndex") {
         return Permission::DROP_COLLECTION;
     }
-    if (action == "create_backup" || action == "list_backups") {
+    if (action == "create_backup" || action == "list_backups" ||
+        action == "get_backup" || action == "verify_backup" ||
+        action == "delete_backup" || action == "export_backup_manifest" ||
+        action == "list_restores") {
         return Permission::BACKUP;
     }
     if (action == "restore_backup") {
@@ -1475,6 +1480,7 @@ static bool isWriteAction(const std::string& action) {
            action == "community_media_finalize" ||
            action == "community_media_delete" ||
            action == "community_media_cleanup" ||
+           action == "delete_backup" ||
            action == "restore_backup" || action == "create_backup" || action == "migrate_shard";
 }
 
@@ -2618,6 +2624,36 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
             res = {{"success", true}, {"backups", backups}};
         }
 
+        // ---------------- BACKUP: SHOW / EXPORT / DELETE ----------------
+        else if (action == "get_backup" || action == "export_backup_manifest") {
+            const std::string backupId = req.value("backup_id", "");
+            const auto info = BackupManager::instance().getBackupInfo(backupId);
+            if (info.backupId.empty()) {
+                res = {{"error", "backup_not_found"}};
+            } else {
+                json manifest = info.toJson();
+                manifest.erase("base_path");
+                res = {{"status", "ok"}, {"backup", manifest}};
+            }
+        }
+        else if (action == "delete_backup") {
+            if (!RaftCore::instance().isLeader()) {
+                res = {{"error", "not_leader"}};
+            } else if (!BackupManager::instance().deleteBackup(
+                           req.value("backup_id", ""))) {
+                res = {{"error", "backup_not_found"}};
+            } else {
+                res = {{"status", "ok"}};
+            }
+        }
+
+        // ---------------- BACKUP: RESTORE JOURNAL ----------------
+        else if (action == "list_restores") {
+            res = {{"status", "ok"},
+                   {"restores", pacificdb::community::CommunityCatalog::instance()
+                                    .listRestores(req.value("userId", "system"))}};
+        }
+
         // ---------------- BACKUP: VERIFY ----------------
         else if (action == "verify_backup") {
             std::string backupId = req.value("backup_id", "");
@@ -2636,8 +2672,12 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
             } else {
                 std::string backupId = req.value("backup_id", "");
                 std::string targetDir = req.value("target_dir", "");
-                if (backupId.empty() || targetDir.empty()) {
-                    res = {{"error", "backup_id and target_dir required"}};
+                if (targetDir.empty()) {
+                    targetDir = EnvConfig::getStorageConfig().restoreDir + "/restore-" +
+                                IDGenerator::generateObjectId();
+                }
+                if (backupId.empty()) {
+                    res = {{"error", "backup_id required"}};
                 } else {
                     const std::string targetClusterId =
                         req.value("target_cluster_id", "");
@@ -2645,6 +2685,9 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                         req.value("target_node_id", "");
                     bool ok = BackupManager::instance().restoreFromBackup(
                         backupId, targetDir, targetClusterId, targetNodeId);
+                    pacificdb::community::CommunityCatalog::instance().recordRestore(
+                        req.value("userId", "system"), backupId, targetDir, ok,
+                        ok ? "" : "restore_failed");
                     res = {
                         {"success", ok},
                         {"backup_id", backupId},
@@ -3366,6 +3409,30 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                     res = {{"error", error.what()}};
                 }
             }
+        }
+
+        // ---------------- COMMUNITY AGGREGATION / EXPLAIN ----------------
+        else if (action == "aggregate") {
+            const std::string userId = req.value("userId", "system");
+            const std::string dbName = req.value("dbName", "");
+            const std::string collection = req.value("collection", "");
+            auto documents = DatabaseEngine::find(userId, dbName, collection,
+                                                   json::object());
+            auto aggregate = pacificdb::community::aggregateDocuments(
+                std::move(documents), req.value("pipeline", json::array()));
+            res = {{"status", "ok"},
+                   {"count", aggregate.at("documents").size()},
+                   {"data", aggregate.at("documents")},
+                   {"stages", aggregate.at("stages")}};
+        }
+        else if (action == "explain") {
+            auto plan = pacificdb::community::explainFind(
+                req.value("filter", json::object()));
+            plan["limit"] = req.value("limit", -1LL);
+            plan["offset"] = req.value("offset", 0LL);
+            plan["consistency"] = normalizeReadConsistencyMode(
+                req.value("consistency", std::string("eventual")));
+            res = {{"status", "ok"}, {"query_plan", plan}};
         }
 
         // ---------------- FIND ----------------

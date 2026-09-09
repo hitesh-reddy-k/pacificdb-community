@@ -44,6 +44,10 @@ public:
                      bool allowReady = true);
     long long cleanupMedia(const std::string& userId,
                            const std::string& mediaId = {});
+    json recordRestore(const std::string& userId, const std::string& backupId,
+                       const std::string& targetDirectory, bool success,
+                       const std::string& error);
+    json listRestores(const std::string& userId);
 
 private:
     std::mutex initializeMutex_;
