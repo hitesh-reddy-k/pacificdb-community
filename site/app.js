@@ -1,8 +1,8 @@
-const releaseBase = 'https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v0.1.0-beta.2';
+const releaseBase = 'https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v0.1.0-beta.3';
 
 function updateDownloads() {
   for (const link of document.querySelectorAll('[data-platform]')) {
-    link.href = `${releaseBase}/pacificdb-community-0.1.0-beta.2-${link.dataset.platform}`;
+    link.href = `${releaseBase}/pacificdb-community-0.1.0-beta.3-${link.dataset.platform}`;
     link.textContent = `Download ${link.dataset.platform.split('.').pop()} ↓`;
   }
 }
