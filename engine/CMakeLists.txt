@@ -283,11 +283,11 @@ if(WIN32)
     set(CPACK_NSIS_PACKAGE_NAME "PacificDB Community")
     set(CPACK_NSIS_MODIFY_PATH OFF)
     set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS [[
-        Push "$INSTDIR\bin"
+        Push "$INSTDIR\\bin"
         Call AddToPath
     ]])
     set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS [[
-        Push "$INSTDIR\bin"
+        Push "$INSTDIR\\bin"
         Call un.RemoveFromPath
     ]])
 elseif(APPLE)

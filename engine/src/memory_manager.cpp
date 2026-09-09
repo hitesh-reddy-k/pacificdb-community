@@ -197,7 +197,11 @@ size_t MemoryManager::getProcessMemory() {
     // Fallback to peak rss if /proc is unavailable.
     struct rusage usage;
     getrusage(RUSAGE_SELF, &usage);
+#ifdef __APPLE__
+    return static_cast<size_t>(usage.ru_maxrss); // bytes on macOS
+#else
     return static_cast<size_t>(usage.ru_maxrss) * 1024;
+#endif
 #endif
 }
 
