@@ -134,7 +134,7 @@ jobs:
             & taskkill.exe /PID $server.Id /T /F *> $null
           }
           $uninstall = Start-Process -FilePath "$installRoot\Uninstall.exe" `
-            -ArgumentList '/S' -PassThru
+            -ArgumentList '/S', "_?=$installRoot" -PassThru
           if (-not $uninstall.WaitForExit(60000)) {
             Stop-Process -Id $uninstall.Id -Force
             throw "Windows uninstaller timed out"
