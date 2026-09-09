@@ -3420,6 +3420,14 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
         }
 
         // ---------------- COMMUNITY AGGREGATION / EXPLAIN ----------------
+        else if (action == "count") {
+            const std::string userId = req.value("userId", "system");
+            const std::string dbName = req.value("dbName", "");
+            const std::string collection = req.value("collection", "");
+            const auto count = DatabaseEngine::count(
+                userId, dbName, collection, req.value("filter", json::object()));
+            res = {{"status", "ok"}, {"count", count}};
+        }
         else if (action == "aggregate") {
             const std::string userId = req.value("userId", "system");
             const std::string dbName = req.value("dbName", "");

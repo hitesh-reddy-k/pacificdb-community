@@ -6,6 +6,54 @@ import path from 'node:path';
 import test from 'node:test';
 import { PassThrough } from 'node:stream';
 import { main } from '../src/cli.js';
+import { parseShellCommand, runShell } from '../src/shell.js';
+
+test('friendly parser maps Community commands and rejects Cloud commands', () => {
+  const context = { database: 'app' };
+  assert.equal(parseShellCommand('find users {"active":true}', context)
+    .command.action, 'find');
+  assert.equal(parseShellCommand('findOne users {}', context)
+    .command.limit, 1);
+  assert.equal(parseShellCommand('query vector embeddings [1,0] --k 3', context)
+    .command.k, 3);
+  assert.equal(parseShellCommand('backup verify backup-1', context)
+    .command.action, 'verify_backup');
+  assert.throws(() => parseShellCommand('create organization demo', context),
+                /unknown command/);
+});
+
+test('shell persists local context and dispatches project/database commands', async () => {
+  const cliHome = await mkdtemp(path.join(os.tmpdir(), 'pacificdb-shell-context-'));
+  const requests = [];
+  const client = {
+    database: '', token: '',
+    async request(command) {
+      requests.push(command);
+      if (command.action === 'community_project_create') {
+        return { status: 'ok', project: { id: 'project_1', name: command.name } };
+      }
+      return { status: 'ok' };
+    }
+  };
+  const input = new PassThrough();
+  const output = new PassThrough();
+  const running = runShell(client, { input, output }, { cliHome });
+  input.write('create project demo\n');
+  input.write('use project project_1\n');
+  input.write('create database app\n');
+  input.write('use app\n');
+  input.end('exit\n');
+  await running;
+
+  assert.deepEqual(requests.map((request) => request.action), [
+    'community_project_create', 'createDatabase', 'community_database_map'
+  ]);
+  const context = JSON.parse(await readFile(path.join(cliHome, 'context.json')));
+  assert.equal(context.projectId, 'project_1');
+  assert.equal(context.database, 'app');
+  assert.equal((await readFile(path.join(cliHome, 'history'), 'utf8')).includes('exit'),
+               false);
+});
 
 test('rejects unknown commands with useful usage', async () => {
   await assert.rejects(() => main(['unknown'], {
@@ -23,8 +71,12 @@ test('shell help lists commands without contacting the server', async () => {
   await new Promise(setImmediate);
   input.end('quit\n');
   await running;
-  assert.match(text, /Shell commands:/);
-  assert.match(text, /createDatabase/);
+  assert.match(text, /Authentication\n[\s\S]*whoami/);
+  assert.match(text, /Projects\n[\s\S]*create project/);
+  assert.match(text, /Backups\n[\s\S]*show backup/);
+  assert.match(text, /Media\n[\s\S]*download media/);
+  assert.match(text, /Vectors\n[\s\S]*query vector/);
+  assert.doesNotMatch(text, /autoscal|billing|organization/i);
 });
 
 test('hides internal telemetry from normal output', async (t) => {

@@ -1,40 +1,8 @@
-import readline from 'node:readline/promises';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { stdin, stdout } from 'node:process';
 import { PacificDBClient } from '@pacificdb/client';
-
-const shellHelp = `Shell commands:
-  help                         Show this help
-  quit | exit                  Close the shell
-  {"action":"ping"}          Check the server
-  {"action":"createDatabase","dbName":"app"}
-  {"action":"createCollection","dbName":"app","collection":"users"}
-  {"action":"insert","dbName":"app","collection":"users","data":{"id":"1","name":"Ada"}}
-  {"action":"find","dbName":"app","collection":"users","filter":{}}
-`;
-
-function printResponse(stream, response, action = '') {
-  if (response && !Array.isArray(response) && typeof response === 'object' &&
-      !action.startsWith('admin_')) {
-    for (const key of Object.keys(response)) {
-      if (key.startsWith('_') || ['requestId', 'trace_id', 'traceparent', 'term', 'isLeader',
-          'leader_term', 'commit_index', 'last_applied', 'consistency_mode',
-          'consistency_semantics', 'client_session_id', 'last_seen_version',
-          'minimum_visible_version', 'returned_doc_version',
-          'sst_visibility_source'].includes(key)) delete response[key];
-    }
-    const documents = Array.isArray(response.data) ? response.data : [response.data];
-    for (const document of documents) {
-      if (!document || Array.isArray(document) || typeof document !== 'object') continue;
-      for (const key of ['_mvcc_commit_ms', '_mvcc_version', '_raft_commit_index',
-        '_raft_term', '_visibility_floor', '_visibility_state', '_logicalWritePayloadHash',
-        'created_at_ms', 'created_txn', 'deleted_at_ms', 'deleted_txn', 'version',
-        'committed', 'tenant_id']) delete document[key];
-    }
-  }
-  stream.write(JSON.stringify(response, null, 2) + '\n');
-}
+import { printResponse, runShell } from './shell.js';
 
 export async function main(args, streams = { input: stdin, output: stdout }) {
   const options = {};
@@ -89,21 +57,5 @@ export async function main(args, streams = { input: stdin, output: stdout }) {
   }
   if (positional[0] !== 'shell')
     throw new Error('usage: pacificdb ping|request JSON|shell|put-media|get-media|put-vector|query-vector [options]');
-  const prompt = readline.createInterface(streams);
-  streams.output.write('PacificDB shell. Type help for commands; quit to exit.\n');
-  while (true) {
-    const line = (await prompt.question('pacificdb> ')).trim();
-    if (!line || line === 'exit' || line === 'quit') break;
-    if (line === 'help') {
-      streams.output.write(shellHelp);
-      continue;
-    }
-    try {
-      const command = JSON.parse(line);
-      printResponse(streams.output, await client.request(command), command.action);
-    } catch (error) {
-      streams.output.write('error: ' + error.message + '\n');
-    }
-  }
-  prompt.close();
+  await runShell(client, streams);
 }

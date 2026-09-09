@@ -309,7 +309,7 @@ Commit: `feat(node): add resumable media file transfer`
 - Produces: friendly command parser with the exact categories in the spec.
 - Persists context/history at `PACIFICDB_CLI_HOME` for tests or the platform application-data directory.
 
-- [ ] **Step 1: Write failing help/context tests**
+- [x] **Step 1: Write failing help/context tests**
 
 ```js
 assert.match(text, /Authentication\n[\s\S]*whoami/);
@@ -319,20 +319,20 @@ assert.match(text, /Vectors\n[\s\S]*query vector/);
 assert.doesNotMatch(text, /autoscal|billing|organization/i);
 ```
 
-- [ ] **Step 2: Run and verify RED**
+- [x] **Step 2: Run and verify RED**
 
 Run: `npm test --workspace @pacificdb/cli`
 
 Expected: FAIL because categorized help is absent.
 
-- [ ] **Step 3: Implement banner, context, history, and system commands**
+- [x] **Step 3: Implement banner, context, history, and system commands**
 
 Use Node standard library only. Write context/history with mode `0600`.
 Implement `help [topic]`, `context show`, `context clear`, `status`, `history`,
 `clear`, `request <json>`, and `exit`. Redact passwords, tokens, full API keys,
 and internal engine fields.
 
-- [ ] **Step 4: Add project/database/document command tests, verify RED, then implement**
+- [x] **Step 4: Add project/database/document command tests, verify RED, then implement**
 
 Commands use exact forms:
 
@@ -348,14 +348,14 @@ explain <collection> [filter-json]
 Database creation calls `createDatabase`, then `community_database_map` when a
 project is selected, and reports mapping failure explicitly.
 
-- [ ] **Step 5: Add backup/API-key/media/vector command tests, verify RED, then implement**
+- [x] **Step 5: Add backup/API-key/media/vector command tests, verify RED, then implement**
 
 Wire every command from the approved catalog. Password prompts bypass history.
 `backup export` writes returned JSON with mode `0600`. `upload` and `download`
 call the sequential SDK methods. `media cleanup` requires an explicit media ID
 or `--all-incomplete` confirmation; it never deletes ready media.
 
-- [ ] **Step 6: Run npm tests and commit**
+- [x] **Step 6: Run npm tests and commit**
 
 Run: `npm run test:npm`
 
