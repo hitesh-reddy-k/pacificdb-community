@@ -49,13 +49,18 @@ diagnostic output.
 - `list projects`
 - `use project <id>`
 - `show project`
-- `delete project`
+- `delete project <id>`
 
 A Community project is a local organizational label, not a SaaS organization,
-billing boundary, quota, or fleet-management object. Project records use the
-existing replicated document path in a reserved `pacificdb_meta.projects`
-collection. The selected project is client context and is attached as metadata
-to subsequent database creation where supported.
+billing boundary, quota, fleet-management object, or security boundary. Project
+records use the existing replicated document path in the reserved
+`pacificdb_meta.projects` collection. Database authorization remains the
+security boundary.
+
+Creating a database while a project is selected always records the relation in
+`pacificdb_meta.database_projects` as `{project_id, database_name}`. The command
+fails if either database creation or relation persistence fails; it never
+silently omits the relation.
 
 ### Databases and queries
 
@@ -75,55 +80,82 @@ not select.
 
 - `create backup [--name <name>]`
 - `list backups`
+- `show backup <id>`
 - `restore backup <id>`
 - `list restores`
 - `delete backup <id>`
 - `backup verify <id>`
 - `backup export <id> [file]`
 
-Create, list, verify, delete, and restore call `BackupManager`. Restore outcomes
-are persisted in a small engine-side journal so `list restores` reports real
-attempts. Export writes the portable backup manifest to the requested local
-file; it does not pretend to copy data from a remote engine. The CLI describes
-this accurately.
+Create, list, show, verify, delete, and restore call `BackupManager`. Restore is
+synchronous and local. Outcomes are persisted in
+`pacificdb_meta.restore_journal`, so `list restores` reports completed and
+failed real attempts rather than queued workflow metadata. Export writes the
+portable backup manifest to the requested local file; it does not pretend to
+copy data from a remote engine. The CLI describes this accurately.
+
+Community does not include scheduled backups, retention policies, approvals,
+point-in-time restore, cloud-object-storage backup, continuous backup, or
+cross-region backup orchestration.
 
 ### API keys
 
-- `create api-key [--name <name>]`
+- `create api-key [--name <name>] [--role read|readwrite|admin]`
 - `list api-keys`
 - `show api-key <id>`
 - `revoke api-key <id>`
 
-The engine generates `pdb_` keys, stores only SHA-256 hashes plus metadata, and
-shows the secret once. Active keys authenticate through the same request
-authorization boundary as session tokens. List and show never return the full
-secret. Mutating key commands require an administrator identity.
+The engine generates keys in the form `pdb_<key-id>_<secret>` and stores only
+the key ID, name, role, SHA-256 secret hash, creator, creation time, last-use
+time, and revocation time. Verification parses the ID, loads one record, hashes
+the supplied high-entropy secret, compares it in constant time, and checks the
+revocation state. Active keys authenticate through the same request
+authorization boundary as session tokens. Roles are `read`, `readwrite`, and
+`admin`; the normal engine permission checks enforce them. List and show never
+return the full secret. Mutating key commands require an administrator
+identity. Full keys must never enter restore journals, audit logs, history,
+exceptions, or debug output.
 
 ### Media and vectors
 
 - `upload image <path>`, `upload video <path>`, and `upload media <path>`
+- `download media <id> [destination]`
 - `list media`, `find media <query>`, `show media <id>`, and
   `delete media <id>`
+- `list media --all` and `media cleanup`
 - `put vector <collection> <id> <json-vector>` and
   `query vector <collection> <json-vector> [--k <n>] [--metric <name>]`
 
 The existing `put-media`, `get-media`, `put-vector`, and `query-vector`
 non-interactive commands remain compatible.
 
-Media upload reads a file sequentially in 4 MiB chunks. Every chunk is stored
-in reserved collections inside the selected database as a normal replicated
-document through the existing Raft write path, followed by a manifest containing
-the user's logical collection, filename, content type, total bytes, chunk count,
-and SHA-256 checksum. There is no total-size comparison or video-specific cap.
-Each request stays below the engine request limit. Download reads chunks in
-order and writes directly to the destination file. A manifest becomes `ready`
-only after all chunks commit; interrupted uploads remain resumable and are not
-shown as ready media.
+Media upload reads a file sequentially. The engine exposes its configured
+request limit, and the client derives a source-chunk size whose Base64-encoded
+JSON envelope remains below that limit, reserving 64 KiB for command metadata.
+The source chunk is capped at 4 MiB and reduced when the configured request
+limit requires it. Every chunk is stored in reserved collections inside the
+selected database as a normal replicated document through the existing Raft
+write path, followed by a manifest containing the user's logical collection,
+filename, content type, total bytes, chunk size, chunk count, and SHA-256
+checksum.
 
-The implementation must not read the entire media file into memory. Disk full,
-quorum failure, checksum mismatch, missing chunks, invalid vectors, and unknown
-metrics return explicit errors. Deleting media removes its manifest and known
-chunks.
+PacificDB Community imposes no application-level total media or video file-size
+limit. Upload capacity is bounded by available storage, configured engine and
+request limits, replication requirements, filesystem limits, and host
+resources. Download reads chunks in order and writes directly to the
+destination file. A manifest becomes `ready` only after all chunks commit.
+
+The implementation must not read the entire media file into memory. Upload
+returns a media ID before transferring chunks. `upload media <path> --resume
+<media-id>` resumes an interrupted upload. Reusing a committed chunk ID with
+the same checksum succeeds; a different checksum fails. `list media` shows only
+ready objects, while `list media --all` includes uploading and failed objects.
+`delete media` removes ready or incomplete uploads, and `media cleanup` removes
+incomplete uploads selected by the user without adding a scheduler.
+
+Disk full, quorum failure, checksum mismatch, missing chunks, an envelope that
+cannot fit the configured request limit, invalid vectors, and unknown metrics
+return explicit errors.
 
 ### System commands
 
@@ -142,8 +174,10 @@ tenant fields; raw administrative requests retain their diagnostic payload.
   dispatch. Keep parsing explicit; do not add a command framework dependency.
 - `sdk/node/src/index.js`: direct-engine methods and sequential file/chunk
   transfer.
+- `engine/src/shell.cpp`: dependency-free native installer CLI with the same
+  command names and sequential chunk transfer behavior.
 - `engine/src/server.cpp`: narrowly scoped aggregate/explain, backup, identity,
-  and API-key actions.
+  API-key, project metadata, and media metadata/chunk actions.
 - Existing query, backup, security, and database-engine files hold their own
   persistence and validation logic.
 
@@ -151,8 +185,11 @@ tenant fields; raw administrative requests retain their diagnostic payload.
 
 - Existing JSON-over-TCP, package names, ports, flags, and raw shell input
   continue to work.
-- Chunk documents use reserved collections and deterministic IDs, so ordinary
-  user-collection queries never expose them.
+- `pacificdb_meta` and its collections are reserved by the C++ engine. Only
+  authorized internal actions may access them; privileged raw administrative
+  requests must opt in explicitly. Users cannot create or spoof reserved
+  collections through ordinary database actions.
+- Chunk documents use deterministic IDs, so retry and resume are idempotent.
 - Failed uploads never return success and never publish a ready manifest.
 - A duplicate committed chunk with the same checksum is accepted for resume;
   a checksum mismatch fails.
@@ -162,7 +199,8 @@ tenant fields; raw administrative requests retain their diagnostic payload.
 ## Verification
 
 1. CLI unit tests cover categorized help, context, history, friendly commands,
-   clean query output, media resume, and error messages.
+   clean query output, media download/resume/cleanup, adaptive chunk sizing,
+   and error messages.
 2. Node client tests upload and download a file larger than two chunks without
    buffering it as one request, and verify the final checksum.
 3. C++ focused tests cover bounded aggregation, honest explain, API-key secret
