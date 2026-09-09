@@ -132,7 +132,7 @@ Commit: `feat(engine): add reserved community metadata catalog`
 - Produces: `SecurityManager::createApiKey/listApiKeys/getApiKey/revokeApiKey/validateApiKey`.
 - Engine actions: `security_whoami`, `api_key_create`, `api_key_list`, `api_key_get`, `api_key_revoke`.
 
-- [ ] **Step 1: Write the failing API-key test**
+- [x] **Step 1: Write the failing API-key test**
 
 ```cpp
 auto created = security.createApiKey("ci", "readwrite", "admin");
@@ -145,27 +145,27 @@ assert(security.revokeApiKey(created.at("id"), "admin"));
 assert(!security.validateApiKey(created.at("key")));
 ```
 
-- [ ] **Step 2: Build and verify RED**
+- [x] **Step 2: Build and verify RED**
 
 Run: `cmake --build build -j2 --target db_engine_community_api_key_test`
 
 Expected: compilation fails because the API-key methods do not exist.
 
-- [ ] **Step 3: Implement structured keys and atomic persistence**
+- [x] **Step 3: Implement structured keys and atomic persistence**
 
 Generate `pdb_<12-hex-id>_<32-random-bytes-base64url>`. Persist records to
 `DATA_ROOT/security/api_keys.json` using a temporary file plus rename. Hash only
 the secret with SHA-256. Resolve by parsed ID and compare hashes with
 `CRYPTO_memcmp`. Map roles `read`, `readwrite`, and `admin` to existing roles.
 
-- [ ] **Step 4: Integrate API keys with authorization and actions**
+- [x] **Step 4: Integrate API keys with authorization and actions**
 
 Make `validateToken`, `hasPermission`, `getTokenRole`, and `getTokenUsername`
 accept either an active session token or an active API key without storing the
 plaintext key. `security_whoami` returns username/creator and role. Creation and
 revocation require `ADMIN`; list/show require the current identity.
 
-- [ ] **Step 5: Run focused tests and commit**
+- [x] **Step 5: Run focused tests and commit**
 
 Run: `cmake --build build -j2 --target db_engine_community_api_key_test && ./build/db_engine_community_api_key_test`
 

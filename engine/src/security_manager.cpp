@@ -208,6 +208,7 @@ void SecurityManager::initialize(const std::string& configPath) {
 
     // Load existing users
     loadUsers();
+    loadApiKeys();
     initializeDefaultAdmin();
 
     // Initialize audit log file
@@ -284,6 +285,68 @@ void SecurityManager::saveUsersLocked() {
 
     std::ofstream f(usersFile);
     f << j.dump(2);
+}
+
+void SecurityManager::loadApiKeys() {
+    std::lock_guard<std::mutex> lock(apiKeyMutex_);
+    apiKeys_.clear();
+    const fs::path file = fs::path(configPath_) / "security" / "api_keys.json";
+    if (!fs::exists(file)) return;
+    std::ifstream input(file);
+    const json stored = json::parse(input, nullptr, false);
+    if (!stored.is_object() || !stored.value("api_keys", json::array()).is_array()) {
+        throw std::runtime_error("invalid API key store");
+    }
+    for (const auto& item : stored["api_keys"]) {
+        ApiKeyRecord record;
+        record.id = item.value("id", "");
+        record.name = item.value("name", "");
+        const std::string role = item.value("role", "read");
+        record.role = role == "admin" ? Role::ADMIN :
+                      (role == "readwrite" || role == "write") ? Role::WRITE :
+                      Role::READ_ONLY;
+        record.secretHash = item.value("secret_hash", "");
+        record.createdBy = item.value("created_by", "");
+        record.createdAt = item.value("created_at", 0LL);
+        record.lastUsedAt = item.value("last_used_at", 0LL);
+        record.revokedAt = item.value("revoked_at", 0LL);
+        if (!record.id.empty() && record.secretHash.size() == 64) {
+            apiKeys_[record.id] = std::move(record);
+        }
+    }
+}
+
+void SecurityManager::saveApiKeysLocked() {
+    const fs::path file = fs::path(configPath_) / "security" / "api_keys.json";
+    fs::create_directories(file.parent_path());
+    json stored{{"api_keys", json::array()}};
+    for (const auto& [_, record] : apiKeys_) {
+        stored["api_keys"].push_back({
+            {"id", record.id}, {"name", record.name},
+            {"role", record.role == Role::ADMIN ? "admin" :
+                     record.role == Role::WRITE ? "readwrite" : "read"},
+            {"secret_hash", record.secretHash},
+            {"created_by", record.createdBy}, {"created_at", record.createdAt},
+            {"last_used_at", record.lastUsedAt}, {"revoked_at", record.revokedAt}});
+    }
+    const fs::path temporary = file.string() + ".tmp";
+    {
+        std::ofstream output(temporary, std::ios::trunc);
+        if (!output) throw std::runtime_error("could not write API key store");
+        output << stored.dump(2);
+        output.flush();
+        if (!output) throw std::runtime_error("could not flush API key store");
+    }
+    fs::permissions(temporary, fs::perms::owner_read | fs::perms::owner_write,
+                    fs::perm_options::replace);
+    std::error_code ec;
+    fs::rename(temporary, file, ec);
+    if (ec) {
+        fs::remove(file, ec);
+        ec.clear();
+        fs::rename(temporary, file, ec);
+    }
+    if (ec) throw std::runtime_error("could not replace API key store: " + ec.message());
 }
 
 // ============================================================================
@@ -516,6 +579,7 @@ std::optional<JWTToken> SecurityManager::authenticate(const std::string& usernam
 }
 
 bool SecurityManager::validateToken(const std::string& token) {
+    if (token.rfind("pdb_", 0) == 0) return validateApiKey(token).has_value();
     std::lock_guard<std::mutex> lock(tokenMutex_);
 
     // Check if revoked
@@ -606,13 +670,7 @@ bool SecurityManager::hasPermission(const std::string& token, Permission perm) {
         return false;
     }
 
-    std::lock_guard<std::mutex> lock(tokenMutex_);
-    auto it = activeTokens_.find(token);
-    if (it == activeTokens_.end()) {
-        return false;
-    }
-
-    auto perms = getPermissionsForRole(it->second.role);
+    const auto perms = getPermissionsForRole(getTokenRole(token));
     return perms.count(perm) > 0;
 }
 
@@ -624,15 +682,8 @@ bool SecurityManager::hasPermission(const std::string& token, Permission perm,
 
     // Never hold tokenMutex_ and userMutex_ together. authenticate() acquires
     // them in the opposite order, so overlapping the two locks deadlocks auth.
-    std::string tokenUsername;
-    {
-        std::lock_guard<std::mutex> lock(tokenMutex_);
-        auto tokenIt = activeTokens_.find(token);
-        if (tokenIt == activeTokens_.end()) {
-            return false;
-        }
-        tokenUsername = tokenIt->second.username;
-    }
+    const std::string tokenUsername = getTokenUsername(token);
+    if (tokenUsername.empty()) return false;
 
     std::lock_guard<std::mutex> userLock(userMutex_);
     auto userIt = users_.find(tokenUsername);
@@ -691,20 +742,22 @@ bool SecurityManager::checkAccess(const std::string& token, const std::string& a
 }
 
 Role SecurityManager::getTokenRole(const std::string& token) {
-    std::lock_guard<std::mutex> lock(tokenMutex_);
-    auto it = activeTokens_.find(token);
-    if (it != activeTokens_.end()) {
-        return it->second.role;
+    {
+        std::lock_guard<std::mutex> lock(tokenMutex_);
+        auto it = activeTokens_.find(token);
+        if (it != activeTokens_.end()) return it->second.role;
     }
+    if (auto key = validateApiKey(token)) return key->role;
     return Role::READ_ONLY;
 }
 
 std::string SecurityManager::getTokenUsername(const std::string& token) {
-    std::lock_guard<std::mutex> lock(tokenMutex_);
-    auto it = activeTokens_.find(token);
-    if (it != activeTokens_.end()) {
-        return it->second.username;
+    {
+        std::lock_guard<std::mutex> lock(tokenMutex_);
+        auto it = activeTokens_.find(token);
+        if (it != activeTokens_.end()) return it->second.username;
     }
+    if (auto key = validateApiKey(token)) return key->createdBy;
     return "";
 }
 
@@ -822,6 +875,104 @@ static void generateRandomBytes(unsigned char* buffer, size_t length) {
         throw std::runtime_error(
             "CSPRNG unavailable; refusing to issue a predictable credential");
     }
+}
+
+json SecurityManager::createApiKey(const std::string& name,
+                                   const std::string& roleName,
+                                   const std::string& createdBy) {
+    if (name.empty() || name.size() > 128) {
+        throw std::invalid_argument("API key name must be 1-128 characters");
+    }
+    Role role;
+    if (roleName == "read") role = Role::READ_ONLY;
+    else if (roleName == "readwrite") role = Role::WRITE;
+    else if (roleName == "admin") role = Role::ADMIN;
+    else throw std::invalid_argument("API key role must be read, readwrite, or admin");
+
+    unsigned char idBytes[6];
+    unsigned char secretBytes[32];
+    generateRandomBytes(idBytes, sizeof(idBytes));
+    generateRandomBytes(secretBytes, sizeof(secretBytes));
+    const std::string id = bytesToHex(idBytes, sizeof(idBytes));
+    std::string secret(4 * ((sizeof(secretBytes) + 2) / 3), '\0');
+    const int encoded = EVP_EncodeBlock(
+        reinterpret_cast<unsigned char*>(secret.data()), secretBytes,
+        static_cast<int>(sizeof(secretBytes)));
+    if (encoded <= 0) throw std::runtime_error("could not encode API key secret");
+    secret.resize(static_cast<std::size_t>(encoded));
+    while (!secret.empty() && secret.back() == '=') secret.pop_back();
+    std::replace(secret.begin(), secret.end(), '+', '-');
+    std::replace(secret.begin(), secret.end(), '/', '_');
+
+    const long long now = std::chrono::duration_cast<std::chrono::seconds>(
+                              std::chrono::system_clock::now().time_since_epoch())
+                              .count();
+    ApiKeyRecord record{id, name, role, sha256(secret), createdBy, now, 0, 0};
+    {
+        std::lock_guard<std::mutex> lock(apiKeyMutex_);
+        apiKeys_[id] = record;
+        saveApiKeysLocked();
+    }
+    json result = record.toPublicJson();
+    result["key"] = "pdb_" + id + "_" + secret;
+    logAudit(createdBy, "", AuditAction::CONFIG_CHANGED, "api_key:" + id,
+             "API key created", true);
+    return result;
+}
+
+json SecurityManager::listApiKeys() {
+    std::lock_guard<std::mutex> lock(apiKeyMutex_);
+    json result = json::array();
+    for (const auto& [_, record] : apiKeys_) result.push_back(record.toPublicJson());
+    return result;
+}
+
+json SecurityManager::getApiKey(const std::string& id) {
+    std::lock_guard<std::mutex> lock(apiKeyMutex_);
+    const auto found = apiKeys_.find(id);
+    return found == apiKeys_.end() ? json() : found->second.toPublicJson();
+}
+
+bool SecurityManager::revokeApiKey(const std::string& id,
+                                   const std::string& revokedBy) {
+    const long long now = std::chrono::duration_cast<std::chrono::seconds>(
+                              std::chrono::system_clock::now().time_since_epoch())
+                              .count();
+    {
+        std::lock_guard<std::mutex> lock(apiKeyMutex_);
+        const auto found = apiKeys_.find(id);
+        if (found == apiKeys_.end() || found->second.revokedAt != 0) return false;
+        found->second.revokedAt = now;
+        saveApiKeysLocked();
+    }
+    logAudit(revokedBy, "", AuditAction::TOKEN_REVOKED, "api_key:" + id,
+             "API key revoked", true);
+    return true;
+}
+
+std::optional<ApiKeyRecord> SecurityManager::validateApiKey(
+    const std::string& key) {
+    if (key.rfind("pdb_", 0) != 0) return std::nullopt;
+    const std::size_t separator = key.find('_', 4);
+    if (separator == std::string::npos) return std::nullopt;
+    const std::string id = key.substr(4, separator - 4);
+    const std::string secret = key.substr(separator + 1);
+    if (id.size() != 12 || secret.empty()) return std::nullopt;
+
+    std::lock_guard<std::mutex> lock(apiKeyMutex_);
+    const auto found = apiKeys_.find(id);
+    if (found == apiKeys_.end() || found->second.revokedAt != 0 ||
+        !constantTimeEqual(sha256(secret), found->second.secretHash)) {
+        return std::nullopt;
+    }
+    const long long now = std::chrono::duration_cast<std::chrono::seconds>(
+                              std::chrono::system_clock::now().time_since_epoch())
+                              .count();
+    if (now - found->second.lastUsedAt >= 60) {
+        found->second.lastUsedAt = now;
+        saveApiKeysLocked();
+    }
+    return found->second;
 }
 
 std::string SecurityManager::generateSalt() {

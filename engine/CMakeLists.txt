@@ -233,6 +233,8 @@ add_pacificdb_engine_test(db_engine_community_manual_operations_test
     test/community_manual_operations_test.cpp)
 add_pacificdb_engine_test(db_engine_community_catalog_test
     test/community_catalog_test.cpp)
+add_pacificdb_engine_test(db_engine_community_api_key_test
+    test/community_api_key_test.cpp)
 
 add_executable(storage_path_security_test tests/storage_path_security_test.cpp)
 target_include_directories(storage_path_security_test PRIVATE

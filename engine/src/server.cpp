@@ -902,7 +902,9 @@ static std::optional<pacificdb::security::Permission> permissionForAction(const 
         action == "community_project_list" || action == "community_project_get" ||
         action == "community_database_project" ||
         action == "community_media_list" || action == "community_media_get" ||
-        action == "community_media_get_chunk" || action == "community_capabilities") {
+        action == "community_media_get_chunk" || action == "community_capabilities" ||
+        action == "security_whoami" || action == "api_key_list" ||
+        action == "api_key_get") {
         return Permission::READ;
     }
     if (action == "insert" || action == "updateOne" || action == "bulk" ||
@@ -940,6 +942,9 @@ static std::optional<pacificdb::security::Permission> permissionForAction(const 
         return Permission::RESTORE;
     }
     if (action == "rebalance_shards" || action == "migrate_shard") {
+        return Permission::ADMIN;
+    }
+    if (action == "api_key_create" || action == "api_key_revoke") {
         return Permission::ADMIN;
     }
 
@@ -2501,6 +2506,63 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                 res["username"] = pacificdb::security::SecurityManager::instance().getTokenUsername(token);
                 res["role"] = pacificdb::security::roleToString(
                     pacificdb::security::SecurityManager::instance().getTokenRole(token));
+            }
+        }
+
+        // ---------------- ENGINE SECURITY: CURRENT IDENTITY ----------------
+        else if (action == "security_whoami") {
+            const std::string token = req.value("token", "");
+            auto& security = pacificdb::security::SecurityManager::instance();
+            if (token.empty() || !security.validateToken(token)) {
+                res = {{"error", "unauthorized"}};
+                authRejected = true;
+            } else {
+                res = {{"status", "ok"},
+                       {"username", security.getTokenUsername(token)},
+                       {"role", pacificdb::security::roleToString(
+                                    security.getTokenRole(token))}};
+            }
+        }
+
+        // ---------------- ENGINE SECURITY: COMMUNITY API KEYS ----------------
+        else if (action == "api_key_create") {
+            const std::string token = req.value("token", "");
+            auto& security = pacificdb::security::SecurityManager::instance();
+            if (!security.hasPermission(token, pacificdb::security::Permission::ADMIN)) {
+                res = {{"error", "permission_denied"}};
+                authRejected = true;
+            } else {
+                res = security.createApiKey(
+                    req.value("name", "default"), req.value("role", "readwrite"),
+                    security.getTokenUsername(token));
+                res["status"] = "ok";
+            }
+        }
+        else if (action == "api_key_list" || action == "api_key_get") {
+            const std::string token = req.value("token", "");
+            auto& security = pacificdb::security::SecurityManager::instance();
+            if (!security.validateToken(token)) {
+                res = {{"error", "unauthorized"}};
+                authRejected = true;
+            } else if (action == "api_key_list") {
+                res = {{"status", "ok"}, {"api_keys", security.listApiKeys()}};
+            } else {
+                const auto key = security.getApiKey(req.value("id", ""));
+                res = key.is_null() ? json{{"error", "api_key_not_found"}}
+                                    : json{{"status", "ok"}, {"api_key", key}};
+            }
+        }
+        else if (action == "api_key_revoke") {
+            const std::string token = req.value("token", "");
+            auto& security = pacificdb::security::SecurityManager::instance();
+            if (!security.hasPermission(token, pacificdb::security::Permission::ADMIN)) {
+                res = {{"error", "permission_denied"}};
+                authRejected = true;
+            } else if (!security.revokeApiKey(req.value("id", ""),
+                                              security.getTokenUsername(token))) {
+                res = {{"error", "api_key_not_found"}};
+            } else {
+                res = {{"status", "ok"}};
             }
         }
 

@@ -176,6 +176,26 @@ struct JWTToken {
     }
 };
 
+struct ApiKeyRecord {
+    std::string id;
+    std::string name;
+    Role role{Role::READ_ONLY};
+    std::string secretHash;
+    std::string createdBy;
+    long long createdAt{0};
+    long long lastUsedAt{0};
+    long long revokedAt{0};
+
+    json toPublicJson() const {
+        const std::string apiRole = role == Role::ADMIN ? "admin" :
+                                    role == Role::WRITE ? "readwrite" : "read";
+        return {{"id", id}, {"name", name}, {"role", apiRole},
+                {"created_by", createdBy}, {"created_at", createdAt},
+                {"last_used_at", lastUsedAt}, {"revoked_at", revokedAt},
+                {"active", revokedAt == 0}};
+    }
+};
+
 // ============================================================================
 // AUDIT LOG
 // ============================================================================
@@ -305,6 +325,14 @@ public:
     Role getTokenRole(const std::string& token);
     std::string getTokenUsername(const std::string& token);
 
+    // Local Community API keys. The full key is returned once by create only.
+    json createApiKey(const std::string& name, const std::string& role,
+                      const std::string& createdBy);
+    json listApiKeys();
+    json getApiKey(const std::string& id);
+    bool revokeApiKey(const std::string& id, const std::string& revokedBy);
+    std::optional<ApiKeyRecord> validateApiKey(const std::string& key);
+
     // Audit Logging
     void logAudit(const std::string& username, const std::string& clientIP,
                   AuditAction action, const std::string& resource,
@@ -335,16 +363,20 @@ private:
     std::string generateToken();
     std::string generateSessionId();
     bool unlockAccountIfExpired(User& user);
+    void loadApiKeys();
+    void saveApiKeysLocked();
 
     std::unordered_map<std::string, User> users_;
     std::unordered_map<std::string, JWTToken> activeTokens_;
     std::unordered_set<std::string> revokedTokens_;
+    std::unordered_map<std::string, ApiKeyRecord> apiKeys_;
     std::vector<AuditLogEntry> auditLog_;
 
     std::string configPath_;
     std::mutex userMutex_;
     std::mutex tokenMutex_;
     std::mutex auditMutex_;
+    std::mutex apiKeyMutex_;
 
     int maxLoginAttempts_;
     int tokenExpiryMinutes_;
