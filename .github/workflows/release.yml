@@ -93,7 +93,11 @@ jobs:
           $installer = Get-ChildItem dist/*.exe
           $installRoot = "$env:RUNNER_TEMP\PacificDB"
           $install = Start-Process -FilePath $installer.FullName `
-            -ArgumentList '/S', "/D=$installRoot" -Wait -PassThru
+            -ArgumentList '/S', "/D=$installRoot" -PassThru
+          if (-not $install.WaitForExit(60000)) {
+            Stop-Process -Id $install.Id -Force
+            throw "Windows installer timed out"
+          }
           if ($install.ExitCode -ne 0) { exit $install.ExitCode }
           $bin = "$installRoot\bin"
           if (-not (Test-Path "$bin\pacificdb.exe") -or
@@ -130,7 +134,11 @@ jobs:
             & taskkill.exe /PID $server.Id /T /F *> $null
           }
           $uninstall = Start-Process -FilePath "$installRoot\Uninstall.exe" `
-            -ArgumentList '/S' -Wait -PassThru
+            -ArgumentList '/S' -PassThru
+          if (-not $uninstall.WaitForExit(60000)) {
+            Stop-Process -Id $uninstall.Id -Force
+            throw "Windows uninstaller timed out"
+          }
           if ($uninstall.ExitCode -ne 0) { exit $uninstall.ExitCode }
           $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
           if (($userPath -split ';') -contains $bin) {

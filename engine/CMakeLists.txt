@@ -256,6 +256,8 @@ install(TARGETS db_engine pacificdb RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 if(WIN32)
     install(PROGRAMS ${CMAKE_SOURCE_DIR}/../packaging/pacificdb-local.cmd
         DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(FILES ${CMAKE_SOURCE_DIR}/../packaging/pacificdb-path.ps1
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/pacificdb)
 else()
     install(PROGRAMS ${CMAKE_SOURCE_DIR}/../packaging/pacificdb-local
         DESTINATION ${CMAKE_INSTALL_BINDIR})
@@ -283,12 +285,14 @@ if(WIN32)
     set(CPACK_NSIS_PACKAGE_NAME "PacificDB Community")
     set(CPACK_NSIS_MODIFY_PATH OFF)
     set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS [[
-        Push \"$INSTDIR\\bin\"
-        Call AddToPath
+        ExecWait '\"$SYSDIR\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"$INSTDIR\\share\\pacificdb\\pacificdb-path.ps1\" add \"$INSTDIR\\bin\"' $0
+        IntCmp $0 0 +2
+        Abort
+        SendMessage \${HWND_BROADCAST} \${WM_WININICHANGE} 0 \"STR:Environment\" /TIMEOUT=5000
     ]])
     set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS [[
-        Push \"$INSTDIR\\bin\"
-        Call un.RemoveFromPath
+        ExecWait '\"$SYSDIR\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"$INSTDIR\\share\\pacificdb\\pacificdb-path.ps1\" remove \"$INSTDIR\\bin\"' $0
+        SendMessage \${HWND_BROADCAST} \${WM_WININICHANGE} 0 \"STR:Environment\" /TIMEOUT=5000
     ]])
 elseif(APPLE)
     set(CPACK_GENERATOR productbuild)
