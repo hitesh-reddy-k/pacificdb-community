@@ -92,8 +92,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $installer = Get-ChildItem dist/*.exe
           $installRoot = "$env:RUNNER_TEMP\PacificDB"
-          & $installer.FullName /S "/D=$installRoot"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $install = Start-Process -FilePath $installer.FullName `
+            -ArgumentList '/S', "/D=$installRoot" -Wait -PassThru
+          if ($install.ExitCode -ne 0) { exit $install.ExitCode }
           $bin = "$installRoot\bin"
           if (-not (Test-Path "$bin\pacificdb.exe") -or
               -not (Test-Path "$bin\db_engine.exe") -or
@@ -128,8 +129,9 @@ jobs:
           } finally {
             & taskkill.exe /PID $server.Id /T /F *> $null
           }
-          & "$installRoot\Uninstall.exe" /S
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $uninstall = Start-Process -FilePath "$installRoot\Uninstall.exe" `
+            -ArgumentList '/S' -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { exit $uninstall.ExitCode }
           $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
           if (($userPath -split ';') -contains $bin) {
             throw "Windows uninstaller did not remove PacificDB from PATH"
