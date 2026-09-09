@@ -32,6 +32,17 @@ const matches = await db.queryVector('embeddings', [0.2, 0.8], {
 });
 ```
 
-`putMedia` and `updateMedia` use PacificDB's replicated document write path.
-Media is base64 encoded in the document, so this beta is intended for files
-that fit within the configured request-size limit.
+For files larger than one engine request, stream bounded chunks through the
+same replicated document path:
+
+```js
+const uploaded = await db.uploadMediaFile('videos', './demo.mp4');
+await db.downloadMediaFile(uploaded.id, './downloaded.mp4');
+```
+
+`uploadMediaFile` computes the whole-file SHA-256 before publishing a manifest,
+sends one Base64-safe chunk at a time, and supports explicit resume with
+`{ resume: mediaId }`. PacificDB applies no total file-size limit; disk space,
+request limits, and other machine resources still apply. `putMedia` and
+`getMedia` remain available for Buffer-sized callers whose entire encoded
+document fits in one request.

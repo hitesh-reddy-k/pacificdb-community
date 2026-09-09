@@ -822,6 +822,14 @@ static json sanitizeDeterministicPayload(const json& payload) {
             out["binaryData"] = json{{"_truncated", true}, {"length", len}};
         }
     }
+    for (const char* secret : {"password", "token", "key"}) {
+        if (out.contains(secret)) out[secret] = "[redacted]";
+    }
+    if (out.value("action", "") == "community_media_put_chunk" &&
+        out.contains("data") && out["data"].is_string()) {
+        out["data"] = json{{"_truncated", true},
+                           {"length", out["data"].get_ref<const std::string&>().size()}};
+    }
     return out;
 }
 

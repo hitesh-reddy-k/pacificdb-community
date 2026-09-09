@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import net from 'node:net';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 import { PacificDBClient } from '../src/index.js';
 
@@ -58,4 +62,63 @@ test('stores arbitrary media bytes and vector data through public methods', asyn
   assert.deepEqual(requests[2].data.vector, [0.25, 0.75]);
   assert.equal(requests[3].action, 'queryVector');
   assert.deepEqual(requests[3].filter, { modality: 'image' });
+});
+
+test('uploads and downloads media sequentially in bounded chunks', async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'pacificdb-node-media-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const input = path.join(directory, 'input.mp4');
+  const output = path.join(directory, 'output.mp4');
+  const source = Buffer.alloc(700_000, 7);
+  await writeFile(input, source);
+
+  const requests = [];
+  const chunks = new Map();
+  let manifest;
+  const server = net.createServer((socket) => {
+    let wire = '';
+    socket.on('data', (data) => {
+      wire += data;
+      const newline = wire.indexOf('\n');
+      if (newline < 0) return;
+      const request = JSON.parse(wire.slice(0, newline));
+      requests.push(request);
+      let response;
+      if (request.action === 'community_capabilities') {
+        response = { status: 'ok', max_request_bytes: 1_048_576 };
+      } else if (request.action === 'community_media_begin') {
+        manifest = { id: 'media_test', status: 'uploading',
+          filename: request.filename, size_bytes: request.size_bytes,
+          chunk_count: request.chunk_count, sha256: request.sha256 };
+        response = { status: 'ok', media: manifest };
+      } else if (request.action === 'community_media_put_chunk') {
+        chunks.set(request.index, { data: request.data, sha256: request.sha256 });
+        response = { status: 'ok', stored: true };
+      } else if (request.action === 'community_media_finalize') {
+        manifest.status = 'ready';
+        response = { status: 'ok', media: manifest };
+      } else if (request.action === 'community_media_get') {
+        response = { status: 'ok', media: manifest };
+      } else if (request.action === 'community_media_get_chunk') {
+        response = { status: 'ok', chunk: chunks.get(request.index) };
+      }
+      socket.end(JSON.stringify(response) + '\n');
+    });
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => server.close());
+
+  const client = new PacificDBClient({
+    host: '127.0.0.1', port: server.address().port, database: 'app'
+  });
+  const uploaded = await client.uploadMediaFile('videos', input,
+                                                 { chunkBytes: 262_144 });
+  assert.equal(uploaded.status, 'ready');
+  assert.equal(requests.filter((r) =>
+    r.action === 'community_media_put_chunk').length, 3);
+
+  const downloaded = await client.downloadMediaFile(uploaded.id, output);
+  assert.deepEqual(await readFile(output), source);
+  assert.equal(downloaded.sha256,
+    createHash('sha256').update(source).digest('hex'));
 });

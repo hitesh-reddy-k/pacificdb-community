@@ -255,7 +255,7 @@ Commit: `feat(engine): add community query and backup commands`
 - Engine action `community_capabilities` returns the same configured
   `max_request_bytes` value enforced by the connection reader.
 
-- [ ] **Step 1: Write a failing multi-chunk transfer test**
+- [x] **Step 1: Write a failing multi-chunk transfer test**
 
 ```js
 const source = Buffer.alloc(700_000, 7);
@@ -266,13 +266,13 @@ await client.downloadMediaFile(uploaded.id, output);
 assert.deepEqual(await readFile(output), source);
 ```
 
-- [ ] **Step 2: Run and verify RED**
+- [x] **Step 2: Run and verify RED**
 
 Run: `npm test --workspace @pacificdb/client`
 
 Expected: FAIL because `uploadMediaFile` is undefined.
 
-- [ ] **Step 3: Implement adaptive sequential upload**
+- [x] **Step 3: Implement adaptive sequential upload**
 
 Read `max_request_bytes` from `capabilities`. Compute
 `min(4 MiB, floor((max_request_bytes - 65536) * 3 / 4))`, allow a smaller
@@ -282,13 +282,13 @@ Use `fs.createReadStream` and send one `community_media_put_chunk` request at
 a time with deterministic index and SHA-256. Begin first, resume with
 `options.resume`, finalize last.
 
-- [ ] **Step 4: Implement sequential download and compatibility wrappers**
+- [x] **Step 4: Implement sequential download and compatibility wrappers**
 
 Fetch the manifest, request chunks in index order, verify each checksum, update
 the whole-file SHA-256, and write with `createWriteStream`. Remove a partial
 destination on checksum failure. Keep old Buffer methods unchanged.
 
-- [ ] **Step 5: Run tests and commit**
+- [x] **Step 5: Run tests and commit**
 
 Run: `npm test --workspace @pacificdb/client`
 
