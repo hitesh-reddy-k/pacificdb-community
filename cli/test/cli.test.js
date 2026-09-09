@@ -18,6 +18,11 @@ test('friendly parser maps Community commands and rejects Cloud commands', () =>
     .command.k, 3);
   assert.equal(parseShellCommand('backup verify backup-1', context)
     .command.action, 'verify_backup');
+  assert.equal(parseShellCommand('find media movie', context).kind, 'mediaFind');
+  assert.equal(parseShellCommand('delete media media_1', context)
+    .command.action, 'community_media_delete');
+  assert.equal(parseShellCommand('delete backup backup-1', context)
+    .command.action, 'delete_backup');
   assert.throws(() => parseShellCommand('create organization demo', context),
                 /unknown command/);
 });

@@ -3,6 +3,7 @@
 #include <nlohmann/json.hpp>
 
 #include <mutex>
+#include <set>
 #include <string>
 #include <string_view>
 
@@ -51,6 +52,7 @@ public:
 
 private:
     std::mutex initializeMutex_;
+    std::set<std::pair<std::string, std::string>> initializedRoots_;
 };
 
 }  // namespace pacificdb::community

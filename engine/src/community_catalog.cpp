@@ -98,6 +98,8 @@ CommunityCatalog& CommunityCatalog::instance() {
 
 void CommunityCatalog::initialize(const std::string& userId) {
     std::lock_guard<std::mutex> lock(initializeMutex_);
+    const auto key = std::make_pair(DatabaseEngine::getDataRoot(), userId);
+    if (initializedRoots_.find(key) != initializedRoots_.end()) return;
     DatabaseEngine::ensureUserRoot(userId);
     if (!DatabaseEngine::createDatabase(userId, kDatabase)) {
         throw std::runtime_error("could not initialize community metadata database");
@@ -109,6 +111,7 @@ void CommunityCatalog::initialize(const std::string& userId) {
             throw std::runtime_error("could not initialize community metadata collection");
         }
     }
+    initializedRoots_.insert(key);
 }
 
 json CommunityCatalog::createProject(const std::string& userId,

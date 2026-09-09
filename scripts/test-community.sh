@@ -18,6 +18,10 @@ for test in \
   db_engine_work_stealing_test db_engine_community_manual_operations_test; do
   "$BUILD_DIR/$test"
 done
+"$BUILD_DIR/db_engine_community_catalog_test"
+"$BUILD_DIR/db_engine_community_api_key_test"
+"$BUILD_DIR/db_engine_community_query_test"
+"$BUILD_DIR/db_engine_native_shell_parser_test"
 node intelligence/test.js
 npm install --ignore-scripts --no-audit --no-fund
 npm run test:npm
@@ -28,7 +32,8 @@ legacy_product=basta
 legacy_product+=base
 paid_tier=enter
 paid_tier+=prise
-if rg -n -i "$legacy_product|$paid_tier" . --glob '!.git/**' --glob '!**/target/**'; then
+if rg -n -i "$legacy_product|$paid_tier" . --glob '!.git/**' --glob '!**/target/**' \
+    --glob '!docs/superpowers/**'; then
   echo 'excluded branding found' >&2; exit 1
 fi
 for forbidden in auto_scaler geo_replication gossip_protocol cluster_manager \

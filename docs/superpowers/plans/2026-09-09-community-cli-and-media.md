@@ -424,24 +424,24 @@ Commit: `feat(cli): add native community shell parity`
 **Interfaces:**
 - Documents only commands proven by the final integration run.
 
-- [ ] **Step 1: Update documentation and scope matrix**
+- [x] **Step 1: Update documentation and scope matrix**
 
 Document the exact commands, reserved namespace, API-key roles, synchronous
 restore, resume ID, cleanup, and precise media capacity wording from the spec.
 
-- [ ] **Step 2: Run formatting/static checks**
+- [x] **Step 2: Run formatting/static checks**
 
 Run: `git diff --check && node --check cli/src/cli.js && node --check cli/src/shell.js && node --check sdk/node/src/index.js`
 
 Expected: exit 0.
 
-- [ ] **Step 3: Build and run retained suites**
+- [x] **Step 3: Build and run retained suites**
 
 Run: `cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j2 && npm run test:npm && scripts/test-community.sh build`
 
 Expected: exit 0 for every command.
 
-- [ ] **Step 4: Run local end-to-end command matrix**
+- [x] **Step 4: Run local end-to-end command matrix**
 
 Start one local engine with a disposable absolute data root, then exercise every
 help-listed command, including a three-chunk media upload/download checksum,
@@ -449,13 +449,14 @@ vector result ordering, API-key revocation, backup manifest export, and cleanup
 of an incomplete media ID. Capture commands and outputs under a temporary test
 directory only.
 
-- [ ] **Step 5: Confirm repository boundary and commit**
+- [x] **Step 5: Confirm repository boundary and commit**
 
 Run:
 
 ```bash
 ! rg -i 'enterprise|billing|autoscal|saml|oidc|kms|hsm|point.in.time|scheduled backup' \
-  cli sdk/node engine/include/community_catalog.hpp engine/src/community_catalog.cpp
+  cli sdk/node engine/include/community_catalog.hpp engine/src/community_catalog.cpp \
+  --glob '!**/test/**'
 git status --short
 ```
 

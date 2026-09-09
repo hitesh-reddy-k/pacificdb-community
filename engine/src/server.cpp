@@ -6925,7 +6925,11 @@ void startServer() {
                           << ", priority_scheduler=" << (prioritySchedulerEnabled ? "on" : "off") << ")\n";
 
                 while (!serverShutdownRequested()) {
-                    int n = epoll_wait(epollFd, events.data(), (int)events.size(), 1000);
+                    const bool clientsPending = !pendingHigh.empty() ||
+                                                !pendingNormal.empty() ||
+                                                !pendingLow.empty();
+                    int n = epoll_wait(epollFd, events.data(), (int)events.size(),
+                                       clientsPending ? 1 : 1000);
                     if (n < 0) {
                         if (serverShutdownRequested()) break;
                         if (errno == EINTR) continue;

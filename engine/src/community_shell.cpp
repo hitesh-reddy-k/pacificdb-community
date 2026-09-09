@@ -208,6 +208,13 @@ json parseShellCommand(const std::string& input, const ShellContext& context) {
         return request({{"action", "listCollections"}});
     }
 
+    if (std::regex_match(text, match, std::regex(R"(^find media (.+)$)")))
+        return {{"kind", "media_find"}, {"query", match[1].str()}};
+    if (std::regex_match(text, match, std::regex(R"(^delete media (\S+)$)")))
+        return request({{"action", "community_media_delete"}, {"media_id", match[1].str()}});
+    if (std::regex_match(text, match, std::regex(R"(^delete backup (\S+)$)")))
+        return request({{"action", "delete_backup"}, {"backup_id", match[1].str()}});
+
     if (std::regex_match(text, match, std::regex(R"(^insert (\S+)\s+(.+)$)"))) {
         requireDatabase(context);
         return request({{"action", "insert"}, {"collection", match[1].str()},
@@ -253,8 +260,6 @@ json parseShellCommand(const std::string& input, const ShellContext& context) {
     if (std::regex_match(text, match, std::regex(R"(^restore backup (\S+)$)")))
         return request({{"action", "restore_backup"}, {"backup_id", match[1].str()}});
     if (text == "list restores") return request({{"action", "list_restores"}});
-    if (std::regex_match(text, match, std::regex(R"(^delete backup (\S+)$)")))
-        return request({{"action", "delete_backup"}, {"backup_id", match[1].str()}});
     if (std::regex_match(text, match, std::regex(R"(^backup verify (\S+)$)")))
         return request({{"action", "verify_backup"}, {"backup_id", match[1].str()}});
     if (std::regex_match(text, match, std::regex(R"(^backup export (\S+)(?:\s+(.+))?$)")))
@@ -287,12 +292,8 @@ json parseShellCommand(const std::string& input, const ShellContext& context) {
     if (text == "list media" || text == "list media --all")
         return request({{"action", "community_media_list"},
                         {"all", text == "list media --all"}});
-    if (std::regex_match(text, match, std::regex(R"(^find media (.+)$)")))
-        return {{"kind", "media_find"}, {"query", match[1].str()}};
     if (std::regex_match(text, match, std::regex(R"(^show media (\S+)$)")))
         return request({{"action", "community_media_get"}, {"media_id", match[1].str()}});
-    if (std::regex_match(text, match, std::regex(R"(^delete media (\S+)$)")))
-        return request({{"action", "community_media_delete"}, {"media_id", match[1].str()}});
     if (std::regex_match(text, match, std::regex(R"(^media cleanup (\S+)$)")))
         return request({{"action", "community_media_cleanup"}, {"media_id", match[1].str()}});
 

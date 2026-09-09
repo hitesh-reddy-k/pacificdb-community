@@ -211,6 +211,12 @@ export function parseShellCommand(line, context = {}) {
     return { kind: 'request', command: { action: 'listCollections' } };
   }
 
+  if ((match = text.match(/^find media (.+)$/))) return { kind: 'mediaFind', query: match[1] };
+  if ((match = text.match(/^delete media (\S+)$/)))
+    return { kind: 'request', command: { action: 'community_media_delete', media_id: match[1] } };
+  if ((match = text.match(/^delete backup (\S+)$/)))
+    return { kind: 'request', command: { action: 'delete_backup', backup_id: match[1] } };
+
   if ((match = text.match(/^insert (\S+)\s+([\s\S]+)$/))) {
     requireDatabase(context);
     return { kind: 'request', command: { action: 'insert', collection: match[1], data: JSON.parse(match[2]) } };
@@ -248,8 +254,6 @@ export function parseShellCommand(line, context = {}) {
   if ((match = text.match(/^restore backup (\S+)$/)))
     return { kind: 'request', command: { action: 'restore_backup', backup_id: match[1] } };
   if (text === 'list restores') return { kind: 'request', command: { action: 'list_restores' } };
-  if ((match = text.match(/^delete backup (\S+)$/)))
-    return { kind: 'request', command: { action: 'delete_backup', backup_id: match[1] } };
   if ((match = text.match(/^backup verify (\S+)$/)))
     return { kind: 'request', command: { action: 'verify_backup', backup_id: match[1] } };
   if ((match = text.match(/^backup export (\S+)(?:\s+(.+))?$/)))
@@ -277,11 +281,8 @@ export function parseShellCommand(line, context = {}) {
     return { kind: 'mediaDownload', id: match[1], filename: match[2] };
   if (text === 'list media' || text === 'list media --all')
     return { kind: 'request', command: { action: 'community_media_list', all: text.endsWith('--all') } };
-  if ((match = text.match(/^find media (.+)$/))) return { kind: 'mediaFind', query: match[1] };
   if ((match = text.match(/^show media (\S+)$/)))
     return { kind: 'request', command: { action: 'community_media_get', media_id: match[1] } };
-  if ((match = text.match(/^delete media (\S+)$/)))
-    return { kind: 'request', command: { action: 'community_media_delete', media_id: match[1] } };
   if ((match = text.match(/^media cleanup (\S+)$/)))
     return { kind: 'request', command: { action: 'community_media_cleanup', media_id: match[1] } };
 

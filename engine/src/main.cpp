@@ -28,6 +28,7 @@
 #include "query_limiter.hpp"
 #include "memory_manager.hpp"
 #include "backup_manager.hpp"
+#include "community_catalog.hpp"
 #include "security_manager.hpp"
 #include "storage_path.hpp"
 #include "storage_root_guard.hpp"
@@ -359,6 +360,7 @@ int main(int argc, char** argv) {
     }
 
     DatabaseEngine::init(dataRoot, /*restoreWal=*/!recoveryState.wasCleanShutdown);
+    pacificdb::community::CommunityCatalog::instance().initialize("system");
 
     // Initialize Query Limiter with environment configuration
     QueryLimiter::init();

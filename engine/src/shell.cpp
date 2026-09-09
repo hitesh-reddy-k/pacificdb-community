@@ -111,6 +111,11 @@ std::string request(const std::string& host, const std::string& port,
         }
         sent += static_cast<std::size_t>(count);
     }
+#ifdef _WIN32
+    shutdown(socket, SD_SEND);
+#else
+    shutdown(socket, SHUT_WR);
+#endif
 
     std::string response;
     char buffer[4096];

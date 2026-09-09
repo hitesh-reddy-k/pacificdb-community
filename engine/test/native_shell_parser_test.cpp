@@ -18,6 +18,14 @@ int main() {
                "query vector embeddings [1,0] --k 3", context)
                .at("command")
                .at("k") == 3);
+    assert(pacificdb::cli::parseShellCommand("find media movie", context)
+               .at("kind") == "media_find");
+    assert(pacificdb::cli::parseShellCommand("delete media media_1", context)
+               .at("command")
+               .at("action") == "community_media_delete");
+    assert(pacificdb::cli::parseShellCommand("delete backup backup-1", context)
+               .at("command")
+               .at("action") == "delete_backup");
     bool rejected = false;
     try {
         pacificdb::cli::parseShellCommand("create organization demo", context);

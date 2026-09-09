@@ -16,7 +16,7 @@ three-node release testing. Do not describe it as production-certified yet.
 - RF3 Raft consensus, elections, failover, snapshot catch-up, and repair diagnostics
 - Manual shard creation, placement, migration, splitting, merging, and rebalancing
 - Basic vector similarity search and metadata filtering
-- Replicated image, GIF, audio, video, and arbitrary binary document storage
+- Resumable, checksummed image, GIF, audio, video, and arbitrary file storage
 - Read-only natural-language query compilation and query explanations
 - TLS, password/token authentication, API keys, RBAC, tenant isolation, and local audit logging
 - Manual snapshot backup, verification, deletion, and restore
@@ -42,16 +42,21 @@ docker compose up -d --build database
 docker compose run --rm shell
 ```
 
-The shell connects to `database:9000`. Enter one JSON request per line:
+The shell connects to `database:9000`. Friendly commands are available:
 
-```json
-{"action":"createDatabase","dbName":"app"}
-{"action":"createCollection","dbName":"app","collection":"users"}
-{"action":"insert","dbName":"app","collection":"users","data":{"id":"1","name":"Ada"}}
-{"action":"find","dbName":"app","collection":"users","filter":{"id":"1"}}
+```text
+create project demo
+use project project_...
+create database app
+use app
+create collection users
+insert users {"id":"1","name":"Ada"}
+findOne users {"id":"1"}
 ```
 
-Type `quit` to leave the shell. Data remains in the `pacificdb-data` Docker
+Type `help` for the categorized command list. Raw protocol requests remain
+available as `request {"action":"ping"}`. Type `quit` to leave the shell.
+Data remains in the `pacificdb-data` Docker
 volume. Stop the database with `docker compose down`; add `-v` only when you
 also want to delete the local database and backups.
 
@@ -92,6 +97,20 @@ pacificdb get-media assets hero ./downloaded.gif --database app
 pacificdb put-vector embeddings hero-vector '[0.2,0.8]' --database app
 pacificdb query-vector embeddings '[0.2,0.8]' --k 5 --database app
 ```
+
+Inside `pacificdb shell`, `upload video ./movie.mp4` uses sequential,
+checksummed chunks and applies no PacificDB total file-size cap. Available disk
+space, per-request limits, and other machine resources remain real limits.
+
+Community projects are local organizational metadata. They do not add billing,
+quotas, organizations, fleet management, or a new authorization boundary.
+Backups are manual, restores complete synchronously, and `backup export` writes
+only the portable backup manifest. API keys have `read`, `readwrite`, or
+`admin` roles; their full secrets are returned once and are never stored.
+
+`pacificdb_meta` is reserved for these Community records. Ordinary database
+requests cannot read or write it. Raw access requires an authenticated admin
+and the explicit `internalAdmin: true` flag.
 
 The local launcher binds to `127.0.0.1`, stores data under the current user's
 application-data directory, and runs in the foreground. Release candidates

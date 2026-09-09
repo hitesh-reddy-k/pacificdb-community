@@ -20,7 +20,7 @@ dpkg-deb -x "$package" "$root"
 test -x "$root/usr/bin/db_engine"
 test -x "$root/usr/bin/pacificdb"
 test -x "$root/usr/bin/pacificdb-local"
-printf 'help\nquit\n' | "$root/usr/bin/pacificdb" shell | grep -q 'Shell commands:'
+printf 'help\nquit\n' | "$root/usr/bin/pacificdb" shell | grep -q 'Authentication'
 
 PACIFICDB_HOME="$home" ENGINE_PORT="$port" RAFT_LISTEN_PORT="$raft_port" \
   "$root/usr/bin/pacificdb-local" >"$home/server.log" 2>&1 &
@@ -31,6 +31,11 @@ for _ in {1..60}; do
   sleep 0.25
 done
 "$root/usr/bin/pacificdb" --port "$port" ping | grep -q 'pong'
+for _ in {1..50}; do
+  "$root/usr/bin/pacificdb" --port "$port" ping >/dev/null
+  "$root/usr/bin/pacificdb" --port "$port" request \
+    '{"action":"listDatabases"}' >/dev/null
+done
 "$root/usr/bin/pacificdb" --port "$port" request \
   '{"action":"createDatabase","dbName":"package_test"}' >/dev/null
 "$root/usr/bin/pacificdb" --port "$port" request \
