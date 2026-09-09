@@ -39,6 +39,10 @@ done
   '{"action":"insert","dbName":"package_test","collection":"users","data":{"id":"1","name":"Ada"}}' >/dev/null
 "$root/usr/bin/pacificdb" --port "$port" request \
   '{"action":"find","dbName":"package_test","collection":"users","filter":{"id":"1"}}' | grep -q 'Ada'
+clean_find=$("$root/usr/bin/pacificdb" --port "$port" request \
+  '{"action":"find","dbName":"package_test","collection":"users","filter":{"id":"1"}}')
+! grep -Eq '_debug_metrics|_engineTrace|_raft|requestId|trace_id|consistency_semantics' \
+  <<<"$clean_find"
 
 printf '\000\001GIF89a\377' >"$home/input.gif"
 "$root/usr/bin/pacificdb" --port "$port" --database package_test \

@@ -14,6 +14,19 @@ const shellHelp = `Shell commands:
   {"action":"find","dbName":"app","collection":"users","filter":{}}
 `;
 
+function printResponse(stream, response, action = '') {
+  if (response && !Array.isArray(response) && typeof response === 'object' &&
+      !action.startsWith('admin_')) {
+    for (const key of Object.keys(response)) {
+      if (key.startsWith('_') || ['requestId', 'trace_id', 'traceparent', 'term', 'isLeader',
+          'leader_term', 'commit_index', 'last_applied', 'consistency_mode',
+          'consistency_semantics', 'client_session_id', 'last_seen_version',
+          'minimum_visible_version'].includes(key)) delete response[key];
+    }
+  }
+  stream.write(JSON.stringify(response, null, 2) + '\n');
+}
+
 export async function main(args, streams = { input: stdin, output: stdout }) {
   const options = {};
   const positional = [];
@@ -29,20 +42,20 @@ export async function main(args, streams = { input: stdin, output: stdout }) {
   }
   const client = new PacificDBClient(options);
   if (positional[0] === 'ping') {
-    streams.output.write(JSON.stringify(await client.request({ action: 'ping' }), null, 2) + '\n');
+    printResponse(streams.output, await client.request({ action: 'ping' }), 'ping');
     return;
   }
   if (positional[0] === 'request') {
     const command = JSON.parse(positional.slice(1).join(' '));
-    streams.output.write(JSON.stringify(await client.request(command), null, 2) + '\n');
+    printResponse(streams.output, await client.request(command), command.action);
     return;
   }
   if (positional[0] === 'put-media' && positional.length === 4) {
     const [collection, id, filename] = positional.slice(1);
     const metadata = { ...(options.metadata || {}), filename: path.basename(filename),
       ...(options.contentType ? { contentType: options.contentType } : {}) };
-    streams.output.write(JSON.stringify(
-      await client.putMedia(collection, id, await readFile(filename), metadata), null, 2) + '\n');
+    printResponse(streams.output,
+      await client.putMedia(collection, id, await readFile(filename), metadata), 'insert');
     return;
   }
   if (positional[0] === 'get-media' && positional.length === 4) {
@@ -55,14 +68,14 @@ export async function main(args, streams = { input: stdin, output: stdout }) {
   }
   if (positional[0] === 'put-vector' && positional.length === 4) {
     const [collection, id, vector] = positional.slice(1);
-    streams.output.write(JSON.stringify(await client.putVector(
-      collection, id, JSON.parse(vector), options.metadata || {}), null, 2) + '\n');
+    printResponse(streams.output, await client.putVector(
+      collection, id, JSON.parse(vector), options.metadata || {}), 'insertVector');
     return;
   }
   if (positional[0] === 'query-vector' && positional.length === 3) {
     const [collection, vector] = positional.slice(1);
-    streams.output.write(JSON.stringify(await client.queryVector(
-      collection, JSON.parse(vector), { k: options.k, metric: options.metric }), null, 2) + '\n');
+    printResponse(streams.output, await client.queryVector(
+      collection, JSON.parse(vector), { k: options.k, metric: options.metric }), 'queryVector');
     return;
   }
   if (positional[0] !== 'shell')
@@ -77,7 +90,8 @@ export async function main(args, streams = { input: stdin, output: stdout }) {
       continue;
     }
     try {
-      streams.output.write(JSON.stringify(await client.request(JSON.parse(line)), null, 2) + '\n');
+      const command = JSON.parse(line);
+      printResponse(streams.output, await client.request(command), command.action);
     } catch (error) {
       streams.output.write('error: ' + error.message + '\n');
     }

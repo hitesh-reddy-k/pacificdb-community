@@ -126,7 +126,20 @@ int sendAndPrint(const std::string& host, const std::string& port,
                  const nlohmann::json& command) {
     auto payload = command;
     if (!payload.contains("userId")) payload["userId"] = "system";
-    const auto response = nlohmann::json::parse(request(host, port, payload));
+    auto response = nlohmann::json::parse(request(host, port, payload));
+    const std::string action = payload.value("action", "");
+    if (response.is_object() && action.rfind("admin_", 0) != 0) {
+        for (auto it = response.begin(); it != response.end();) {
+            if (!it.key().empty() && it.key().front() == '_') it = response.erase(it);
+            else ++it;
+        }
+        for (const char* key : {"requestId", "trace_id", "traceparent", "term", "isLeader",
+                                "leader_term", "commit_index", "last_applied",
+                                "consistency_mode", "consistency_semantics", "client_session_id",
+                                "last_seen_version", "minimum_visible_version"}) {
+            response.erase(key);
+        }
+    }
     std::cout << response.dump(2) << '\n';
     return response.contains("error") ? 1 : 0;
 }

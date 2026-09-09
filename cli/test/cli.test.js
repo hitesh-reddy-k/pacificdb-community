@@ -27,6 +27,24 @@ test('shell help lists commands without contacting the server', async () => {
   assert.match(text, /createDatabase/);
 });
 
+test('hides internal telemetry from normal output', async (t) => {
+  const server = net.createServer((socket) => socket.once('data', () => socket.end(JSON.stringify({
+    status: 'ok', data: [{ id: '1' }], _debug_metrics: { queue: 1 },
+    _engineTrace: { trace: 1 }, _raft: { term: 2 }, requestId: 'request-1',
+    trace_id: 'trace-1', traceparent: 'trace-parent', term: 2, isLeader: true,
+    leader_term: 2, commit_index: 3, last_applied: 3,
+    consistency_mode: 'EVENTUAL', consistency_semantics: 'eventual'
+  }) + '\n')));
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => server.close());
+  const output = new PassThrough();
+  let text = '';
+  output.on('data', (chunk) => { text += chunk; });
+  await main(['request', '{"action":"find"}', '--host', '127.0.0.1',
+    '--port', String(server.address().port)], { input: new PassThrough(), output });
+  assert.deepEqual(JSON.parse(text), { status: 'ok', data: [{ id: '1' }] });
+});
+
 test('uploads and downloads media files', async (t) => {
   const requests = [];
   const bytes = Buffer.from([0, 1, 2, 255]);
