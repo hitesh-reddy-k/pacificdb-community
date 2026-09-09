@@ -120,6 +120,11 @@ jobs:
               Start-Sleep -Milliseconds 250
             }
             if (-not $ready) { throw "Installed PacificDB did not start" }
+            $writeResult = & "$bin\pacificdb.exe" --port 19000 request `
+              '{"action":"createDatabase","dbName":"package_test"}' 2>&1 | Out-String
+            if ($LASTEXITCODE -ne 0 -or $writeResult -notmatch '"status":\s*"ok"') {
+              throw "Installed PacificDB could not write: $writeResult"
+            }
           } finally {
             & taskkill.exe /PID $server.Id /T /F *> $null
           }
