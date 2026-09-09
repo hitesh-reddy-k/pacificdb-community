@@ -136,8 +136,24 @@ int sendAndPrint(const std::string& host, const std::string& port,
         for (const char* key : {"requestId", "trace_id", "traceparent", "term", "isLeader",
                                 "leader_term", "commit_index", "last_applied",
                                 "consistency_mode", "consistency_semantics", "client_session_id",
-                                "last_seen_version", "minimum_visible_version"}) {
+                                "last_seen_version", "minimum_visible_version",
+                                "returned_doc_version", "sst_visibility_source"}) {
             response.erase(key);
+        }
+        auto stripDocumentMetadata = [](nlohmann::json& document) {
+            if (!document.is_object()) return;
+            for (const char* key : {"_mvcc_commit_ms", "_mvcc_version", "_raft_commit_index",
+                                    "_raft_term", "_visibility_floor", "_visibility_state",
+                                    "_logicalWritePayloadHash", "created_at_ms", "created_txn",
+                                    "deleted_at_ms", "deleted_txn", "version", "committed",
+                                    "tenant_id"}) {
+                document.erase(key);
+            }
+        };
+        if (response.contains("data")) {
+            auto& data = response["data"];
+            if (data.is_array()) for (auto& document : data) stripDocumentMetadata(document);
+            else stripDocumentMetadata(data);
         }
     }
     std::cout << response.dump(2) << '\n';

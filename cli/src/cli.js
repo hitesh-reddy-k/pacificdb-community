@@ -21,7 +21,16 @@ function printResponse(stream, response, action = '') {
       if (key.startsWith('_') || ['requestId', 'trace_id', 'traceparent', 'term', 'isLeader',
           'leader_term', 'commit_index', 'last_applied', 'consistency_mode',
           'consistency_semantics', 'client_session_id', 'last_seen_version',
-          'minimum_visible_version'].includes(key)) delete response[key];
+          'minimum_visible_version', 'returned_doc_version',
+          'sst_visibility_source'].includes(key)) delete response[key];
+    }
+    const documents = Array.isArray(response.data) ? response.data : [response.data];
+    for (const document of documents) {
+      if (!document || Array.isArray(document) || typeof document !== 'object') continue;
+      for (const key of ['_mvcc_commit_ms', '_mvcc_version', '_raft_commit_index',
+        '_raft_term', '_visibility_floor', '_visibility_state', '_logicalWritePayloadHash',
+        'created_at_ms', 'created_txn', 'deleted_at_ms', 'deleted_txn', 'version',
+        'committed', 'tenant_id']) delete document[key];
     }
   }
   stream.write(JSON.stringify(response, null, 2) + '\n');

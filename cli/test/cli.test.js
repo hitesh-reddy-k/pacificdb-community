@@ -29,11 +29,15 @@ test('shell help lists commands without contacting the server', async () => {
 
 test('hides internal telemetry from normal output', async (t) => {
   const server = net.createServer((socket) => socket.once('data', () => socket.end(JSON.stringify({
-    status: 'ok', data: [{ id: '1' }], _debug_metrics: { queue: 1 },
+    status: 'ok', data: [{ id: '1', name: 'Ada', _mvcc_version: 2,
+      _raft_commit_index: 3, _visibility_state: 'COMMITTED_VISIBLE', committed: true,
+      created_at_ms: 1, created_txn: 2, deleted_at_ms: 0, deleted_txn: 0,
+      tenant_id: 'system', version: 2 }], _debug_metrics: { queue: 1 },
     _engineTrace: { trace: 1 }, _raft: { term: 2 }, requestId: 'request-1',
     trace_id: 'trace-1', traceparent: 'trace-parent', term: 2, isLeader: true,
     leader_term: 2, commit_index: 3, last_applied: 3,
-    consistency_mode: 'EVENTUAL', consistency_semantics: 'eventual'
+    consistency_mode: 'EVENTUAL', consistency_semantics: 'eventual',
+    returned_doc_version: 2, sst_visibility_source: 'lsm_queued_find'
   }) + '\n')));
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   t.after(() => server.close());
@@ -42,7 +46,7 @@ test('hides internal telemetry from normal output', async (t) => {
   output.on('data', (chunk) => { text += chunk; });
   await main(['request', '{"action":"find"}', '--host', '127.0.0.1',
     '--port', String(server.address().port)], { input: new PassThrough(), output });
-  assert.deepEqual(JSON.parse(text), { status: 'ok', data: [{ id: '1' }] });
+  assert.deepEqual(JSON.parse(text), { status: 'ok', data: [{ id: '1', name: 'Ada' }] });
 });
 
 test('uploads and downloads media files', async (t) => {
