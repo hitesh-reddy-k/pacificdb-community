@@ -6,7 +6,7 @@ on:
       version:
         description: Version to build without publishing
         required: true
-        default: 0.1.0-beta.4
+        default: 0.1.0-beta.5
   push:
     tags: ["v*"]
 
@@ -90,7 +90,46 @@ jobs:
           }
           cpack --config build/CPackConfig.cmake -C Release -G NSIS -B dist
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Rename-Item (Get-ChildItem dist/*.exe).FullName "pacificdb-community-$version-windows-x64.exe"
+          $installer = Get-ChildItem dist/*.exe
+          $installRoot = "$env:RUNNER_TEMP\PacificDB"
+          & $installer.FullName /S "/D=$installRoot"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $bin = "$installRoot\bin"
+          if (-not (Test-Path "$bin\pacificdb.exe") -or
+              -not (Test-Path "$bin\db_engine.exe") -or
+              -not (Test-Path "$bin\pacificdb-local.cmd")) {
+            throw "Windows installer did not install all commands"
+          }
+          $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+          if (($userPath -split ';') -notcontains $bin) {
+            throw "Windows installer did not add PacificDB to the user PATH"
+          }
+          $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ";$userPath"
+          if ((Get-Command pacificdb.exe).Source -ne "$bin\pacificdb.exe") {
+            throw "pacificdb.exe is not available through PATH"
+          }
+          $env:ENGINE_PORT = "19000"
+          $env:RAFT_LISTEN_PORT = "19001"
+          $server = Start-Process -FilePath $env:ComSpec -ArgumentList '/d','/c',"`"$bin\pacificdb-local.cmd`"" -PassThru `
+            -RedirectStandardOutput installed-server.log -RedirectStandardError installed-server-error.log
+          try {
+            $ready = $false
+            for ($i = 0; $i -lt 60; $i++) {
+              & "$bin\pacificdb.exe" --port 19000 ping *> $null
+              if ($LASTEXITCODE -eq 0) { $ready = $true; break }
+              Start-Sleep -Milliseconds 250
+            }
+            if (-not $ready) { throw "Installed PacificDB did not start" }
+          } finally {
+            & taskkill.exe /PID $server.Id /T /F *> $null
+          }
+          & "$installRoot\Uninstall.exe" /S
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+          if (($userPath -split ';') -contains $bin) {
+            throw "Windows uninstaller did not remove PacificDB from PATH"
+          }
+          Rename-Item $installer.FullName "pacificdb-community-$version-windows-x64.exe"
       - uses: actions/upload-artifact@v4
         with:
           name: windows-x64
