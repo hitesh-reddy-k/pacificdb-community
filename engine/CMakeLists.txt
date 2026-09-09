@@ -193,7 +193,7 @@ target_include_directories(db_engine PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/generated
 )
 
-add_executable(pacificdb src/shell.cpp)
+add_executable(pacificdb src/shell.cpp src/community_shell.cpp)
 target_include_directories(pacificdb PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(pacificdb PRIVATE OpenSSL::Crypto)
 if(WIN32)
@@ -238,6 +238,10 @@ add_pacificdb_engine_test(db_engine_community_api_key_test
     test/community_api_key_test.cpp)
 add_pacificdb_engine_test(db_engine_community_query_test
     test/community_query_test.cpp)
+add_executable(db_engine_native_shell_parser_test
+    test/native_shell_parser_test.cpp src/community_shell.cpp)
+target_include_directories(db_engine_native_shell_parser_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include)
 
 add_executable(storage_path_security_test tests/storage_path_security_test.cpp)
 target_include_directories(storage_path_security_test PRIVATE

@@ -376,7 +376,7 @@ Commit: `feat(cli): add complete community shell`
 - Produces the same command names and engine action payloads as `cli/src/shell.js`.
 - Uses bounded buffers per media chunk and never loads a whole media file.
 
-- [ ] **Step 1: Extract and test native command parsing**
+- [x] **Step 1: Extract and test native command parsing**
 
 ```cpp
 assert(parseShellCommand("find users {\"active\":true}", context).at("action") == "find");
@@ -387,26 +387,26 @@ catch (...) { rejected = true; }
 assert(rejected);
 ```
 
-- [ ] **Step 2: Build and verify RED**
+- [x] **Step 2: Build and verify RED**
 
 Run: `cmake --build build -j2 --target db_engine_native_shell_parser_test`
 
 Expected: compilation fails because the parser target does not exist.
 
-- [ ] **Step 3: Implement native categorized shell and persistent context**
+- [x] **Step 3: Implement native categorized shell and persistent context**
 
 Use C++17 and existing nlohmann/json/OpenSSL only. Store owner-readable context
 and history under `%LOCALAPPDATA%/PacificDB` on Windows,
 `~/Library/Application Support/PacificDB` on macOS, and
 `${XDG_STATE_HOME:-~/.local/state}/pacificdb` on Linux.
 
-- [ ] **Step 4: Replace whole-file media handling with sequential chunks**
+- [x] **Step 4: Replace whole-file media handling with sequential chunks**
 
 Encode only the derived chunk buffer with `EVP_EncodeBlock`, send the same
 begin/chunk/finalize actions as the Node SDK, and stream download chunks to an
 output file while verifying SHA-256.
 
-- [ ] **Step 5: Run focused tests and commit**
+- [x] **Step 5: Run focused tests and commit**
 
 Run: `cmake --build build -j2 --target pacificdb db_engine_native_shell_parser_test && ./build/db_engine_native_shell_parser_test`
 
