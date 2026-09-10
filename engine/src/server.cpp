@@ -883,6 +883,38 @@ static std::string base64Encode(const std::vector<unsigned char>& bytes) {
     return encoded;
 }
 
+static json handleBackupReadAction(const std::string& action, const json& request) {
+    const std::string backupId = request.value("backup_id", "");
+    if (action == "get_backup") {
+        const auto info = BackupManager::instance().getBackupInfo(backupId);
+        if (info.backupId.empty()) return {{"error", "backup_not_found"}};
+        json manifest = info.toJson();
+        manifest.erase("base_path");
+        return {{"status", "ok"}, {"backup", std::move(manifest)}};
+    }
+    if (action == "export_backup_manifest") {
+        if (BackupManager::instance().getBackupInfo(backupId).backupId.empty())
+            return {{"error", "backup_not_found"}};
+        auto result = BackupManager::instance().exportBackupManifest(backupId);
+        result["status"] = "ok";
+        return result;
+    }
+
+    const std::string path = request.value("path", "");
+    const long long offset = request.value("offset", -1LL);
+    const int requested = request.value("max_bytes", 1024 * 1024);
+    if (offset < 0 || requested < 1 || requested > 1024 * 1024)
+        return {{"error", "invalid_backup_chunk_request"}};
+    const auto bytes = BackupManager::instance().readBackupFileChunk(
+        backupId, path, static_cast<uint64_t>(offset), static_cast<size_t>(requested));
+    return {{"status", "ok"}, {"path", path}, {"offset", offset},
+            {"size_bytes", bytes.size()},
+            {"next_offset", offset + static_cast<long long>(bytes.size())},
+            {"sha256", pacificdb::durability::ChecksumCalculator::sha256(
+                           bytes.data(), bytes.size())},
+            {"data", base64Encode(bytes)}};
+}
+
 static bool isCommunityAction(const std::string& action) {
     return action.rfind("community_", 0) == 0;
 }
@@ -2645,44 +2677,9 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
         }
 
         // ---------------- BACKUP: SHOW / EXPORT / DELETE ----------------
-        else if (action == "get_backup") {
-            const std::string backupId = req.value("backup_id", "");
-            const auto info = BackupManager::instance().getBackupInfo(backupId);
-            if (info.backupId.empty()) {
-                res = {{"error", "backup_not_found"}};
-            } else {
-                json manifest = info.toJson();
-                manifest.erase("base_path");
-                res = {{"status", "ok"}, {"backup", manifest}};
-            }
-        }
-        else if (action == "export_backup_manifest") {
-            const std::string backupId = req.value("backup_id", "");
-            if (BackupManager::instance().getBackupInfo(backupId).backupId.empty()) {
-                res = {{"error", "backup_not_found"}};
-            } else {
-                res = BackupManager::instance().exportBackupManifest(backupId);
-                res["status"] = "ok";
-            }
-        }
-        else if (action == "export_backup_file_chunk") {
-            const std::string backupId = req.value("backup_id", "");
-            const std::string path = req.value("path", "");
-            const long long offset = req.value("offset", -1LL);
-            const int requested = req.value("max_bytes", 1024 * 1024);
-            if (offset < 0 || requested < 1 || requested > 1024 * 1024) {
-                res = {{"error", "invalid_backup_chunk_request"}};
-            } else {
-                const auto bytes = BackupManager::instance().readBackupFileChunk(
-                    backupId, path, static_cast<uint64_t>(offset),
-                    static_cast<size_t>(requested));
-                res = {{"status", "ok"}, {"path", path}, {"offset", offset},
-                       {"size_bytes", bytes.size()},
-                       {"next_offset", offset + static_cast<long long>(bytes.size())},
-                       {"sha256", pacificdb::durability::ChecksumCalculator::sha256(
-                                      bytes.data(), bytes.size())},
-                       {"data", base64Encode(bytes)}};
-            }
+        else if (action == "get_backup" || action == "export_backup_manifest" ||
+                 action == "export_backup_file_chunk") {
+            res = handleBackupReadAction(action, req);
         }
         else if (action == "delete_backup") {
             if (!RaftCore::instance().isLeader()) {
