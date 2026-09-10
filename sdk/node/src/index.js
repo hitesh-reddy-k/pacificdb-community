@@ -2,7 +2,7 @@ import net from 'node:net';
 import tls from 'node:tls';
 import { createHash } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
-import { stat, unlink } from 'node:fs/promises';
+import { rename, stat, unlink } from 'node:fs/promises';
 import { once } from 'node:events';
 import path from 'node:path';
 
@@ -213,6 +213,69 @@ export class PacificDBClient {
     } catch (error) {
       output.destroy();
       await unlink(destination).catch(() => {});
+      throw error;
+    }
+  }
+  async exportBackup(backupId, destination, { chunkBytes = 1024 * 1024 } = {}) {
+    if (typeof backupId !== 'string' || !backupId) throw new TypeError('backup id is required');
+    if (!Number.isSafeInteger(chunkBytes) || chunkBytes < 1 || chunkBytes > 1024 * 1024) {
+      throw new TypeError('backup chunk size must be between 1 byte and 1 MiB');
+    }
+    const manifest = await this.request({ action: 'export_backup_manifest',
+      backup_id: backupId });
+    if (!Array.isArray(manifest.files)) throw new Error('invalid backup export manifest');
+    const partial = `${destination}.part`;
+    const output = createWriteStream(partial, { mode: 0o600 });
+    let outputError;
+    output.on('error', (error) => { outputError = error; });
+    const write = async (value) => {
+      if (!output.write(value)) await once(output, 'drain');
+      if (outputError) throw outputError;
+    };
+    let total = 0;
+    try {
+      await write(`{"format":${JSON.stringify(manifest.format)},"backup":${JSON.stringify(manifest.backup)},"files":[`);
+      for (let fileIndex = 0; fileIndex < manifest.files.length; fileIndex += 1) {
+        const file = manifest.files[fileIndex];
+        if (typeof file.path !== 'string' || !Number.isSafeInteger(file.size_bytes) ||
+            file.size_bytes < 0 || typeof file.sha256 !== 'string') {
+          throw new Error('invalid backup file manifest');
+        }
+        await write(`${fileIndex ? ',' : ''}{"path":${JSON.stringify(file.path)},` +
+          `"size_bytes":${file.size_bytes},"sha256":${JSON.stringify(file.sha256)},"chunks":[`);
+        const hash = createHash('sha256');
+        let offset = 0;
+        let chunkIndex = 0;
+        while (offset < file.size_bytes) {
+          const response = await this.request({ action: 'export_backup_file_chunk',
+            backup_id: backupId, path: file.path, offset,
+            max_bytes: Math.min(chunkBytes, file.size_bytes - offset) });
+          const bytes = Buffer.from(response.data || '', 'base64');
+          const checksum = createHash('sha256').update(bytes).digest('hex');
+          if (!bytes.length || response.offset !== offset || response.size_bytes !== bytes.length ||
+              response.sha256 !== checksum) throw new Error(`invalid backup chunk: ${file.path}`);
+          await write(`${chunkIndex ? ',' : ''}${JSON.stringify(response.data)}`);
+          hash.update(bytes);
+          offset += bytes.length;
+          total += bytes.length;
+          chunkIndex += 1;
+        }
+        if (hash.digest('hex') !== file.sha256)
+          throw new Error(`backup file checksum mismatch: ${file.path}`);
+        await write(']}');
+      }
+      await write(']}\n');
+      await new Promise((resolve, reject) => {
+        if (outputError) return reject(outputError);
+        output.once('finish', resolve);
+        output.once('error', reject);
+        output.end();
+      });
+      await rename(partial, destination);
+      return { backupId, destination, files: manifest.files.length, sizeBytes: total };
+    } catch (error) {
+      output.destroy();
+      await unlink(partial).catch(() => {});
       throw error;
     }
   }

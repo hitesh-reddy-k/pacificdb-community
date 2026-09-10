@@ -46,3 +46,10 @@ sends one Base64-safe chunk at a time, and supports explicit resume with
 request limits, and other machine resources still apply. `putMedia` and
 `getMedia` remain available for Buffer-sized callers whose entire encoded
 document fits in one request.
+
+Export a manual backup, including all physical data files, as one checksummed
+JSON document without buffering the full backup in memory:
+
+```js
+await db.exportBackup('backup_...', './backup.json');
+```

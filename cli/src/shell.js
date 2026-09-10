@@ -40,7 +40,7 @@ Backups
   list restores                       List restore attempts
   delete backup <id>                  Delete backup
   backup verify <id>                  Verify backup
-  backup export <id> [file]           Export manifest
+  backup export <id> [file]           Export complete backup JSON
 
 Security / API keys
   create api-key [--name <n>] [--role read|readwrite|admin]
@@ -395,11 +395,10 @@ export async function runShell(client, streams, options = {}) {
         printResponse(streams.output, { status: 'ok', database: client.database,
           collections: response.collections ?? response }, 'listCollections');
       } else if (parsed.kind === 'backupExport') {
-        const response = await client.request({ action: 'export_backup_manifest',
-          backup_id: parsed.id });
         const filename = parsed.filename || `${parsed.id}.json`;
-        await writeFile(filename, JSON.stringify(response.backup, null, 2) + '\n', { mode: 0o600 });
-        printResponse(streams.output, { status: 'ok', backup_id: parsed.id, filename });
+        const exported = await client.exportBackup(parsed.id, filename);
+        printResponse(streams.output, { status: 'ok', backup_id: parsed.id,
+          filename, files: exported.files, size_bytes: exported.sizeBytes });
       } else if (parsed.kind === 'mediaUpload') {
         const media = await client.uploadMediaFile(parsed.collection, parsed.filename,
           { resume: parsed.resume });

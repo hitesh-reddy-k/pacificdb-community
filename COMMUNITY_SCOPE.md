@@ -13,7 +13,7 @@
 | Search | vector storage, similarity search, metadata filters |
 | Media | resumable replicated chunks for images, GIFs, audio, video and arbitrary files; per-chunk request limits, no PacificDB total-size cap |
 | Security | TLS/mTLS transport, passwords/tokens, API keys, RBAC, tenant isolation, audit logs |
-| Backup | operator-triggered full snapshot, show/list, verify, manifest export, delete, synchronous restore and restore journal |
+| Backup | operator-triggered full snapshot, show/list, verify, complete checksummed JSON export, delete, synchronous restore and restore journal |
 | Operations | ping/health, metrics, Prometheus, logs and storage diagnostics |
 | Clients | JSON-over-TCP, native CLI/shell, Node.js, Java and Python |
 | Deployment | Docker, Docker Compose, Kubernetes, Helm, and native release packaging |
@@ -45,8 +45,9 @@ with executable behavior, documentation, and a focused correctness test.
 
 Local projects organize database names and do not grant access or represent
 SaaS organizations. Database authorization remains the security boundary.
-`pacificdb_meta` is reserved by the engine; ordinary requests cannot spoof or
-query its project, media, and restore records.
+`pacificdb_meta` and the bootstrap `system` database are reserved by the engine
+and omitted from normal database listings. Ordinary requests cannot query or
+modify their internal records.
 
 Media uploads use sequential Base64-safe chunks sized from the engine's actual
 request limit. A manifest becomes visible as ready only after all chunks and

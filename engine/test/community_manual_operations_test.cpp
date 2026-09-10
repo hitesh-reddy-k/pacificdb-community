@@ -31,6 +31,21 @@ int main() {
                  (root / "restores").string());
     const std::string id = backups.createFullBackup("community test", 1);
     if (id.empty() || !backups.verifyBackup(id)) return 1;
+    const auto exported = backups.exportBackupManifest(id);
+    bool foundRecord = false;
+    for (const auto& file : exported.at("files"))
+        foundRecord = foundRecord || file.at("path") == "data/record.txt";
+    const auto firstChunk = backups.readBackupFileChunk(id, "data/record.txt", 0, 4);
+    const auto rest = backups.readBackupFileChunk(
+        id, "data/record.txt", firstChunk.size(), 64);
+    std::string exportedRecord(firstChunk.begin(), firstChunk.end());
+    exportedRecord.append(rest.begin(), rest.end());
+    if (exported.value("format", "") != "pacificdb-full-backup-v1" ||
+        !foundRecord || exportedRecord != "durable-record") return 7;
+    try {
+        backups.readBackupFileChunk(id, "../record.txt", 0, 4);
+        return 8;
+    } catch (const std::invalid_argument&) {}
     const fs::path restored = root / "restores" / "restored";
     if (!backups.restoreFromBackup(id, restored.string()) ||
         !fs::exists(restored / "record.txt")) return 2;

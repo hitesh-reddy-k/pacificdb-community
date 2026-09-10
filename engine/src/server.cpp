@@ -872,6 +872,17 @@ static int configuredMaxRequestBytes() {
     return bytes;
 }
 
+static std::string base64Encode(const std::vector<unsigned char>& bytes) {
+    if (bytes.empty()) return {};
+    std::string encoded(4 * ((bytes.size() + 2) / 3), '\0');
+    const int size = EVP_EncodeBlock(
+        reinterpret_cast<unsigned char*>(encoded.data()), bytes.data(),
+        static_cast<int>(bytes.size()));
+    if (size < 0) throw std::runtime_error("could not encode backup chunk");
+    encoded.resize(static_cast<size_t>(size));
+    return encoded;
+}
+
 static bool isCommunityAction(const std::string& action) {
     return action.rfind("community_", 0) == 0;
 }
@@ -948,6 +959,7 @@ static std::optional<pacificdb::security::Permission> permissionForAction(const 
     if (action == "create_backup" || action == "list_backups" ||
         action == "get_backup" || action == "verify_backup" ||
         action == "delete_backup" || action == "export_backup_manifest" ||
+        action == "export_backup_file_chunk" ||
         action == "list_restores") {
         return Permission::BACKUP;
     }
@@ -2354,7 +2366,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                      req.value("dbName", req.value("db", std::string()))) &&
                  !mayAccessReservedNamespace(req)) {
             res = {{"error", "reserved_namespace"},
-                   {"message", "pacificdb_meta is reserved for Community metadata"}};
+                   {"message", "the requested database is reserved for internal metadata"}};
         }
         else if (applyMemoryBackpressure(req, action, res)) {
             // v2.9R: memory backpressure rejected/paused this write (reads unaffected).
@@ -2633,7 +2645,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
         }
 
         // ---------------- BACKUP: SHOW / EXPORT / DELETE ----------------
-        else if (action == "get_backup" || action == "export_backup_manifest") {
+        else if (action == "get_backup") {
             const std::string backupId = req.value("backup_id", "");
             const auto info = BackupManager::instance().getBackupInfo(backupId);
             if (info.backupId.empty()) {
@@ -2642,6 +2654,34 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                 json manifest = info.toJson();
                 manifest.erase("base_path");
                 res = {{"status", "ok"}, {"backup", manifest}};
+            }
+        }
+        else if (action == "export_backup_manifest") {
+            const std::string backupId = req.value("backup_id", "");
+            if (BackupManager::instance().getBackupInfo(backupId).backupId.empty()) {
+                res = {{"error", "backup_not_found"}};
+            } else {
+                res = BackupManager::instance().exportBackupManifest(backupId);
+                res["status"] = "ok";
+            }
+        }
+        else if (action == "export_backup_file_chunk") {
+            const std::string backupId = req.value("backup_id", "");
+            const std::string path = req.value("path", "");
+            const long long offset = req.value("offset", -1LL);
+            const int requested = req.value("max_bytes", 1024 * 1024);
+            if (offset < 0 || requested < 1 || requested > 1024 * 1024) {
+                res = {{"error", "invalid_backup_chunk_request"}};
+            } else {
+                const auto bytes = BackupManager::instance().readBackupFileChunk(
+                    backupId, path, static_cast<uint64_t>(offset),
+                    static_cast<size_t>(requested));
+                res = {{"status", "ok"}, {"path", path}, {"offset", offset},
+                       {"size_bytes", bytes.size()},
+                       {"next_offset", offset + static_cast<long long>(bytes.size())},
+                       {"sha256", pacificdb::durability::ChecksumCalculator::sha256(
+                                      bytes.data(), bytes.size())},
+                       {"data", base64Encode(bytes)}};
             }
         }
         else if (action == "delete_backup") {
@@ -3153,10 +3193,9 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
             }
             if (res.is_null()) {
                 auto dbs = DatabaseEngine::listDatabases(userId);
-                if (!mayAccessReservedNamespace(req)) {
-                    dbs.erase(std::remove(dbs.begin(), dbs.end(), "pacificdb_meta"),
-                              dbs.end());
-                }
+                if (!mayAccessReservedNamespace(req))
+                    dbs.erase(std::remove_if(dbs.begin(), dbs.end(),
+                        pacificdb::community::isReservedDatabase), dbs.end());
                 res = dbs; // respond as array
             }
         }

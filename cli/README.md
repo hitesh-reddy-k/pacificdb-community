@@ -45,3 +45,13 @@ pacificdb> download media media_... ./downloaded.mp4
 
 PacificDB applies no total file-size limit to this chunked path. Available disk
 space, per-request limits, and other machine resources still apply.
+
+Manual backup export writes all backup data into one checksummed JSON file:
+
+```text
+pacificdb> create backup --name before-upgrade
+pacificdb> backup export backup_... ./before-upgrade.json
+```
+
+The export streams bounded chunks and does not load the whole backup into CLI
+memory.

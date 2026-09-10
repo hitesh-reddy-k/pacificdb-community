@@ -11,6 +11,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <random>
 #include <set>
 #include <sstream>
@@ -147,7 +148,7 @@ bool BackupManager::copyDirectory(const std::string& src, const std::string& dst
     }
 }
 
-std::string BackupManager::calculateChecksum(const std::string& path) {
+std::string BackupManager::calculateChecksum(const std::string& path) const {
     uint64_t hash = 1469598103934665603ULL;
     auto mix = [&hash](unsigned char value) {
         hash ^= value;
@@ -259,6 +260,66 @@ bool BackupManager::verifyBackup(const std::string& backupId) {
     found->second.status = BackupStatus::VERIFIED;
     persistBackupCatalog();
     return true;
+}
+
+json BackupManager::exportBackupManifest(const std::string& backupId) const {
+    validateStorageIdentifier(backupId, "backupId");
+    std::lock_guard<std::mutex> lock(backupMutex_);
+    const auto found = backups_.find(backupId);
+    if (found == backups_.end()) throw std::invalid_argument("backup not found");
+    const fs::path root = backupPathForId(backupId);
+    if (calculateChecksum(root.string()) != found->second.checksum)
+        throw std::runtime_error("backup checksum mismatch");
+
+    std::vector<fs::path> paths;
+    for (const auto& entry : fs::recursive_directory_iterator(root)) {
+        validateContainedStoragePath(root, entry.path());
+        if (entry.is_symlink()) throw std::runtime_error("backup contains a symlink");
+        if (entry.is_regular_file() && entry.path() != root / "backup.json")
+            paths.push_back(entry.path());
+    }
+    std::sort(paths.begin(), paths.end());
+    json files = json::array();
+    for (const auto& path : paths) {
+        files.push_back({
+            {"path", fs::relative(path, root).generic_string()},
+            {"size_bytes", fs::file_size(path)},
+            {"sha256", pacificdb::durability::ChecksumCalculator::sha256File(path.string())},
+        });
+    }
+    json backup = found->second.toJson();
+    backup.erase("base_path");
+    return {{"format", "pacificdb-full-backup-v1"},
+            {"backup", std::move(backup)}, {"files", std::move(files)}};
+}
+
+std::vector<unsigned char> BackupManager::readBackupFileChunk(
+    const std::string& backupId, const std::string& relativePath,
+    uint64_t offset, size_t maxBytes) const {
+    validateStorageIdentifier(backupId, "backupId");
+    if (maxBytes == 0 || maxBytes > 4 * 1024 * 1024)
+        throw std::invalid_argument("backup chunk size is invalid");
+    std::lock_guard<std::mutex> lock(backupMutex_);
+    if (backups_.find(backupId) == backups_.end())
+        throw std::invalid_argument("backup not found");
+    const fs::path root = backupPathForId(backupId);
+    const fs::path relative = validateStorageRelativePath(relativePath, "backup path");
+    if (relative == "backup.json")
+        throw std::invalid_argument("backup catalog metadata is not exportable");
+    const fs::path file = validateContainedStoragePath(root, root / relative);
+    if (!fs::is_regular_file(file)) throw std::invalid_argument("backup file not found");
+    const auto size = fs::file_size(file);
+    if (offset > size || offset > static_cast<uint64_t>(
+            std::numeric_limits<std::streamoff>::max()))
+        throw std::invalid_argument("backup chunk offset is invalid");
+    const size_t count = static_cast<size_t>(std::min<uint64_t>(size - offset, maxBytes));
+    std::vector<unsigned char> bytes(count);
+    std::ifstream input(file, std::ios::binary);
+    input.seekg(static_cast<std::streamoff>(offset));
+    input.read(reinterpret_cast<char*>(bytes.data()), static_cast<std::streamsize>(count));
+    if (static_cast<size_t>(input.gcount()) != count)
+        throw std::runtime_error("could not read backup file");
+    return bytes;
 }
 
 bool BackupManager::restoreFromBackup(

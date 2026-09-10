@@ -89,7 +89,9 @@ std::string chunkId(const std::string& mediaId, long long index) {
 
 }  // namespace
 
-bool isReservedDatabase(std::string_view name) { return name == kDatabase; }
+bool isReservedDatabase(std::string_view name) {
+    return name == kDatabase || name == "system";
+}
 
 CommunityCatalog& CommunityCatalog::instance() {
     static CommunityCatalog catalog;

@@ -42,6 +42,10 @@ public:
     std::vector<BackupInfo> listBackups() const;
     bool deleteBackup(const std::string& backupId);
     bool verifyBackup(const std::string& backupId);
+    json exportBackupManifest(const std::string& backupId) const;
+    std::vector<unsigned char> readBackupFileChunk(
+        const std::string& backupId, const std::string& relativePath,
+        uint64_t offset, size_t maxBytes) const;
     bool restoreFromBackup(const std::string& backupId,
                            const std::string& targetDir,
                            const std::string& targetClusterId = "",
@@ -58,7 +62,7 @@ private:
     std::string generateBackupId();
     std::filesystem::path backupPathForId(const std::string& backupId) const;
     std::filesystem::path restoreTargetForRequest(const std::string& targetDir) const;
-    std::string calculateChecksum(const std::string& path);
+    std::string calculateChecksum(const std::string& path) const;
     bool copyDirectory(const std::string& src, const std::string& dst);
     void persistBackupCatalog();
     void loadBackupCatalog();

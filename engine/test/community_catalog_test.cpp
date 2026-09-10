@@ -18,6 +18,7 @@ int main() {
     assert(catalog.databaseProject("system", "app").at("project_id") ==
            project.at("id"));
     assert(pacificdb::community::isReservedDatabase("pacificdb_meta"));
+    assert(pacificdb::community::isReservedDatabase("system"));
     assert(!pacificdb::community::isReservedDatabase("app"));
 
     const auto upload = catalog.beginMedia(

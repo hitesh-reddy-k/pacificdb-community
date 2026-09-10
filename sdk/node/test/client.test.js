@@ -122,3 +122,50 @@ test('uploads and downloads media sequentially in bounded chunks', async (t) => 
   assert.equal(downloaded.sha256,
     createHash('sha256').update(source).digest('hex'));
 });
+
+test('exports complete backup files in verified bounded chunks', async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'pacificdb-node-backup-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const output = path.join(directory, 'backup.json');
+  const source = Buffer.alloc(700_000, 9);
+  const sha256 = createHash('sha256').update(source).digest('hex');
+  const requests = [];
+  const server = net.createServer((socket) => {
+    let wire = '';
+    socket.on('data', (data) => {
+      wire += data;
+      const newline = wire.indexOf('\n');
+      if (newline < 0) return;
+      const request = JSON.parse(wire.slice(0, newline));
+      requests.push(request);
+      let response;
+      if (request.action === 'export_backup_manifest') {
+        response = { status: 'ok', format: 'pacificdb-full-backup-v1',
+          backup: { backup_id: 'backup-1' },
+          files: [{ path: 'data/record.bin', size_bytes: source.length, sha256 }] };
+      } else if (request.action === 'export_backup_file_chunk') {
+        const bytes = source.subarray(request.offset,
+          Math.min(source.length, request.offset + request.max_bytes));
+        response = { status: 'ok', path: request.path, offset: request.offset,
+          size_bytes: bytes.length,
+          sha256: createHash('sha256').update(bytes).digest('hex'),
+          data: bytes.toString('base64') };
+      }
+      socket.end(JSON.stringify(response) + '\n');
+    });
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => server.close());
+
+  const client = new PacificDBClient({ host: '127.0.0.1',
+    port: server.address().port });
+  const result = await client.exportBackup('backup-1', output,
+                                            { chunkBytes: 262_144 });
+  const exported = JSON.parse(await readFile(output, 'utf8'));
+  const restored = Buffer.concat(exported.files[0].chunks.map(
+    (chunk) => Buffer.from(chunk, 'base64')));
+  assert.deepEqual(restored, source);
+  assert.equal(result.sizeBytes, source.length);
+  assert.equal(requests.filter((request) =>
+    request.action === 'export_backup_file_chunk').length, 3);
+});

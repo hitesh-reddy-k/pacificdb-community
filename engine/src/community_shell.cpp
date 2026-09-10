@@ -117,7 +117,7 @@ Backups
   list restores                       List restore attempts
   delete backup <id>                  Delete backup
   backup verify <id>                  Verify backup
-  backup export <id> [file]           Export manifest
+  backup export <id> [file]           Export complete backup JSON
 
 Security / API keys
   create api-key [--name <n>] [--role read|readwrite|admin]

@@ -494,6 +494,96 @@ nlohmann::json downloadMedia(const std::string& host, const std::string& port,
     }
 }
 
+nlohmann::json exportBackup(const std::string& host, const std::string& port,
+                            const std::string& id,
+                            const std::filesystem::path& destination,
+                            const pacificdb::cli::ShellContext& context) {
+    const auto manifest = sendJson(host, port, withContext({
+        {"action", "export_backup_manifest"}, {"backup_id", id}}, context));
+    if (manifest.value("format", "") != "pacificdb-full-backup-v1" ||
+        !manifest.contains("backup") || !manifest.value("files", nlohmann::json()).is_array())
+        throw std::runtime_error("database returned an invalid backup manifest");
+
+    const std::filesystem::path partial = destination.string() + ".part";
+    std::ofstream output(partial, std::ios::binary | std::ios::trunc);
+    if (!output) throw std::runtime_error("could not write " + partial.string());
+    long long total = 0;
+    try {
+        output << "{\"format\":" << nlohmann::json(manifest.at("format")).dump()
+               << ",\"backup\":" << manifest.at("backup").dump() << ",\"files\":[";
+        const auto& files = manifest.at("files");
+        for (std::size_t fileIndex = 0; fileIndex < files.size(); ++fileIndex) {
+            const auto& file = files.at(fileIndex);
+            if (!file.value("path", nlohmann::json()).is_string() ||
+                !file.value("size_bytes", nlohmann::json()).is_number_unsigned() ||
+                !file.value("sha256", nlohmann::json()).is_string())
+                throw std::runtime_error("database returned an invalid backup file manifest");
+            const std::string path = file.at("path");
+            const auto size = file.at("size_bytes").get<uint64_t>();
+            if (fileIndex) output << ',';
+            output << "{\"path\":" << nlohmann::json(path).dump()
+                   << ",\"size_bytes\":" << size
+                   << ",\"sha256\":" << nlohmann::json(file.at("sha256")).dump()
+                   << ",\"chunks\":[";
+
+            std::unique_ptr<EVP_MD_CTX, decltype(&EVP_MD_CTX_free)> digest(
+                EVP_MD_CTX_new(), EVP_MD_CTX_free);
+            if (!digest || EVP_DigestInit_ex(digest.get(), EVP_sha256(), nullptr) != 1)
+                throw std::runtime_error("could not initialize backup checksum");
+            uint64_t offset = 0;
+            std::size_t chunkIndex = 0;
+            while (offset < size) {
+                const auto chunk = sendJson(host, port, withContext({
+                    {"action", "export_backup_file_chunk"}, {"backup_id", id},
+                    {"path", path}, {"offset", offset},
+                    {"max_bytes", std::min<uint64_t>(1024 * 1024, size - offset)}},
+                    context));
+                const auto bytes = decodeBase64(chunk.value("data", ""));
+                if (bytes.empty() || chunk.value("offset", uint64_t(-1)) != offset ||
+                    chunk.value("size_bytes", uint64_t(-1)) != bytes.size() ||
+                    chunk.value("sha256", "") != sha256Hex(bytes.data(), bytes.size()))
+                    throw std::runtime_error("invalid backup chunk: " + path);
+                if (chunkIndex++) output << ',';
+                output << nlohmann::json(chunk.at("data")).dump();
+                if (EVP_DigestUpdate(digest.get(), bytes.data(), bytes.size()) != 1)
+                    throw std::runtime_error("could not update backup checksum");
+                offset += bytes.size();
+                total += static_cast<long long>(bytes.size());
+            }
+            unsigned char raw[EVP_MAX_MD_SIZE];
+            unsigned int length = 0;
+            if (EVP_DigestFinal_ex(digest.get(), raw, &length) != 1)
+                throw std::runtime_error("could not finish backup checksum");
+            std::ostringstream checksum;
+            checksum << std::hex << std::setfill('0');
+            for (unsigned int i = 0; i < length; ++i)
+                checksum << std::setw(2) << int(raw[i]);
+            if (checksum.str() != file.at("sha256").get<std::string>())
+                throw std::runtime_error("backup file checksum mismatch: " + path);
+            output << "]}";
+        }
+        output << "]}\n";
+        output.close();
+        if (!output) throw std::runtime_error("could not finish backup export");
+        std::error_code error;
+        std::filesystem::rename(partial, destination, error);
+        if (error) {
+            std::filesystem::remove(destination, error);
+            error.clear();
+            std::filesystem::rename(partial, destination, error);
+        }
+        if (error) throw std::runtime_error("could not save backup export: " + error.message());
+        ownerOnly(destination);
+        return {{"status", "ok"}, {"backup_id", id},
+                {"filename", destination.string()}, {"files", files.size()},
+                {"size_bytes", total}};
+    } catch (...) {
+        output.close();
+        std::filesystem::remove(partial);
+        throw;
+    }
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -656,18 +746,11 @@ int main(int argc, char** argv) {
                             {"collections", collections.contains("collections")
                                 ? collections["collections"] : collections}}.dump(2) << '\n';
                     } else if (kind == "backup_export") {
-                        const auto response = sendJson(host, port, withContext({
-                            {"action", "export_backup_manifest"},
-                            {"backup_id", parsed.at("id")}}, context));
                         const std::filesystem::path filename = parsed.value("filename", "").empty()
                             ? parsed.at("id").get<std::string>() + ".json"
                             : parsed.at("filename").get<std::string>();
-                        std::ofstream(filename, std::ios::trunc)
-                            << response.at("backup").dump(2) << '\n';
-                        ownerOnly(filename);
-                        std::cout << nlohmann::json{{"status", "ok"},
-                            {"backup_id", parsed.at("id")},
-                            {"filename", filename.string()}}.dump(2) << '\n';
+                        std::cout << exportBackup(host, port, parsed.at("id"),
+                            filename, context).dump(2) << '\n';
                     } else if (kind == "media_upload") {
                         std::cout << uploadMedia(host, port, parsed.at("filename"),
                             parsed.at("collection"), parsed.value("resume", ""), context)

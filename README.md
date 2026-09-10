@@ -105,12 +105,14 @@ space, per-request limits, and other machine resources remain real limits.
 Community projects are local organizational metadata. They do not add billing,
 quotas, organizations, fleet management, or a new authorization boundary.
 Backups are manual, restores complete synchronously, and `backup export` writes
-only the portable backup manifest. API keys have `read`, `readwrite`, or
-`admin` roles; their full secrets are returned once and are never stored.
+a self-contained JSON export with every physical backup data file encoded in
+bounded, checksummed chunks. API keys have `read`, `readwrite`, or `admin`
+roles; their full secrets are returned once and are never stored.
 
-`pacificdb_meta` is reserved for these Community records. Ordinary database
-requests cannot read or write it. Raw access requires an authenticated admin
-and the explicit `internalAdmin: true` flag.
+`pacificdb_meta` and the bootstrap `system` database are internal. Normal
+database listings omit them, and ordinary requests cannot read or write them.
+Raw access requires an authenticated admin and the explicit
+`internalAdmin: true` flag.
 
 The local launcher binds to `127.0.0.1`, stores data under the current user's
 application-data directory, and runs in the foreground. Release candidates
