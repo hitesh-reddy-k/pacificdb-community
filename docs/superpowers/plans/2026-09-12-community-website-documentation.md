@@ -35,7 +35,9 @@
 - [ ] **Step 1: Write the failing static-site test**
 
 Create a Node standard-library script that reads `site/index.html`,
-`site/docs.html`, `site/docs.css`, and `site/docs.js`. It must assert:
+`site/docs.html`, `site/docs.css`, and `site/docs.js`. It validates real local
+file/fragment navigation and the exported search matcher. The stable public
+section contract is:
 
 ```js
 const requiredIds = [
@@ -50,15 +52,18 @@ for (const id of requiredIds) {
   assert.match(docs, new RegExp(`href=["']#${id}["']`));
 }
 assert.match(index, /href="docs\.html"[^>]*>Documentation</);
-assert.match(docs, /0\.1\.0-beta\.9/);
-assert.match(docs, /npm[\s\S]*0\.1\.0-beta\.7/i);
 assert.match(docs, /pacificdb-logo\.png/);
-assert.doesNotMatch(docs, /enterprise|billing|autoscal|saml|oidc|kms|hsm/i);
+assert.deepEqual(
+  filterDocumentationItems(['Install PacificDB', 'Vector search'], 'VECTOR'),
+  [false, true]
+);
 ```
 
 Parse every local `href`, `src`, and fragment reference and assert that its
 target file or element exists. Assert that the CSS includes a narrow-screen
-media query and that the script includes search, copy, and navigation behavior.
+media query and that the script includes clipboard support. Review version
+copy, beta disclosures, and product-boundary wording editorially rather than
+locking human prose into change-detector assertions.
 
 - [ ] **Step 2: Run the test and verify RED**
 
