@@ -57,7 +57,8 @@ macOS:
 Plain `pacificdb` starts the local engine when it is not already running and
 opens the interactive shell. The engine continues in the background and is
 reused by later CLI and application connections. Use `--no-start` when the CLI
-must only connect to an already-running engine.
+must only connect to an already-running engine. Check the installed release
+without starting the engine with `pacificdb --version`.
 
 Windows and macOS beta installers are currently unsigned. Review the
 [certification status](docs/COMMUNITY_P0_CERTIFICATION.md) before installation.

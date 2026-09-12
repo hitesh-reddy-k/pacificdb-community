@@ -141,7 +141,20 @@ test('--help prints command categories without starting an engine', async () => 
   output.on('data', (chunk) => { text += chunk; });
   await main(['--help'], { input: new PassThrough(), output });
   assert.match(text, /^Usage: pacificdb/);
+  assert.match(text, /--version, -V/);
   assert.match(text, /Projects[\s\S]*Backups[\s\S]*Vectors/);
+});
+
+test('--version and -V print the package version without starting an engine', async () => {
+  const packageJson = JSON.parse(await readFile(
+    new URL('../package.json', import.meta.url), 'utf8'));
+  for (const flag of ['--version', '-V']) {
+    const output = new PassThrough();
+    let text = '';
+    output.on('data', (chunk) => { text += chunk; });
+    await main([flag], { input: new PassThrough(), output });
+    assert.equal(text, `PacificDB ${packageJson.version}\n`);
+  }
 });
 
 test('hides internal telemetry from normal output', async (t) => {

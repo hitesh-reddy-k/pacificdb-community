@@ -194,7 +194,10 @@ target_include_directories(db_engine PRIVATE
 )
 
 add_executable(pacificdb src/shell.cpp src/community_shell.cpp)
-target_include_directories(pacificdb PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(pacificdb PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_BINARY_DIR}/generated
+)
 target_link_libraries(pacificdb PRIVATE OpenSSL::Crypto)
 if(WIN32)
     target_link_libraries(pacificdb PRIVATE Ws2_32)

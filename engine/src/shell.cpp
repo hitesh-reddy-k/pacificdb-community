@@ -1,5 +1,6 @@
 #include <nlohmann/json.hpp>
 #include <openssl/evp.h>
+#include "build_identity.hpp"
 #include "community_shell.hpp"
 
 #include <algorithm>
@@ -445,7 +446,8 @@ nlohmann::json sendJson(const std::string& host, const std::string& port,
 void usage(std::ostream& output = std::cerr) {
     output << "usage: pacificdb [options] "
                  "[shell|ping|request JSON|put-media|get-media|put-vector|query-vector]\n"
-                 "       options: --host HOST --port PORT --database NAME --no-start\n";
+                 "       options: --host HOST --port PORT --database NAME --no-start\n"
+                 "                --help, -h  --version, -V\n";
 }
 
 void printShellHelp() {
@@ -835,6 +837,7 @@ int main(int argc, char** argv) {
         std::string metric = "cosine";
         bool autoStart = true;
         bool showHelp = false;
+        bool showVersion = false;
         int topK = 10;
         nlohmann::json metadata = nlohmann::json::object();
         std::vector<std::string> positional;
@@ -842,6 +845,7 @@ int main(int argc, char** argv) {
             const std::string arg = argv[i];
             if (arg == "--no-start") autoStart = false;
             else if (arg == "--help" || arg == "-h") showHelp = true;
+            else if (arg == "--version" || arg == "-V") showVersion = true;
             else if (arg == "--host" || arg == "--port" || arg == "--database" ||
                 arg == "--content-type" || arg == "--metadata" ||
                 arg == "--metric" || arg == "--k") {
@@ -856,6 +860,10 @@ int main(int argc, char** argv) {
             } else {
                 positional.push_back(arg);
             }
+        }
+        if (showVersion) {
+            std::cout << "PacificDB " << PACIFICDB_ENGINE_VERSION << '\n';
+            return 0;
         }
         const int numericPort = std::stoi(port);
         if (numericPort < 1 || numericPort > 65535 || port != std::to_string(numericPort)) {

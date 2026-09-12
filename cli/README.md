@@ -20,6 +20,7 @@ Installing the npm CLI alone does not install the database engine; install a
 native PacificDB package first or connect to another host.
 
 ```sh
+pacificdb --version
 pacificdb --host 127.0.0.1 --port 9000 ping
 pacificdb --host db.example.internal --port 9000 --no-start
 pacificdb request '{"action":"ping"}'
