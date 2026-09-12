@@ -206,6 +206,7 @@ void ensureLocalEngine(const std::string& host, const std::string& port,
     setDefaultEnvironment("RAFT_NODE_ID", "node-1");
     setDefaultEnvironment("RAFT_IS_LEADER", "1");
     setDefaultEnvironment("MIN_QUORUM_SIZE", "1");
+    setDefaultEnvironment("ENGINE_KEEPALIVE_MAX_REQUESTS", "1");
 
     auto engine = executablePath(argv0).parent_path() /
 #ifdef _WIN32
