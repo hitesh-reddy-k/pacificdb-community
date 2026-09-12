@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="PacificDB Community beta documentation: installation, shell commands, SDKs, backups, API keys, media, vectors, security, and troubleshooting.">
+  <meta name="theme-color" content="#092c2c">
+  <title>Documentation · PacificDB Community</title>
+  <link rel="icon" href="pacificdb-logo.png" type="image/png">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="docs.css">
+  <script type="module" src="docs.js"></script>
+</head>
+<body class="docs-page">
+  <a class="skip" href="#main">Skip to documentation</a>
+  <header class="navigation wrap docs-header">
+    <a class="brand" href="index.html" aria-label="PacificDB home"><img src="pacificdb-logo.png" width="40" height="40" alt="">Pacific<span>DB</span></a>
+    <nav aria-label="Main navigation"><a href="index.html">Home</a><a href="docs.html" aria-current="page">Documentation</a><a href="index.html#downloads">Downloads</a></nav>
+    <a class="repo-link" href="https://github.com/hitesh-reddy-k/pacificdb-community">GitHub <span aria-hidden="true">↗</span></a>
+  </header>
+
+  <div class="docs-banner">
+    <div class="wrap"><span>PacificDB Community documentation</span><span class="docs-version">v0.1.0-beta.9</span><a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v0.1.0-beta.9">Release notes ↗</a></div>
+  </div>
+
+  <div class="docs-layout wrap">
+    <aside class="docs-sidebar" aria-label="Documentation navigation">
+      <label class="docs-search-label" for="docs-search">Search documentation</label>
+      <input id="docs-search" type="search" placeholder="Try “backup” or “vector”" autocomplete="off" data-doc-search>
+      <details class="docs-nav-shell" open>
+        <summary>On this page</summary>
+        <nav class="docs-nav">
+          <div data-doc-nav-group><strong>Start here</strong>
+            <a href="#install" data-doc-link>Install</a>
+            <a href="#quickstart" data-doc-link>Quickstart</a>
+            <a href="#authentication" data-doc-link>Authentication</a>
+          </div>
+          <div data-doc-nav-group><strong>Use the shell</strong>
+            <a href="#projects" data-doc-link>Projects</a>
+            <a href="#databases" data-doc-link>Databases and collections</a>
+            <a href="#documents" data-doc-link>Documents and queries</a>
+            <a href="#shell-reference" data-doc-link>Command reference</a>
+          </div>
+          <div data-doc-nav-group><strong>Application SDKs</strong>
+            <a href="#nodejs" data-doc-link>Node.js</a>
+            <a href="#python" data-doc-link>Python</a>
+            <a href="#java" data-doc-link>Java</a>
+          </div>
+          <div data-doc-nav-group><strong>Data operations</strong>
+            <a href="#backups" data-doc-link>Backups and restore</a>
+            <a href="#api-keys" data-doc-link>API keys</a>
+            <a href="#media" data-doc-link>Media</a>
+            <a href="#vectors" data-doc-link>Vectors</a>
+          </div>
+          <div data-doc-nav-group><strong>Operate PacificDB</strong>
+            <a href="#configuration" data-doc-link>Configuration and files</a>
+            <a href="#security" data-doc-link>Security</a>
+            <a href="#troubleshooting" data-doc-link>Troubleshooting</a>
+            <a href="#beta-status" data-doc-link>Beta status and support</a>
+          </div>
+        </nav>
+      </details>
+      <p class="docs-search-empty" data-doc-empty hidden>No documentation found.</p>
+    </aside>
+
+    <main id="main" class="docs-content">
+      <header class="docs-intro">
+        <p class="eyebrow"><span class="dot"></span> COMMUNITY BETA DOCUMENTATION</p>
+        <h1>Build with PacificDB.</h1>
+        <p>Install a self-hosted database, work in its interactive shell, and connect applications using the supported clients. This guide documents the public Community beta.9 surface.</p>
+        <div class="docs-intro-links"><a class="button primary" href="#quickstart">Start the quickstart</a><a class="text-link" href="#shell-reference">Browse commands →</a></div>
+        <aside class="callout warning"><strong>Before critical use</strong><p>Beta.9 is intended for evaluation, development, staging, and controlled early-adopter deployments. Review the <a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/main/docs/COMMUNITY_P0_CERTIFICATION.md">certification report</a> before storing critical data.</p></aside>
+      </header>
+
+      <section id="install" data-doc-section>
+        <p class="section-kicker">START HERE</p>
+        <h2>Install PacificDB</h2>
+        <p>The native packages include both the database engine and the native CLI. Choose the package matching the operating system and processor.</p>
+
+        <h3>Linux: Ubuntu and Debian</h3>
+        <p>Download the x86-64 <code>.deb</code> from the <a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v0.1.0-beta.9">beta.9 release</a>, then install it with APT.</p>
+        <div class="docs-code"><div><span>Terminal</span><button data-copy="install-linux">Copy</button></div><pre><code id="install-linux">sudo apt install ./pacificdb-community-0.1.0-beta.9-linux-amd64.deb
+pacificdb</code></pre></div>
+
+        <h3>Windows</h3>
+        <ol>
+          <li>Download <code>pacificdb-community-0.1.0-beta.9-windows-x64.exe</code>.</li>
+          <li>Open the installer and complete its steps.</li>
+          <li>Open a new Command Prompt and run <code>pacificdb</code>.</li>
+        </ol>
+
+        <h3>macOS</h3>
+        <ol>
+          <li>Download the Apple silicon <code>macos-arm64.pkg</code> or Intel <code>macos-x86_64.pkg</code>.</li>
+          <li>Open the package and complete the installer.</li>
+          <li>Open Terminal and run <code>pacificdb</code>.</li>
+        </ol>
+        <aside class="callout"><strong>Unsigned beta installers</strong><p>Windows code signing and macOS notarization are pending. The operating system may show an unknown-publisher security prompt. Verify the file using the release <a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v0.1.0-beta.9/SHA256SUMS">SHA-256 manifest</a>.</p></aside>
+
+        <h3>npm CLI and Node.js client</h3>
+        <p>Node.js 18 or newer is required. The public npm <code>beta</code> tag currently installs <strong>0.1.0-beta.7</strong>; the beta.9 npm packages have not been published.</p>
+        <div class="docs-code"><div><span>Terminal</span><button data-copy="install-npm">Copy</button></div><pre><code id="install-npm">npm install --global @pacificdb/cli@beta
+npm install @pacificdb/client@beta</code></pre></div>
+        <p>The npm CLI is a client. Installing it does not install the engine. Automatic startup works when a native <code>db_engine</code> executable is already available on <code>PATH</code>.</p>
+
+        <h3>Docker</h3>
+        <div class="docs-code"><div><span>Terminal</span><button data-copy="install-docker">Copy</button></div><pre><code id="install-docker">git clone https://github.com/hitesh-reddy-k/pacificdb-community.git
+cd pacificdb-community
+docker compose up -d --build database
+docker compose run --rm shell</code></pre></div>
+        <p>Data remains in the <code>pacificdb-data</code> volume. <code>docker compose down</code> stops the containers; add <code>-v</code> only when you intend to delete the volume.</p>
+
+        <h3>Build from source</h3>
+        <p>Source builds require CMake 3.20+, a C++17 compiler, OpenSSL, LZ4, and Node.js 18+.</p>
+        <div class="docs-code"><div><span>Terminal</span><button data-copy="install-source">Copy</button></div><pre><code id="install-source">git clone https://github.com/hitesh-reddy-k/pacificdb-community.git
+cd pacificdb-community
+cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j2
+./build/pacificdb</code></pre></div>
+      </section>
+
+      <section id="quickstart" data-doc-section>
+        <p class="section-kicker">FIRST DOCUMENT</p>
+        <h2>Quickstart</h2>
+        <p>Run <code>pacificdb</code>. On a loopback connection, the native CLI starts the local engine automatically when it is not already running, then opens the shell.</p>
+        <div class="docs-code"><div><span>PacificDB shell</span><button data-copy="quickstart-code">Copy</button></div><pre><code id="quickstart-code">create project demo
+list projects
+create database hello
+use hello
+create collection ideas
+insert ideas {"id":"first","title":"Hello PacificDB"}
+find ideas {"id":"first"}</code></pre></div>
+        <p>A successful database selection changes the prompt to <code>pacificdb:hello&gt;</code>. Use <code>help</code> to display commands and <code>quit</code> to leave the shell. Leaving the shell does not stop the background engine.</p>
+        <aside class="callout"><strong>Local defaults</strong><p>Local mode binds to <code>127.0.0.1:9000</code> and starts with authentication disabled. Configure authentication and TLS before exposing the engine to a network.</p></aside>
+      </section>
+
+      <section id="authentication" data-doc-section>
+        <p class="section-kicker">IDENTITY</p>
+        <h2>Authentication</h2>
+        <p>The automatic loopback launcher does not require a login. An engine configured with authentication requires a username and password once per shell context.</p>
+        <div class="docs-code"><div><span>PacificDB shell</span><button data-copy="auth-code">Copy</button></div><pre><code id="auth-code">login admin
+Password:
+whoami
+logout</code></pre></div>
+        <p>Password input is excluded from shell history. Session credentials and CLI context are stored with owner-only file permissions. Applications call their SDK authentication method or use an active API key.</p>
+      </section>
+
+      <section id="projects" data-doc-section>
+        <p class="section-kicker">ORGANIZE</p>
+        <h2>Projects</h2>
+        <p>Projects organize local database names. They do not create a hosted account or change the database authorization boundary.</p>
+        <div class="table-wrap"><table><thead><tr><th>Command</th><th>Behavior</th></tr></thead><tbody>
+          <tr><td><code>create project &lt;name&gt;</code></td><td>Create project metadata and return its canonical ID.</td></tr>
+          <tr><td><code>list projects</code></td><td>List visible projects.</td></tr>
+          <tr><td><code>use project &lt;id&gt;</code></td><td>Validate and select an existing canonical project ID.</td></tr>
+          <tr><td><code>show project</code></td><td>Show the currently selected project.</td></tr>
+          <tr><td><code>delete project &lt;id&gt;</code></td><td>Delete the project and its database mappings.</td></tr>
+        </tbody></table></div>
+        <p>Use the ID returned by <code>create project</code> with <code>use project</code>. An unknown ID returns an error and preserves the previous context.</p>
+      </section>
+
+      <section id="databases" data-doc-section>
+        <p class="section-kicker">STRUCTURE</p>
+        <h2>Databases and collections</h2>
+        <div class="table-wrap"><table><thead><tr><th>Command</th><th>Behavior</th></tr></thead><tbody>
+          <tr><td><code>create database &lt;name&gt;</code></td><td>Create a database and map it to the selected project, when present.</td></tr>
+          <tr><td><code>list databases</code></td><td>List user databases. Reserved <code>system</code> and <code>pacificdb_meta</code> databases are hidden.</td></tr>
+          <tr><td><code>use &lt;name&gt;</code></td><td>Validate and select an existing database.</td></tr>
+          <tr><td><code>show database</code></td><td>List collections in the selected database.</td></tr>
+          <tr><td><code>drop database &lt;name&gt;</code></td><td>Drop a user database.</td></tr>
+          <tr><td><code>create collection &lt;name&gt;</code></td><td>Create a collection in the selected database.</td></tr>
+          <tr><td><code>list collections</code></td><td>List collections in the selected database.</td></tr>
+        </tbody></table></div>
+        <aside class="callout"><strong>Reserved namespace</strong><p><code>pacificdb_meta</code> stores Community metadata through protected engine actions. Ordinary database requests cannot read or modify it.</p></aside>
+      </section>
+
+      <section id="documents" data-doc-section>
+        <p class="section-kicker">READ AND WRITE</p>
+        <h2>Documents and queries</h2>
+        <p>Document commands accept JSON objects directly in the shell. Quote property names and use valid JSON values.</p>
+        <div class="docs-code"><div><span>PacificDB shell</span><button data-copy="document-code">Copy</button></div><pre><code id="document-code">insert users {"id":"1","name":"Ada","active":true}
+find users {"active":true}
+findOne users {"id":"1"}
+update users {"id":"1"} {"name":"Ada Lovelace"}
+count users {"active":true}
+delete users {"id":"1"}</code></pre></div>
+        <h3>Bounded aggregation</h3>
+        <p>The Community aggregation pipeline supports <code>$match</code>, inclusion <code>$project</code>, single- or multi-field <code>$sort</code>, nonnegative <code>$skip</code>, positive <code>$limit</code>, and terminal <code>$count</code>. Unsupported stages fail explicitly.</p>
+        <div class="docs-code"><div><span>PacificDB shell</span><button data-copy="aggregate-code">Copy</button></div><pre><code id="aggregate-code">aggregate users [{"$match":{"active":true}},{"$project":{"name":1}},{"$sort":{"name":1}},{"$limit":10}]
+explain users {"id":"1"}</code></pre></div>
+        <p><code>explain</code> reports the actual equality-index lookup or full-scan choice without inventing index names.</p>
+      </section>
+
+      <section id="shell-reference" data-doc-section>
+        <p class="section-kicker">REFERENCE</p>
+        <h2>Complete shell command reference</h2>
+        <p>The native and npm shells use the same friendly command names and engine actions.</p>
+        <div class="command-groups">
+          <div><h3>Authentication</h3><pre><code>login &lt;username&gt;
+whoami
+logout</code></pre></div>
+          <div><h3>Projects</h3><pre><code>create project &lt;name&gt;
+list projects
+use project &lt;id&gt;
+show project
+delete project &lt;id&gt;</code></pre></div>
+          <div><h3>Databases and queries</h3><pre><code>create database &lt;name&gt;
+list databases
+use &lt;name&gt;
+show database
+drop database &lt;name&gt;
+create collection &lt;name&gt;
+list collections
+insert &lt;collection&gt; &lt;json&gt;
+find &lt;collection&gt; [filter-json]
+findOne &lt;collection&gt; [filter-json]
+update &lt;collection&gt; &lt;filter&gt; &lt;json&gt;
+delete &lt;collection&gt; &lt;filter-json&gt;
+aggregate &lt;collection&gt; &lt;pipeline&gt;
+count &lt;collection&gt; [filter-json]
+explain &lt;collection&gt; [filter-json]</code></pre></div>
+          <div><h3>Backups</h3><pre><code>create backup [--name &lt;name&gt;]
+list backups
+show backup &lt;id&gt;
+restore backup &lt;id&gt;
+list restores
+delete backup &lt;id&gt;
+backup verify &lt;id&gt;
+backup export &lt;id&gt; [file]</code></pre></div>
+          <div><h3>Security and API keys</h3><pre><code>create api-key [--name &lt;n&gt;] [--role read|readwrite|admin]
+list api-keys
+show api-key &lt;id&gt;
+revoke api-key &lt;id&gt;</code></pre></div>
+          <div><h3>Media</h3><pre><code>upload image|video|media &lt;path&gt; [--collection &lt;name&gt;] [--resume &lt;id&gt;]
+download media &lt;id&gt; &lt;path&gt;
+list media [--all]
+find media &lt;query&gt;
+show media &lt;id&gt;
+delete media &lt;id&gt;
+media cleanup &lt;id&gt;</code></pre></div>
+          <div><h3>Vectors</h3><pre><code>put vector &lt;collection&gt; &lt;id&gt; &lt;json-vector&gt;
+query vector &lt;collection&gt; &lt;json-vector&gt; [--k &lt;n&gt;] [--metric &lt;name&gt;]</code></pre></div>
+          <div><h3>System</h3><pre><code>help [topic]
+context show
+context clear
+status
+history
+clear
+request &lt;json&gt;
+exit | quit</code></pre></div>
+        </div>
+      </section>
+
+      <section id="nodejs" data-doc-section>
+        <p class="section-kicker">APPLICATION SDK</p>
+        <h2>Node.js</h2>
+        <p>The Apache-2.0 Node.js client requires Node.js 18+. Start the native engine first, then connect over JSON/TCP.</p>
+        <div class="docs-code"><div><span>hello.mjs</span><button data-copy="node-code">Copy</button></div><pre><code id="node-code">import { PacificDBClient } from '@pacificdb/client';
+
+const db = new PacificDBClient({
+  host: '127.0.0.1', port: 9000, database: 'app'
+});
+
+await db.createDatabase();
+await db.createCollection('events');
+await db.insert('events', { id: 'event-1', type: 'signup' });
+console.log(await db.find('events', { type: 'signup' }));</code></pre></div>
+        <p>For an authenticated engine, call <code>await db.authenticate(username, password)</code> before data operations.</p>
+      </section>
+
+      <section id="python" data-doc-section>
+        <p class="section-kicker">APPLICATION SDK</p>
+        <h2>Python</h2>
+        <p>The current Python SDK is installed from the checked-out source tree.</p>
+        <div class="docs-code"><div><span>Terminal</span><button data-copy="python-install">Copy</button></div><pre><code id="python-install">python -m pip install ./sdk/python</code></pre></div>
+        <div class="docs-code"><div><span>app.py</span><button data-copy="python-code">Copy</button></div><pre><code id="python-code">from pacificdb import PacificDBClient
+
+db = PacificDBClient(database="app")
+db.create_collection("events")
+db.insert("events", {"id": "event-2", "type": "purchase"})
+print(db.find("events", {"type": "purchase"}))</code></pre></div>
+        <p>For an authenticated engine, call <code>db.authenticate(username, password)</code> first.</p>
+      </section>
+
+      <section id="java" data-doc-section>
+        <p class="section-kicker">APPLICATION SDK</p>
+        <h2>Java</h2>
+        <p>The Java 11+ client is currently built from source with Maven.</p>
+        <div class="docs-code"><div><span>Terminal</span><button data-copy="java-install">Copy</button></div><pre><code id="java-install">mvn -f sdk/java/pom.xml package</code></pre></div>
+        <div class="docs-code"><div><span>Java</span><button data-copy="java-code">Copy</button></div><pre><code id="java-code">import io.pacificdb.PacificDBClient;
+import java.util.Map;
+
+var db = new PacificDBClient("127.0.0.1", 9000, "app");
+var result = db.request(Map.of(
+    "action", "find",
+    "collection", "events",
+    "filter", Map.of("type", "signup")
+));
+System.out.println(result);</code></pre></div>
+      </section>
+
+      <section id="backups" data-doc-section>
+        <p class="section-kicker">DATA OPERATIONS</p>
+        <h2>Backups and restore</h2>
+        <p>Community backups are operator-triggered full snapshots. Restore runs synchronously and records completed and failed attempts.</p>
+        <div class="docs-code"><div><span>PacificDB shell</span><button data-copy="backup-code">Copy</button></div><pre><code id="backup-code">create backup --name before-upgrade
+list backups
+show backup backup_...
+backup verify backup_...
+backup export backup_... ./before-upgrade.json
+restore backup backup_...
+list restores
+delete backup backup_...</code></pre></div>
+        <p><code>backup export</code> writes a self-contained JSON document containing every physical backup file in bounded, checksummed chunks. Store exports on separate durable storage and test restoration before relying on them.</p>
+      </section>
+
+      <section id="api-keys" data-doc-section>
+        <p class="section-kicker">DATA OPERATIONS</p>
+        <h2>API keys</h2>
+        <p>Keys can use the <code>read</code>, <code>readwrite</code>, or <code>admin</code> role. Creation and revocation require an administrator.</p>
+        <div class="docs-code"><div><span>PacificDB shell</span><button data-copy="api-key-code">Copy</button></div><pre><code id="api-key-code">create api-key --name application --role readwrite
+list api-keys
+show api-key key_...
+revoke api-key key_...</code></pre></div>
+        <aside class="callout warning"><strong>Copy once</strong><p>The complete <code>pdb_...</code> key appears only when created. PacificDB persists only its identifier and secret hash. Store the key in a secret manager and never commit it to source control.</p></aside>
+      </section>
+
+      <section id="media" data-doc-section>
+        <p class="section-kicker">DATA OPERATIONS</p>
+        <h2>Media files</h2>
+        <p>Images, GIFs, audio, video, and arbitrary files transfer sequentially in bounded Base64-safe chunks. Every chunk and completed file is verified with SHA-256.</p>
+        <div class="docs-code"><div><span>PacificDB shell</span><button data-copy="media-code">Copy</button></div><pre><code id="media-code">upload video ./demo.mp4 --collection videos
+list media
+show media media_...
+download media media_... ./downloaded.mp4
+upload media ./large.bin --collection files --resume media_...
+media cleanup media_...</code></pre></div>
+        <p>PacificDB applies no application-level total file-size cap. Available disk space, request limits, network time, and machine resources still limit transfers. Resume requires the incomplete media ID. Cleanup deletes only incomplete uploads; ready media uses <code>delete media</code>.</p>
+      </section>
+
+      <section id="vectors" data-doc-section>
+        <p class="section-kicker">DATA OPERATIONS</p>
+        <h2>Vector search</h2>
+        <p>Vectors must be non-empty arrays of finite numbers. Query <code>k</code> must be a positive integer. Supported metrics are <code>cosine</code>, <code>l2</code>, <code>euclidean</code>, <code>dot</code>, and <code>dot_product</code>.</p>
+        <div class="docs-code"><div><span>PacificDB shell</span><button data-copy="vector-code">Copy</button></div><pre><code id="vector-code">put vector embeddings item-1 [0.2,0.8]
+put vector embeddings item-2 [0.8,0.2]
+query vector embeddings [0.2,0.8] --k 5 --metric cosine</code></pre></div>
+        <h3>Node.js vector API</h3>
+        <div class="docs-code"><div><span>JavaScript</span><button data-copy="vector-node-code">Copy</button></div><pre><code id="vector-node-code">await db.putVector('embeddings', 'hero-vector', [0.2, 0.8], {
+  modality: 'image', assetId: 'hero'
+});
+const matches = await db.queryVector('embeddings', [0.2, 0.8], {
+  k: 5, filter: { assetId: 'hero' }
+});</code></pre></div>
+      </section>
+
+      <section id="configuration" data-doc-section>
+        <p class="section-kicker">OPERATE</p>
+        <h2>Configuration and local files</h2>
+        <h3>Connect to another engine</h3>
+        <div class="docs-code"><div><span>Terminal</span><button data-copy="remote-code">Copy</button></div><pre><code id="remote-code">pacificdb --host db.example.internal --port 9000 --no-start
+pacificdb --host db.example.internal --port 9000 ping --no-start</code></pre></div>
+        <p>The CLI automatically starts an engine only for loopback hosts. Use <code>--no-start</code> when it must connect only to an existing engine.</p>
+        <h3>Engine home</h3>
+        <div class="table-wrap"><table><thead><tr><th>Platform</th><th>Default location</th></tr></thead><tbody>
+          <tr><td>Linux</td><td><code>${XDG_DATA_HOME:-$HOME/.local/share}/pacificdb</code></td></tr>
+          <tr><td>macOS</td><td><code>~/Library/Application Support/PacificDB</code></td></tr>
+          <tr><td>Windows</td><td><code>%LOCALAPPDATA%\PacificDB</code></td></tr>
+        </tbody></table></div>
+        <p>The home contains <code>data</code>, <code>backup</code>, <code>restore</code>, <code>engine.log</code>, and <code>engine.pid</code>. Set <code>PACIFICDB_HOME</code> to an absolute location before the first launch to use a different root. CLI context and history use the platform state directory with owner-only permissions.</p>
+      </section>
+
+      <section id="security" data-doc-section>
+        <p class="section-kicker">OPERATE</p>
+        <h2>Security checklist</h2>
+        <ul class="checklist">
+          <li>Keep development mode bound to <code>127.0.0.1</code>.</li>
+          <li>Enable authentication and TLS before accepting network connections.</li>
+          <li>Give applications the smallest API-key role they need.</li>
+          <li>Store passwords and API keys outside source code and logs.</li>
+          <li>Restrict filesystem access to the PacificDB data and backup roots.</li>
+          <li>Verify backups and perform restoration drills on isolated data roots.</li>
+          <li>Review the repository <a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/main/SECURITY.md">security policy</a> before deployment.</li>
+        </ul>
+      </section>
+
+      <section id="troubleshooting" data-doc-section>
+        <p class="section-kicker">OPERATE</p>
+        <h2>Troubleshooting</h2>
+        <div class="troubleshooting-list">
+          <details open><summary><code>port 9000 is in use by a service that is not PacificDB</code></summary><p>Another program owns the default port. Stop that program or start PacificDB on another port, for example <code>pacificdb --port 9001</code>. Beta.9 verifies the PacificDB protocol instead of exposing a raw JSON parser error.</p></details>
+          <details><summary>The CLI asks for a login</summary><p>The automatic loopback launcher has authentication disabled. A login prompt means the CLI connected to an engine configured with authentication. Use a valid account, or check the selected host and port with <code>context show</code>.</p></details>
+          <details><summary>The npm CLI cannot start the engine</summary><p>The npm package contains the client shell only. Install a native PacificDB package so <code>db_engine</code> is on <code>PATH</code>, start the engine separately, or connect with <code>--host</code>, <code>--port</code>, and <code>--no-start</code>.</p></details>
+          <details><summary><code>select a database with: use &lt;name&gt;</code></summary><p>Create or select a database before running collection, document, media, or vector commands. Run <code>list databases</code> and then <code>use app</code>.</p></details>
+          <details><summary>A project cannot be selected</summary><p><code>use project</code> expects the canonical ID returned by <code>create project</code> or <code>list projects</code>, rather than the display name.</p></details>
+          <details><summary>The engine is unavailable</summary><p>Run <code>status</code>. Check <code>engine.log</code> under the platform home, confirm the host and port, and use <code>pacificdb --no-start</code> only when an engine is already running.</p></details>
+          <details><summary>An installer is blocked by the operating system</summary><p>Beta.9 Windows and macOS packages are unsigned. Confirm the installer checksum against the release manifest and follow your organization's policy for unsigned software. Signed packages are still pending.</p></details>
+        </div>
+      </section>
+
+      <section id="beta-status" data-doc-section>
+        <p class="section-kicker">OPERATE</p>
+        <h2>Beta status and support</h2>
+        <p>Beta.9 passed the retained Linux suite, real Debian package installation, cross-platform installer jobs, genuine disk-full scenarios, RF3 replication, network partition/election checks, and 64/128-client RF3 campaigns. It remains a beta rather than a universal production certification.</p>
+        <p>Open work includes physical power/storage-controller testing, mixed-version rolling upgrades, an independent security assessment, Windows signing, and macOS notarization.</p>
+        <div class="support-grid">
+          <a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/main/docs/COMMUNITY_P0_CERTIFICATION.md"><strong>Certification report</strong><span>See measured tests and limits →</span></a>
+          <a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/main/COMMUNITY_SCOPE.md"><strong>Community scope</strong><span>See included capabilities →</span></a>
+          <a href="https://github.com/hitesh-reddy-k/pacificdb-community/issues"><strong>Issue tracker</strong><span>Report a problem or request →</span></a>
+        </div>
+      </section>
+
+      <footer class="docs-footer"><p>PacificDB Community beta.9 · Documentation for the open-source self-hosted release.</p><a href="#main">Back to top ↑</a></footer>
+    </main>
+  </div>
+  <p class="sr-only" id="docs-status" role="status" aria-live="polite"></p>
+</body>
+</html>
