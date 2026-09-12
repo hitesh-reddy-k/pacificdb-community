@@ -51,7 +51,6 @@ for (const id of requiredIds) {
   assert.match(docs, new RegExp(`id=["']${id}["']`));
   assert.match(docs, new RegExp(`href=["']#${id}["']`));
 }
-assert.match(index, /href="docs\.html"[^>]*>Documentation</);
 assert.match(docs, /pacificdb-logo\.png/);
 assert.deepEqual(
   filterDocumentationItems(['Install PacificDB', 'Vector search'], 'VECTOR'),
@@ -208,18 +207,31 @@ git commit -m "feat(site): add searchable documentation navigation"
 
 **Files:**
 - Modify: `site/index.html`
+- Modify: `scripts/test-site-docs.mjs`
 
 **Interfaces:**
 - Consumes: `site/docs.html` and its stable section IDs.
 - Produces: visible links from the primary header, quickstart, and footer to the documentation page.
 
-- [ ] **Step 1: Update landing-page navigation**
+- [ ] **Step 1: Add and run the failing landing-page assertion**
+
+Add this assertion to `scripts/test-site-docs.mjs`:
+
+```js
+assert.match(index, /href=["']docs\.html["'][^>]*>Documentation</);
+```
+
+Run: `node scripts/test-site-docs.mjs`
+
+Expected: FAIL because the landing-page header does not link to documentation.
+
+- [ ] **Step 2: Update landing-page navigation**
 
 Add `<a href="docs.html">Documentation</a>` to the primary navigation. Change
 the current external README quickstart link to `docs.html#quickstart` and add a
 footer documentation link.
 
-- [ ] **Step 2: Run focused checks**
+- [ ] **Step 3: Run focused checks**
 
 Run:
 
@@ -232,10 +244,10 @@ git diff --check
 
 Expected: all commands exit zero.
 
-- [ ] **Step 3: Commit landing-page integration**
+- [ ] **Step 4: Commit landing-page integration**
 
 ```bash
-git add site/index.html
+git add site/index.html scripts/test-site-docs.mjs
 git commit -m "docs(site): link product page to documentation"
 ```
 

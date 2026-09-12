@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { access, readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const siteRoot = path.join(repositoryRoot, 'site');
@@ -39,8 +40,6 @@ const [index, docs, css, javascript] = await Promise.all([
   readSiteFile('docs.js')
 ]);
 
-assert.match(index, /href=["']docs\.html["'][^>]*>Documentation</);
-
 const requiredSections = [
   'install', 'quickstart', 'authentication', 'projects', 'databases',
   'documents', 'shell-reference', 'nodejs', 'python', 'java', 'backups',
@@ -63,7 +62,8 @@ await Promise.all([
   assertLocalReferences('docs.html', docs)
 ]);
 
-const docsModule = await import(pathToFileURL(path.join(siteRoot, 'docs.js')));
+const require = createRequire(import.meta.url);
+const docsModule = require(path.join(siteRoot, 'docs.js'));
 assert.equal(typeof docsModule.filterDocumentationItems, 'function');
 assert.deepEqual(
   docsModule.filterDocumentationItems(['Install PacificDB', 'Vector search', 'Backups'], 'VECTOR'),
