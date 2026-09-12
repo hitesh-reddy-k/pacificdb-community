@@ -206,8 +206,7 @@ The host beta.3 installation and host data remained unchanged.
 
 ### Cross-platform package gate
 
-The preceding beta.8 GitHub Actions run `34675430398` passed from commit
-`783fe81` on Linux,
+The beta.9 GitHub Actions run `34678171973` passed from commit `015b588` on Linux,
 Windows Server 2025, macOS 15 Intel, and macOS 15 ARM. The Windows job verified
 silent NSIS installation, user PATH registration, automatic engine startup,
 write success, silent uninstall, and PATH cleanup. Both macOS jobs verified the
