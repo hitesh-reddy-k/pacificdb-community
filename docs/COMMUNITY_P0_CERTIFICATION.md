@@ -215,6 +215,10 @@ The beta.11 pre-release GitHub Actions run `34705388862` passed from commit
 `b055407` on Linux, Windows Server 2025, macOS 15 Intel, and macOS 15 ARM.
 Each job built and installed its native package, exercised automatic startup
 and a real write, and uploaded the candidate artifact without publishing it.
+The tagged release run `34706027876` repeated all four builds from commit
+`27a82f0` and published the Linux, Windows, macOS Intel, and macOS ARM
+installers with `SHA256SUMS`. Downloading the public release assets and running
+`sha256sum -c SHA256SUMS` verified every installer.
 
 The beta.9 pre-release GitHub Actions run `34678171973` passed from commit
 `015b588` on Linux, Windows Server 2025, macOS 15 Intel, and macOS 15 ARM. The
