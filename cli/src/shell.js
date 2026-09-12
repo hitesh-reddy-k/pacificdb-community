@@ -377,10 +377,18 @@ export async function runShell(client, streams, options = {}) {
         printResponse(streams.output, { status: 'ok', username: response.username,
           role: response.role }, 'security_authenticate');
       } else if (parsed.kind === 'useProject') {
-        context.projectId = parsed.id;
+        const response = await client.request({ action: 'community_project_get', id: parsed.id });
+        const projectId = response?.project?.id;
+        if (typeof projectId !== 'string' || !projectId) throw new Error('project_not_found');
+        context.projectId = projectId;
         await saveContext(home, context);
-        printResponse(streams.output, { status: 'ok', projectId: parsed.id });
+        printResponse(streams.output, { status: 'ok', projectId });
       } else if (parsed.kind === 'useDatabase') {
+        const response = await client.request({ action: 'listDatabases' });
+        const databases = Array.isArray(response) ? response : response?.databases;
+        if (!Array.isArray(databases) || !databases.includes(parsed.name)) {
+          throw new Error('database_not_found');
+        }
         context.database = parsed.name;
         client.database = parsed.name;
         await saveContext(home, context);

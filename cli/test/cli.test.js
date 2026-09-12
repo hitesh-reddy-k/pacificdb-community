@@ -37,6 +37,11 @@ test('shell persists local context and dispatches project/database commands', as
       if (command.action === 'community_project_create') {
         return { status: 'ok', project: { id: 'project_1', name: command.name } };
       }
+      if (command.action === 'community_project_get') {
+        if (command.id !== 'project_1') throw new Error('project_not_found');
+        return { status: 'ok', project: { id: 'project_1', name: 'demo' } };
+      }
+      if (command.action === 'listDatabases') return ['app'];
       return { status: 'ok' };
     }
   };
@@ -51,13 +56,46 @@ test('shell persists local context and dispatches project/database commands', as
   await running;
 
   assert.deepEqual(requests.map((request) => request.action), [
-    'community_project_create', 'createDatabase', 'community_database_map'
+    'community_project_create', 'community_project_get', 'createDatabase',
+    'community_database_map', 'listDatabases'
   ]);
   const context = JSON.parse(await readFile(path.join(cliHome, 'context.json')));
   assert.equal(context.projectId, 'project_1');
   assert.equal(context.database, 'app');
   assert.equal((await readFile(path.join(cliHome, 'history'), 'utf8')).includes('exit'),
                false);
+});
+
+test('shell rejects nonexistent project and database without changing context', async () => {
+  const cliHome = await mkdtemp(path.join(os.tmpdir(), 'pacificdb-shell-invalid-context-'));
+  await writeFile(path.join(cliHome, 'context.json'), JSON.stringify({
+    projectId: 'project_existing', database: 'existing'
+  }), { mode: 0o600 });
+  const client = {
+    database: '', token: '',
+    async request(command) {
+      if (command.action === 'community_project_get') throw new Error('project_not_found');
+      if (command.action === 'listDatabases') return ['existing'];
+      return { status: 'ok' };
+    }
+  };
+  const input = new PassThrough();
+  const output = new PassThrough();
+  let text = '';
+  output.on('data', (chunk) => { text += chunk; });
+  const running = runShell(client, { input, output }, { cliHome });
+  input.write('use project definitely-does-not-exist\n');
+  input.write('use missing-database\n');
+  input.end('exit\n');
+  await running;
+
+  const context = JSON.parse(await readFile(path.join(cliHome, 'context.json')));
+  assert.deepEqual(context, { projectId: 'project_existing', database: 'existing' });
+  assert.equal(client.database, 'existing');
+  assert.match(text, /project_not_found/);
+  assert.match(text, /database_not_found/);
+  assert.doesNotMatch(text, /"projectId": "definitely-does-not-exist"/);
+  assert.doesNotMatch(text, /"database": "missing-database"/);
 });
 
 test('rejects unknown commands with useful usage', async () => {

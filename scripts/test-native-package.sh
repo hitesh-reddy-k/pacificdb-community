@@ -13,6 +13,7 @@ cleanup() {
     kill "$server_pid" 2>/dev/null || true
     wait "$server_pid" 2>/dev/null || true
   fi
+  rm -rf -- "$root" "$home"
 }
 trap cleanup EXIT
 

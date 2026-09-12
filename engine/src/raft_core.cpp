@@ -2974,6 +2974,12 @@ bool RaftCore::replicateAndApply(const json& inputEntry, OperationPriority prior
                     index, index, timeoutMs, ApplySource::LEADER_BYPASS)) {
                 throw std::runtime_error("single-node committed entry was not applied");
             }
+            // In a one-node group the local durable append is the quorum. Recovery
+            // cannot infer that an arbitrary log tail was acknowledged, so publish
+            // the committed/applied watermark durably before the client sees success.
+            // Without this checkpoint, a crash after any earlier clean restart made
+            // the newly acknowledged tail indistinguishable from an uncommitted one.
+            persistProgress();
             g_writeLifecycleQuorumReached.fetch_add(1, std::memory_order_relaxed);
             g_writeLifecycleApplied.fetch_add(1, std::memory_order_relaxed);
             g_writeLifecycleResponded.fetch_add(1, std::memory_order_relaxed);

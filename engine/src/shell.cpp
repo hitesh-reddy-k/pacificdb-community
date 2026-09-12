@@ -212,7 +212,15 @@ nlohmann::json sendJson(const std::string& host, const std::string& port,
             command["token"] = context->token;
     }
     auto response = nlohmann::json::parse(request(host, port, command));
-    if (response.contains("error")) throw std::runtime_error(response.dump());
+    if (response.contains("error")) {
+        std::string text = response.at("error").is_string()
+            ? response.at("error").get<std::string>() : "request_failed";
+        if (response.contains("message") && response.at("message").is_string() &&
+            response.at("message").get<std::string>() != text) {
+            text += ": " + response.at("message").get<std::string>();
+        }
+        throw std::runtime_error(text);
+    }
     return response;
 }
 
@@ -269,9 +277,15 @@ void saveContext(const std::filesystem::path& home,
     std::filesystem::create_directories(home);
     const auto temporary = home / "context.json.tmp";
     const auto destination = home / "context.json";
-    std::ofstream(temporary, std::ios::trunc) << nlohmann::json{
-        {"database", context.database}, {"projectId", context.projectId},
-        {"token", context.token}}.dump(2);
+    std::ofstream output(temporary, std::ios::trunc);
+    if (!output) throw std::runtime_error("could not save CLI context");
+    output << nlohmann::json{{"database", context.database},
+                             {"projectId", context.projectId},
+                             {"token", context.token}}.dump(2);
+    output.flush();
+    if (!output) throw std::runtime_error("could not save CLI context");
+    output.close();
+    if (!output) throw std::runtime_error("could not save CLI context");
     ownerOnly(temporary);
     std::error_code error;
     std::filesystem::rename(temporary, destination, error);
@@ -294,7 +308,13 @@ void appendHistory(const std::filesystem::path& home, const std::string& line) {
     if (!safeHistory(line)) return;
     std::filesystem::create_directories(home);
     const auto path = home / "history";
-    std::ofstream(path, std::ios::app) << line << '\n';
+    std::ofstream output(path, std::ios::app);
+    if (!output) throw std::runtime_error("could not save CLI history");
+    output << line << '\n';
+    output.flush();
+    if (!output) throw std::runtime_error("could not save CLI history");
+    output.close();
+    if (!output) throw std::runtime_error("could not save CLI history");
     ownerOnly(path);
 }
 
@@ -720,11 +740,26 @@ int main(int argc, char** argv) {
                             {"username", result.value("username", "")},
                             {"role", result.value("role", "")}}.dump(2) << '\n';
                     } else if (kind == "use_project") {
-                        context.projectId = parsed.at("id");
+                        const auto response = sendJson(host, port, withContext({
+                            {"action", "community_project_get"},
+                            {"id", parsed.at("id")}}, context));
+                        if (!response.contains("project") ||
+                            !response.at("project").is_object() ||
+                            response.at("project").value("id", "").empty()) {
+                            throw std::runtime_error("project_not_found");
+                        }
+                        context.projectId = response.at("project").at("id");
                         saveContext(home, context);
                         std::cout << nlohmann::json{{"status", "ok"},
                             {"projectId", context.projectId}}.dump(2) << '\n';
                     } else if (kind == "use_database") {
+                        const auto response = sendJson(host, port, withContext(
+                            {{"action", "listDatabases"}}, context));
+                        if (!response.is_array() ||
+                            std::find(response.begin(), response.end(), parsed.at("name")) ==
+                                response.end()) {
+                            throw std::runtime_error("database_not_found");
+                        }
                         context.database = parsed.at("name");
                         saveContext(home, context);
                         std::cout << nlohmann::json{{"status", "ok"},

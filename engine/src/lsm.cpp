@@ -4750,6 +4750,8 @@ bool LSM::applySnapshot(const nlohmann::json& payload,
             // Moving them during an LSM snapshot creates a crash window in which
             // the state machine has advanced but its consensus proof is missing.
             if (name == "raft" || name == "logs" || name == "backups" ||
+                name == "security" || name == "restores" ||
+                name == "shard_map.json" ||
                 (!name.empty() && name.front() == '.')) continue;
             validateStorageIdentifier(name, "snapshotRootIdentifier");
             validateContainedStoragePath(rootPath, src);

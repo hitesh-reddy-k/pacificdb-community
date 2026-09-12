@@ -82,8 +82,21 @@ int main() {
 
         // Initialize follower LSM (empty) and apply snapshot
         LSM::init(followerRoot);
+        fs::create_directories(fs::path(followerRoot) / "security");
+        fs::create_directories(fs::path(followerRoot) / "restores");
+        std::ofstream(fs::path(followerRoot) / "security" / "api_keys.json")
+            << "acknowledged-api-key-state";
+        std::ofstream(fs::path(followerRoot) / "restores" / "journal.json")
+            << "restore-state";
+        std::ofstream(fs::path(followerRoot) / "shard_map.json") << "shard-state";
         bool ok = LSM::applySnapshot(snap);
         if (!ok) { std::cerr << "applySnapshot failed" << std::endl; return 1; }
+        if (!fs::exists(fs::path(followerRoot) / "security" / "api_keys.json") ||
+            !fs::exists(fs::path(followerRoot) / "restores" / "journal.json") ||
+            !fs::exists(fs::path(followerRoot) / "shard_map.json")) {
+            std::cerr << "snapshot apply removed non-LSM engine state" << std::endl;
+            return 1;
+        }
         if (!LSM::runPendingIndexRebuild()) {
             std::cerr << "snapshot index rebuild failed" << std::endl;
             return 1;

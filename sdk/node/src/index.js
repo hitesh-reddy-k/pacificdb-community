@@ -56,7 +56,12 @@ export class PacificDBClient {
         socket.end();
         try {
           const value = JSON.parse(response.slice(0, newline));
-          if (value?.error) reject(Object.assign(new Error(String(value.error)), { response: value }));
+          if (value?.error) {
+            const code = String(value.error);
+            const detail = typeof value.message === 'string' && value.message !== code
+              ? `${code}: ${value.message}` : code;
+            reject(Object.assign(new Error(detail), { response: value }));
+          }
           else resolve(value);
         } catch (error) { reject(error); }
       });

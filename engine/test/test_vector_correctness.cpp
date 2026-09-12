@@ -86,6 +86,20 @@ int main() {
     expect(filtered.size() == 1 && filtered[0].value("id", "") == "unit",
            "streaming vector scan applies field and modality filters");
 
+    for (const auto& invalid : {
+             json{{"vector", json::array()}, {"k", 1}, {"metric", "cosine"}},
+             json{{"vector", json::array({1.0, "bad"})}, {"k", 1}, {"metric", "cosine"}},
+             json{{"vector", json::array({1.0, 0.0})}, {"k", 0}, {"metric", "cosine"}},
+             json{{"vector", json::array({1.0, 0.0})}, {"k", 1}, {"metric", "unknown"}}}) {
+        bool rejected = false;
+        try {
+            (void)DatabaseEngine::queryVector(user, "vector_db", "embeddings", invalid);
+        } catch (const std::invalid_argument&) {
+            rejected = true;
+        }
+        expect(rejected, "invalid vector query is rejected explicitly");
+    }
+
     std::cout << "VECTOR_CORRECTNESS_PASS" << std::endl;
     return 0;
 }

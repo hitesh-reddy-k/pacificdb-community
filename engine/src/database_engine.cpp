@@ -2620,6 +2620,13 @@ std::vector<json> DatabaseEngine::find(const std::string& userId,
             }
         }
 
+        // Column indexes currently address top-level fields. Treating a dotted
+        // path as an indexed lookup makes an empty index result authoritative
+        // and incorrectly hides documents that the normal query evaluator can
+        // match. Keep dotted predicates on the merged scan until nested column
+        // indexes have an explicit on-disk representation.
+        if (fastField.find('.') != std::string::npos) fastField.clear();
+
         bool docsFetched = false;
         if (!fastField.empty()) {
             // Strong reads may use the same visibility-aware index path as eventual
@@ -2810,9 +2817,26 @@ std::vector<json> DatabaseEngine::queryVector(const std::string& userId,
     requireStorageNamespace(userId, dbName, collection);
     auto queryStart = std::chrono::steady_clock::now();
     // query: { vector: [...], k: int, metric: "cosine"|"l2", filter: {...}, modality?: string }
+    if (!query.contains("vector") || !query["vector"].is_array() ||
+        query["vector"].empty()) {
+        throw std::invalid_argument("vector must be a non-empty numeric array");
+    }
+    for (const auto& value : query["vector"]) {
+        if (!value.is_number() || !std::isfinite(value.get<double>())) {
+            throw std::invalid_argument("vector must be a non-empty numeric array");
+        }
+    }
+    if (query.contains("k") && !query["k"].is_number_integer()) {
+        throw std::invalid_argument("k must be a positive integer");
+    }
     std::vector<double> q = jsonToVector(query.value("vector", json::array()));
     int k = query.value("k", 10);
     std::string metric = query.value("metric", std::string("cosine"));
+    if (k <= 0) throw std::invalid_argument("k must be a positive integer");
+    if (metric != "cosine" && metric != "l2" && metric != "euclidean" &&
+        metric != "dot" && metric != "dot_product") {
+        throw std::invalid_argument("unsupported vector metric");
+    }
     json filter = query.value("filter", json::object());
     std::string modality = query.value("modality", std::string(""));
 

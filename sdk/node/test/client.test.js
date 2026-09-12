@@ -24,6 +24,17 @@ test('sends one JSON command and parses one response', async (t) => {
                    { ok: true, action: 'ping', database: 'app' });
 });
 
+test('preserves the public engine detail in request errors', async (t) => {
+  const server = net.createServer((socket) => socket.once('data', () =>
+    socket.end(JSON.stringify({ error: 'execution_exception',
+      message: 'media upload has missing chunks', _engineTrace: { internal: true } }) + '\n')));
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => server.close());
+  const client = new PacificDBClient({ host: '127.0.0.1', port: server.address().port });
+  await assert.rejects(client.request({ action: 'community_media_finalize' }),
+    /execution_exception: media upload has missing chunks/);
+});
+
 test('stores arbitrary media bytes and vector data through public methods', async (t) => {
   const requests = [];
   const server = net.createServer((socket) => {

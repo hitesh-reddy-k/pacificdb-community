@@ -25,6 +25,15 @@ done
 node intelligence/test.js
 npm install --ignore-scripts --no-audit --no-fund
 npm run test:npm
+node scripts/test-community-e2e.mjs "$BUILD_DIR"
+node scripts/test-community-contract-matrix.mjs "$BUILD_DIR"
+node scripts/test-community-restart-matrix.mjs "$BUILD_DIR"
+scripts/test-community-disk-full.sh "$BUILD_DIR"
+node scripts/test-community-rf3.mjs "$BUILD_DIR"
+node scripts/test-community-rf3-partition.mjs "$BUILD_DIR"
+PACIFICDB_RF3_DURATION_SECONDS="${PACIFICDB_RF3_SMOKE_SECONDS:-10}" \
+PACIFICDB_RF3_REPEATS=1 PACIFICDB_RF3_CLIENTS=64,128 \
+  node scripts/test-community-rf3-sustained.mjs "$BUILD_DIR"
 PYTHONPATH=sdk/python python3 -m pytest -q sdk/python/tests
 mvn -q -f sdk/java/pom.xml test
 benchmarks/ycsb/test_binding.sh

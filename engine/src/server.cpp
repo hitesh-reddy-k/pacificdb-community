@@ -2705,8 +2705,15 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
             if (backupId.empty()) {
                 res = {{"error", "backup_id required"}};
             } else {
-                bool ok = BackupManager::instance().verifyBackup(backupId);
-                res = {{"success", ok}, {"backup_id", backupId}};
+                const auto backup = BackupManager::instance().getBackupInfo(backupId);
+                if (backup.backupId.empty()) {
+                    res = {{"error", "backup_not_found"}, {"backup_id", backupId}};
+                } else if (!BackupManager::instance().verifyBackup(backupId)) {
+                    res = {{"error", "backup_verification_failed"},
+                           {"backup_id", backupId}};
+                } else {
+                    res = {{"success", true}, {"backup_id", backupId}};
+                }
             }
         }
 
@@ -2733,13 +2740,17 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                     pacificdb::community::CommunityCatalog::instance().recordRestore(
                         req.value("userId", "system"), backupId, targetDir, ok,
                         ok ? "" : "restore_failed");
-                    res = {
-                        {"success", ok},
-                        {"backup_id", backupId},
-                        {"target_dir", targetDir},
-                        {"target_cluster_id", targetClusterId},
-                        {"target_node_id", targetNodeId},
-                    };
+                    if (ok) {
+                        res = {
+                            {"success", true},
+                            {"backup_id", backupId},
+                            {"target_dir", targetDir},
+                            {"target_cluster_id", targetClusterId},
+                            {"target_node_id", targetNodeId},
+                        };
+                    } else {
+                        res = {{"error", "restore_failed"}, {"backup_id", backupId}};
+                    }
                 }
             }
         }
@@ -2960,7 +2971,15 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                     validateCollectionStorageBeforeReplication(
                         userId, dbName, collection);
                 }
-                {
+                const bool targetExists = dropDb
+                    ? DatabaseEngine::databaseExists(userId, dbName)
+                    : DatabaseEngine::collectionExists(userId, dbName, collection);
+                if (!targetExists) {
+                    res = {
+                        {"error", dropDb ? "database_not_found" : "collection_not_found"},
+                        {"message", dropDb ? "Database does not exist" : "Collection does not exist"}
+                    };
+                } else {
                     const std::string writeConsistency = normalizeReadConsistencyMode(
                         req.value("consistency", std::string("strong")));
                     if (!rejectStaleLeaderTerm(req, writeConsistency, res)) {
@@ -3460,31 +3479,55 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
             const std::string userId = req.value("userId", "system");
             const std::string dbName = req.value("dbName", "");
             const std::string collection = req.value("collection", "");
-            const auto count = DatabaseEngine::count(
-                userId, dbName, collection, req.value("filter", json::object()));
-            res = {{"status", "ok"}, {"count", count}};
+            if (!DatabaseEngine::userExists(userId)) res = {{"error", "user_not_found"}};
+            else if (!DatabaseEngine::databaseExists(userId, dbName))
+                res = {{"error", "database_not_found"}};
+            else if (!DatabaseEngine::collectionExists(userId, dbName, collection))
+                res = {{"error", "collection_not_found"}};
+            else {
+                const auto count = DatabaseEngine::count(
+                    userId, dbName, collection, req.value("filter", json::object()));
+                res = {{"status", "ok"}, {"count", count}};
+            }
         }
         else if (action == "aggregate") {
             const std::string userId = req.value("userId", "system");
             const std::string dbName = req.value("dbName", "");
             const std::string collection = req.value("collection", "");
-            auto documents = DatabaseEngine::find(userId, dbName, collection,
-                                                   json::object());
-            auto aggregate = pacificdb::community::aggregateDocuments(
-                std::move(documents), req.value("pipeline", json::array()));
-            res = {{"status", "ok"},
-                   {"count", aggregate.at("documents").size()},
-                   {"data", aggregate.at("documents")},
-                   {"stages", aggregate.at("stages")}};
+            if (!DatabaseEngine::userExists(userId)) res = {{"error", "user_not_found"}};
+            else if (!DatabaseEngine::databaseExists(userId, dbName))
+                res = {{"error", "database_not_found"}};
+            else if (!DatabaseEngine::collectionExists(userId, dbName, collection))
+                res = {{"error", "collection_not_found"}};
+            else {
+                auto documents = DatabaseEngine::find(userId, dbName, collection,
+                                                       json::object());
+                auto aggregate = pacificdb::community::aggregateDocuments(
+                    std::move(documents), req.value("pipeline", json::array()));
+                res = {{"status", "ok"},
+                       {"count", aggregate.at("documents").size()},
+                       {"data", aggregate.at("documents")},
+                       {"stages", aggregate.at("stages")}};
+            }
         }
         else if (action == "explain") {
-            auto plan = pacificdb::community::explainFind(
-                req.value("filter", json::object()));
-            plan["limit"] = req.value("limit", -1LL);
-            plan["offset"] = req.value("offset", 0LL);
-            plan["consistency"] = normalizeReadConsistencyMode(
-                req.value("consistency", std::string("eventual")));
-            res = {{"status", "ok"}, {"query_plan", plan}};
+            const std::string userId = req.value("userId", "system");
+            const std::string dbName = req.value("dbName", "");
+            const std::string collection = req.value("collection", "");
+            if (!DatabaseEngine::userExists(userId)) res = {{"error", "user_not_found"}};
+            else if (!DatabaseEngine::databaseExists(userId, dbName))
+                res = {{"error", "database_not_found"}};
+            else if (!DatabaseEngine::collectionExists(userId, dbName, collection))
+                res = {{"error", "collection_not_found"}};
+            else {
+                auto plan = pacificdb::community::explainFind(
+                    req.value("filter", json::object()));
+                plan["limit"] = req.value("limit", -1LL);
+                plan["offset"] = req.value("offset", 0LL);
+                plan["consistency"] = normalizeReadConsistencyMode(
+                    req.value("consistency", std::string("eventual")));
+                res = {{"status", "ok"}, {"query_plan", plan}};
+            }
         }
 
         // ---------------- FIND ----------------
@@ -4176,22 +4219,27 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
             if (!res.is_null()) {
                 // Read fence failed; return error.
             } else {
-            auto results = DatabaseEngine::queryVector(
-                req.value("userId", "system"),
-                req["dbName"],
-                req["collection"],
-                req
-            );
-            res["status"] = "ok";
-            res["count"] = results.size();
-            res["data"] = results;
-            EngineMetrics::recordQuery(0, false, false);
-            trackShardOp(req.value("userId", "system"), req.value("dbName", ""), "read", 0, 0, true);
-            std::string truncReasonV;
-            if (QueryLimiter::consumeTruncatedFlag(truncReasonV)) {
-                res["partial"] = true;
-                res["partial_reason"] = truncReasonV;
-            }
+                const std::string userId = req.value("userId", "system");
+                const std::string dbName = req.value("dbName", "");
+                const std::string collection = req.value("collection", "");
+                if (!DatabaseEngine::userExists(userId)) res = {{"error", "user_not_found"}};
+                else if (!DatabaseEngine::databaseExists(userId, dbName))
+                    res = {{"error", "database_not_found"}};
+                else if (!DatabaseEngine::collectionExists(userId, dbName, collection))
+                    res = {{"error", "collection_not_found"}};
+                else {
+                    auto results = DatabaseEngine::queryVector(userId, dbName, collection, req);
+                    res["status"] = "ok";
+                    res["count"] = results.size();
+                    res["data"] = results;
+                    EngineMetrics::recordQuery(0, false, false);
+                    trackShardOp(userId, dbName, "read", 0, 0, true);
+                    std::string truncReasonV;
+                    if (QueryLimiter::consumeTruncatedFlag(truncReasonV)) {
+                        res["partial"] = true;
+                        res["partial_reason"] = truncReasonV;
+                    }
+                }
             }
         }
 

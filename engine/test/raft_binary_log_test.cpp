@@ -1,4 +1,5 @@
 #include "database_engine.hpp"
+#include "community_catalog.hpp"
 #include "lsm.hpp"
 #include "raft_core.hpp"
 #include "wal.hpp"
@@ -223,6 +224,35 @@ int recoverPhase(const fs::path& root) {
     return 0;
 }
 
+int writeProjectAndCrash(const fs::path& root) {
+    initialize(root, "project-writer");
+    auto& catalog = pacificdb::community::CommunityCatalog::instance();
+    catalog.initialize("system");
+    const auto project = catalog.createProject("system", "crash-durable-project");
+    if (project.value("name", std::string()) != "crash-durable-project" ||
+        catalog.getProject("system", project.value("id", std::string())).is_null()) {
+        throw std::runtime_error("project write was not acknowledged and visible");
+    }
+    std::_Exit(0);
+}
+
+int recoverProject(const fs::path& root) {
+    initialize(root, "project-recoverer");
+    auto& catalog = pacificdb::community::CommunityCatalog::instance();
+    catalog.initialize("system");
+    const auto projects = catalog.listProjects("system");
+    const bool found = std::any_of(projects.begin(), projects.end(), [](const auto& project) {
+        return project.value("name", std::string()) == "crash-durable-project";
+    });
+    RaftCore::instance().stop();
+    WAL::shutdown();
+    if (!found) {
+        throw std::runtime_error(
+            "acknowledged project disappeared after a second-process crash");
+    }
+    return 0;
+}
+
 std::string quote(const fs::path& value) {
     return "\"" + value.string() + "\"";
 }
@@ -269,6 +299,22 @@ int main(int argc, char** argv) {
             return 1;
         }
     }
+    if (argc == 3 && std::string(argv[1]) == "--write-project-crash") {
+        try {
+            return writeProjectAndCrash(fs::path(argv[2]));
+        } catch (const std::exception& error) {
+            std::cerr << "RAFT_PROJECT_WRITE_FAIL: " << error.what() << '\n';
+            return 1;
+        }
+    }
+    if (argc == 3 && std::string(argv[1]) == "--recover-project") {
+        try {
+            return recoverProject(fs::path(argv[2]));
+        } catch (const std::exception& error) {
+            std::cerr << "RAFT_PROJECT_RECOVER_FAIL: " << error.what() << '\n';
+            return 1;
+        }
+    }
 
     const fs::path root = fs::temp_directory_path() /
         ("pacificdb-raft-binary-log-" + std::to_string(
@@ -285,6 +331,16 @@ int main(int argc, char** argv) {
         const std::string recoverCommand = quote(executable) + " --recover " + quote(root);
         if (std::system(recoverCommand.c_str()) != 0) {
             throw std::runtime_error("recovery subprocess failed");
+        }
+        const std::string projectWriteCommand = quote(executable) +
+            " --write-project-crash " + quote(root);
+        if (std::system(projectWriteCommand.c_str()) != 0) {
+            throw std::runtime_error("project writer subprocess failed");
+        }
+        const std::string projectRecoverCommand = quote(executable) +
+            " --recover-project " + quote(root);
+        if (std::system(projectRecoverCommand.c_str()) != 0) {
+            throw std::runtime_error("acknowledged project crash recovery failed");
         }
 
         fs::create_directories(corruptRoot);
