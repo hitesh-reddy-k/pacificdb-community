@@ -64,6 +64,25 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cmake --build build --config Release --target db_engine pacificdb
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $hasCertificate = $env:CERT_BASE64 -and $env:CERT_PASS
+          if ($env:GITHUB_REF.StartsWith('refs/tags/v') -and -not $hasCertificate) {
+            throw "Windows signing secrets are required for release tags"
+          }
+          if ($hasCertificate) {
+            $certPath = "$env:RUNNER_TEMP\signing_cert.pfx"
+            [IO.File]::WriteAllBytes($certPath, [Convert]::FromBase64String($env:CERT_BASE64))
+            $signtool = (Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" |
+              Sort-Object FullName -Descending | Select-Object -First 1).FullName
+            if (-not $signtool) { throw "SignTool was not found" }
+          }
+          function Invoke-CodeSigning([string[]] $files) {
+            foreach ($file in $files) {
+              & $signtool sign /f $certPath /p $env:CERT_PASS /tr https://timestamp.digicert.com /td sha256 /fd sha256 $file
+              if ($LASTEXITCODE -ne 0) { throw "Failed to sign $file" }
+              & $signtool verify /pa /v $file
+              if ($LASTEXITCODE -ne 0) { throw "Failed to verify $file" }
+            }
+          }
           $env:PACIFICDB_ENVIRONMENT = "development"
           $env:PACIFICDB_HOME = "$pwd/package-test"
           $env:DATA_ROOT = "$env:PACIFICDB_HOME/data"
@@ -93,23 +112,17 @@ jobs:
           } finally {
             if ($serverPid) { Stop-Process -Id $serverPid -Force -ErrorAction SilentlyContinue }
           }
-          cpack --config build/CPackConfig.cmake -C Release -G NSIS -B dist
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-          if ($env:CERT_BASE64 -and $env:CERT_PASS) {
-            $certBytes = [Convert]::FromBase64String($env:CERT_BASE64)
-            $certPath = "$env:RUNNER_TEMP\signing_cert.pfx"
-            [IO.File]::WriteAllBytes($certPath, $certBytes)
-            $signtool = (Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" | Select-Object -First 1).FullName
-            if ($signtool) {
-              Get-ChildItem dist/*.exe | ForEach-Object {
-                & $signtool sign /f $certPath /p $env:CERT_PASS /tr http://timestamp.digicert.com /td sha256 /fd sha256 $_.FullName
-              }
+          try {
+            if ($hasCertificate) {
+              Invoke-CodeSigning @('build/Release/db_engine.exe', 'build/Release/pacificdb.exe')
             }
-            Remove-Item $certPath -Force
+            cpack --config build/CPackConfig.cmake -C Release -G NSIS -B dist
+            if ($LASTEXITCODE -ne 0) { throw "CPack failed with exit code $LASTEXITCODE" }
+            $installer = Get-ChildItem dist/*.exe
+            if ($hasCertificate) { Invoke-CodeSigning $installer.FullName }
+          } finally {
+            if ($certPath) { Remove-Item $certPath -Force -ErrorAction SilentlyContinue }
           }
-
-          $installer = Get-ChildItem dist/*.exe
           $installRoot = "$env:RUNNER_TEMP\PacificDB"
           $install = Start-Process -FilePath $installer.FullName `
             -ArgumentList '/S', "/D=$installRoot" -PassThru
