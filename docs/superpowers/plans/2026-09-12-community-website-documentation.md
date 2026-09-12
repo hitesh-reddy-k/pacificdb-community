@@ -287,13 +287,13 @@ git log --oneline origin/main..HEAD
 
 Expected: no forbidden product claims and only planned files/commits.
 
-- [ ] **Step 3: Push the completed work to main**
+- [x] **Step 3: Push the completed work to main**
 
 ```bash
 git push origin HEAD:main
 ```
 
-- [ ] **Step 4: Verify GitHub Pages and public links**
+- [x] **Step 4: Verify GitHub Pages and public links**
 
 Wait for the Pages workflow for the pushed commit. Require HTTP 200 for
 `index.html`, `docs.html`, `docs.css`, `docs.js`, and `pacificdb-logo.png`.
@@ -301,7 +301,7 @@ Require the deployed landing page to contain `href="docs.html"` and the deployed
 documentation to contain beta.9, the complete section set, and the npm beta.7
 disclosure.
 
-- [ ] **Step 5: Clean generated files and report evidence**
+- [x] **Step 5: Clean generated files and report evidence**
 
 Remove generated `build/` and `node_modules/` directories, fetch `origin/main`,
 and require `HEAD == origin/main` with an empty `git status --short` result.
