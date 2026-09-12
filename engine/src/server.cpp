@@ -7121,7 +7121,11 @@ void startServer() {
                 break;
         }
         updateInflightGauges();
-        maybeFlushPendingClients();
+        // The fallback loop blocks in accept() and has no timer tick. Leaving a
+        // sub-batch request pending here can stall a lone client until another
+        // connection arrives. Linux epoll retains timed coalescing above; the
+        // portable blocking path must dispatch before accepting again.
+        flushPendingClients();
     }
 
     g_serverReady = 0;

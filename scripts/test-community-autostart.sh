@@ -5,6 +5,7 @@ build_dir=$(realpath "${1:-build}")
 native_home=$(mktemp -d /tmp/pacificdb-native-autostart-XXXXXX)
 node_home=$(mktemp -d /tmp/pacificdb-node-autostart-XXXXXX)
 disabled_home=$(mktemp -d /tmp/pacificdb-disabled-autostart-XXXXXX)
+blocking_home=$(mktemp -d /tmp/pacificdb-blocking-autostart-XXXXXX)
 engine_pids=()
 
 free_port() {
@@ -15,7 +16,7 @@ cleanup() {
   for pid in "${engine_pids[@]}"; do
     kill "$pid" 2>/dev/null || true
   done
-  rm -rf -- "$native_home" "$node_home" "$disabled_home"
+  rm -rf -- "$native_home" "$node_home" "$disabled_home" "$blocking_home"
 }
 trap cleanup EXIT
 
@@ -42,6 +43,15 @@ run_concurrent_start "'$build_dir/pacificdb'" "$native_home" "$native_port" "$na
 printf 'help\nquit\n' | PACIFICDB_HOME="$native_home" \
   "$build_dir/pacificdb" --port "$native_port" >"$native_home/shell.out"
 grep -q 'COMMUNITY BETA' "$native_home/shell.out"
+
+blocking_port=$(free_port)
+blocking_raft_port=$(free_port)
+PACIFICDB_HOME="$blocking_home" ENGINE_PORT="$blocking_port" \
+  RAFT_LISTEN_PORT="$blocking_raft_port" SERVER_IO_MODEL=blocking \
+  timeout 20 "$build_dir/pacificdb" --port "$blocking_port" ping \
+  >"$blocking_home/ping.out"
+grep -q pong "$blocking_home/ping.out"
+engine_pids+=("$(cat "$blocking_home/engine.pid")")
 
 node_port=$(free_port)
 node_raft_port=$(free_port)
