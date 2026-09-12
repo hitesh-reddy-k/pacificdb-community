@@ -85,6 +85,19 @@ bool canConnect(const std::string& host, const std::string& port) {
     return connected;
 }
 
+std::string request(const std::string& host, const std::string& port,
+                    const nlohmann::json& command, int timeoutSeconds = 30);
+
+bool engineResponds(const std::string& host, const std::string& port) {
+    try {
+        const auto response = nlohmann::json::parse(
+            request(host, port, {{"action", "ping"}, {"userId", "system"}}, 1));
+        return response.value("status", "") == "pong";
+    } catch (...) {
+        return false;
+    }
+}
+
 bool isLocalHost(const std::string& host) {
     return host == "127.0.0.1" || host == "localhost" || host == "::1";
 }
@@ -168,8 +181,8 @@ void ensureLocalEngine(const std::string& host, const std::string& port,
     if (!std::filesystem::create_directory(startLock, lockError)) {
         if (lockError) throw std::runtime_error("could not lock local engine startup: " +
                                                 lockError.message());
-        for (int attempt = 0; attempt < 100; ++attempt) {
-            if (canConnect(host, port)) return;
+        for (int attempt = 0; attempt < 300; ++attempt) {
+            if (engineResponds(host, port)) return;
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
         throw std::runtime_error("another PacificDB process did not finish starting the local engine");
@@ -242,8 +255,8 @@ void ensureLocalEngine(const std::string& host, const std::string& port,
     chmod(pidFile.c_str(), S_IRUSR | S_IWUSR);
 #endif
 
-    for (int attempt = 0; attempt < 100; ++attempt) {
-        if (canConnect(host, port)) {
+    for (int attempt = 0; attempt < 300; ++attempt) {
+        if (engineResponds(host, port)) {
             std::cout << "✓ Local engine started at " << host << ':' << port << '\n';
             return;
         }
@@ -254,7 +267,7 @@ void ensureLocalEngine(const std::string& host, const std::string& port,
 }
 
 std::string request(const std::string& host, const std::string& port,
-                    const nlohmann::json& command) {
+                    const nlohmann::json& command, int timeoutSeconds) {
     addrinfo hints{};
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
@@ -279,13 +292,13 @@ std::string request(const std::string& host, const std::string& port,
     }
 
 #ifdef _WIN32
-    DWORD timeout = 30000;
+    DWORD timeout = static_cast<DWORD>(timeoutSeconds * 1000);
     setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO,
                reinterpret_cast<const char*>(&timeout), sizeof(timeout));
     setsockopt(socket, SOL_SOCKET, SO_SNDTIMEO,
                reinterpret_cast<const char*>(&timeout), sizeof(timeout));
 #else
-    timeval timeout{30, 0};
+    timeval timeout{timeoutSeconds, 0};
     setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
     setsockopt(socket, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
 #endif
@@ -301,12 +314,6 @@ std::string request(const std::string& host, const std::string& port,
         }
         sent += static_cast<std::size_t>(count);
     }
-#ifdef _WIN32
-    shutdown(socket, SD_SEND);
-#else
-    shutdown(socket, SHUT_WR);
-#endif
-
     std::string response;
     char buffer[4096];
     while (response.find('\n') == std::string::npos) {

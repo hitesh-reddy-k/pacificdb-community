@@ -62,9 +62,10 @@ jobs:
           cmake --build build --config Release --target db_engine pacificdb
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:PACIFICDB_ENVIRONMENT = "development"
-          $env:DATA_ROOT = "$pwd/package-test/data"
-          $env:BACKUP_ROOT = "$pwd/package-test/backup"
-          $env:RESTORE_DIR = "$pwd/package-test/restore"
+          $env:PACIFICDB_HOME = "$pwd/package-test"
+          $env:DATA_ROOT = "$env:PACIFICDB_HOME/data"
+          $env:BACKUP_ROOT = "$env:PACIFICDB_HOME/backup"
+          $env:RESTORE_DIR = "$env:PACIFICDB_HOME/restore"
           $env:ENGINE_BIND_HOST = "127.0.0.1"
           $env:ENGINE_AUTH_REQUIRED = "0"
           $env:RAFT_CLUSTER_ID = "pacificdb-local"
@@ -79,18 +80,15 @@ jobs:
           $env:DBQ_SHARDS = "4"
           $env:DBQ_WORKERS_PER_SHARD = "2"
           New-Item -ItemType Directory -Force $env:DATA_ROOT,$env:BACKUP_ROOT,$env:RESTORE_DIR | Out-Null
-          $server = Start-Process -FilePath build/Release/db_engine.exe -PassThru `
-            -RedirectStandardOutput server.log -RedirectStandardError server-error.log
+          $serverPid = $null
           try {
-            $ready = $false
-            for ($i = 0; $i -lt 60; $i++) {
-              & build/Release/pacificdb.exe --port 19000 ping *> $null
-              if ($LASTEXITCODE -eq 0) { $ready = $true; break }
-              Start-Sleep -Milliseconds 250
+            $pingResult = & build/Release/pacificdb.exe --port 19000 ping 2>&1 | Out-String
+            if ($LASTEXITCODE -ne 0 -or $pingResult -notmatch '"status":\s*"pong"') {
+              throw "Built PacificDB did not start automatically: $pingResult"
             }
-            if (-not $ready) { throw "PacificDB did not start" }
+            $serverPid = Get-Content "$env:PACIFICDB_HOME/engine.pid"
           } finally {
-            Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
+            if ($serverPid) { Stop-Process -Id $serverPid -Force -ErrorAction SilentlyContinue }
           }
           cpack --config build/CPackConfig.cmake -C Release -G NSIS -B dist
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -117,17 +115,18 @@ jobs:
           if ((Get-Command pacificdb.exe).Source -ne "$bin\pacificdb.exe") {
             throw "pacificdb.exe is not available through PATH"
           }
-          $env:ENGINE_PORT = "19000"
-          $env:RAFT_LISTEN_PORT = "19001"
           $env:PACIFICDB_HOME = "$env:RUNNER_TEMP\pacificdb-installed-test"
+          Remove-Item Env:DATA_ROOT,Env:BACKUP_ROOT,Env:RESTORE_DIR -ErrorAction SilentlyContinue
+          $env:ENGINE_PORT = "19100"
+          $env:RAFT_LISTEN_PORT = "19101"
           $localPid = $null
           try {
-            $pingResult = & "$bin\pacificdb.exe" --port 19000 ping 2>&1 | Out-String
+            $pingResult = & "$bin\pacificdb.exe" --port 19100 ping 2>&1 | Out-String
             if ($LASTEXITCODE -ne 0 -or $pingResult -notmatch '"status":\s*"pong"') {
               throw "Installed PacificDB did not start automatically: $pingResult"
             }
             $localPid = Get-Content "$env:PACIFICDB_HOME/engine.pid"
-            $writeResult = & "$bin\pacificdb.exe" --port 19000 request `
+            $writeResult = & "$bin\pacificdb.exe" --port 19100 request `
               '{"action":"createDatabase","dbName":"package_test"}' 2>&1 | Out-String
             if ($LASTEXITCODE -ne 0 -or $writeResult -notmatch '"status":\s*"ok"') {
               throw "Installed PacificDB could not write: $writeResult"
@@ -175,9 +174,10 @@ jobs:
             -DPACIFICDB_ENGINE_VERSION="$version"
           cmake --build build --target db_engine pacificdb -j2
           export PACIFICDB_ENVIRONMENT=development
-          export DATA_ROOT="$RUNNER_TEMP/package-test/data"
-          export BACKUP_ROOT="$RUNNER_TEMP/package-test/backup"
-          export RESTORE_DIR="$RUNNER_TEMP/package-test/restore"
+          export PACIFICDB_HOME="$RUNNER_TEMP/package-test"
+          export DATA_ROOT="$PACIFICDB_HOME/data"
+          export BACKUP_ROOT="$PACIFICDB_HOME/backup"
+          export RESTORE_DIR="$PACIFICDB_HOME/restore"
           export ENGINE_BIND_HOST=127.0.0.1 ENGINE_AUTH_REQUIRED=0
           export RAFT_CLUSTER_ID=pacificdb-local RAFT_NODE_ID=node-1
           export RAFT_IS_LEADER=1 MIN_QUORUM_SIZE=1
@@ -185,16 +185,15 @@ jobs:
           export CONN_MIN_THREADS=4 CONN_MAX_THREADS=64
           export DBQ_SHARDS=4 DBQ_WORKERS_PER_SHARD=2
           mkdir -p "$DATA_ROOT" "$BACKUP_ROOT" "$RESTORE_DIR"
-          build/db_engine >server.log 2>&1 &
-          server_pid=$!
-          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
-          for _ in {1..60}; do
-            if build/pacificdb --port 19000 ping >/dev/null 2>&1; then break; fi
-            sleep 0.25
-          done
           build/pacificdb --port 19000 ping | grep -q pong
           build/pacificdb --port 19000 request \
             '{"action":"createDatabase","dbName":"package_test"}' | grep -q '"status": "ok"'
+          server_pid=$(cat "$PACIFICDB_HOME/engine.pid")
+          kill "$server_pid"
+          for _ in {1..60}; do
+            if ! kill -0 "$server_pid" 2>/dev/null; then break; fi
+            sleep 0.25
+          done
           package_root="$RUNNER_TEMP/package-root"
           cmake --install build --prefix "$package_root/usr/local"
           mkdir -p dist
@@ -207,6 +206,7 @@ jobs:
           sudo installer -pkg "$package" -target /
           export PACIFICDB_HOME="$RUNNER_TEMP/installed-test"
           export ENGINE_PORT=19100 RAFT_LISTEN_PORT=19101
+          unset DATA_ROOT BACKUP_ROOT RESTORE_DIR
           /usr/local/bin/pacificdb --port 19100 ping | grep -q pong
           installed_pid=$(cat "$PACIFICDB_HOME/engine.pid")
           kill "$installed_pid"

@@ -30,6 +30,25 @@ function canConnect(host, port, timeoutMs = 300) {
   });
 }
 
+function protocolReady(host, port, timeoutMs = 1000) {
+  return new Promise((resolve) => {
+    let response = '';
+    const socket = net.createConnection({ host, port });
+    const done = (ready) => { socket.destroy(); resolve(ready); };
+    socket.setTimeout(timeoutMs, () => done(false));
+    socket.once('error', () => done(false));
+    socket.once('connect', () => socket.write('{"action":"ping","userId":"system"}\n'));
+    socket.on('data', (chunk) => {
+      response += chunk;
+      const newline = response.indexOf('\n');
+      if (newline < 0) return;
+      try { done(JSON.parse(response.slice(0, newline)).status === 'pong'); }
+      catch { done(false); }
+    });
+    socket.once('end', () => done(false));
+  });
+}
+
 function localEnvironment(home, port) {
   const raftPort = Number(port) === 9000 ? 9100 : Math.min(Number(port) + 1, 65535);
   return { ...process.env,
@@ -65,8 +84,8 @@ export async function ensureLocalEngine(client, { autoStart = true, output } = {
     await mkdir(startLock);
   } catch (error) {
     if (error.code !== 'EEXIST') throw error;
-    for (let attempt = 0; attempt < 100; attempt += 1) {
-      if (await canConnect(client.host, client.port)) return false;
+    for (let attempt = 0; attempt < 300; attempt += 1) {
+      if (await protocolReady(client.host, client.port)) return false;
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
     throw new Error('Another PacificDB process did not finish starting the local engine');
@@ -91,8 +110,8 @@ export async function ensureLocalEngine(client, { autoStart = true, output } = {
     child.unref();
     await writeFile(path.join(home, 'engine.pid'), `${child.pid}\n`, { mode: 0o600 });
 
-    for (let attempt = 0; attempt < 100; attempt += 1) {
-      if (await canConnect(client.host, client.port)) {
+    for (let attempt = 0; attempt < 300; attempt += 1) {
+      if (await protocolReady(client.host, client.port)) {
         output?.write(`✓ Local engine started at ${client.host}:${client.port}\n`);
         return true;
       }
