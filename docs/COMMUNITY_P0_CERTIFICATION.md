@@ -206,8 +206,11 @@ The host beta.3 installation and host data remained unchanged.
 
 ### Cross-platform package gate
 
-The beta.9 GitHub Actions run `34678171973` passed from commit `015b588` on Linux,
-Windows Server 2025, macOS 15 Intel, and macOS 15 ARM. The Windows job verified
+The beta.9 pre-release GitHub Actions run `34678171973` passed from commit
+`015b588` on Linux, Windows Server 2025, macOS 15 Intel, and macOS 15 ARM. The
+tagged release run `34678700223` then repeated all four platform jobs from
+commit `355aa90` and published the beta.9 installers and SHA-256 manifest. The
+Windows job verified
 silent NSIS installation, user PATH registration, automatic engine startup,
 write success, silent uninstall, and PATH cleanup. Both macOS jobs verified the
 package payload, installed it with the native installer, and verified automatic
