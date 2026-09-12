@@ -211,6 +211,11 @@ The host beta.3 installation and host data remained unchanged.
 
 ### Cross-platform package gate
 
+The beta.11 pre-release GitHub Actions run `34705388862` passed from commit
+`b055407` on Linux, Windows Server 2025, macOS 15 Intel, and macOS 15 ARM.
+Each job built and installed its native package, exercised automatic startup
+and a real write, and uploaded the candidate artifact without publishing it.
+
 The beta.9 pre-release GitHub Actions run `34678171973` passed from commit
 `015b588` on Linux, Windows Server 2025, macOS 15 Intel, and macOS 15 ARM. The
 tagged release run `34678700223` then repeated all four platform jobs from
