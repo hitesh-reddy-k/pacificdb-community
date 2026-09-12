@@ -11,6 +11,15 @@ function initializeDocumentation() {
   const groups = [...document.querySelectorAll('[data-doc-nav-group]')];
   const empty = document.querySelector('[data-doc-empty]');
   const status = document.querySelector('#docs-status');
+  const navigationShell = document.querySelector('.docs-nav-shell');
+  const narrowScreen = window.matchMedia('(max-width: 760px)');
+
+  function fitNavigation(event) {
+    if (navigationShell) navigationShell.open = !event.matches;
+  }
+
+  fitNavigation(narrowScreen);
+  narrowScreen.addEventListener?.('change', fitNavigation);
 
   function setCurrentLink(sectionId) {
     for (const link of links) {
