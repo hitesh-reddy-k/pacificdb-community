@@ -17,9 +17,11 @@ Source commit at test start: `5ed6bdf405f3be4ec586645d8387d08478a02aaf`
 | Linux Debian artifact | **PASS** | Extracted-package smoke plus real Ubuntu 24.04 `apt` install, engine read/write, remove, and data-preservation checks. |
 | RF3 correctness and sustained load | **PASS** | TCP partition/election campaign plus three 10-minute 64-client and three 10-minute 128-client rounds with zero operation errors. |
 | Physical power/storage-controller durability | **BLOCKED** | No dedicated power-cut/storage-controller harness is configured. |
-| Native Windows package and signing | **BLOCKED** | No authorized Windows host or signing identity is configured. |
-| Native macOS package, signing, and notarization | **BLOCKED** | No authorized macOS host, signing identity, or notarization credentials are configured. |
-| Global multi-platform production readiness | **BLOCKED** | The three external gates above have no valid evidence. |
+| Native Windows package | **PASS** | Windows Server 2025 CI built, silently installed, PATH-tested, auto-started, wrote data, and silently uninstalled the NSIS package. |
+| Native macOS packages | **PASS** | macOS 15 Intel and ARM CI built, installed, auto-started, and exercised both `.pkg` artifacts. |
+| Windows signing | **BLOCKED** | No code-signing identity is configured. |
+| macOS signing and notarization | **BLOCKED** | No Developer ID or notarization credentials are configured. |
+| Global signed production readiness | **BLOCKED** | Physical durability and signed/notarized installer evidence remain external gates. |
 
 `0.1.0-beta.8` is a Linux release candidate. This report does not label it a
 globally production-ready release because physical durability and native signed
@@ -198,13 +200,22 @@ The final beta.8 artifact passed:
 
 The host beta.3 installation and host data remained unchanged.
 
+### Cross-platform package gate
+
+GitHub Actions run `34675430398` passed from commit `783fe81` on Linux,
+Windows Server 2025, macOS 15 Intel, and macOS 15 ARM. The Windows job verified
+silent NSIS installation, user PATH registration, automatic engine startup,
+write success, silent uninstall, and PATH cleanup. Both macOS jobs verified the
+package payload, installed it with the native installer, and verified automatic
+startup. The artifacts are unsigned beta packages.
+
 ### External probes
 
 QEMU and `/dev/kvm` exist, but no dedicated disposable VM image is configured.
 That cannot prove physical power or storage-controller cache behavior. No
-authorized Windows/macOS hosts or signing/notarization identities are
-configured. The probe emitted machine-readable `BLOCKED` results without
-printing credential values.
+No physical power-cut/storage-controller harness or signing/notarization
+identities are configured. The probe emitted machine-readable `BLOCKED` results
+without printing credential values.
 
 ## Test summary
 
@@ -297,12 +308,12 @@ node --check scripts/test-community-restart-matrix.mjs
 - **BLOCKED — physical power/storage controller:** this requires a dedicated
   host, controllable power cut, known drive/controller cache policy, and
   post-reboot consistency inspection. Process or VM termination cannot prove it.
-- **BLOCKED — native Windows:** no authorized Windows runner or signing
-  certificate is configured, so native install, SmartScreen, service,
-  signature, and uninstall behavior cannot be certified.
-- **BLOCKED — native macOS:** no authorized macOS runner, Developer ID identity,
-  or notarization credentials are configured, so Gatekeeper, notarization,
-  service, and uninstall behavior cannot be certified.
+- **BLOCKED — Windows signing:** native install, auto-start, write, uninstall,
+  and PATH behavior pass on Windows Server 2025; SmartScreen reputation and an
+  Authenticode signature require a configured certificate.
+- **BLOCKED — macOS signing/notarization:** native Intel and ARM installation
+  and auto-start pass on macOS 15; Gatekeeper approval requires a Developer ID
+  identity and Apple notarization credentials.
 - The TCP proxy campaign proves application transport partition behavior. A
   separate multi-host/kernel-firewall campaign remains useful infrastructure
   evidence.
