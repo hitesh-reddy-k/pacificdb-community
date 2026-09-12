@@ -72,8 +72,8 @@ npm install --global @pacificdb/cli@beta
 npm install @pacificdb/client@beta
 ```
 
-The npm `beta` tag currently installs `0.1.0-beta.7`. The `0.1.0-beta.9`
-npm packages are prepared but have not been published yet.
+The npm `beta` tag installs `0.1.0-beta.10` for both the CLI and Node.js
+client. The native installers remain at `0.1.0-beta.9`.
 
 The npm CLI is a client. It can automatically start `db_engine` when a native
 PacificDB server package is installed and available on `PATH`. Installing only
