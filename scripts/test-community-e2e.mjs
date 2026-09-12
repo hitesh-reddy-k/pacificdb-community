@@ -295,7 +295,7 @@ try {
   const shellOutput = await runShell(shellCommands);
   console.log('E2E: advertised shell command matrix complete');
   assertPublicOutput(shellOutput);
-  assert.match(shellOutput, /PacificDB Community/);
+  assert.match(shellOutput, /PACIFICDB[\s\S]*COMMUNITY BETA/i);
   assert.match(shellOutput, /Grace Hopper/);
   assert.match(shellOutput, /"status": "pong"/);
   assert.equal(sha256(await readFile(downloadFile)), sha256(mediaBytes));

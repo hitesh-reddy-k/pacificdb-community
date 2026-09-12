@@ -32,14 +32,17 @@
 These items are omitted rather than represented by placeholders. Add them only
 with executable behavior, documentation, and a focused correctness test.
 
-## Release gates still open
+## Beta certification status
 
-- Three clean RF3 sustained runs at both 64 and 128 clients
-- Stable terms during measurement and zero request errors
-- Acknowledged-write history check with no loss or duplicate logical writes
-- Replica convergence and apply/catch-up lag returning to zero
-- Failover, manual backup/restore, and mixed-version rolling tests on release artifacts
-- Security configuration review and signed release artifacts
+The Linux beta passed three sustained RF3 runs at both 64 and 128 clients,
+acknowledged-write verification, replica convergence, failover, manual
+backup/restore, genuine disk-full injection, and Debian package installation.
+See [docs/COMMUNITY_P0_CERTIFICATION.md](docs/COMMUNITY_P0_CERTIFICATION.md) for
+the measured results.
+
+Physical power-controller testing, mixed-version rolling upgrades, an
+independent security review, and signed native Windows/macOS artifacts remain
+open before a broader production-readiness claim.
 
 ## Community operational boundary
 

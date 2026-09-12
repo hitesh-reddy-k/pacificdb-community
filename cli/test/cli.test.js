@@ -122,6 +122,28 @@ test('shell help lists commands without contacting the server', async () => {
   assert.doesNotMatch(text, /autoscal|billing|organization/i);
 });
 
+test('plain pacificdb opens the branded shell', async () => {
+  const input = new PassThrough();
+  const output = new PassThrough();
+  let text = '';
+  output.on('data', (chunk) => { text += chunk; });
+  const running = main([], { input, output });
+  input.write('help\n');
+  input.end('quit\n');
+  await running;
+  assert.match(text, /PACIFICDB[\s\S]*COMMUNITY BETA/);
+  assert.match(text, /Documents · Vectors · Media/);
+});
+
+test('--help prints command categories without starting an engine', async () => {
+  const output = new PassThrough();
+  let text = '';
+  output.on('data', (chunk) => { text += chunk; });
+  await main(['--help'], { input: new PassThrough(), output });
+  assert.match(text, /^Usage: pacificdb/);
+  assert.match(text, /Projects[\s\S]*Backups[\s\S]*Vectors/);
+});
+
 test('hides internal telemetry from normal output', async (t) => {
   const server = net.createServer((socket) => socket.once('data', () => socket.end(JSON.stringify({
     status: 'ok', data: [{ id: '1', name: 'Ada', _mvcc_version: 2,

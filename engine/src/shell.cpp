@@ -3,6 +3,7 @@
 #include "community_shell.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <climits>
 #include <csignal>
 #include <cstring>
@@ -15,6 +16,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <vector>
 
 #ifdef _WIN32
@@ -24,6 +26,7 @@
 using Socket = SOCKET;
 constexpr Socket invalid_socket = INVALID_SOCKET;
 #else
+#include <fcntl.h>
 #include <netdb.h>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -62,6 +65,193 @@ public:
 #endif
     }
 };
+
+bool canConnect(const std::string& host, const std::string& port) {
+    addrinfo hints{};
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    addrinfo* addresses = nullptr;
+    if (getaddrinfo(host.c_str(), port.c_str(), &hints, &addresses) != 0) return false;
+    bool connected = false;
+    for (auto* address = addresses; address; address = address->ai_next) {
+        Socket socket = ::socket(address->ai_family, address->ai_socktype, address->ai_protocol);
+        if (socket == invalid_socket) continue;
+        connected = connect(socket, address->ai_addr,
+                            static_cast<int>(address->ai_addrlen)) == 0;
+        closeSocket(socket);
+        if (connected) break;
+    }
+    freeaddrinfo(addresses);
+    return connected;
+}
+
+bool isLocalHost(const std::string& host) {
+    return host == "127.0.0.1" || host == "localhost" || host == "::1";
+}
+
+std::filesystem::path localDataHome() {
+    if (const char* configured = std::getenv("PACIFICDB_HOME"))
+        return std::filesystem::absolute(configured);
+#ifdef _WIN32
+    if (const char* local = std::getenv("LOCALAPPDATA"))
+        return std::filesystem::path(local) / "PacificDB";
+    if (const char* profile = std::getenv("USERPROFILE"))
+        return std::filesystem::path(profile) / "AppData" / "Local" / "PacificDB";
+#elif defined(__APPLE__)
+    if (const char* home = std::getenv("HOME"))
+        return std::filesystem::path(home) / "Library" / "Application Support" / "PacificDB";
+#else
+    if (const char* data = std::getenv("XDG_DATA_HOME"))
+        return std::filesystem::path(data) / "pacificdb";
+    if (const char* home = std::getenv("HOME"))
+        return std::filesystem::path(home) / ".local" / "share" / "pacificdb";
+#endif
+    throw std::runtime_error("could not determine PacificDB data directory");
+}
+
+void setEnvironment(const char* name, const std::string& value) {
+#ifdef _WIN32
+    if (_putenv_s(name, value.c_str()) != 0)
+        throw std::runtime_error(std::string("could not set ") + name);
+#else
+    if (setenv(name, value.c_str(), 1) != 0)
+        throw std::runtime_error(std::string("could not set ") + name);
+#endif
+}
+
+void setDefaultEnvironment(const char* name, const std::string& value) {
+    if (!std::getenv(name)) setEnvironment(name, value);
+}
+
+std::filesystem::path executablePath(const char* argv0) {
+#ifdef _WIN32
+    std::vector<char> buffer(MAX_PATH + 1);
+    const DWORD count = GetModuleFileNameA(nullptr, buffer.data(),
+                                           static_cast<DWORD>(buffer.size()));
+    if (count > 0 && count < buffer.size())
+        return std::filesystem::path(std::string(buffer.data(), count));
+#elif defined(__linux__)
+    std::vector<char> buffer(PATH_MAX + 1);
+    const auto count = readlink("/proc/self/exe", buffer.data(), PATH_MAX);
+    if (count > 0) return std::filesystem::path(std::string(buffer.data(), count));
+#endif
+    const std::filesystem::path supplied(argv0);
+    if (supplied.has_parent_path()) return std::filesystem::absolute(supplied);
+    if (const char* search = std::getenv("PATH")) {
+#ifdef _WIN32
+        const char separator = ';';
+#else
+        const char separator = ':';
+#endif
+        std::stringstream paths(search);
+        for (std::string directory; std::getline(paths, directory, separator);) {
+            const auto candidate = std::filesystem::path(directory) / supplied;
+            if (std::filesystem::exists(candidate)) return std::filesystem::absolute(candidate);
+        }
+    }
+    return std::filesystem::absolute(supplied);
+}
+
+void ensureLocalEngine(const std::string& host, const std::string& port,
+                       const char* argv0, bool autoStart) {
+    if (canConnect(host, port) || !autoStart || !isLocalHost(host)) return;
+
+    const auto home = localDataHome();
+    const auto data = home / "data";
+    const auto backup = home / "backup";
+    const auto restore = home / "restore";
+    std::filesystem::create_directories(data);
+    std::filesystem::create_directories(backup);
+    std::filesystem::create_directories(restore);
+    const auto startLock = home / ".engine-starting";
+    std::error_code lockError;
+    if (!std::filesystem::create_directory(startLock, lockError)) {
+        if (lockError) throw std::runtime_error("could not lock local engine startup: " +
+                                                lockError.message());
+        for (int attempt = 0; attempt < 100; ++attempt) {
+            if (canConnect(host, port)) return;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        throw std::runtime_error("another PacificDB process did not finish starting the local engine");
+    }
+    struct StartLock {
+        std::filesystem::path path;
+        ~StartLock() { std::error_code ignored; std::filesystem::remove(path, ignored); }
+    } startLockGuard{startLock};
+    const int numericPort = std::stoi(port);
+    const int raftPort = numericPort == 9000 ? 9100 : std::min(numericPort + 1, 65535);
+    setDefaultEnvironment("PACIFICDB_HOME", home.string());
+    setDefaultEnvironment("PACIFICDB_ENVIRONMENT", "development");
+    setDefaultEnvironment("DATA_ROOT", data.string());
+    setDefaultEnvironment("BACKUP_ROOT", backup.string());
+    setDefaultEnvironment("RESTORE_DIR", restore.string());
+    setEnvironment("ENGINE_BIND_HOST", "127.0.0.1");
+    setDefaultEnvironment("ENGINE_AUTH_REQUIRED", "0");
+    setEnvironment("ENGINE_PORT", port);
+    setDefaultEnvironment("RAFT_LISTEN_PORT", std::to_string(raftPort));
+    setDefaultEnvironment("RAFT_CLUSTER_ID", "pacificdb-local");
+    setDefaultEnvironment("RAFT_NODE_ID", "node-1");
+    setDefaultEnvironment("RAFT_IS_LEADER", "1");
+    setDefaultEnvironment("MIN_QUORUM_SIZE", "1");
+
+    auto engine = executablePath(argv0).parent_path() /
+#ifdef _WIN32
+        "db_engine.exe";
+#else
+        "db_engine";
+#endif
+    if (!std::filesystem::is_regular_file(engine))
+        throw std::runtime_error("local engine is not installed next to pacificdb");
+
+    unsigned long long processId = 0;
+#ifdef _WIN32
+    std::string command = "\"" + engine.string() + "\"";
+    STARTUPINFOA startup{};
+    startup.cb = sizeof(startup);
+    PROCESS_INFORMATION process{};
+    if (!CreateProcessA(nullptr, command.data(), nullptr, nullptr, FALSE,
+                        CREATE_NO_WINDOW | DETACHED_PROCESS, nullptr, nullptr,
+                        &startup, &process)) {
+        throw std::runtime_error("could not start local engine");
+    }
+    processId = process.dwProcessId;
+    CloseHandle(process.hThread);
+    CloseHandle(process.hProcess);
+#else
+    const pid_t child = fork();
+    if (child < 0) throw std::runtime_error("could not start local engine");
+    if (child == 0) {
+        if (setsid() < 0) _exit(126);
+        const auto log = (home / "engine.log").string();
+        const int descriptor = open(log.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0600);
+        if (descriptor < 0) _exit(126);
+        dup2(descriptor, STDOUT_FILENO);
+        dup2(descriptor, STDERR_FILENO);
+        close(descriptor);
+        execl(engine.c_str(), engine.filename().c_str(), static_cast<char*>(nullptr));
+        _exit(127);
+    }
+    processId = static_cast<unsigned long long>(child);
+#endif
+    const auto pidFile = home / "engine.pid";
+    std::ofstream pid(pidFile, std::ios::trunc);
+    if (!pid) throw std::runtime_error("could not write local engine PID");
+    pid << processId << '\n';
+    pid.close();
+#ifndef _WIN32
+    chmod(pidFile.c_str(), S_IRUSR | S_IWUSR);
+#endif
+
+    for (int attempt = 0; attempt < 100; ++attempt) {
+        if (canConnect(host, port)) {
+            std::cout << "✓ Local engine started at " << host << ':' << port << '\n';
+            return;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    throw std::runtime_error("local engine did not start; see " +
+                             (home / "engine.log").string());
+}
 
 std::string request(const std::string& host, const std::string& port,
                     const nlohmann::json& command) {
@@ -224,9 +414,10 @@ nlohmann::json sendJson(const std::string& host, const std::string& port,
     return response;
 }
 
-void usage() {
-    std::cerr << "usage: pacificdb [options] "
-                 "ping|request JSON|shell|put-media|get-media|put-vector|query-vector\n";
+void usage(std::ostream& output = std::cerr) {
+    output << "usage: pacificdb [options] "
+                 "[shell|ping|request JSON|put-media|get-media|put-vector|query-vector]\n"
+                 "       options: --host HOST --port PORT --database NAME --no-start\n";
 }
 
 void printShellHelp() {
@@ -614,12 +805,16 @@ int main(int argc, char** argv) {
         std::string database;
         std::string contentType;
         std::string metric = "cosine";
+        bool autoStart = true;
+        bool showHelp = false;
         int topK = 10;
         nlohmann::json metadata = nlohmann::json::object();
         std::vector<std::string> positional;
         for (int i = 1; i < argc; ++i) {
             const std::string arg = argv[i];
-            if (arg == "--host" || arg == "--port" || arg == "--database" ||
+            if (arg == "--no-start") autoStart = false;
+            else if (arg == "--help" || arg == "-h") showHelp = true;
+            else if (arg == "--host" || arg == "--port" || arg == "--database" ||
                 arg == "--content-type" || arg == "--metadata" ||
                 arg == "--metric" || arg == "--k") {
                 if (++i >= argc) throw std::runtime_error(arg + " requires a value");
@@ -638,10 +833,15 @@ int main(int argc, char** argv) {
         if (numericPort < 1 || numericPort > 65535 || port != std::to_string(numericPort)) {
             throw std::runtime_error("port must be an integer from 1 to 65535");
         }
-        if (positional.empty()) {
-            usage();
-            return 2;
+        if (showHelp) {
+            usage(std::cout);
+            return 0;
         }
+        if (positional.empty()) positional.push_back("shell");
+        const std::vector<std::string> commands{"ping", "request", "shell", "put-media",
+                                                "get-media", "put-vector", "query-vector"};
+        if (std::find(commands.begin(), commands.end(), positional[0]) != commands.end())
+            ensureLocalEngine(host, port, argv[0], autoStart);
         if (positional[0] == "ping" && positional.size() == 1) {
             return sendAndPrint(host, port, {{"action", "ping"}});
         }
@@ -706,8 +906,15 @@ int main(int argc, char** argv) {
             const auto home = cliHome();
             auto context = loadContext(home);
             if (!database.empty()) context.database = database;
-            std::cout << "  ≋ PacificDB Community\nType help for commands.\n";
-            for (std::string line; std::cout << "pacificdb> " && std::getline(std::cin, line);) {
+            std::cout << "\n"
+                         "  ╭────────────────────────────────────╮\n"
+                         "  │  ≋  PACIFICDB  ·  COMMUNITY BETA  │\n"
+                         "  │     Documents · Vectors · Media    │\n"
+                         "  ╰────────────────────────────────────╯\n"
+                         "  Type help to see commands.\n";
+            for (std::string line;
+                 std::cout << (context.database.empty() ? "pacificdb> " :
+                     "pacificdb:" + context.database + "> ") && std::getline(std::cin, line);) {
                 if (line.empty()) continue;
                 try {
                     auto parsed = pacificdb::cli::parseShellCommand(line, context);

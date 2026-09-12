@@ -72,6 +72,13 @@ System
   exit | quit                         Exit shell
 `;
 
+export const SHELL_BANNER = `
+  ╭────────────────────────────────────╮
+  │  ≋  PACIFICDB  ·  COMMUNITY BETA  │
+  │     Documents · Vectors · Media    │
+  ╰────────────────────────────────────╯
+  Type help to see commands.\n`;
+
 export function sanitizeResponse(value, action = '') {
   const response = structuredClone(value);
   if (!response || Array.isArray(response) || typeof response !== 'object' ||
@@ -332,9 +339,9 @@ export async function runShell(client, streams, options = {}) {
   if (!client.token && context.token) client.token = context.token;
   const prompt = readline.createInterface(streams);
   const lines = prompt[Symbol.asyncIterator]();
-  streams.output.write('  ≋ PacificDB Community\nType help for commands.\n');
+  streams.output.write(SHELL_BANNER);
   while (true) {
-    streams.output.write('pacificdb> ');
+    streams.output.write(context.database ? `pacificdb:${context.database}> ` : 'pacificdb> ');
     const next = await lines.next();
     if (next.done) break;
     const line = next.value.trim();
@@ -346,6 +353,8 @@ export async function runShell(client, streams, options = {}) {
         await mkdir(home, { recursive: true, mode: 0o700 });
         await appendFile(path.join(home, 'history'), line + '\n', { mode: 0o600 });
       }
+      if (options.ensureConnection && !['help', 'clear', 'history', 'contextShow',
+        'contextClear', 'logout'].includes(parsed.kind)) await options.ensureConnection();
       if (parsed.kind === 'help') streams.output.write(SHELL_HELP);
       else if (parsed.kind === 'clear') streams.output.write('\x1b[2J\x1b[H');
       else if (parsed.kind === 'history') {

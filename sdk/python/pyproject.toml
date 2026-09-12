@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pacificdb"
-version = "0.1.0b1"
+version = "0.1.0b8"
 description = "PacificDB Community Python client"
 requires-python = ">=3.10"
 license = "Apache-2.0"

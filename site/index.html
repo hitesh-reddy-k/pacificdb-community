@@ -6,14 +6,14 @@
   <meta name="description" content="PacificDB Community: a self-hosted document database with vector search, Raft replication, and a native shell. Download the beta and build locally.">
   <meta name="theme-color" content="#092c2c">
   <title>PacificDB — Your data. Your waters.</title>
-  <link rel="icon" href="mark.svg" type="image/svg+xml">
+  <link rel="icon" href="pacificdb-logo.png" type="image/png">
   <link rel="stylesheet" href="style.css">
   <script src="app.js" defer></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
   <header class="navigation wrap">
-    <a class="brand" href="#" aria-label="PacificDB home"><img src="mark.svg" width="34" height="34" alt="">Pacific<span>DB</span></a>
+    <a class="brand" href="#" aria-label="PacificDB home"><img src="pacificdb-logo.png" width="40" height="40" alt="">Pacific<span>DB</span></a>
     <nav aria-label="Main navigation"><a href="#features">Why PacificDB</a><a href="#downloads">Downloads</a><a href="#start">Quickstart</a></nav>
     <a class="repo-link" href="https://github.com/hitesh-reddy-k/pacificdb-community">GitHub <span aria-hidden="true">↗</span></a>
   </header>
@@ -27,6 +27,7 @@
         <p class="hero-footnote">Self-hosted · Open-source core · Free to get started</p>
       </div>
       <div class="ocean" aria-hidden="true">
+        <img class="hero-mark" src="pacificdb-logo.png" alt="">
         <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="orbit orbit-three"></div>
         <div class="ocean-label">A HOME FOR YOUR DATA</div>
         <div class="data-layer layer-back"><span>03 / MEDIA</span><b>0101 <i>1010</i> 0110</b></div>
@@ -42,29 +43,32 @@
       <div class="features">
         <article><span class="feature-symbol" aria-hidden="true">{ }</span><h3>Start with documents.</h3><p>Store JSON documents. Filter, project, paginate, and query with secondary indexes and aggregation helpers.</p><span class="small-label">FAMILIAR BY DESIGN</span></article>
         <article><span class="feature-symbol" aria-hidden="true">↗</span><h3>Find what’s similar.</h3><p>Store embeddings and search with vector indexes, similarity scoring, and metadata filters.</p><span class="small-label">GO BEYOND EXACT MATCHES</span></article>
-        <article><span class="feature-symbol" aria-hidden="true">≋</span><h3>Keep more together.</h3><p>Read and replace images, GIFs, audio, and video bytes alongside your documents, within the request-size limit.</p><span class="small-label">MEDIA MEETS METADATA</span></article>
+        <article><span class="feature-symbol" aria-hidden="true">≋</span><h3>Keep more together.</h3><p>Stream images, GIFs, audio, video, and other files in bounded, verified chunks alongside your documents.</p><span class="small-label">MEDIA MEETS METADATA</span></article>
       </div>
       <div class="durability"><span class="dot"></span><p>Under the surface: WAL, LSM storage, checksums, snapshots, and RF3 Raft replication.</p><a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/main/COMMUNITY_SCOPE.md">Explore the scope ↗</a></div>
     </section>
 
     <section class="download-section" id="downloads"><div class="wrap section">
       <div class="section-heading"><div><p class="eyebrow">MAKE YOURSELF AT HOME</p><h2>Your machine.<br>Your database.</h2></div><p>Choose your operating system.<br>Each installer includes the engine and native CLI.</p></div>
-      <p class="release-note"><span class="badge">COMMUNITY BETA</span> v0.1.0-beta.7 · Direct installer downloads</p>
+      <p class="release-note"><span class="badge">COMMUNITY BETA</span> v0.1.0-beta.8 · Direct installer downloads</p>
       <div class="downloads">
-        <article class="download-card"><div class="platform-icon" aria-hidden="true">L<span>_</span></div><h3>Linux</h3><p>Ubuntu &amp; Debian · x86-64</p><span class="format">.deb package</span><a class="button download" data-platform="linux-amd64.deb" href="#">Download deb ↓</a><ol class="install-flow"><li><b>Download</b> the package above.</li><li><b>Install</b> <code>sudo apt install ./pacificdb-community-*-linux-amd64.deb</code></li><li><b>Start</b> <code>pacificdb-local</code></li></ol></article>
-        <article class="download-card"><div class="platform-icon windows-icon" aria-hidden="true"><i></i><i></i><i></i><i></i></div><h3>Windows</h3><p>Windows · x64</p><span class="format">.exe installer</span><a class="button download" data-platform="windows-x64.exe" href="#">Download exe ↓</a><ol class="install-flow"><li><b>Download</b> the installer above.</li><li><b>Install</b> by opening the downloaded <code>.exe</code>.</li><li><b>Start</b> <code>pacificdb-local.cmd</code> in a new Command Prompt.</li></ol></article>
-        <article class="download-card"><div class="platform-icon" aria-hidden="true">⌘</div><h3>macOS</h3><label for="mac-arch">Processor</label><select id="mac-arch"><option value="macos-arm64.pkg">Apple silicon (M-series)</option><option value="macos-x86_64.pkg">Intel</option></select><span class="format">.pkg installer</span><a class="button download" id="mac-download" data-platform="macos-arm64.pkg" href="#">Download pkg ↓</a><ol class="install-flow"><li><b>Download</b> the package for your processor.</li><li><b>Install</b> by opening the downloaded <code>.pkg</code>.</li><li><b>Start</b> <code>pacificdb-local</code> in Terminal.</li></ol></article>
+        <article class="download-card"><div class="platform-icon" aria-hidden="true">L<span>_</span></div><h3>Linux</h3><p>Ubuntu &amp; Debian · x86-64</p><span class="format">.deb package</span><a class="button download" data-platform="linux-amd64.deb" href="#">Download deb ↓</a><ol class="install-flow"><li><b>Download</b> the package above.</li><li><b>Install</b> <code>sudo apt install ./pacificdb-community-*-linux-amd64.deb</code></li><li><b>Open</b> <code>pacificdb</code>; the local engine starts automatically.</li></ol></article>
+        <article class="download-card"><div class="platform-icon windows-icon" aria-hidden="true"><i></i><i></i><i></i><i></i></div><h3>Windows</h3><p>Windows · x64</p><span class="format">.exe installer</span><a class="button download" data-platform="windows-x64.exe" href="#">Download exe ↓</a><ol class="install-flow"><li><b>Download</b> the installer above.</li><li><b>Install</b> by opening the downloaded <code>.exe</code>.</li><li><b>Open</b> Command Prompt and run <code>pacificdb</code>.</li></ol></article>
+        <article class="download-card"><div class="platform-icon" aria-hidden="true">⌘</div><h3>macOS</h3><label for="mac-arch">Processor</label><select id="mac-arch"><option value="macos-arm64.pkg">Apple silicon (M-series)</option><option value="macos-x86_64.pkg">Intel</option></select><span class="format">.pkg installer</span><a class="button download" id="mac-download" data-platform="macos-arm64.pkg" href="#">Download pkg ↓</a><ol class="install-flow"><li><b>Download</b> the package for your processor.</li><li><b>Install</b> by opening the downloaded <code>.pkg</code>.</li><li><b>Open</b> Terminal and run <code>pacificdb</code>.</li></ol></article>
       </div>
       <p class="download-disclosure">Beta installers may be unsigned; macOS notarization and Windows signing are pending. These builds are for evaluation. <a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/main/COMMUNITY_SCOPE.md">See release readiness.</a></p>
-      <p class="download-links"><a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v0.1.0-beta.7/SHA256SUMS">Download checksums ↓</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community">Build from source ↗</a></p>
+      <p class="download-links"><a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v0.1.0-beta.8/SHA256SUMS">Download checksums ↓</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community">Build from source ↗</a></p>
     </div></section>
 
     <section class="wrap section getting-started" id="start">
       <div class="start-intro"><p class="eyebrow">FROM DOWNLOAD TO FIRST DOCUMENT</p><h2>Hello,<br><em>PacificDB.</em></h2><p>Install the database. Open a shell.<br>Connect your app. That’s the flow.</p><a class="text-link" href="https://github.com/hitesh-reddy-k/pacificdb-community#run-locally">Read the documentation ↗</a></div>
       <div class="steps">
-        <article class="step"><span class="step-number">01</span><div><h3>Start your local database</h3><p>After installing, run this in a terminal and keep it open.</p><div class="code-line"><code id="launch-command">pacificdb-local</code><button class="copy" data-copy="launch-command" aria-label="Copy server launch command">Copy</button></div><p class="hint">Windows: use <code>pacificdb-local.cmd</code>. Local mode binds to 127.0.0.1:9000 with authentication off. Configure TLS and authentication before any network deployment.</p></div></article>
-        <article class="step"><span class="step-number">02</span><div><h3>Meet your shell</h3><p>The native CLI is included. In a second terminal:</p><div class="code-line"><pre id="shell-command">pacificdb ping
-pacificdb shell</pre><button class="copy" data-copy="shell-command" aria-label="Copy native CLI commands">Copy</button></div><details><summary>Prefer the npm CLI?</summary><p>With Node.js 18+ installed, you can also use:</p><div class="code-line"><code id="cli-command">npm install --global @pacificdb/cli@beta</code><button class="copy" data-copy="cli-command" aria-label="Copy npm CLI install command">Copy</button></div><p class="hint">Both CLIs use the name <code>pacificdb</code>; your PATH decides which runs. The npm CLI connects to a running engine.</p></details></div></article>
+        <article class="step"><span class="step-number">01</span><div><h3>Open PacificDB</h3><p>After installing, run one command. It starts your local engine and opens the shell.</p><div class="code-line"><code id="launch-command">pacificdb</code><button class="copy" data-copy="launch-command" aria-label="Copy PacificDB launch command">Copy</button></div><p class="hint">Local mode binds to 127.0.0.1:9000. Configure TLS and authentication before any network deployment.</p></div></article>
+        <article class="step"><span class="step-number">02</span><div><h3>Create your first document</h3><p>Use the friendly shell commands:</p><div class="code-line"><pre id="shell-command">create database hello
+use hello
+create collection ideas
+insert ideas {"id":"first","title":"Hello PacificDB"}
+find ideas {"id":"first"}</pre><button class="copy" data-copy="shell-command" aria-label="Copy shell commands">Copy</button></div><details><summary>Prefer the npm CLI?</summary><p>With Node.js 18+ installed, use:</p><div class="code-line"><code id="cli-command">npm install --global @pacificdb/cli@beta</code><button class="copy" data-copy="cli-command" aria-label="Copy npm CLI install command">Copy</button></div></details></div></article>
         <article class="step"><span class="step-number">03</span><div><h3>Give your app a connection</h3><p>Install the Node.js client in your project.</p><div class="code-line"><code id="npm-command">npm install @pacificdb/client@beta</code><button class="copy" data-copy="npm-command" aria-label="Copy npm client install command">Copy</button></div><p class="hint">Save the example below as <code>hello.mjs</code>, then run <code>node hello.mjs</code>.</p></div></article>
       </div>
     </section>
@@ -83,7 +87,7 @@ await db.insert('ideas', {
 console.log(await db.find('ideas', { id: 'first' }));</code></pre><div class="editor-footer"><span class="dot"></span> Local connection · JSON over TCP</div></div></section>
     <section class="wrap closing"><p class="eyebrow">OPEN SOURCE. OPEN POSSIBILITIES.</p><h2>Build on your own terms.</h2><p>Explore the code, try the beta, and help shape what comes next.</p><a class="button primary" href="https://github.com/hitesh-reddy-k/pacificdb-community">Explore PacificDB on GitHub ↗</a></section>
   </main>
-  <footer class="wrap"><a class="brand" href="#"><img src="mark.svg" alt="" width="26" height="26">Pacific<span>DB</span></a><p>Community beta · Self-hosted</p><div><a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/main/LICENSE">AGPLv3 core</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community/tree/main/sdk">Apache 2.0 SDKs</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community/issues">Feedback ↗</a></div></footer>
+  <footer class="wrap"><a class="brand" href="#"><img src="pacificdb-logo.png" alt="" width="30" height="30">Pacific<span>DB</span></a><p>Community beta · Self-hosted</p><div><a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/main/LICENSE">AGPLv3 core</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community/tree/main/sdk">Apache 2.0 SDKs</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community/issues">Feedback ↗</a></div></footer>
   <p class="sr-only" id="copy-status" role="status"></p>
 </body>
 </html>

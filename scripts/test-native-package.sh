@@ -20,12 +20,24 @@ trap cleanup EXIT
 dpkg-deb -x "$package" "$root"
 test -x "$root/usr/bin/db_engine"
 test -x "$root/usr/bin/pacificdb"
-test -x "$root/usr/bin/pacificdb-local"
-printf 'help\nquit\n' | "$root/usr/bin/pacificdb" shell | grep -q 'Authentication'
+test ! -e "$root/usr/bin/pacificdb-local"
+test -s "$root/usr/share/pacificdb/pacificdb-logo.png"
 
-PACIFICDB_HOME="$home" ENGINE_PORT="$port" RAFT_LISTEN_PORT="$raft_port" \
-  "$root/usr/bin/pacificdb-local" >"$home/server.log" 2>&1 &
-server_pid=$!
+export PACIFICDB_HOME="$home" ENGINE_PORT="$port" RAFT_LISTEN_PORT="$raft_port"
+"$root/usr/bin/pacificdb" --port "$port" ping >"$home/ping-one.out" &
+first_cli=$!
+"$root/usr/bin/pacificdb" --port "$port" ping >"$home/ping-two.out" &
+second_cli=$!
+wait "$first_cli" "$second_cli"
+grep -q 'pong' "$home/ping-one.out"
+grep -q 'pong' "$home/ping-two.out"
+for _ in {1..60}; do
+  if [[ -s "$home/engine.pid" ]]; then break; fi
+  sleep 0.1
+done
+server_pid=$(cat "$home/engine.pid")
+printf 'help\nquit\n' | "$root/usr/bin/pacificdb" --port "$port" >"$home/shell.out"
+grep -q 'COMMUNITY BETA' "$home/shell.out"
 
 for _ in {1..60}; do
   if "$root/usr/bin/pacificdb" --port "$port" ping >/dev/null 2>&1; then break; fi

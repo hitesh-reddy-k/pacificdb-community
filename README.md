@@ -1,152 +1,315 @@
-# PacificDB Community
+<p align="center">
+  <img src="site/pacificdb-logo.png" width="144" alt="PacificDB logo">
+</p>
 
-PacificDB Community is the open-source beta of the PacificDB distributed
-document database. The database engine is licensed under AGPL-3.0; the Node.js,
-Java, and Python clients and CLI are licensed under Apache-2.0.
+<h1 align="center">PacificDB Community</h1>
 
-This repository is a **beta candidate**. It compiles and its retained local
-correctness tests pass, but this filtered tree has not completed fresh sustained
-three-node release testing. Do not describe it as production-certified yet.
+<p align="center">
+  Self-hosted documents, vectors, media, backups, and RF3 replication.
+</p>
 
-## Included
+> **Beta:** `0.1.0-beta.8` is a tested Community release candidate for evaluation,
+> development, staging, and controlled early-adopter deployments. Read
+> [the certification report](docs/COMMUNITY_P0_CERTIFICATION.md) before storing
+> critical data.
 
-- Document CRUD, filters, pagination, projection, aggregation helpers, and consistency controls
-- WAL, LSM storage, crash recovery, compaction, snapshots, and integrity checks
-- Secondary/B-tree and vector indexes, validation, and runtime statistics
-- RF3 Raft consensus, elections, failover, snapshot catch-up, and repair diagnostics
-- Manual shard creation, placement, migration, splitting, merging, and rebalancing
-- Basic vector similarity search and metadata filtering
-- Resumable, checksummed image, GIF, audio, video, and arbitrary file storage
-- Read-only natural-language query compilation and query explanations
-- TLS, password/token authentication, API keys, RBAC, tenant isolation, and local audit logging
-- Manual snapshot backup, verification, deletion, and restore
-- Health, logs, engine metrics, and Prometheus output
-- JSON-over-TCP API, CLI/shell, Node.js, Java, and Python clients
-- Dockerfile, Docker Compose, Kubernetes manifests, Helm chart, and reproducible YCSB binding
+## What is included
 
-The exact implemented scope and current gaps are in [COMMUNITY_SCOPE.md](COMMUNITY_SCOPE.md).
+- JSON document CRUD, filters, projection, pagination, bounded aggregation, and explain
+- WAL and LSM storage, crash recovery, compaction, checksums, and snapshots
+- Secondary indexes and vector similarity search
+- RF3 Raft replication, elections, follower recovery, and snapshot catch-up
+- Resumable checksummed storage for images, audio, video, and other files
+- Manual full backups, verification, complete JSON export, restore, and restore history
+- Password authentication, API keys, roles, TLS, tenant boundaries, and audit logs
+- Native and npm shells plus Node.js, Python, and Java clients
+- Debian, Windows, macOS, Docker, Kubernetes, and Helm packaging
 
-Install the Node.js client or command-line package after a beta is published:
+See [COMMUNITY_SCOPE.md](COMMUNITY_SCOPE.md) for the exact boundary.
+
+## Install
+
+### Native package
+
+Download the beta package for your platform from
+[GitHub Releases](https://github.com/hitesh-reddy-k/pacificdb-community/releases).
+The native package contains the database engine and CLI.
+
+Ubuntu or Debian:
 
 ```sh
-npm install @pacificdb/client@beta
-npm install --global @pacificdb/cli@beta
+sudo apt install ./pacificdb-community-*-linux-amd64.deb
+pacificdb
 ```
 
-## Run locally
+Windows:
 
-Install Docker with the Compose plugin, download this repository, and run:
+1. Open the downloaded `.exe` installer.
+2. Open a new Command Prompt.
+3. Run `pacificdb`.
+
+macOS:
+
+1. Install the package matching Apple silicon or Intel.
+2. Open Terminal.
+3. Run `pacificdb`.
+
+Plain `pacificdb` starts the local engine when it is not already running and
+opens the interactive shell. The engine continues in the background and is
+reused by later CLI and application connections. Use `--no-start` when the CLI
+must only connect to an already-running engine.
+
+Windows and macOS beta installers are currently unsigned. Review the
+[certification status](docs/COMMUNITY_P0_CERTIFICATION.md) before installation.
+
+### npm
+
+Node.js 18 or newer:
 
 ```sh
+npm install --global @pacificdb/cli@beta
+npm install @pacificdb/client@beta
+```
+
+The npm CLI is a client. It can automatically start `db_engine` when a native
+PacificDB server package is installed and available on `PATH`. Installing only
+the npm package does not install the database engine.
+
+### Docker
+
+```sh
+git clone https://github.com/hitesh-reddy-k/pacificdb-community.git
+cd pacificdb-community
 docker compose up -d --build database
 docker compose run --rm shell
 ```
 
-The shell connects to `database:9000`. Friendly commands are available:
+Data remains in the `pacificdb-data` volume. Run `docker compose down` to
+stop the containers. Add `-v` only when you intend to delete the volume.
+
+## First database
+
+Run:
+
+```sh
+pacificdb
+```
+
+Then enter:
 
 ```text
 create project demo
+list projects
 use project project_...
+
 create database app
 use app
 create collection users
-insert users {"id":"1","name":"Ada"}
+insert users {"id":"1","name":"Ada","active":true}
+find users {"active":true}
 findOne users {"id":"1"}
+update users {"id":"1"} {"name":"Ada Lovelace"}
+count users {}
 ```
 
-Type `help` for the categorized command list. Raw protocol requests remain
-available as `request {"action":"ping"}`. Type `quit` to leave the shell.
-Data remains in the `pacificdb-data` Docker
-volume. Stop the database with `docker compose down`; add `-v` only when you
-also want to delete the local database and backups.
+The prompt displays the selected database:
 
-To use the host CLI when Node.js 18+ is installed:
+```text
+pacificdb:app>
+```
+
+Run `help` for the complete categorized command list and `quit` to leave the
+shell. Leaving the shell does not stop the background engine.
+
+Local mode listens only on `127.0.0.1:9000` and starts with authentication
+disabled. Configure authentication and TLS before exposing the engine to a
+network.
+
+## Shell command reference
+
+| Area | Commands |
+|---|---|
+| Authentication | `login`, `whoami`, `logout` |
+| Projects | `create project`, `list projects`, `use project`, `show project`, `delete project` |
+| Databases | `create database`, `list databases`, `use`, `show database`, `drop database` |
+| Collections | `create collection`, `list collections` |
+| Documents | `insert`, `find`, `findOne`, `update`, `delete`, `count` |
+| Queries | `aggregate`, `explain` |
+| Backups | `create backup`, `list backups`, `show backup`, `backup verify`, `backup export`, `restore backup`, `list restores`, `delete backup` |
+| API keys | `create api-key`, `list api-keys`, `show api-key`, `revoke api-key` |
+| Media | `upload image|video|media`, `download media`, `list media`, `find media`, `show media`, `delete media`, `media cleanup` |
+| Vectors | `put vector`, `query vector` |
+| Shell | `help`, `status`, `context show`, `context clear`, `history`, `clear`, `request`, `exit` |
+
+Examples:
+
+```text
+aggregate users [{"$match":{"active":true}},{"$project":{"name":1}},{"$limit":10}]
+explain users {"id":"1"}
+
+create backup --name before-upgrade
+list backups
+backup verify backup_...
+backup export backup_... ./before-upgrade.json
+restore backup backup_...
+
+create api-key --name application --role readwrite
+list api-keys
+revoke api-key key_...
+
+upload video ./demo.mp4 --collection videos
+list media
+download media media_... ./downloaded.mp4
+
+put vector embeddings item-1 [0.2,0.8]
+query vector embeddings [0.2,0.8] --k 5 --metric cosine
+```
+
+API-key roles are `read`, `readwrite`, and `admin`. A full key is shown
+once at creation and is never persisted in plaintext.
+
+Media transfers use bounded, sequential, checksummed chunks. PacificDB sets no
+application-level total file-size cap; available disk, network time, and machine
+resources remain limits.
+
+Backup export writes a self-contained JSON document containing every physical
+backup file in bounded, checksummed chunks.
+
+## Connect an application
+
+Start the native `pacificdb` command once before running an application.
+
+### Node.js
+
+```js
+import { PacificDBClient } from '@pacificdb/client';
+
+const db = new PacificDBClient({
+  host: '127.0.0.1',
+  port: 9000,
+  database: 'app'
+});
+
+await db.createCollection('events');
+await db.insert('events', { id: 'event-1', type: 'signup' });
+console.log(await db.find('events', { type: 'signup' }));
+```
+
+See [sdk/node/README.md](sdk/node/README.md) for media, vectors, and backup
+export.
+
+### Python
+
+Install the current source client:
 
 ```sh
-node cli/bin/pacificdb.js ping
-node cli/bin/pacificdb.js shell --database app
+python -m pip install ./sdk/python
 ```
 
-Run the complete local startup and CRUD check with
-`scripts/test-local-compose.sh`. PacificDB Community is self-hosted; an
-Atlas-style managed service requires the separate PacificDB Cloud control plane.
+```python
+from pacificdb import PacificDBClient
 
-## Native downloads
+db = PacificDBClient(database="app")
+db.insert("events", {"id": "event-2", "type": "purchase"})
+print(db.find("events", {"type": "purchase"}))
+```
 
-The release workflow builds separate packages for Linux (`.deb`), Windows
-(`.exe` installer), macOS Apple silicon (`arm64.pkg`), and macOS Intel
-(`x86_64.pkg`). The server and native `pacificdb` shell are included; Node.js
-is not required.
+### Java
 
-On Ubuntu or Debian:
+Build the current source client:
 
 ```sh
-sudo apt install ./pacificdb-community-*-linux-amd64.deb
-pacificdb-local
+mvn -f sdk/java/pom.xml package
 ```
 
-On Windows, run the `.exe` installer and then start `pacificdb-local.cmd` from
-a new Command Prompt. On macOS, choose the package matching `uname -m`, install
-it, and run `pacificdb-local`. In a second terminal on any platform:
+```java
+var db = new PacificDBClient("127.0.0.1", 9000, "app");
+var result = db.request(Map.of(
+    "action", "find",
+    "collection", "events",
+    "filter", Map.of("type", "signup")
+));
+```
+
+## Authentication
+
+Authentication is disabled only for the loopback local-development launcher.
+When the engine is configured with authentication:
+
+```text
+login admin
+Password:
+whoami
+```
+
+The password is not stored in history. Session tokens and CLI context are
+written with owner-only permissions. Applications can authenticate with a
+username/password or use an API key.
+
+## Local files
+
+| Platform | Engine data |
+|---|---|
+| Linux | `${XDG_DATA_HOME:-$HOME/.local/share}/pacificdb` |
+| macOS | `~/Library/Application Support/PacificDB` |
+| Windows | `%LOCALAPPDATA%\PacificDB` |
+
+Each directory contains `data`, `backup`, `restore`, `engine.log`, and
+`engine.pid`. Set `PACIFICDB_HOME` before the first launch to use another
+absolute location.
+
+CLI context and history use the platform state directory and never store
+plaintext passwords or complete API keys.
+
+## Connect to another engine
 
 ```sh
-pacificdb ping
-pacificdb shell
-pacificdb put-media assets hero ./hero.gif --content-type image/gif --database app
-pacificdb get-media assets hero ./downloaded.gif --database app
-pacificdb put-vector embeddings hero-vector '[0.2,0.8]' --database app
-pacificdb query-vector embeddings '[0.2,0.8]' --k 5 --database app
+pacificdb --host db.example.internal --port 9000 --no-start
+pacificdb --host db.example.internal --port 9000 ping --no-start
 ```
 
-Inside `pacificdb shell`, `upload video ./movie.mp4` uses sequential,
-checksummed chunks and applies no PacificDB total file-size cap. Available disk
-space, per-request limits, and other machine resources remain real limits.
-
-Community projects are local organizational metadata. They do not add billing,
-quotas, organizations, fleet management, or a new authorization boundary.
-Backups are manual, restores complete synchronously, and `backup export` writes
-a self-contained JSON export with every physical backup data file encoded in
-bounded, checksummed chunks. API keys have `read`, `readwrite`, or `admin`
-roles; their full secrets are returned once and are never stored.
-
-`pacificdb_meta` and the bootstrap `system` database are internal. Normal
-database listings omit them, and ordinary requests cannot read or write them.
-Raw access requires an authenticated admin and the explicit
-`internalAdmin: true` flag.
-
-The local launcher binds to `127.0.0.1`, stores data under the current user's
-application-data directory, and runs in the foreground. Release candidates
-must be code-signed and notarized before they are presented as trusted public
-installers.
+The CLI automatically starts an engine only for loopback hosts.
 
 ## Build and test
 
-Requirements: CMake 3.20+, a C++17 compiler, OpenSSL, LZ4, Node.js 18+, Python
-3.10+, and Java 11+/Maven for all SDK checks.
+Requirements: CMake 3.20+, a C++17 compiler, OpenSSL, LZ4, Node.js 18+,
+Python 3.10+, Java 11+, and Maven.
 
 ```sh
+git clone https://github.com/hitesh-reddy-k/pacificdb-community.git
+cd pacificdb-community
 cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j2
 scripts/test-community.sh build
 ```
 
-Run a development node after creating absolute storage directories and adapting
-`engine/.env.example`:
+After building, `./build/pacificdb` starts `./build/db_engine` automatically.
+
+Focused SDK checks:
 
 ```sh
-set -a; . engine/.env; set +a
-./build/db_engine
+npm run test:npm
+PYTHONPATH=sdk/python python -m pytest sdk/python/tests
+mvn -f sdk/java/pom.xml test
 ```
 
-Production mode refuses unsafe TLS, authentication, Raft, WAL, bind-address,
-and encrypted-storage settings at startup.
+## Beta status and support
+
+The Linux candidate passed 57 Linux test units, genuine ENOSPC coverage across
+21 write categories, six 10-minute RF3 load rounds, partition/election checks,
+and real Debian package installation. Physical power-controller testing and
+signed native Windows/macOS certification remain open.
+
+- [Certification report](docs/COMMUNITY_P0_CERTIFICATION.md)
+- [Security policy](SECURITY.md)
+- [Issue tracker](https://github.com/hitesh-reddy-k/pacificdb-community/issues)
 
 ## Licensing
 
-- Engine, query intelligence, deployments, and benchmarks: AGPL-3.0 (`LICENSE`)
-- `sdk/` and `cli/`: Apache-2.0 (license file in each package)
-- Bundled third-party notices: `THIRD_PARTY_NOTICES.md`
+- Engine, query intelligence, deployments, and benchmarks: AGPL-3.0
+- Node.js, Python, Java clients and CLI: Apache-2.0
+- Bundled dependencies: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
 
 Commercial use is allowed under these licenses. Network users of modified
-AGPL-covered server code must be offered the corresponding source as required
-by AGPL-3.0. Obtain legal advice before release if you need a dual-license model.
+AGPL-covered server code must be offered the corresponding source. Obtain legal
+advice if your company requires a different licensing model.

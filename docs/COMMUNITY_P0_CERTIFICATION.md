@@ -4,16 +4,16 @@ Date: 2026-09-12
 
 Source branch: `feature/community-complete-cli`
 
-Source/package version tested: `0.1.0-beta.7`
+Source/package version tested: `0.1.0-beta.8`
 
-Source commit at test start: `2cd89de2dba9d7dfd62e5d176ec485d68d043114`
+Source commit at test start: `5ed6bdf405f3be4ec586645d8387d08478a02aaf`
 
 ## Verdicts
 
 | Scope | Verdict | Evidence |
 |---|---|---|
 | P0 acknowledged-write repair | **PASS** | The old failure was reproduced, repaired, and covered by abrupt cross-process recovery. |
-| Linux source and SDK candidate | **PASS** | Complete retained suite: 52/52 test units passed. |
+| Linux source and SDK candidate | **PASS** | Complete retained suite: 55/55 test units passed. |
 | Linux Debian artifact | **PASS** | Extracted-package smoke plus real Ubuntu 24.04 `apt` install, engine read/write, remove, and data-preservation checks. |
 | RF3 correctness and sustained load | **PASS** | TCP partition/election campaign plus three 10-minute 64-client and three 10-minute 128-client rounds with zero operation errors. |
 | Physical power/storage-controller durability | **BLOCKED** | No dedicated power-cut/storage-controller harness is configured. |
@@ -21,13 +21,13 @@ Source commit at test start: `2cd89de2dba9d7dfd62e5d176ec485d68d043114`
 | Native macOS package, signing, and notarization | **BLOCKED** | No authorized macOS host, signing identity, or notarization credentials are configured. |
 | Global multi-platform production readiness | **BLOCKED** | The three external gates above have no valid evidence. |
 
-`0.1.0-beta.7` is a Linux release candidate. This report does not label it a
+`0.1.0-beta.8` is a Linux release candidate. This report does not label it a
 globally production-ready release because physical durability and native signed
 Windows/macOS installation cannot be certified from this Linux host.
 
-The certification run did not create a tag or release, publish a package,
-upgrade the host package, or modify paid/private control-plane code. Repository
-publication requires separate explicit authorization.
+The certification run itself did not upgrade the host package or modify
+paid/private control-plane code. Release publication is tracked separately from
+the test evidence in this report.
 
 ## Protected paths and artifact inventory
 
@@ -39,10 +39,10 @@ opened for writing.
 |---|---|
 | Installed host CLI | `/usr/bin/pacificdb` |
 | Installed host Debian package | `pacificdb-community 0.1.0~beta.3 amd64` |
-| Tested source CLI | `build/pacificdb`, version `0.1.0-beta.7` |
+| Tested source CLI | `build/pacificdb`, version `0.1.0-beta.8` |
 | Tested engine | `build/db_engine` |
-| Final Debian artifact | `build/pacificdb-community-0.1.0-beta.7-Linux.deb` |
-| Final artifact SHA-256 | `df7fdcd8c3727bd3f023827682c8717662b731550e8ded43d35080e2d8bf367e` |
+| Final Debian artifact | `build/pacificdb-community-0.1.0-beta.8-Linux.deb` |
+| Final artifact SHA-256 | `ad9b7862772f3b163b3c67e71a00ecaaccedecdfada4f1e223c55c788d931e44` |
 | Ubuntu package-manager test | Ubuntu 24.04 container, `apt install` then `apt remove` |
 | Linux installed-data default | `${XDG_DATA_HOME:-$HOME/.local/share}/pacificdb` |
 | macOS installed-data default | `~/Library/Application Support/PacificDB` |
@@ -51,7 +51,9 @@ opened for writing.
 | macOS CLI state | `~/Library/Application Support/PacificDB` |
 | Windows CLI state | `%LOCALAPPDATA%/PacificDB` |
 
-The CLI is a JSON-over-TCP client. It does not embed the database engine.
+The CLI is a JSON-over-TCP client. The native package installs the CLI and
+engine as separate executables; plain `pacificdb` starts the loopback engine
+automatically when needed.
 
 ## Original reproduction and repair
 
@@ -62,7 +64,7 @@ The original failure was reproduced in an isolated root:
 | `create project hi` | Canonical ID and durable write | Canonical ID returned |
 | `use project hi` | Resolve an existing ID or fail | Unchecked text stored |
 | `show project` | Selected project | `project_not_found` |
-| Create another project, SIGKILL, restart | Acknowledged project remains | i meaProject disappeared |
+| Create another project, SIGKILL, restart | Acknowledged project remains | Project disappeared |
 
 `pacificdb_meta.projects` already used the replicated document path. The
 single-node leader returned success after fsync and apply but before persisting
@@ -88,6 +90,19 @@ The repaired defects are:
 8. Native CLI context/history writes check open, flush, and close failures.
 
 ## Expanded certification results
+
+### Beta.8 installation and CLI experience
+
+The native and npm CLIs display the Community beta banner and open the shell
+when invoked as plain `pacificdb`. For loopback connections, the command starts
+one background engine if needed, even when two clients make the first request
+at the same time. The engine uses the documented platform data directory and
+records its log and PID there. `--no-start` keeps remote/operator-managed
+connections client-only.
+
+The beta.8 native package contains `pacificdb`, `db_engine`, the exact supplied
+PNG logo, licenses, and documentation. The obsolete `pacificdb-local` launcher
+is no longer installed.
 
 ### Public contract matrix
 
@@ -151,6 +166,10 @@ Six release rounds ran sequentially for 10 minutes each with paced mixed CRUD,
 unique IDs, immediate reads, updates, transient deletes, term/lag monitoring,
 and full final-map comparison.
 
+Those long rounds ran on the certified `5ed6bdf` engine core. Beta.8 changes
+the CLI, packaging, branding, and documentation without changing that engine
+core; a fresh beta.8 64/128-client smoke run repeated the RF3 path.
+
 | Clients | Passing rounds | Operations | Final documents | Errors | Largest apply lag | Slowest final convergence |
 |---:|---:|---:|---:|---:|---:|---:|
 | 64 | 3 | 161,274 | 57,597 | 0 | 5 | below 1 second |
@@ -169,7 +188,7 @@ attempt remains recorded.
 
 ### Debian package installation
 
-The final beta.7 artifact passed:
+The final beta.8 artifact passed:
 
 - isolated extraction followed by packaged CLI/engine document, media, and
   vector round trips;
@@ -194,7 +213,8 @@ printing credential values.
 | C++ retained executables | 29 | 29 | 0 | 0 |
 | Natural-query JavaScript check | 1 | 1 | 0 | 0 |
 | Node client tests | 5 | 5 | 0 | 0 |
-| Node CLI tests | 7 | 7 | 0 | 0 |
+| Node CLI tests | 9 | 9 | 0 | 0 |
+| Native/npm automatic-start scenario | 1 | 1 | 0 | 0 |
 | Real-engine Community E2E | 1 | 1 | 0 | 0 |
 | Public contract matrix | 1 | 1 | 0 | 0 |
 | Persistence/restart matrix | 1 | 1 | 0 | 0 |
@@ -205,10 +225,10 @@ printing credential values.
 | Python SDK tests | 1 | 1 | 0 | 0 |
 | Java SDK tests | 1 | 1 | 0 | 0 |
 | YCSB binding | 1 | 1 | 0 | 0 |
-| **Retained suite total** | **52** | **52** | **0** | **0** |
+| **Retained suite total** | **55** | **55** | **0** | **0** |
 | Extracted Debian package smoke | 1 | 1 | 0 | 0 |
 | Ubuntu `apt` lifecycle | 1 | 1 | 0 | 0 |
-| **Linux total** | **54** | **54** | **0** | **0** |
+| **Linux total** | **57** | **57** | **0** | **0** |
 
 The C++ comprehensive executable separately reported 58/58 internal
 assertions. The E2E executed 78 shell commands and checked 24 concurrent
@@ -220,9 +240,10 @@ Final commands:
 
 ```text
 scripts/test-community.sh build
+scripts/test-community-autostart.sh build
 cmake --build build -j2 --target package
-scripts/test-native-package.sh build/pacificdb-community-0.1.0-beta.7-Linux.deb
-scripts/test-debian-container-install.sh build/pacificdb-community-0.1.0-beta.7-Linux.deb
+scripts/test-native-package.sh build/pacificdb-community-0.1.0-beta.8-Linux.deb
+scripts/test-debian-container-install.sh build/pacificdb-community-0.1.0-beta.8-Linux.deb
 scripts/probe-external-certification.sh
 git diff --check
 node --check cli/src/cli.js

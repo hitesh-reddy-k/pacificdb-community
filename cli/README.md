@@ -1,57 +1,66 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/hitesh-reddy-k/pacificdb-community/main/site/pacificdb-logo.png" width="112" alt="PacificDB logo">
+</p>
+
 # PacificDB CLI
 
 The Apache-2.0 Community CLI talks directly to a PacificDB engine.
 
 ```sh
-pacificdb ping --host 127.0.0.1 --port 9000
-pacificdb request '{"action":"find","collection":"users","filter":{}}' --database app
-pacificdb shell --database app
+npm install --global @pacificdb/cli@beta
+pacificdb
 ```
 
-The shell accepts friendly commands and retains raw JSON compatibility through
-`request <json>` or a bare JSON object. Run `help` to see Authentication,
-Projects, Databases and queries, Backups, Security/API keys, Media, Vectors,
-and System commands.
-
-```text
-pacificdb> create project demo
-pacificdb> use project project_...
-pacificdb> create database app
-pacificdb> use app
-pacificdb> create collection users
-pacificdb> insert users {"id":"1","name":"Ada"}
-pacificdb> findOne users {"id":"1"}
-```
-
-Media and vector commands:
+Plain `pacificdb` opens the shell. For a loopback connection, it starts
+`db_engine` automatically when the executable is available on `PATH`.
+Installing the npm CLI alone does not install the database engine; install a
+native PacificDB package first or connect to another host.
 
 ```sh
-pacificdb put-media assets hero ./hero.gif --content-type image/gif --database app
-pacificdb get-media assets hero ./downloaded.gif --database app
-pacificdb put-vector embeddings hero-vector '[0.2,0.8]' --metadata '{"modality":"image"}' --database app
-pacificdb query-vector embeddings '[0.2,0.8]' --k 5 --database app
+pacificdb --host 127.0.0.1 --port 9000 ping
+pacificdb --host db.example.internal --port 9000 --no-start
+pacificdb request '{"action":"ping"}'
 ```
 
-Running `put-media` again with the same ID replaces the stored bytes and
-metadata.
-
-The interactive shell uses bounded, checksummed chunks for media files:
+Create and query data:
 
 ```text
-pacificdb> upload video ./demo.mp4 --collection videos
-pacificdb> list media
-pacificdb> download media media_... ./downloaded.mp4
+create project demo
+list projects
+use project project_...
+create database app
+use app
+create collection users
+insert users {"id":"1","name":"Ada"}
+findOne users {"id":"1"}
 ```
 
-PacificDB applies no total file-size limit to this chunked path. Available disk
-space, per-request limits, and other machine resources still apply.
+The shell includes authentication, projects, databases, document queries,
+manual backups, API keys, media, vectors, local context, history, and raw JSON
+requests. Run `help` for the complete command list.
 
-Manual backup export writes all backup data into one checksummed JSON file:
+Media uses bounded, sequential, checksummed chunks:
 
 ```text
-pacificdb> create backup --name before-upgrade
-pacificdb> backup export backup_... ./before-upgrade.json
+upload video ./demo.mp4 --collection videos
+list media
+download media media_... ./downloaded.mp4
 ```
 
-The export streams bounded chunks and does not load the whole backup into CLI
-memory.
+Manual backup export includes every physical backup file:
+
+```text
+create backup --name before-upgrade
+backup verify backup_...
+backup export backup_... ./before-upgrade.json
+```
+
+Vector search:
+
+```text
+put vector embeddings hero [0.2,0.8]
+query vector embeddings [0.2,0.8] --k 5 --metric cosine
+```
+
+Local context and history are stored with owner-only permissions. Passwords and
+complete API keys are excluded from history.

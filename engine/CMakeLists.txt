@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(db_engine LANGUAGES CXX)
 
-set(PACIFICDB_ENGINE_VERSION "11.5.0" CACHE STRING "PacificDB engine semantic version")
+set(PACIFICDB_ENGINE_VERSION "0.1.0-beta.8" CACHE STRING "PacificDB engine semantic version")
 set(PACIFICDB_STORAGE_FORMAT_VERSION "2" CACHE STRING "PacificDB on-disk storage format version")
 set(PACIFICDB_RAFT_PROTOCOL_VERSION "2" CACHE STRING "PacificDB Raft wire protocol version")
 execute_process(
@@ -266,13 +266,8 @@ endif()
 include(GNUInstallDirs)
 install(TARGETS db_engine pacificdb RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 if(WIN32)
-    install(PROGRAMS ${CMAKE_SOURCE_DIR}/../packaging/pacificdb-local.cmd
-        DESTINATION ${CMAKE_INSTALL_BINDIR})
     install(FILES ${CMAKE_SOURCE_DIR}/../packaging/pacificdb-path.ps1
         DESTINATION ${CMAKE_INSTALL_DATADIR}/pacificdb)
-else()
-    install(PROGRAMS ${CMAKE_SOURCE_DIR}/../packaging/pacificdb-local
-        DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
 install(FILES
     ${CMAKE_SOURCE_DIR}/../README.md
@@ -281,6 +276,8 @@ install(FILES
     ${CMAKE_SOURCE_DIR}/.env.example
     DESTINATION ${CMAKE_INSTALL_DATADIR}/pacificdb
 )
+install(FILES ${CMAKE_SOURCE_DIR}/../site/pacificdb-logo.png
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/pacificdb)
 
 set(CPACK_PACKAGE_NAME "pacificdb-community")
 set(CPACK_PACKAGE_VENDOR "PacificDB")

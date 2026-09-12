@@ -6,7 +6,7 @@ on:
       version:
         description: Version to build without publishing
         required: true
-        default: 0.1.0-beta.7
+        default: 0.1.0-beta.8
   push:
     tags: ["v*"]
 
@@ -106,7 +106,7 @@ jobs:
           $bin = "$installRoot\bin"
           if (-not (Test-Path "$bin\pacificdb.exe") -or
               -not (Test-Path "$bin\db_engine.exe") -or
-              -not (Test-Path "$bin\pacificdb-local.cmd")) {
+              -not (Test-Path "$installRoot\share\pacificdb\pacificdb-logo.png")) {
             throw "Windows installer did not install all commands"
           }
           $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
@@ -119,23 +119,21 @@ jobs:
           }
           $env:ENGINE_PORT = "19000"
           $env:RAFT_LISTEN_PORT = "19001"
-          $server = Start-Process -FilePath $env:ComSpec -ArgumentList '/d','/c',"`"$bin\pacificdb-local.cmd`"" -PassThru `
-            -RedirectStandardOutput installed-server.log -RedirectStandardError installed-server-error.log
+          $env:PACIFICDB_HOME = "$env:RUNNER_TEMP\pacificdb-installed-test"
+          $localPid = $null
           try {
-            $ready = $false
-            for ($i = 0; $i -lt 60; $i++) {
-              & "$bin\pacificdb.exe" --port 19000 ping *> $null
-              if ($LASTEXITCODE -eq 0) { $ready = $true; break }
-              Start-Sleep -Milliseconds 250
+            $pingResult = & "$bin\pacificdb.exe" --port 19000 ping 2>&1 | Out-String
+            if ($LASTEXITCODE -ne 0 -or $pingResult -notmatch '"status":\s*"pong"') {
+              throw "Installed PacificDB did not start automatically: $pingResult"
             }
-            if (-not $ready) { throw "Installed PacificDB did not start" }
+            $localPid = Get-Content "$env:PACIFICDB_HOME/engine.pid"
             $writeResult = & "$bin\pacificdb.exe" --port 19000 request `
               '{"action":"createDatabase","dbName":"package_test"}' 2>&1 | Out-String
             if ($LASTEXITCODE -ne 0 -or $writeResult -notmatch '"status":\s*"ok"') {
               throw "Installed PacificDB could not write: $writeResult"
             }
           } finally {
-            & taskkill.exe /PID $server.Id /T /F *> $null
+            if ($localPid) { Stop-Process -Id $localPid -Force -ErrorAction SilentlyContinue }
           }
           $uninstall = Start-Process -FilePath "$installRoot\Uninstall.exe" `
             -ArgumentList '/S', "_?=$installRoot" -PassThru
@@ -205,7 +203,17 @@ jobs:
             --identifier com.pacificdb.community --version "${version%%-*}" "$package"
           pkgutil --payload-files "$package" | grep -q 'usr/local/bin/db_engine$'
           pkgutil --payload-files "$package" | grep -q 'usr/local/bin/pacificdb$'
-          pkgutil --payload-files "$package" | grep -q 'usr/local/bin/pacificdb-local$'
+          pkgutil --payload-files "$package" | grep -q 'usr/local/share/pacificdb/pacificdb-logo.png$'
+          sudo installer -pkg "$package" -target /
+          export PACIFICDB_HOME="$RUNNER_TEMP/installed-test"
+          export ENGINE_PORT=19100 RAFT_LISTEN_PORT=19101
+          /usr/local/bin/pacificdb --port 19100 ping | grep -q pong
+          installed_pid=$(cat "$PACIFICDB_HOME/engine.pid")
+          kill "$installed_pid"
+          for _ in {1..60}; do
+            if ! kill -0 "$installed_pid" 2>/dev/null; then break; fi
+            sleep 0.25
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: macos-${{ matrix.arch }}
