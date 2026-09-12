@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(db_engine LANGUAGES CXX)
 
-set(PACIFICDB_ENGINE_VERSION "0.1.0-beta.9" CACHE STRING "PacificDB engine semantic version")
+set(PACIFICDB_ENGINE_VERSION "0.1.0-beta.11" CACHE STRING "PacificDB engine semantic version")
 set(PACIFICDB_STORAGE_FORMAT_VERSION "2" CACHE STRING "PacificDB on-disk storage format version")
 set(PACIFICDB_RAFT_PROTOCOL_VERSION "2" CACHE STRING "PacificDB Raft wire protocol version")
 execute_process(
@@ -194,7 +194,10 @@ target_include_directories(db_engine PRIVATE
 )
 
 add_executable(pacificdb src/shell.cpp src/community_shell.cpp)
-target_include_directories(pacificdb PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(pacificdb PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_BINARY_DIR}/generated
+)
 target_link_libraries(pacificdb PRIVATE OpenSSL::Crypto)
 if(WIN32)
     target_link_libraries(pacificdb PRIVATE Ws2_32)

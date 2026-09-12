@@ -4,16 +4,16 @@ Date: 2026-09-12
 
 Source branch: `feature/community-complete-cli`
 
-Source/package version tested: `0.1.0-beta.9`
+Source/package version tested: `0.1.0-beta.11`
 
-Source commit at test start: `9075bfa8c0ded9105583b19f81e34f73ceea6b1b`
+Source baseline at test start: `b111ec66c68de671903d2b33478de2a35b3dce93`
 
 ## Verdicts
 
 | Scope | Verdict | Evidence |
 |---|---|---|
 | P0 acknowledged-write repair | **PASS** | The old failure was reproduced, repaired, and covered by abrupt cross-process recovery. |
-| Linux source and SDK candidate | **PASS** | Complete retained suite: 55/55 test units passed. |
+| Linux source and SDK candidate | **PASS** | Complete retained suite: 57/57 test units passed. |
 | Linux Debian artifact | **PASS** | Extracted-package smoke plus real Ubuntu 24.04 `apt` install, engine read/write, remove, and data-preservation checks. |
 | RF3 correctness and sustained load | **PASS** | TCP partition/election campaign plus three 10-minute 64-client and three 10-minute 128-client rounds with zero operation errors. |
 | Physical power/storage-controller durability | **BLOCKED** | No dedicated power-cut/storage-controller harness is configured. |
@@ -23,7 +23,7 @@ Source commit at test start: `9075bfa8c0ded9105583b19f81e34f73ceea6b1b`
 | macOS signing and notarization | **BLOCKED** | No Developer ID or notarization credentials are configured. |
 | Global signed production readiness | **BLOCKED** | Physical durability and signed/notarized installer evidence remain external gates. |
 
-`0.1.0-beta.9` is a Linux release candidate. This report does not label it a
+`0.1.0-beta.11` is a Linux release candidate. This report does not label it a
 globally production-ready release because physical durability and native signed
 Windows/macOS installation cannot be certified from this Linux host.
 
@@ -41,10 +41,10 @@ opened for writing.
 |---|---|
 | Installed host CLI | `/usr/bin/pacificdb` |
 | Installed host Debian package | `pacificdb-community 0.1.0~beta.3 amd64` |
-| Tested source CLI | `build/pacificdb`, version `0.1.0-beta.9` |
+| Tested source CLI | `build/pacificdb`, version `0.1.0-beta.11` |
 | Tested engine | `build/db_engine` |
-| Final Debian artifact | `build/pacificdb-community-0.1.0-beta.9-Linux.deb` |
-| Final artifact SHA-256 | `9e7ec901a86dd71d751de5301e0cf939d8e25f1f7a3f049432de1e83e330d53a` |
+| Final Debian artifact | `build/pacificdb-community-0.1.0-beta.11-Linux.deb` |
+| Final artifact SHA-256 | `11f8f283e6d20eb0841093bd01123bc8871783434b5618ee2d6efdecaad421c2` |
 | Ubuntu package-manager test | Ubuntu 24.04 container, `apt install` then `apt remove` |
 | Linux installed-data default | `${XDG_DATA_HOME:-$HOME/.local/share}/pacificdb` |
 | macOS installed-data default | `~/Library/Application Support/PacificDB` |
@@ -93,10 +93,15 @@ The repaired defects are:
 9. Native and npm launchers verify the PacificDB protocol before accepting a
    listener. A different service on the configured port now produces a clear
    port-conflict error instead of exposing a JSON parser exception.
+10. Project database listing and selection use the replicated mapping catalog.
+    Switching or deleting the active project clears the selected database, and
+    cross-project `use <database>` fails.
+11. Native `pacificdb --version` and `pacificdb -V` print the packaged version
+    without starting the engine.
 
 ## Expanded certification results
 
-### Beta.9 installation and CLI experience
+### Beta.11 installation and CLI experience
 
 The native and npm CLIs display the Community beta banner and open the shell
 when invoked as plain `pacificdb`. For loopback connections, the command starts
@@ -105,7 +110,7 @@ at the same time. The engine uses the documented platform data directory and
 records its log and PID there. `--no-start` keeps remote/operator-managed
 connections client-only.
 
-The beta.9 native package contains `pacificdb`, `db_engine`, the exact supplied
+The beta.11 native package contains `pacificdb`, `db_engine`, the exact supplied
 PNG logo, licenses, and documentation. The obsolete `pacificdb-local` launcher
 is no longer installed.
 
@@ -173,7 +178,7 @@ and full final-map comparison.
 
 Those long rounds ran on the certified `5ed6bdf` engine core. Subsequent beta
 changes affect the CLI, SDKs, packaging, branding, and documentation without
-changing that engine core; a fresh beta.9 64/128-client smoke run repeated the
+changing that engine core; a fresh beta.11 64/128-client smoke run repeated the
 RF3 path.
 
 | Clients | Passing rounds | Operations | Final documents | Errors | Largest apply lag | Slowest final convergence |
@@ -194,7 +199,7 @@ attempt remains recorded.
 
 ### Debian package installation
 
-The final beta.9 artifact passed:
+The final beta.11 artifact passed:
 
 - isolated extraction followed by packaged CLI/engine document, media, and
   vector round trips;
@@ -205,6 +210,15 @@ The final beta.9 artifact passed:
 The host beta.3 installation and host data remained unchanged.
 
 ### Cross-platform package gate
+
+The beta.11 pre-release GitHub Actions run `34705388862` passed from commit
+`b055407` on Linux, Windows Server 2025, macOS 15 Intel, and macOS 15 ARM.
+Each job built and installed its native package, exercised automatic startup
+and a real write, and uploaded the candidate artifact without publishing it.
+The tagged release run `34706027876` repeated all four builds from commit
+`27a82f0` and published the Linux, Windows, macOS Intel, and macOS ARM
+installers with `SHA256SUMS`. Downloading the public release assets and running
+`sha256sum -c SHA256SUMS` verified every installer.
 
 The beta.9 pre-release GitHub Actions run `34678171973` passed from commit
 `015b588` on Linux, Windows Server 2025, macOS 15 Intel, and macOS 15 ARM. The
@@ -230,6 +244,7 @@ without printing credential values.
 |---|---:|---:|---:|---:|
 | C++ retained executables | 29 | 29 | 0 | 0 |
 | Natural-query JavaScript check | 1 | 1 | 0 | 0 |
+| Website documentation check | 1 | 1 | 0 | 0 |
 | Node client tests | 6 | 6 | 0 | 0 |
 | Node CLI tests | 9 | 9 | 0 | 0 |
 | Native/npm automatic-start scenario | 1 | 1 | 0 | 0 |
@@ -243,13 +258,13 @@ without printing credential values.
 | Python SDK tests | 1 | 1 | 0 | 0 |
 | Java SDK tests | 1 | 1 | 0 | 0 |
 | YCSB binding | 1 | 1 | 0 | 0 |
-| **Retained suite total** | **56** | **56** | **0** | **0** |
+| **Retained suite total** | **57** | **57** | **0** | **0** |
 | Extracted Debian package smoke | 1 | 1 | 0 | 0 |
 | Ubuntu `apt` lifecycle | 1 | 1 | 0 | 0 |
-| **Linux total** | **58** | **58** | **0** | **0** |
+| **Linux total** | **59** | **59** | **0** | **0** |
 
 The C++ comprehensive executable separately reported 58/58 internal
-assertions. The E2E executed 78 shell commands and checked 24 concurrent
+assertions. The E2E executed 87 shell commands and checked 24 concurrent
 acknowledged writes, six concurrent projects, six concurrent API-key
 create/revoke cycles, four concurrent media chunks, a graceful restart, and a
 SIGKILL recovery.
@@ -260,8 +275,8 @@ Final commands:
 scripts/test-community.sh build
 scripts/test-community-autostart.sh build
 cmake --build build -j2 --target package
-scripts/test-native-package.sh build/pacificdb-community-0.1.0-beta.9-Linux.deb
-scripts/test-debian-container-install.sh build/pacificdb-community-0.1.0-beta.9-Linux.deb
+scripts/test-native-package.sh build/pacificdb-community-0.1.0-beta.11-Linux.deb 0.1.0-beta.11
+scripts/test-debian-container-install.sh build/pacificdb-community-0.1.0-beta.11-Linux.deb 0.1.0~beta.11
 scripts/probe-external-certification.sh
 git diff --check
 node --check cli/src/cli.js

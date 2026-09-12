@@ -24,6 +24,8 @@ public:
     bool deleteProject(const std::string& userId, const std::string& id);
     bool mapDatabase(const std::string& userId, const std::string& projectId,
                      const std::string& databaseName);
+    json listProjectDatabases(const std::string& userId,
+                              const std::string& projectId);
     json databaseProject(const std::string& userId,
                          const std::string& databaseName);
     json beginMedia(const std::string& userId, const std::string& databaseName,

@@ -11,8 +11,7 @@ npm install --global @pacificdb/cli@beta
 pacificdb
 ```
 
-The npm `beta` tag currently installs `0.1.0-beta.7`. The `0.1.0-beta.9`
-package is prepared but has not been published yet.
+This package is PacificDB CLI `0.1.0-beta.11`.
 
 Plain `pacificdb` opens the shell. For a loopback connection, it starts
 `db_engine` automatically when the executable is available on `PATH`.
@@ -20,6 +19,7 @@ Installing the npm CLI alone does not install the database engine; install a
 native PacificDB package first or connect to another host.
 
 ```sh
+pacificdb --version
 pacificdb --host 127.0.0.1 --port 9000 ping
 pacificdb --host db.example.internal --port 9000 --no-start
 pacificdb request '{"action":"ping"}'
@@ -41,6 +41,9 @@ findOne users {"id":"1"}
 The shell includes authentication, projects, databases, document queries,
 manual backups, API keys, media, vectors, local context, history, and raw JSON
 requests. Run `help` for the complete command list.
+
+With a project selected, `list databases` and `use <name>` operate only on its
+mapped databases. Selecting another project clears the current database.
 
 Media uses bounded, sequential, checksummed chunks:
 

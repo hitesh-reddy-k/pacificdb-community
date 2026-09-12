@@ -6,7 +6,7 @@ on:
       version:
         description: Version to build without publishing
         required: true
-        default: 0.1.0-beta.9
+        default: 0.1.0-beta.11
   push:
     tags: ["v*"]
 
@@ -32,7 +32,7 @@ jobs:
           cmake --build build --config Release --target db_engine pacificdb -j2
           cpack --config build/CPackConfig.cmake -G DEB -B dist
           mv dist/*.deb "dist/pacificdb-community-$version-linux-amd64.deb"
-          scripts/test-native-package.sh "dist/pacificdb-community-$version-linux-amd64.deb"
+          scripts/test-native-package.sh "dist/pacificdb-community-$version-linux-amd64.deb" "$version"
       - uses: actions/upload-artifact@v4
         with:
           name: linux-amd64
@@ -49,6 +49,9 @@ jobs:
           vcpkg install openssl:x64-windows-static lz4:x64-windows-static
       - name: Build Windows installer
         shell: pwsh
+        env:
+          CERT_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
+          CERT_PASS: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         run: |
           $ErrorActionPreference = 'Stop'
           $version = $env:GITHUB_REF_NAME.TrimStart('v')
@@ -92,6 +95,20 @@ jobs:
           }
           cpack --config build/CPackConfig.cmake -C Release -G NSIS -B dist
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          if ($env:CERT_BASE64 -and $env:CERT_PASS) {
+            $certBytes = [Convert]::FromBase64String($env:CERT_BASE64)
+            $certPath = "$env:RUNNER_TEMP\signing_cert.pfx"
+            [IO.File]::WriteAllBytes($certPath, $certBytes)
+            $signtool = (Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" | Select-Object -First 1).FullName
+            if ($signtool) {
+              Get-ChildItem dist/*.exe | ForEach-Object {
+                & $signtool sign /f $certPath /p $env:CERT_PASS /tr http://timestamp.digicert.com /td sha256 /fd sha256 $_.FullName
+              }
+            }
+            Remove-Item $certPath -Force
+          }
+
           $installer = Get-ChildItem dist/*.exe
           $installRoot = "$env:RUNNER_TEMP\PacificDB"
           $install = Start-Process -FilePath $installer.FullName `

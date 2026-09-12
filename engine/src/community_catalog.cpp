@@ -182,6 +182,26 @@ json CommunityCatalog::databaseProject(const std::string& userId,
     return rows.empty() ? json() : publicDocument(std::move(rows.front()));
 }
 
+json CommunityCatalog::listProjectDatabases(const std::string& userId,
+                                            const std::string& projectId) {
+    if (getProject(userId, projectId).is_null()) {
+        throw std::invalid_argument("project not found");
+    }
+    const auto existing = DatabaseEngine::listDatabases(userId);
+    const auto mappings = DatabaseEngine::find(
+        userId, kDatabase, kDatabaseProjects, {{"project_id", projectId}});
+    json result = json::array();
+    for (const auto& mapping : mappings) {
+        const auto database = mapping.value("database", "");
+        if (!database.empty() && !isReservedDatabase(database) &&
+            std::find(existing.begin(), existing.end(), database) != existing.end()) {
+            result.push_back(database);
+        }
+    }
+    std::sort(result.begin(), result.end());
+    return result;
+}
+
 json CommunityCatalog::beginMedia(const std::string& userId,
                                   const std::string& databaseName,
                                   const std::string& collection,

@@ -953,7 +953,7 @@ static std::optional<pacificdb::security::Permission> permissionForAction(const 
         action == "admin_compaction_status" || action == "admin_replay_check" ||
         action == "admin_storage_verify" ||
         action == "community_project_list" || action == "community_project_get" ||
-        action == "community_database_project" ||
+        action == "community_database_list" || action == "community_database_project" ||
         action == "community_media_list" || action == "community_media_get" ||
         action == "community_media_get_chunk" || action == "community_capabilities" ||
         action == "security_whoami" || action == "api_key_list" ||
@@ -2447,6 +2447,13 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                 req.value("userId", "system"), req.value("project_id", ""),
                 req.value("database", ""));
             res = {{"status", "ok"}};
+        }
+        else if (action == "community_database_list") {
+            res = {{"status", "ok"},
+                   {"databases", pacificdb::community::CommunityCatalog::instance()
+                                     .listProjectDatabases(
+                                         req.value("userId", "system"),
+                                         req.value("project_id", ""))}};
         }
         else if (action == "community_database_project") {
             const auto mapping = pacificdb::community::CommunityCatalog::instance()

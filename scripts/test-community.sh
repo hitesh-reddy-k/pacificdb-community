@@ -22,8 +22,11 @@ done
 "$BUILD_DIR/db_engine_community_api_key_test"
 "$BUILD_DIR/db_engine_community_query_test"
 "$BUILD_DIR/db_engine_native_shell_parser_test"
+test "$("$BUILD_DIR/pacificdb" --version)" = "PacificDB 0.1.0-beta.11"
+test "$("$BUILD_DIR/pacificdb" -V)" = "PacificDB 0.1.0-beta.11"
 node intelligence/test.js
 test -s site/pacificdb-logo.png
+node scripts/test-site-docs.mjs
 ! rg -n 'pacificdb-local(?:\.cmd)?' README.md cli/README.md site/index.html
 npm install --ignore-scripts --no-audit --no-fund
 npm run test:npm

@@ -142,9 +142,14 @@ try {
 
   const alpha = (await client.request({ action: 'community_project_create',
     name: 'alpha' })).project;
+  const isolated = (await client.request({ action: 'community_project_create',
+    name: 'isolated' })).project;
   const removed = (await client.request({ action: 'community_project_create',
     name: 'delete-me' })).project;
   await client.createDatabase('app');
+  await client.createDatabase('isolated-db');
+  await client.request({ action: 'community_database_map', database: 'isolated-db',
+    project_id: isolated.id });
   client.database = 'app';
   await client.createCollection('users');
   await client.createCollection('vectors');
@@ -153,6 +158,10 @@ try {
     profile: { city: 'London' }, unicode: 'నమస్తే' });
   await client.request({ action: 'community_database_map', database: 'app',
     project_id: alpha.id });
+  assert.deepEqual((await client.request({ action: 'community_database_list',
+    project_id: alpha.id })).databases, ['app']);
+  assert.deepEqual((await client.request({ action: 'community_database_list',
+    project_id: isolated.id })).databases, ['isolated-db']);
 
   const racedProjects = await Promise.all(Array.from({ length: 6 }, () =>
     client.request({ action: 'community_project_create', name: 'duplicate-name' })));
@@ -314,6 +323,19 @@ try {
   const context = JSON.parse(await readFile(path.join(cliHome, 'context.json')));
   assert.equal(context.projectId, alpha.id);
 
+  const isolationCommands = [
+    'login admin', adminPassword, `use project ${alpha.id}`, 'use app',
+    `use project ${isolated.id}`, 'list databases', 'use app',
+    'use isolated-db', 'show database', 'quit'
+  ];
+  const isolationOutput = await runShell(isolationCommands);
+  assertPublicOutput(isolationOutput);
+  assert.match(isolationOutput, /isolated-db/);
+  assert.match(isolationOutput, /database_not_found/);
+  const isolatedContext = JSON.parse(await readFile(path.join(cliHome, 'context.json')));
+  assert.deepEqual({ projectId: isolatedContext.projectId, database: isolatedContext.database },
+    { projectId: isolated.id, database: 'isolated-db' });
+
   const exported = JSON.parse(await readFile(exportFile, 'utf8'));
   assert.equal(exported.format, 'pacificdb-full-backup-v1');
   assert.ok(exported.files.length > 0);
@@ -435,7 +457,8 @@ try {
   await stopEngine();
 
   const shellCommandCount = shellCommands.length + invalidCommands.length +
-    freshShellCommands.length - 3; // one password response follows each login
+    isolationCommands.length + freshShellCommands.length - 4;
+    // one password response follows each login
   console.log(JSON.stringify({ status: 'PASS', root: testRoot,
     shell_commands_executed: shellCommandCount, media_chunks: 3, concurrent_writes: 24,
     concurrent_project_creates: 6, concurrent_api_key_create_revoke: 6,

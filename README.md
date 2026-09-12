@@ -8,7 +8,7 @@
   Self-hosted documents, vectors, media, backups, and RF3 replication.
 </p>
 
-> **Beta:** `0.1.0-beta.9` is a tested Community release candidate for evaluation,
+> **Beta:** `0.1.0-beta.11` is a tested Community release candidate for evaluation,
 > development, staging, and controlled early-adopter deployments. Read
 > [the certification report](docs/COMMUNITY_P0_CERTIFICATION.md) before storing
 > critical data.
@@ -57,7 +57,8 @@ macOS:
 Plain `pacificdb` starts the local engine when it is not already running and
 opens the interactive shell. The engine continues in the background and is
 reused by later CLI and application connections. Use `--no-start` when the CLI
-must only connect to an already-running engine.
+must only connect to an already-running engine. Check the installed release
+without starting the engine with `pacificdb --version`.
 
 Windows and macOS beta installers are currently unsigned. Review the
 [certification status](docs/COMMUNITY_P0_CERTIFICATION.md) before installation.
@@ -71,8 +72,8 @@ npm install --global @pacificdb/cli@beta
 npm install @pacificdb/client@beta
 ```
 
-The npm `beta` tag currently installs `0.1.0-beta.7`. The `0.1.0-beta.9`
-npm packages are prepared but have not been published yet.
+The npm `beta` tag installs `0.1.0-beta.11` for both the CLI and Node.js
+client.
 
 The npm CLI is a client. It can automatically start `db_engine` when a native
 PacificDB server package is installed and available on `PATH`. Installing only
@@ -123,6 +124,10 @@ pacificdb:app>
 
 Run `help` for the complete categorized command list and `quit` to leave the
 shell. Leaving the shell does not stop the background engine.
+
+When a project is selected, `list databases` and `use <name>` are limited to
+databases mapped to that project. Switching or deleting the active project
+clears the selected database, preventing project contexts from being mixed.
 
 Local mode listens only on `127.0.0.1:9000` and starts with authentication
 disabled. Configure authentication and TLS before exposing the engine to a
@@ -298,7 +303,7 @@ mvn -f sdk/java/pom.xml test
 
 ## Beta status and support
 
-The Linux candidate passed 57 Linux test units, genuine ENOSPC coverage across
+The Linux candidate passed 57 retained test units, genuine ENOSPC coverage across
 21 write categories, six 10-minute RF3 load rounds, partition/election checks,
 and real Debian package installation. Physical power-controller testing and
 signed native Windows/macOS certification remain open.

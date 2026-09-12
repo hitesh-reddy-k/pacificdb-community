@@ -26,6 +26,11 @@ int main() {
     assert(pacificdb::cli::parseShellCommand("delete backup backup-1", context)
                .at("command")
                .at("action") == "delete_backup");
+    context.projectId = "project_1";
+    const auto projectDatabases =
+        pacificdb::cli::parseShellCommand("list databases", context).at("command");
+    assert(projectDatabases.at("action") == "community_database_list");
+    assert(projectDatabases.at("project_id") == "project_1");
     bool rejected = false;
     try {
         pacificdb::cli::parseShellCommand("create organization demo", context);

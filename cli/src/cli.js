@@ -18,10 +18,18 @@ export async function main(args, streams = { input: stdin, output: stdout }) {
     else if (args[i] === '--metric') options.metric = args[++i];
     else if (args[i] === '--no-start') options.autoStart = false;
     else if (args[i] === '--help' || args[i] === '-h') options.help = true;
+    else if (args[i] === '--version' || args[i] === '-V') options.version = true;
     else positional.push(args[i]);
+  }
+  if (options.version) {
+    const packageJson = JSON.parse(await readFile(
+      new URL('../package.json', import.meta.url), 'utf8'));
+    streams.output.write(`PacificDB ${packageJson.version}\n`);
+    return;
   }
   if (options.help) {
     streams.output.write('Usage: pacificdb [shell|ping|request|put-media|get-media|put-vector|query-vector] [options]\n\n');
+    streams.output.write('Options: --help, -h  --version, -V  --host HOST  --port PORT  --no-start\n\n');
     streams.output.write(SHELL_HELP);
     return;
   }
