@@ -187,7 +187,11 @@ json parseShellCommand(const std::string& input, const ShellContext& context) {
 
     if (std::regex_match(text, match, std::regex(R"(^create database (\S+)$)")))
         return {{"kind", "create_database"}, {"name", match[1].str()}};
-    if (text == "list databases") return request({{"action", "listDatabases"}});
+    if (text == "list databases")
+        return request(context.projectId.empty()
+            ? json{{"action", "listDatabases"}}
+            : json{{"action", "community_database_list"},
+                   {"project_id", context.projectId}});
     if (std::regex_match(text, match, std::regex(R"(^use (\S+)$)")))
         return {{"kind", "use_database"}, {"name", match[1].str()}};
     if (text == "show database") {

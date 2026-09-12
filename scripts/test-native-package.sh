@@ -2,6 +2,7 @@
 set -euo pipefail
 
 package=${1:?usage: test-native-package.sh PACKAGE.deb}
+expected_version=${2:-0.1.0-beta.11}
 root=$(mktemp -d /tmp/pacificdb-package-root-XXXXXX)
 home=$(mktemp -d /tmp/pacificdb-package-home-XXXXXX)
 port=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1]); s.close()')
@@ -22,8 +23,8 @@ test -x "$root/usr/bin/db_engine"
 test -x "$root/usr/bin/pacificdb"
 test ! -e "$root/usr/bin/pacificdb-local"
 test -s "$root/usr/share/pacificdb/pacificdb-logo.png"
-test "$("$root/usr/bin/pacificdb" --version)" = "PacificDB 0.1.0-beta.9"
-test "$("$root/usr/bin/pacificdb" -V)" = "PacificDB 0.1.0-beta.9"
+test "$("$root/usr/bin/pacificdb" --version)" = "PacificDB $expected_version"
+test "$("$root/usr/bin/pacificdb" -V)" = "PacificDB $expected_version"
 
 export PACIFICDB_HOME="$home" ENGINE_PORT="$port" RAFT_LISTEN_PORT="$raft_port"
 "$root/usr/bin/pacificdb" --port "$port" ping >"$home/ping-one.out" &

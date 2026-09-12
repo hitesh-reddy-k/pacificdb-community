@@ -17,6 +17,14 @@ int main() {
     assert(catalog.mapDatabase("system", project.at("id"), "app"));
     assert(catalog.databaseProject("system", "app").at("project_id") ==
            project.at("id"));
+    DatabaseEngine::createDatabase("system", "app");
+    const auto otherProject = catalog.createProject("system", "other");
+    DatabaseEngine::createDatabase("system", "other-db");
+    assert(catalog.mapDatabase("system", otherProject.at("id"), "other-db"));
+    assert(catalog.listProjectDatabases("system", project.at("id")) ==
+           nlohmann::json::array({"app"}));
+    assert(catalog.listProjectDatabases("system", otherProject.at("id")) ==
+           nlohmann::json::array({"other-db"}));
     assert(pacificdb::community::isReservedDatabase("pacificdb_meta"));
     assert(pacificdb::community::isReservedDatabase("system"));
     assert(!pacificdb::community::isReservedDatabase("app"));

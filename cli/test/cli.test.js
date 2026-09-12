@@ -41,7 +41,7 @@ test('shell persists local context and dispatches project/database commands', as
         if (command.id !== 'project_1') throw new Error('project_not_found');
         return { status: 'ok', project: { id: 'project_1', name: 'demo' } };
       }
-      if (command.action === 'listDatabases') return ['app'];
+      if (command.action === 'community_database_list') return { databases: ['app'] };
       return { status: 'ok' };
     }
   };
@@ -57,7 +57,7 @@ test('shell persists local context and dispatches project/database commands', as
 
   assert.deepEqual(requests.map((request) => request.action), [
     'community_project_create', 'community_project_get', 'createDatabase',
-    'community_database_map', 'listDatabases'
+    'community_database_map', 'community_database_list'
   ]);
   const context = JSON.parse(await readFile(path.join(cliHome, 'context.json')));
   assert.equal(context.projectId, 'project_1');
@@ -75,7 +75,7 @@ test('shell rejects nonexistent project and database without changing context', 
     database: '', token: '',
     async request(command) {
       if (command.action === 'community_project_get') throw new Error('project_not_found');
-      if (command.action === 'listDatabases') return ['existing'];
+      if (command.action === 'community_database_list') return { databases: ['existing'] };
       return { status: 'ok' };
     }
   };
@@ -96,6 +96,47 @@ test('shell rejects nonexistent project and database without changing context', 
   assert.match(text, /database_not_found/);
   assert.doesNotMatch(text, /"projectId": "definitely-does-not-exist"/);
   assert.doesNotMatch(text, /"database": "missing-database"/);
+});
+
+test('switching projects clears the database and scopes database selection', async () => {
+  const cliHome = await mkdtemp(path.join(os.tmpdir(), 'pacificdb-shell-project-scope-'));
+  await writeFile(path.join(cliHome, 'context.json'), JSON.stringify({
+    projectId: 'project_1', database: 'first-db'
+  }), { mode: 0o600 });
+  const requests = [];
+  const client = {
+    database: '', token: '',
+    async request(command) {
+      requests.push(command);
+      if (command.action === 'community_project_get') {
+        return { status: 'ok', project: { id: 'project_2', name: 'second' } };
+      }
+      if (command.action === 'community_database_list') {
+        return { status: 'ok', databases: ['second-db'] };
+      }
+      return { status: 'ok' };
+    }
+  };
+  const input = new PassThrough();
+  const output = new PassThrough();
+  let text = '';
+  output.on('data', (chunk) => { text += chunk; });
+  const running = runShell(client, { input, output }, { cliHome });
+  input.write('use project project_2\n');
+  input.write('list databases\n');
+  input.write('use first-db\n');
+  input.write('use second-db\n');
+  input.end('exit\n');
+  await running;
+
+  assert.equal(client.database, 'second-db');
+  assert.deepEqual(JSON.parse(await readFile(path.join(cliHome, 'context.json'))), {
+    projectId: 'project_2', database: 'second-db'
+  });
+  assert.equal(requests.filter((request) => request.action === 'community_database_list').length, 3);
+  assert.ok(requests.filter((request) => request.action === 'community_database_list')
+    .every((request) => request.project_id === 'project_2'));
+  assert.match(text, /database_not_found/);
 });
 
 test('rejects unknown commands with useful usage', async () => {

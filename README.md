@@ -8,7 +8,7 @@
   Self-hosted documents, vectors, media, backups, and RF3 replication.
 </p>
 
-> **Beta:** `0.1.0-beta.9` is a tested Community release candidate for evaluation,
+> **Beta:** `0.1.0-beta.11` is a tested Community release candidate for evaluation,
 > development, staging, and controlled early-adopter deployments. Read
 > [the certification report](docs/COMMUNITY_P0_CERTIFICATION.md) before storing
 > critical data.
@@ -72,8 +72,8 @@ npm install --global @pacificdb/cli@beta
 npm install @pacificdb/client@beta
 ```
 
-The npm `beta` tag installs `0.1.0-beta.10` for both the CLI and Node.js
-client. The native installers remain at `0.1.0-beta.9`.
+The npm `beta` tag installs `0.1.0-beta.11` for both the CLI and Node.js
+client.
 
 The npm CLI is a client. It can automatically start `db_engine` when a native
 PacificDB server package is installed and available on `PATH`. Installing only
@@ -124,6 +124,10 @@ pacificdb:app>
 
 Run `help` for the complete categorized command list and `quit` to leave the
 shell. Leaving the shell does not stop the background engine.
+
+When a project is selected, `list databases` and `use <name>` are limited to
+databases mapped to that project. Switching or deleting the active project
+clears the selected database, preventing project contexts from being mixed.
 
 Local mode listens only on `127.0.0.1:9000` and starts with authentication
 disabled. Configure authentication and TLS before exposing the engine to a

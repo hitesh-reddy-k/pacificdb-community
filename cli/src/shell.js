@@ -201,7 +201,9 @@ export function parseShellCommand(line, context = {}) {
   if ((match = text.match(/^create database (\S+)$/)))
     return { kind: 'createDatabase', name: match[1] };
   if (text === 'list databases')
-    return { kind: 'request', command: { action: 'listDatabases' } };
+    return { kind: 'request', command: context.projectId
+      ? { action: 'community_database_list', project_id: context.projectId }
+      : { action: 'listDatabases' } };
   if ((match = text.match(/^use (\S+)$/))) return { kind: 'useDatabase', name: match[1] };
   if (text === 'show database') {
     requireDatabase(context);
@@ -390,10 +392,14 @@ export async function runShell(client, streams, options = {}) {
         const projectId = response?.project?.id;
         if (typeof projectId !== 'string' || !projectId) throw new Error('project_not_found');
         context.projectId = projectId;
+        delete context.database;
+        client.database = '';
         await saveContext(home, context);
         printResponse(streams.output, { status: 'ok', projectId });
       } else if (parsed.kind === 'useDatabase') {
-        const response = await client.request({ action: 'listDatabases' });
+        const response = await client.request(context.projectId
+          ? { action: 'community_database_list', project_id: context.projectId }
+          : { action: 'listDatabases' });
         const databases = Array.isArray(response) ? response : response?.databases;
         if (!Array.isArray(databases) || !databases.includes(parsed.name)) {
           throw new Error('database_not_found');
@@ -441,6 +447,8 @@ export async function runShell(client, streams, options = {}) {
         const response = await client.request(parsed.command);
         if (parsed.clearProject && context.projectId === parsed.clearProject) {
           delete context.projectId;
+          delete context.database;
+          client.database = '';
           await saveContext(home, context);
         }
         if (parsed.clearDatabase && context.database === parsed.clearDatabase) {

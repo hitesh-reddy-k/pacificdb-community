@@ -1,5 +1,5 @@
 apiVersion: v2
 name: pacificdb
 version: 0.1.0
-appVersion: "0.1.0-beta.9"
+appVersion: "0.1.0-beta.11"
 description: PacificDB Community database engine

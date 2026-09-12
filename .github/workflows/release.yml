@@ -6,7 +6,7 @@ on:
       version:
         description: Version to build without publishing
         required: true
-        default: 0.1.0-beta.9
+        default: 0.1.0-beta.11
   push:
     tags: ["v*"]
 
@@ -32,7 +32,7 @@ jobs:
           cmake --build build --config Release --target db_engine pacificdb -j2
           cpack --config build/CPackConfig.cmake -G DEB -B dist
           mv dist/*.deb "dist/pacificdb-community-$version-linux-amd64.deb"
-          scripts/test-native-package.sh "dist/pacificdb-community-$version-linux-amd64.deb"
+          scripts/test-native-package.sh "dist/pacificdb-community-$version-linux-amd64.deb" "$version"
       - uses: actions/upload-artifact@v4
         with:
           name: linux-amd64

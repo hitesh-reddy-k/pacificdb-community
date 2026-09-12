@@ -20,7 +20,7 @@
   </header>
 
   <div class="docs-banner">
-    <div class="wrap"><span>PacificDB Community documentation</span><span class="docs-version">v0.1.0-beta.9</span><a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v0.1.0-beta.9">Release notes ↗</a></div>
+    <div class="wrap"><span>PacificDB Community documentation</span><span class="docs-version">v0.1.0-beta.11</span><a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v0.1.0-beta.11">Release notes ↗</a></div>
   </div>
 
   <div class="docs-layout wrap">
@@ -67,9 +67,9 @@
       <header class="docs-intro">
         <p class="eyebrow"><span class="dot"></span> COMMUNITY BETA DOCUMENTATION</p>
         <h1>Build with PacificDB.</h1>
-        <p>Install a self-hosted database, work in its interactive shell, and connect applications using the supported clients. This guide documents the public Community beta.9 surface.</p>
+        <p>Install a self-hosted database, work in its interactive shell, and connect applications using the supported clients. This guide documents the public Community beta.11 surface.</p>
         <div class="docs-intro-links"><a class="button primary" href="#quickstart">Start the quickstart</a><a class="text-link" href="#shell-reference">Browse commands →</a></div>
-        <aside class="callout warning"><strong>Before critical use</strong><p>Beta.9 is intended for evaluation, development, staging, and controlled early-adopter deployments. Review the <a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/main/docs/COMMUNITY_P0_CERTIFICATION.md">certification report</a> before storing critical data.</p></aside>
+        <aside class="callout warning"><strong>Before critical use</strong><p>Beta.11 is intended for evaluation, development, staging, and controlled early-adopter deployments. Review the <a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/main/docs/COMMUNITY_P0_CERTIFICATION.md">certification report</a> before storing critical data.</p></aside>
       </header>
 
       <section id="install" data-doc-section>
@@ -78,14 +78,14 @@
         <p>The native packages include both the database engine and the native CLI. Choose the package matching the operating system and processor.</p>
 
         <h3>Linux: Ubuntu and Debian</h3>
-        <p>Download the x86-64 <code>.deb</code> from the <a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v0.1.0-beta.9">beta.9 release</a>, then install it with APT.</p>
-        <div class="docs-code"><div><span>Terminal</span><button data-copy="install-linux">Copy</button></div><pre><code id="install-linux">sudo apt install ./pacificdb-community-0.1.0-beta.9-linux-amd64.deb
+        <p>Download the x86-64 <code>.deb</code> from the <a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v0.1.0-beta.11">beta.11 release</a>, then install it with APT.</p>
+        <div class="docs-code"><div><span>Terminal</span><button data-copy="install-linux">Copy</button></div><pre><code id="install-linux">sudo apt install ./pacificdb-community-0.1.0-beta.11-linux-amd64.deb
 pacificdb --version
 pacificdb</code></pre></div>
 
         <h3>Windows</h3>
         <ol>
-          <li>Download <code>pacificdb-community-0.1.0-beta.9-windows-x64.exe</code>.</li>
+          <li>Download <code>pacificdb-community-0.1.0-beta.11-windows-x64.exe</code>.</li>
           <li>Open the installer and complete its steps.</li>
           <li>Open a new Command Prompt and run <code>pacificdb</code>.</li>
         </ol>
@@ -96,10 +96,10 @@ pacificdb</code></pre></div>
           <li>Open the package and complete the installer.</li>
           <li>Open Terminal and run <code>pacificdb</code>.</li>
         </ol>
-        <aside class="callout"><strong>Unsigned beta installers</strong><p>Windows code signing and macOS notarization are pending. The operating system may show an unknown-publisher security prompt. Verify the file using the release <a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v0.1.0-beta.9/SHA256SUMS">SHA-256 manifest</a>.</p></aside>
+        <aside class="callout"><strong>Unsigned beta installers</strong><p>Windows code signing and macOS notarization are pending. The operating system may show an unknown-publisher security prompt. Verify the file using the release <a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v0.1.0-beta.11/SHA256SUMS">SHA-256 manifest</a>.</p></aside>
 
         <h3>npm CLI and Node.js client</h3>
-        <p>Node.js 18 or newer is required. The public npm <code>beta</code> tag installs <strong>0.1.0-beta.10</strong> for both the CLI and Node.js client. Native installers remain at beta.9.</p>
+        <p>Node.js 18 or newer is required. The public npm <code>beta</code> tag installs <strong>0.1.0-beta.11</strong> for both the CLI and Node.js client.</p>
         <div class="docs-code"><div><span>Terminal</span><button data-copy="install-npm">Copy</button></div><pre><code id="install-npm">npm install --global @pacificdb/cli@beta
 npm install @pacificdb/client@beta</code></pre></div>
         <p>The npm CLI is a client. Installing it does not install the engine. Automatic startup works when a native <code>db_engine</code> executable is already available on <code>PATH</code>.</p>
@@ -153,7 +153,7 @@ logout</code></pre></div>
         <div class="table-wrap"><table><thead><tr><th>Command</th><th>Behavior</th></tr></thead><tbody>
           <tr><td><code>create project &lt;name&gt;</code></td><td>Create project metadata and return its canonical ID.</td></tr>
           <tr><td><code>list projects</code></td><td>List visible projects.</td></tr>
-          <tr><td><code>use project &lt;id&gt;</code></td><td>Validate and select an existing canonical project ID.</td></tr>
+          <tr><td><code>use project &lt;id&gt;</code></td><td>Validate and select an existing canonical project ID, then clear the prior database selection.</td></tr>
           <tr><td><code>show project</code></td><td>Show the currently selected project.</td></tr>
           <tr><td><code>delete project &lt;id&gt;</code></td><td>Delete the project and its database mappings.</td></tr>
         </tbody></table></div>
@@ -165,8 +165,8 @@ logout</code></pre></div>
         <h2>Databases and collections</h2>
         <div class="table-wrap"><table><thead><tr><th>Command</th><th>Behavior</th></tr></thead><tbody>
           <tr><td><code>create database &lt;name&gt;</code></td><td>Create a database and map it to the selected project, when present.</td></tr>
-          <tr><td><code>list databases</code></td><td>List user databases. Reserved <code>system</code> and <code>pacificdb_meta</code> databases are hidden.</td></tr>
-          <tr><td><code>use &lt;name&gt;</code></td><td>Validate and select an existing database.</td></tr>
+          <tr><td><code>list databases</code></td><td>List databases mapped to the selected project, or all user databases when no project is selected. Reserved databases are hidden.</td></tr>
+          <tr><td><code>use &lt;name&gt;</code></td><td>Select an existing database within the active project.</td></tr>
           <tr><td><code>show database</code></td><td>List collections in the selected database.</td></tr>
           <tr><td><code>drop database &lt;name&gt;</code></td><td>Drop a user database.</td></tr>
           <tr><td><code>create collection &lt;name&gt;</code></td><td>Create a collection in the selected database.</td></tr>
@@ -389,20 +389,20 @@ pacificdb --host db.example.internal --port 9000 ping --no-start</code></pre></d
         <p class="section-kicker">OPERATE</p>
         <h2>Troubleshooting</h2>
         <div class="troubleshooting-list">
-          <details open><summary><code>port 9000 is in use by a service that is not PacificDB</code></summary><p>Another program owns the default port. Stop that program or start PacificDB on another port, for example <code>pacificdb --port 9001</code>. Beta.9 verifies the PacificDB protocol instead of exposing a raw JSON parser error.</p></details>
+          <details open><summary><code>port 9000 is in use by a service that is not PacificDB</code></summary><p>Another program owns the default port. Stop that program or start PacificDB on another port, for example <code>pacificdb --port 9001</code>. Beta.11 verifies the PacificDB protocol instead of exposing a raw JSON parser error.</p></details>
           <details><summary>The CLI asks for a login</summary><p>The automatic loopback launcher has authentication disabled. A login prompt means the CLI connected to an engine configured with authentication. Use a valid account, or check the selected host and port with <code>context show</code>.</p></details>
           <details><summary>The npm CLI cannot start the engine</summary><p>The npm package contains the client shell only. Install a native PacificDB package so <code>db_engine</code> is on <code>PATH</code>, start the engine separately, or connect with <code>--host</code>, <code>--port</code>, and <code>--no-start</code>.</p></details>
           <details><summary><code>select a database with: use &lt;name&gt;</code></summary><p>Create or select a database before running collection, document, media, or vector commands. Run <code>list databases</code> and then <code>use app</code>.</p></details>
           <details><summary>A project cannot be selected</summary><p><code>use project</code> expects the canonical ID returned by <code>create project</code> or <code>list projects</code>, rather than the display name.</p></details>
           <details><summary>The engine is unavailable</summary><p>Run <code>status</code>. Check <code>engine.log</code> under the platform home, confirm the host and port, and use <code>pacificdb --no-start</code> only when an engine is already running.</p></details>
-          <details><summary>An installer is blocked by the operating system</summary><p>Beta.9 Windows and macOS packages are unsigned. Confirm the installer checksum against the release manifest and follow your organization's policy for unsigned software. Signed packages are still pending.</p></details>
+          <details><summary>An installer is blocked by the operating system</summary><p>Beta.11 Windows and macOS packages are unsigned. Confirm the installer checksum against the release manifest and follow your organization's policy for unsigned software. Signed packages are still pending.</p></details>
         </div>
       </section>
 
       <section id="beta-status" data-doc-section>
         <p class="section-kicker">OPERATE</p>
         <h2>Beta status and support</h2>
-        <p>Beta.9 passed the retained Linux suite, real Debian package installation, cross-platform installer jobs, genuine disk-full scenarios, RF3 replication, network partition/election checks, and 64/128-client RF3 campaigns. It remains a beta rather than a universal production certification.</p>
+        <p>Beta.11 passed the retained Linux suite, real Debian package installation, cross-platform installer jobs, genuine disk-full scenarios, RF3 replication, network partition/election checks, and 64/128-client RF3 campaigns. It remains a beta rather than a universal production certification.</p>
         <p>Open work includes physical power/storage-controller testing, mixed-version rolling upgrades, an independent security assessment, Windows signing, and macOS notarization.</p>
         <div class="support-grid">
           <a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/main/docs/COMMUNITY_P0_CERTIFICATION.md"><strong>Certification report</strong><span>See measured tests and limits →</span></a>
@@ -411,7 +411,7 @@ pacificdb --host db.example.internal --port 9000 ping --no-start</code></pre></d
         </div>
       </section>
 
-      <footer class="docs-footer"><p>PacificDB Community beta.9 · Documentation for the open-source self-hosted release.</p><a href="#main">Back to top ↑</a></footer>
+      <footer class="docs-footer"><p>PacificDB Community beta.11 · Documentation for the open-source self-hosted release.</p><a href="#main">Back to top ↑</a></footer>
     </main>
   </div>
   <p class="sr-only" id="docs-status" role="status" aria-live="polite"></p>

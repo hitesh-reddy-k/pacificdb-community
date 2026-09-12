@@ -992,15 +992,23 @@ int main(int argc, char** argv) {
                             throw std::runtime_error("project_not_found");
                         }
                         context.projectId = response.at("project").at("id");
+                        context.database.clear();
                         saveContext(home, context);
                         std::cout << nlohmann::json{{"status", "ok"},
                             {"projectId", context.projectId}}.dump(2) << '\n';
                     } else if (kind == "use_database") {
                         const auto response = sendJson(host, port, withContext(
-                            {{"action", "listDatabases"}}, context));
-                        if (!response.is_array() ||
-                            std::find(response.begin(), response.end(), parsed.at("name")) ==
-                                response.end()) {
+                            context.projectId.empty()
+                                ? nlohmann::json{{"action", "listDatabases"}}
+                                : nlohmann::json{{"action", "community_database_list"},
+                                                 {"project_id", context.projectId}},
+                            context));
+                        const auto databases = response.is_array()
+                            ? response
+                            : response.value("databases", nlohmann::json::array());
+                        if (!databases.is_array() ||
+                            std::find(databases.begin(), databases.end(), parsed.at("name")) ==
+                                databases.end()) {
                             throw std::runtime_error("database_not_found");
                         }
                         context.database = parsed.at("name");
@@ -1065,6 +1073,7 @@ int main(int argc, char** argv) {
                         if (status == 0 && parsed.contains("clear_project") &&
                             context.projectId == parsed.at("clear_project")) {
                             context.projectId.clear();
+                            context.database.clear();
                             saveContext(home, context);
                         }
                         if (status == 0 && parsed.contains("clear_database") &&
