@@ -298,7 +298,7 @@ mvn -f sdk/java/pom.xml test
 
 ## Beta status and support
 
-The Linux candidate passed 57 Linux test units, genuine ENOSPC coverage across
+The Linux candidate passed 57 retained test units, genuine ENOSPC coverage across
 21 write categories, six 10-minute RF3 load rounds, partition/election checks,
 and real Debian package installation. Physical power-controller testing and
 signed native Windows/macOS certification remain open.

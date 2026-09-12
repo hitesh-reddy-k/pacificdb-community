@@ -6,14 +6,14 @@ Source branch: `feature/community-complete-cli`
 
 Source/package version tested: `0.1.0-beta.9`
 
-Source commit at test start: `9075bfa8c0ded9105583b19f81e34f73ceea6b1b`
+Source commit at test start: `b7c4fe163b805d484a82815c4c0b4df9c8dbd629`
 
 ## Verdicts
 
 | Scope | Verdict | Evidence |
 |---|---|---|
 | P0 acknowledged-write repair | **PASS** | The old failure was reproduced, repaired, and covered by abrupt cross-process recovery. |
-| Linux source and SDK candidate | **PASS** | Complete retained suite: 55/55 test units passed. |
+| Linux source and SDK candidate | **PASS** | Complete retained suite: 57/57 test units passed. |
 | Linux Debian artifact | **PASS** | Extracted-package smoke plus real Ubuntu 24.04 `apt` install, engine read/write, remove, and data-preservation checks. |
 | RF3 correctness and sustained load | **PASS** | TCP partition/election campaign plus three 10-minute 64-client and three 10-minute 128-client rounds with zero operation errors. |
 | Physical power/storage-controller durability | **BLOCKED** | No dedicated power-cut/storage-controller harness is configured. |
@@ -230,6 +230,7 @@ without printing credential values.
 |---|---:|---:|---:|---:|
 | C++ retained executables | 29 | 29 | 0 | 0 |
 | Natural-query JavaScript check | 1 | 1 | 0 | 0 |
+| Website documentation check | 1 | 1 | 0 | 0 |
 | Node client tests | 6 | 6 | 0 | 0 |
 | Node CLI tests | 9 | 9 | 0 | 0 |
 | Native/npm automatic-start scenario | 1 | 1 | 0 | 0 |
@@ -243,10 +244,10 @@ without printing credential values.
 | Python SDK tests | 1 | 1 | 0 | 0 |
 | Java SDK tests | 1 | 1 | 0 | 0 |
 | YCSB binding | 1 | 1 | 0 | 0 |
-| **Retained suite total** | **56** | **56** | **0** | **0** |
+| **Retained suite total** | **57** | **57** | **0** | **0** |
 | Extracted Debian package smoke | 1 | 1 | 0 | 0 |
 | Ubuntu `apt` lifecycle | 1 | 1 | 0 | 0 |
-| **Linux total** | **58** | **58** | **0** | **0** |
+| **Linux total** | **59** | **59** | **0** | **0** |
 
 The C++ comprehensive executable separately reported 58/58 internal
 assertions. The E2E executed 78 shell commands and checked 24 concurrent
