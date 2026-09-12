@@ -3,7 +3,7 @@ set -euo pipefail
 
 package=${1:?usage: test-debian-container-install.sh PACKAGE.deb}
 package=$(realpath "$package")
-expected_version=${2:-0.1.0~beta.8}
+expected_version=${2:-0.1.0~beta.9}
 image=${PACIFICDB_DEBIAN_TEST_IMAGE:-ubuntu:24.04}
 
 docker run --rm --network bridge \

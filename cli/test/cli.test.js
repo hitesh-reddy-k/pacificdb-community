@@ -162,7 +162,8 @@ test('hides internal telemetry from normal output', async (t) => {
   let text = '';
   output.on('data', (chunk) => { text += chunk; });
   await main(['request', '{"action":"find"}', '--host', '127.0.0.1',
-    '--port', String(server.address().port)], { input: new PassThrough(), output });
+    '--port', String(server.address().port), '--no-start'],
+    { input: new PassThrough(), output });
   assert.deepEqual(JSON.parse(text), { status: 'ok', data: [{ id: '1', name: 'Ada' }] });
 });
 
@@ -188,7 +189,7 @@ test('uploads and downloads media files', async (t) => {
   const output = path.join(directory, 'download.gif');
   await writeFile(input, bytes);
   const connection = ['--host', '127.0.0.1', '--port', String(server.address().port),
-                      '--database', 'app'];
+                      '--database', 'app', '--no-start'];
   await main(['put-media', 'assets', 'logo', input, '--content-type', 'image/gif', ...connection],
              { input: new PassThrough(), output: new PassThrough() });
   await main(['get-media', 'assets', 'logo', output, ...connection],

@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.pacificdb</groupId>
   <artifactId>pacificdb-client</artifactId>
-  <version>0.1.0-beta.8</version>
+  <version>0.1.0-beta.9</version>
   <name>PacificDB Community Java client</name>
   <licenses><license><name>Apache License 2.0</name></license></licenses>
   <properties>

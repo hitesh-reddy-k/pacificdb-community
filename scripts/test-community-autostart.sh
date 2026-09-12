@@ -6,6 +6,7 @@ native_home=$(mktemp -d /tmp/pacificdb-native-autostart-XXXXXX)
 node_home=$(mktemp -d /tmp/pacificdb-node-autostart-XXXXXX)
 disabled_home=$(mktemp -d /tmp/pacificdb-disabled-autostart-XXXXXX)
 blocking_home=$(mktemp -d /tmp/pacificdb-blocking-autostart-XXXXXX)
+occupied_home=$(mktemp -d /tmp/pacificdb-occupied-port-XXXXXX)
 engine_pids=()
 
 free_port() {
@@ -16,7 +17,8 @@ cleanup() {
   for pid in "${engine_pids[@]}"; do
     kill "$pid" 2>/dev/null || true
   done
-  rm -rf -- "$native_home" "$node_home" "$disabled_home" "$blocking_home"
+  rm -rf -- "$native_home" "$node_home" "$disabled_home" "$blocking_home" \
+    "$occupied_home"
 }
 trap cleanup EXIT
 
@@ -67,5 +69,51 @@ if PACIFICDB_HOME="$disabled_home" "$build_dir/pacificdb" \
   exit 1
 fi
 test ! -e "$disabled_home/engine.pid"
+
+occupied_port=$(free_port)
+python3 - "$occupied_port" "$occupied_home/ready" <<'PY' &
+import pathlib
+import socket
+import sys
+
+server = socket.socket()
+server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+server.bind(('127.0.0.1', int(sys.argv[1])))
+server.listen()
+pathlib.Path(sys.argv[2]).touch()
+while True:
+    client, _ = server.accept()
+    try:
+        client.recv(4096)
+        client.sendall(b'HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n')
+    except OSError:
+        pass
+    finally:
+        client.close()
+PY
+occupied_pid=$!
+engine_pids+=("$occupied_pid")
+for _ in {1..100}; do
+  test -e "$occupied_home/ready" && break
+  sleep 0.01
+done
+test -e "$occupied_home/ready"
+
+if PACIFICDB_HOME="$occupied_home/native" "$build_dir/pacificdb" \
+    --port "$occupied_port" ping >"$occupied_home/native.out" 2>&1; then
+  echo 'native CLI accepted a non-PacificDB listener' >&2
+  exit 1
+fi
+grep -q 'not PacificDB' "$occupied_home/native.out"
+! grep -q 'json.exception' "$occupied_home/native.out"
+
+if PACIFICDB_HOME="$occupied_home/node" PACIFICDB_ENGINE="$build_dir/db_engine" \
+    node cli/bin/pacificdb.js --port "$occupied_port" ping \
+    >"$occupied_home/node.out" 2>&1; then
+  echo 'npm CLI accepted a non-PacificDB listener' >&2
+  exit 1
+fi
+grep -q 'not PacificDB' "$occupied_home/node.out"
+! grep -q 'SyntaxError' "$occupied_home/node.out"
 
 printf 'Community automatic-start checks passed\n'

@@ -70,8 +70,12 @@ function localEnvironment(home, port) {
 }
 
 export async function ensureLocalEngine(client, { autoStart = true, output } = {}) {
-  if (await canConnect(client.host, client.port)) return false;
   if (!autoStart || !isLocalHost(client.host)) return false;
+  if (await protocolReady(client.host, client.port)) return false;
+  if (await canConnect(client.host, client.port)) {
+    throw new Error(`Port ${client.port} is in use by a service that is not PacificDB; ` +
+      'choose another --port');
+  }
 
   const home = dataHome();
   const environment = localEnvironment(home, client.port);

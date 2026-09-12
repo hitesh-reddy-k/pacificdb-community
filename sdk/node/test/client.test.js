@@ -35,6 +35,16 @@ test('preserves the public engine detail in request errors', async (t) => {
     /execution_exception: media upload has missing chunks/);
 });
 
+test('reports a non-PacificDB server without leaking a JSON parser error', async (t) => {
+  const server = net.createServer((socket) => socket.once('data', () =>
+    socket.end('HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n')));
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => server.close());
+  const client = new PacificDBClient({ host: '127.0.0.1', port: server.address().port });
+  await assert.rejects(client.request({ action: 'ping' }),
+    /returned a non-JSON response; verify the host and port/);
+});
+
 test('stores arbitrary media bytes and vector data through public methods', async (t) => {
   const requests = [];
   const server = net.createServer((socket) => {

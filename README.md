@@ -8,7 +8,7 @@
   Self-hosted documents, vectors, media, backups, and RF3 replication.
 </p>
 
-> **Beta:** `0.1.0-beta.8` is a tested Community release candidate for evaluation,
+> **Beta:** `0.1.0-beta.9` is a tested Community release candidate for evaluation,
 > development, staging, and controlled early-adopter deployments. Read
 > [the certification report](docs/COMMUNITY_P0_CERTIFICATION.md) before storing
 > critical data.
@@ -71,7 +71,7 @@ npm install --global @pacificdb/cli@beta
 npm install @pacificdb/client@beta
 ```
 
-The npm `beta` tag currently installs `0.1.0-beta.7`. The `0.1.0-beta.8`
+The npm `beta` tag currently installs `0.1.0-beta.7`. The `0.1.0-beta.9`
 npm packages are prepared but have not been published yet.
 
 The npm CLI is a client. It can automatically start `db_engine` when a native

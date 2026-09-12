@@ -63,7 +63,12 @@ export class PacificDBClient {
             reject(Object.assign(new Error(detail), { response: value }));
           }
           else resolve(value);
-        } catch (error) { reject(error); }
+        } catch (error) {
+          if (error instanceof SyntaxError) {
+            reject(new Error(`PacificDB server at ${this.host}:${this.port} returned ` +
+              'a non-JSON response; verify the host and port'));
+          } else reject(error);
+        }
       });
       socket.on('end', () => {
         if (!settled) fail(new Error('PacificDB closed before returning a JSON response'));

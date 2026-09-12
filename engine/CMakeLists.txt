@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(db_engine LANGUAGES CXX)
 
-set(PACIFICDB_ENGINE_VERSION "0.1.0-beta.8" CACHE STRING "PacificDB engine semantic version")
+set(PACIFICDB_ENGINE_VERSION "0.1.0-beta.9" CACHE STRING "PacificDB engine semantic version")
 set(PACIFICDB_STORAGE_FORMAT_VERSION "2" CACHE STRING "PacificDB on-disk storage format version")
 set(PACIFICDB_RAFT_PROTOCOL_VERSION "2" CACHE STRING "PacificDB Raft wire protocol version")
 execute_process(

@@ -11,7 +11,7 @@ npm install --global @pacificdb/cli@beta
 pacificdb
 ```
 
-The npm `beta` tag currently installs `0.1.0-beta.7`. The `0.1.0-beta.8`
+The npm `beta` tag currently installs `0.1.0-beta.7`. The `0.1.0-beta.9`
 package is prepared but has not been published yet.
 
 Plain `pacificdb` opens the shell. For a loopback connection, it starts

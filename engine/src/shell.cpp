@@ -87,11 +87,15 @@ bool canConnect(const std::string& host, const std::string& port) {
 
 std::string request(const std::string& host, const std::string& port,
                     const nlohmann::json& command, int timeoutSeconds = 30);
+nlohmann::json parseServerResponse(const std::string& response,
+                                   const std::string& host,
+                                   const std::string& port);
 
 bool engineResponds(const std::string& host, const std::string& port) {
     try {
-        const auto response = nlohmann::json::parse(
-            request(host, port, {{"action", "ping"}, {"userId", "system"}}, 1));
+        const auto response = parseServerResponse(
+            request(host, port, {{"action", "ping"}, {"userId", "system"}}, 1),
+            host, port);
         return response.value("status", "") == "pong";
     } catch (...) {
         return false;
@@ -167,7 +171,12 @@ std::filesystem::path executablePath(const char* argv0) {
 
 void ensureLocalEngine(const std::string& host, const std::string& port,
                        const char* argv0, bool autoStart) {
-    if (canConnect(host, port) || !autoStart || !isLocalHost(host)) return;
+    if (!autoStart || !isLocalHost(host)) return;
+    if (engineResponds(host, port)) return;
+    if (canConnect(host, port)) {
+        throw std::runtime_error("port " + port +
+            " is in use by a service that is not PacificDB; choose another --port");
+    }
 
     const auto home = localDataHome();
     const auto data = home / "data";
@@ -334,11 +343,22 @@ std::string request(const std::string& host, const std::string& port,
     return response;
 }
 
+nlohmann::json parseServerResponse(const std::string& response,
+                                   const std::string& host,
+                                   const std::string& port) {
+    auto value = nlohmann::json::parse(response, nullptr, false);
+    if (value.is_discarded()) {
+        throw std::runtime_error("server at " + host + ":" + port +
+            " returned a non-JSON response; verify that it is PacificDB");
+    }
+    return value;
+}
+
 int sendAndPrint(const std::string& host, const std::string& port,
                  const nlohmann::json& command) {
     auto payload = command;
     if (!payload.contains("userId")) payload["userId"] = "system";
-    auto response = nlohmann::json::parse(request(host, port, payload));
+    auto response = parseServerResponse(request(host, port, payload), host, port);
     const std::string action = payload.value("action", "");
     if (response.is_object() && action.rfind("admin_", 0) != 0) {
         for (auto it = response.begin(); it != response.end();) {
@@ -409,7 +429,7 @@ nlohmann::json sendJson(const std::string& host, const std::string& port,
         if (!command.contains("token") && !context->token.empty())
             command["token"] = context->token;
     }
-    auto response = nlohmann::json::parse(request(host, port, command));
+    auto response = parseServerResponse(request(host, port, command), host, port);
     if (response.contains("error")) {
         std::string text = response.at("error").is_string()
             ? response.at("error").get<std::string>() : "request_failed";
