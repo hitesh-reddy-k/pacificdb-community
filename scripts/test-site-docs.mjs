@@ -40,6 +40,8 @@ const [index, docs, css, javascript] = await Promise.all([
   readSiteFile('docs.js')
 ]);
 
+assert.match(index, /href=["']docs\.html["'][^>]*>Documentation</);
+
 const requiredSections = [
   'install', 'quickstart', 'authentication', 'projects', 'databases',
   'documents', 'shell-reference', 'nodejs', 'python', 'java', 'backups',
