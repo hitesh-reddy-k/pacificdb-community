@@ -9,6 +9,21 @@ import path from 'node:path';
 const MAX_SOURCE_CHUNK_BYTES = 4 * 1024 * 1024;
 const REQUEST_RESERVE_BYTES = 64 * 1024;
 
+export class MediaUploadError extends Error {
+  constructor(message, { code = 'media_upload_interrupted', uploadId,
+    nextChunk = 0, receivedChunks = 0, receivedBytes = 0,
+    resumable = true, cause } = {}) {
+    super(message, cause ? { cause } : undefined);
+    this.name = 'MediaUploadError';
+    this.code = code;
+    this.uploadId = uploadId;
+    this.nextChunk = nextChunk;
+    this.receivedChunks = receivedChunks;
+    this.receivedBytes = receivedBytes;
+    this.resumable = resumable;
+  }
+}
+
 function mediaType(filename) {
   const extension = path.extname(filename).toLowerCase();
   return ({ '.gif': 'image/gif', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
@@ -138,7 +153,10 @@ export class PacificDBClient {
       throw new TypeError('media collection is required');
     }
     const file = await stat(filename);
-    if (!file.isFile() || file.size === 0) throw new Error('media file must be non-empty');
+    if (!file.isFile()) throw new Error('media path must be a regular file');
+    if (file.size === 0) {
+      throw Object.assign(new Error('media_file_empty'), { code: 'media_file_empty' });
+    }
     const capabilities = await this.capabilities();
     const maxRequestBytes = capabilities.max_request_bytes;
     if (!Number.isSafeInteger(maxRequestBytes) || maxRequestBytes <= REQUEST_RESERVE_BYTES) {
@@ -166,21 +184,56 @@ export class PacificDBClient {
     if (!media?.id) throw new Error('engine did not return a media id');
     if (media.status === 'ready') return media;
 
-    let index = 0;
-    for await (const chunk of createReadStream(filename,
-      { highWaterMark: sourceChunkBytes })) {
-      const command = { action: 'community_media_put_chunk', media_id: media.id,
-        index, data: chunk.toString('base64'), size_bytes: chunk.length,
-        sha256: createHash('sha256').update(chunk).digest('hex') };
-      if (this._wireBytes(command) > maxRequestBytes) {
-        throw new Error('serialized media chunk exceeds engine request limit');
+    let received = new Set(Array.isArray(media.received_indices)
+      ? media.received_indices.filter((value) => Number.isSafeInteger(value) && value >= 0)
+      : []);
+    let receivedBytes = Number.isSafeInteger(media.received_bytes) ? media.received_bytes : 0;
+    const updateProgress = (value, index, bytes) => {
+      if (Array.isArray(value?.received_indices)) {
+        received = new Set(value.received_indices.filter((entry) =>
+          Number.isSafeInteger(entry) && entry >= 0));
+      } else if (Number.isSafeInteger(index)) {
+        received.add(index);
       }
-      await this.request(command);
-      index += 1;
+      if (Number.isSafeInteger(value?.received_bytes)) receivedBytes = value.received_bytes;
+      else if (Number.isSafeInteger(index) && !received.has(index)) receivedBytes += bytes;
+    };
+    const interruption = (error) => {
+      const nextChunk = [...Array(chunkCount).keys()].find((index) => !received.has(index))
+        ?? chunkCount;
+      return new MediaUploadError('media upload interrupted', {
+        uploadId: media.id, nextChunk, receivedChunks: received.size,
+        receivedBytes, resumable: true, cause: error
+      });
+    };
+
+    try {
+      let index = 0;
+      for await (const chunk of createReadStream(filename,
+        { highWaterMark: sourceChunkBytes })) {
+        if (!received.has(index)) {
+          const command = { action: 'community_media_put_chunk', media_id: media.id,
+            index, data: chunk.toString('base64'), size_bytes: chunk.length,
+            sha256: createHash('sha256').update(chunk).digest('hex') };
+          if (this._wireBytes(command) > maxRequestBytes) {
+            throw new Error('serialized media chunk exceeds engine request limit');
+          }
+          const stored = await this.request(command);
+          const alreadyReceived = received.has(index);
+          updateProgress(stored?.media ?? stored, index, chunk.length);
+          if (!alreadyReceived && !Number.isSafeInteger((stored?.media ?? stored)?.received_bytes)) {
+            receivedBytes += chunk.length;
+          }
+        }
+        index += 1;
+      }
+      const finalized = await this.request({ action: 'community_media_finalize',
+        media_id: media.id });
+      return finalized.media;
+    } catch (error) {
+      if (error instanceof MediaUploadError) throw error;
+      throw interruption(error);
     }
-    const finalized = await this.request({ action: 'community_media_finalize',
-      media_id: media.id });
-    return finalized.media;
   }
 
   async downloadMediaFile(mediaId, destination) {

@@ -2,7 +2,18 @@
 
 #include <filesystem>
 #include <memory>
+#include <optional>
+#include <cstdint>
 #include <string>
+
+struct StorageRootOwner {
+    int version = 1;
+    std::uint64_t pid = 0;
+    std::string clusterId;
+    std::string nodeId;
+    std::filesystem::path canonicalRoot;
+    std::string instanceId;
+};
 
 // Owns the process-wide exclusive lock for one canonical DATA_ROOT and verifies
 // the durable identity bound to that root. The lock remains held for the
@@ -20,7 +31,11 @@ public:
         const std::filesystem::path& configuredRoot,
         const std::string& clusterId,
         const std::string& nodeId,
-        const std::string& storageFormatVersion);
+        const std::string& storageFormatVersion,
+        const std::string& instanceId = {});
+
+    static std::optional<StorageRootOwner> readOwner(
+        const std::filesystem::path& configuredRoot) noexcept;
 
     const std::filesystem::path& canonicalRoot() const;
     const std::filesystem::path& identityPath() const;

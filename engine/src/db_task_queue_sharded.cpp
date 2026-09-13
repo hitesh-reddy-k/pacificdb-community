@@ -311,7 +311,6 @@ void DBTaskQueueSharded::workerThread(size_t shardId) {
                     return shard.totalQueued > 0 || shutdown_.load();
                 });
                 if (shutdown_.load()) break;
-                if (shard.totalQueued == 0) continue;
             }
 
             // Dequeue batch (up to 32 tasks)

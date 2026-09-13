@@ -5,7 +5,7 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { PacificDBClient } from '../src/index.js';
+import { MediaUploadError, PacificDBClient } from '../src/index.js';
 
 test('sends one JSON command and parses one response', async (t) => {
   const server = net.createServer((socket) => {
@@ -142,6 +142,65 @@ test('uploads and downloads media sequentially in bounded chunks', async (t) => 
   assert.deepEqual(await readFile(output), source);
   assert.equal(downloaded.sha256,
     createHash('sha256').update(source).digest('hex'));
+});
+
+test('reports a stable upload id and resumes only missing media chunks', async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'pacificdb-node-resume-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const input = path.join(directory, 'resume.bin');
+  await writeFile(input, Buffer.alloc(150_000, 11));
+  const received = new Set();
+  const afterResume = [];
+  let interrupted = false;
+  let resumed = false;
+  const progress = () => ({ id: 'media_resume', status: 'uploading',
+    received_indices: [...received].sort((a, b) => a - b),
+    received_chunks: received.size, received_bytes: [...received]
+      .reduce((total, index) => total + (index < 2 ? 65_536 : 18_928), 0) });
+  const server = net.createServer((socket) => {
+    let wire = '';
+    socket.on('data', (data) => {
+    wire += data;
+    const newline = wire.indexOf('\n');
+    if (newline < 0) return;
+    const request = JSON.parse(wire.slice(0, newline));
+    if (request.action === 'community_capabilities') {
+      return socket.end(JSON.stringify({ max_request_bytes: 262_144,
+        media_chunk_source_max_bytes: 65_536 }) + '\n');
+    }
+    if (request.action === 'community_media_begin') {
+      resumed = Boolean(request.resume_id);
+      return socket.end(JSON.stringify({ status: 'ok', media: progress() }) + '\n');
+    }
+    if (request.action === 'community_media_put_chunk') {
+      received.add(request.index);
+      if (resumed) afterResume.push(request.index);
+      if (request.index === 1 && !interrupted) {
+        interrupted = true;
+        return socket.destroy();
+      }
+      return socket.end(JSON.stringify({ status: 'ok', ...progress() }) + '\n');
+    }
+    if (request.action === 'community_media_finalize') {
+      return socket.end(JSON.stringify({ status: 'ok', media: {
+        ...progress(), status: 'ready' } }) + '\n');
+    }
+    });
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => server.close());
+  const client = new PacificDBClient({ host: '127.0.0.1',
+    port: server.address().port, database: 'app' });
+
+  await assert.rejects(client.uploadMediaFile('videos', input, { chunkBytes: 65_536 }),
+    (error) => error instanceof MediaUploadError &&
+      error.code === 'media_upload_interrupted' &&
+      error.uploadId === 'media_resume' && error.nextChunk === 1 &&
+      error.receivedChunks === 1 && error.resumable === true);
+  const ready = await client.uploadMediaFile('videos', input,
+    { chunkBytes: 65_536, resume: 'media_resume' });
+  assert.equal(ready.status, 'ready');
+  assert.deepEqual(afterResume, [2]);
 });
 
 test('exports complete backup files in verified bounded chunks', async (t) => {

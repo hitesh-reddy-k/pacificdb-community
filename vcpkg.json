@@ -1,0 +1,9 @@
+{
+  "name": "pacificdb-community",
+  "version-string": "0.1.0-beta.13",
+  "builtin-baseline": "120deac3062162151622ca4860575a33844ba10b",
+  "dependencies": [
+    "lz4",
+    "openssl"
+  ]
+}

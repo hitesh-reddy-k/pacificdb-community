@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(db_engine LANGUAGES CXX)
 
-set(PACIFICDB_ENGINE_VERSION "0.1.0-beta.12" CACHE STRING "PacificDB engine semantic version")
+set(PACIFICDB_ENGINE_VERSION "0.1.0-beta.13" CACHE STRING "PacificDB engine semantic version")
 set(PACIFICDB_STORAGE_FORMAT_VERSION "2" CACHE STRING "PacificDB on-disk storage format version")
 set(PACIFICDB_RAFT_PROTOCOL_VERSION "2" CACHE STRING "PacificDB Raft wire protocol version")
 execute_process(
@@ -145,6 +145,22 @@ target_compile_definitions(v11_4_apply_exact_boundary_failpoints_test PRIVATE
     PACIFICDB_TEST_FAILPOINTS
 )
 
+add_executable(db_engine_startup_delay_failpoint_test
+    test/startup_delay_failpoint_test.cpp
+    src/test_failpoint.cpp
+)
+target_include_directories(db_engine_startup_delay_failpoint_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_compile_definitions(db_engine_startup_delay_failpoint_test PRIVATE
+    PACIFICDB_TEST_FAILPOINTS
+)
+if(MSVC)
+    target_compile_options(db_engine_startup_delay_failpoint_test PRIVATE /UNDEBUG)
+else()
+    target_compile_options(db_engine_startup_delay_failpoint_test PRIVATE -UNDEBUG)
+endif()
+
 # ------------------ COMMUNITY FEATURES ------------------
 set(COMMUNITY_FEATURES
     src/community_catalog.cpp
@@ -166,10 +182,40 @@ find_package(OpenSSL REQUIRED)
 find_library(LZ4_LIBRARY NAMES lz4 liblz4.so.1 REQUIRED)
 add_compile_definitions(HAS_OPENSSL)
 
+add_library(pacificdb_socket_runtime STATIC src/socket_runtime.cpp)
+target_include_directories(pacificdb_socket_runtime PUBLIC
+    ${CMAKE_SOURCE_DIR}/include
+)
+if(WIN32)
+    target_link_libraries(pacificdb_socket_runtime PUBLIC Ws2_32)
+endif()
+
+add_library(pacificdb_local_engine STATIC src/local_engine.cpp)
+target_include_directories(pacificdb_local_engine PUBLIC
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_link_libraries(pacificdb_local_engine PUBLIC
+    OpenSSL::Crypto pacificdb_socket_runtime)
+if(WIN32)
+    target_link_libraries(pacificdb_local_engine PUBLIC Advapi32)
+endif()
+
+add_library(pacificdb_structured_event STATIC src/structured_event.cpp)
+target_include_directories(pacificdb_structured_event PUBLIC
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+add_library(pacificdb_media_upload_state STATIC src/media_upload_state.cpp)
+target_include_directories(pacificdb_media_upload_state PUBLIC
+    ${CMAKE_SOURCE_DIR}/include
+)
+
 add_library(pacificdb_engine_core STATIC
     ${ENGINE_CORE}
     ${COMMUNITY_FEATURES}
 )
+target_link_libraries(pacificdb_engine_core PUBLIC
+    pacificdb_media_upload_state pacificdb_structured_event)
 target_include_directories(pacificdb_engine_core PUBLIC
     ${CMAKE_SOURCE_DIR}/include
 )
@@ -188,7 +234,9 @@ endif()
 
 # ------------------ MAIN ENGINE (SERVER) ------------------
 add_executable(db_engine src/main.cpp src/server.cpp)
-target_link_libraries(db_engine PRIVATE pacificdb_engine_core)
+target_link_libraries(db_engine PRIVATE
+    pacificdb_engine_core pacificdb_socket_runtime pacificdb_local_engine
+    pacificdb_structured_event)
 target_include_directories(db_engine PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/generated
 )
@@ -199,6 +247,8 @@ target_include_directories(pacificdb PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/generated
 )
 target_link_libraries(pacificdb PRIVATE OpenSSL::Crypto)
+target_link_libraries(pacificdb PRIVATE
+    pacificdb_socket_runtime pacificdb_local_engine)
 if(WIN32)
     target_link_libraries(pacificdb PRIVATE Ws2_32)
 endif()
@@ -207,6 +257,11 @@ endif()
 function(add_pacificdb_engine_test target source)
     add_executable(${target} ${source})
     target_link_libraries(${target} PRIVATE pacificdb_engine_core)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /UNDEBUG)
+    else()
+        target_compile_options(${target} PRIVATE -UNDEBUG)
+    endif()
 endfunction()
 
 add_pacificdb_engine_test(db_engine_vector_correctness_test test/test_vector_correctness.cpp)
@@ -245,6 +300,67 @@ add_executable(db_engine_native_shell_parser_test
     test/native_shell_parser_test.cpp src/community_shell.cpp)
 target_include_directories(db_engine_native_shell_parser_test PRIVATE
     ${CMAKE_SOURCE_DIR}/include)
+
+add_executable(db_engine_socket_runtime_test test/socket_runtime_test.cpp)
+target_link_libraries(db_engine_socket_runtime_test PRIVATE
+    pacificdb_socket_runtime)
+if(MSVC)
+    target_compile_options(db_engine_socket_runtime_test PRIVATE /UNDEBUG)
+else()
+    target_compile_options(db_engine_socket_runtime_test PRIVATE -UNDEBUG)
+endif()
+
+add_executable(db_engine_local_engine_state_test
+    test/local_engine_state_test.cpp)
+target_include_directories(db_engine_local_engine_state_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(db_engine_local_engine_state_test PRIVATE
+    pacificdb_local_engine)
+if(MSVC)
+    target_compile_options(db_engine_local_engine_state_test PRIVATE /UNDEBUG)
+else()
+    target_compile_options(db_engine_local_engine_state_test PRIVATE -UNDEBUG)
+endif()
+
+add_executable(db_engine_env_config_unicode_path_test
+    test/env_config_unicode_path_test.cpp src/env_config.cpp)
+target_include_directories(db_engine_env_config_unicode_path_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include)
+if(MSVC)
+    target_compile_options(db_engine_env_config_unicode_path_test PRIVATE /UNDEBUG)
+else()
+    target_compile_options(db_engine_env_config_unicode_path_test PRIVATE -UNDEBUG)
+endif()
+
+add_executable(db_engine_storage_root_guard_owner_test
+    test/storage_root_guard_owner_test.cpp src/storage_root_guard.cpp)
+target_include_directories(db_engine_storage_root_guard_owner_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include)
+if(MSVC)
+    target_compile_options(db_engine_storage_root_guard_owner_test PRIVATE /UNDEBUG)
+else()
+    target_compile_options(db_engine_storage_root_guard_owner_test PRIVATE -UNDEBUG)
+endif()
+
+add_executable(db_engine_structured_event_test
+    test/structured_event_test.cpp)
+target_link_libraries(db_engine_structured_event_test PRIVATE
+    pacificdb_structured_event)
+if(MSVC)
+    target_compile_options(db_engine_structured_event_test PRIVATE /UNDEBUG)
+else()
+    target_compile_options(db_engine_structured_event_test PRIVATE -UNDEBUG)
+endif()
+
+add_executable(db_engine_media_upload_state_test
+    test/media_upload_state_test.cpp)
+target_link_libraries(db_engine_media_upload_state_test PRIVATE
+    pacificdb_media_upload_state)
+if(MSVC)
+    target_compile_options(db_engine_media_upload_state_test PRIVATE /UNDEBUG)
+else()
+    target_compile_options(db_engine_media_upload_state_test PRIVATE -UNDEBUG)
+endif()
 
 add_executable(storage_path_security_test tests/storage_path_security_test.cpp)
 target_include_directories(storage_path_security_test PRIVATE

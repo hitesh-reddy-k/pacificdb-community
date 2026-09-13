@@ -2,11 +2,14 @@
 
 #include "storage_path.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cerrno>
+#include <cstdint>
 #include <cstring>
 #include <fstream>
 #include <iomanip>
+#include <limits>
 #include <nlohmann/json.hpp>
 #include <sstream>
 #include <stdexcept>
@@ -28,6 +31,133 @@ namespace {
 
 constexpr const char* kIdentityFile = ".pacificdb-root-identity.json";
 constexpr const char* kLockFile = ".pacificdb-root.lock";
+
+std::uint64_t currentProcessId() noexcept {
+#ifdef _WIN32
+    return static_cast<std::uint64_t>(GetCurrentProcessId());
+#else
+    return static_cast<std::uint64_t>(::getpid());
+#endif
+}
+
+json ownerJson(
+    const fs::path& canonicalRoot,
+    const std::string& clusterId,
+    const std::string& nodeId,
+    const std::string& instanceId) {
+    return {
+        {"schema", "pacificdb.storage-root-owner.v1"},
+        {"version", 1},
+        {"pid", currentProcessId()},
+        {"cluster_id", clusterId},
+        {"node_id", nodeId},
+        {"canonical_root", canonicalRoot.u8string()},
+        {"instance_id", instanceId},
+    };
+}
+
+#ifdef _WIN32
+void writeOwner(HANDLE file, const std::string& payload) {
+    LARGE_INTEGER beginning{};
+    if (!SetFilePointerEx(file, beginning, nullptr, FILE_BEGIN) ||
+        !SetEndOfFile(file)) {
+        throw std::system_error(
+            static_cast<int>(GetLastError()), std::system_category(),
+            "truncate DATA_ROOT owner metadata");
+    }
+    std::size_t offset = 0;
+    while (offset < payload.size()) {
+        const auto remaining = std::min<std::size_t>(
+            payload.size() - offset,
+            static_cast<std::size_t>(std::numeric_limits<DWORD>::max()));
+        DWORD written = 0;
+        if (!WriteFile(
+                file, payload.data() + offset,
+                static_cast<DWORD>(remaining), &written, nullptr) ||
+            written == 0) {
+            throw std::system_error(
+                static_cast<int>(GetLastError()), std::system_category(),
+                "write DATA_ROOT owner metadata");
+        }
+        offset += written;
+    }
+    if (!FlushFileBuffers(file)) {
+        throw std::system_error(
+            static_cast<int>(GetLastError()), std::system_category(),
+            "flush DATA_ROOT owner metadata");
+    }
+}
+
+std::string readOwnerPayload(const fs::path& path) {
+    const HANDLE file = CreateFileW(
+        path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+        nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (file == INVALID_HANDLE_VALUE) return {};
+    std::string payload;
+    char buffer[4096];
+    for (;;) {
+        DWORD read = 0;
+        if (!ReadFile(file, buffer, sizeof(buffer), &read, nullptr)) {
+            CloseHandle(file);
+            return {};
+        }
+        if (read == 0) break;
+        payload.append(buffer, read);
+        if (payload.size() > 64 * 1024) {
+            CloseHandle(file);
+            return {};
+        }
+    }
+    CloseHandle(file);
+    return payload;
+}
+#else
+void writeOwner(int descriptor, const std::string& payload) {
+    if (::ftruncate(descriptor, 0) != 0 ||
+        ::lseek(descriptor, 0, SEEK_SET) < 0) {
+        throw std::system_error(
+            errno, std::system_category(),
+            "truncate DATA_ROOT owner metadata");
+    }
+    std::size_t offset = 0;
+    while (offset < payload.size()) {
+        const auto written = ::write(
+            descriptor, payload.data() + offset, payload.size() - offset);
+        if (written < 0 && errno == EINTR) continue;
+        if (written <= 0) {
+            throw std::system_error(
+                errno, std::system_category(),
+                "write DATA_ROOT owner metadata");
+        }
+        offset += static_cast<std::size_t>(written);
+    }
+    if (::fsync(descriptor) != 0) {
+        throw std::system_error(
+            errno, std::system_category(),
+            "flush DATA_ROOT owner metadata");
+    }
+}
+
+std::string readOwnerPayload(const fs::path& path) {
+    const int descriptor = ::open(path.c_str(), O_RDONLY | O_CLOEXEC);
+    if (descriptor < 0) return {};
+    std::string payload;
+    char buffer[4096];
+    for (;;) {
+        const auto count = ::read(descriptor, buffer, sizeof(buffer));
+        if (count < 0 && errno == EINTR) continue;
+        if (count < 0 || payload.size() + static_cast<std::size_t>(count) >
+                64 * 1024) {
+            ::close(descriptor);
+            return {};
+        }
+        if (count == 0) break;
+        payload.append(buffer, static_cast<std::size_t>(count));
+    }
+    ::close(descriptor);
+    return payload;
+}
+#endif
 
 std::string utcNow() {
     const auto now = std::chrono::system_clock::now();
@@ -63,7 +193,8 @@ void fsyncDirectory(const fs::path& directory) {
 }
 
 void atomicWriteIdentity(const fs::path& identityPath, const json& identity) {
-    const fs::path temporary = identityPath.string() + ".tmp";
+    fs::path temporary = identityPath;
+    temporary += ".tmp";
 #ifdef _WIN32
     {
         std::ofstream out(temporary, std::ios::binary | std::ios::trunc);
@@ -186,13 +317,17 @@ StorageRootGuard StorageRootGuard::acquire(
     const fs::path& configuredRoot,
     const std::string& clusterId,
     const std::string& nodeId,
-    const std::string& storageFormatVersion) {
+    const std::string& storageFormatVersion,
+    const std::string& instanceId) {
     if (configuredRoot.empty() || !configuredRoot.is_absolute()) {
         throw std::runtime_error("DATA_ROOT must be an explicit absolute path");
     }
     validateStorageIdentifier(clusterId, "clusterId");
     validateStorageIdentifier(nodeId, "nodeId");
     validateStorageIdentifier(storageFormatVersion, "storageFormatVersion");
+    if (!instanceId.empty()) {
+        validateStorageIdentifier(instanceId, "instanceId");
+    }
 
     std::error_code ec;
     fs::create_directories(configuredRoot, ec);
@@ -212,10 +347,10 @@ StorageRootGuard StorageRootGuard::acquire(
         validateContainedStoragePath(canonicalRoot, canonicalRoot / kLockFile);
 
 #ifdef _WIN32
-    state->lockHandle = CreateFileA(
-        state->lockPath.string().c_str(),
+    state->lockHandle = CreateFileW(
+        state->lockPath.c_str(),
         GENERIC_READ | GENERIC_WRITE,
-        0,
+        FILE_SHARE_READ,
         nullptr,
         OPEN_ALWAYS,
         FILE_ATTRIBUTE_NORMAL,
@@ -224,6 +359,9 @@ StorageRootGuard StorageRootGuard::acquire(
         throw std::runtime_error(
             "DATA_ROOT is locked by another PacificDB process");
     }
+    writeOwner(
+        state->lockHandle,
+        ownerJson(canonicalRoot, clusterId, nodeId, instanceId).dump() + "\n");
 #else
     state->lockFd = ::open(
         state->lockPath.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0600);
@@ -235,18 +373,9 @@ StorageRootGuard StorageRootGuard::acquire(
         throw std::runtime_error(
             "DATA_ROOT is locked by another PacificDB process");
     }
-    const std::string owner =
-        "pid=" + std::to_string(static_cast<long long>(::getpid())) +
-        "\nclusterId=" + clusterId +
-        "\nnodeId=" + nodeId +
-        "\ncanonicalRoot=" + canonicalRoot.string() + "\n";
-    if (::ftruncate(state->lockFd, 0) != 0 ||
-        ::lseek(state->lockFd, 0, SEEK_SET) < 0 ||
-        ::write(state->lockFd, owner.data(), owner.size()) !=
-            static_cast<ssize_t>(owner.size()) ||
-        ::fsync(state->lockFd) != 0) {
-        throw std::runtime_error("cannot persist DATA_ROOT lock owner metadata");
-    }
+    writeOwner(
+        state->lockFd,
+        ownerJson(canonicalRoot, clusterId, nodeId, instanceId).dump() + "\n");
 #endif
 
     if (fs::exists(state->identityPath)) {
@@ -254,7 +383,7 @@ StorageRootGuard StorageRootGuard::acquire(
         requireIdentityField(identity, "clusterId", clusterId);
         requireIdentityField(identity, "nodeId", nodeId);
         requireIdentityField(
-            identity, "canonicalRoot", canonicalRoot.string());
+            identity, "canonicalRoot", canonicalRoot.u8string());
         if (!identity.contains("creationTimestamp") ||
             !identity["creationTimestamp"].is_string() ||
             identity["creationTimestamp"].get<std::string>().empty()) {
@@ -287,13 +416,50 @@ StorageRootGuard StorageRootGuard::acquire(
             {"clusterId", clusterId},
             {"nodeId", nodeId},
             {"storageFormatVersion", storageFormatVersion},
-            {"canonicalRoot", canonicalRoot.string()},
+            {"canonicalRoot", canonicalRoot.u8string()},
             {"creationTimestamp", utcNow()},
         };
         atomicWriteIdentity(state->identityPath, identity);
     }
 
     return StorageRootGuard(std::move(state));
+}
+
+std::optional<StorageRootOwner> StorageRootGuard::readOwner(
+    const fs::path& configuredRoot) noexcept {
+    try {
+        if (configuredRoot.empty() || !configuredRoot.is_absolute()) {
+            return std::nullopt;
+        }
+        std::error_code error;
+        const auto canonicalRoot = fs::canonical(configuredRoot, error);
+        if (error) return std::nullopt;
+        const auto lockPath = validateContainedStoragePath(
+            canonicalRoot, canonicalRoot / kLockFile);
+        const auto payload = readOwnerPayload(lockPath);
+        if (payload.empty()) return std::nullopt;
+        const auto value = json::parse(payload, nullptr, false);
+        if (value.is_discarded() || !value.is_object() ||
+            value.value("schema", std::string()) !=
+                "pacificdb.storage-root-owner.v1") {
+            return std::nullopt;
+        }
+        StorageRootOwner owner;
+        owner.version = value.value("version", 0);
+        owner.pid = value.value("pid", std::uint64_t{0});
+        owner.clusterId = value.value("cluster_id", std::string());
+        owner.nodeId = value.value("node_id", std::string());
+        owner.canonicalRoot = fs::u8path(
+            value.value("canonical_root", std::string()));
+        owner.instanceId = value.value("instance_id", std::string());
+        if (owner.version != 1 || owner.pid == 0 || owner.clusterId.empty() ||
+            owner.nodeId.empty() || !owner.canonicalRoot.is_absolute()) {
+            return std::nullopt;
+        }
+        return owner;
+    } catch (...) {
+        return std::nullopt;
+    }
 }
 
 const fs::path& StorageRootGuard::canonicalRoot() const {

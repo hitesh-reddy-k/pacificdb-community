@@ -223,8 +223,10 @@ try {
   const incomplete = (await client.request({ action: 'community_media_begin',
     collection: 'videos', filename: 'incomplete.mp4', content_type: 'video/mp4',
     size_bytes: mediaBytes.length, chunk_count: 3, sha256: sha256(mediaBytes) })).media;
-  await assert.rejects(client.request({ action: 'community_media_finalize',
-    media_id: incomplete.id }), /missing chunks/);
+  const incompleteFinalize = await client.request({ action: 'community_media_finalize',
+    media_id: incomplete.id });
+  assert.equal(incompleteFinalize.media.error, 'media_chunks_missing');
+  assert.equal(incompleteFinalize.media.resumable, true);
   const resumable = (await client.request({ action: 'community_media_begin',
     collection: 'videos', filename: path.basename(mediaFile), content_type: 'video/mp4',
     size_bytes: mediaBytes.length, chunk_count: 3, sha256: sha256(mediaBytes) })).media;
@@ -232,10 +234,21 @@ try {
   await client.request({ action: 'community_media_put_chunk', media_id: resumable.id,
     index: 0, data: firstChunk.toString('base64'), size_bytes: firstChunk.length,
     sha256: sha256(firstChunk) });
+  const conflicting = (await client.request({ action: 'community_media_begin',
+    collection: 'videos', filename: path.basename(mediaFile), content_type: 'video/mp4',
+    size_bytes: mediaBytes.length, chunk_count: 3, sha256: sha256(mediaBytes) })).media;
+  await client.request({ action: 'community_media_put_chunk', media_id: conflicting.id,
+    index: 0, data: firstChunk.toString('base64'), size_bytes: firstChunk.length,
+    sha256: sha256(firstChunk) });
   await assert.rejects(client.request({ action: 'community_media_put_chunk',
-    media_id: resumable.id, index: 0, data: Buffer.from('different').toString('base64'),
+    media_id: conflicting.id, index: 0,
+    data: Buffer.from('different').toString('base64'),
     size_bytes: 9, sha256: sha256(Buffer.from('different')) }),
     /conflicts with committed chunk/);
+  assert.equal((await client.request({ action: 'community_media_get',
+    media_id: conflicting.id })).media.status, 'failed');
+  await assert.rejects(client.uploadMediaFile('videos', mediaFile,
+    { chunkBytes: 262_144, resume: conflicting.id }), /not resumable/);
   const readyBeforeResume = await client.request({ action: 'community_media_list' });
   assert.ok(!readyBeforeResume.media.some((item) => item.id === resumable.id));
   const persistentMedia = await client.uploadMediaFile('videos', mediaFile,

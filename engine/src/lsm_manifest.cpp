@@ -51,10 +51,12 @@ bool safeSstName(const std::string& name) {
 
 bool syncPath(const fs::path& path, bool directory = false) {
 #ifdef _WIN32
-    const DWORD flags = directory ? FILE_FLAG_BACKUP_SEMANTICS : FILE_ATTRIBUTE_NORMAL;
-    HANDLE handle = CreateFileW(path.wstring().c_str(), GENERIC_READ,
+    // Win32 has no documented directory-fsync equivalent. File contents are
+    // flushed explicitly, and manifest rename uses MOVEFILE_WRITE_THROUGH.
+    if (directory) return true;
+    HANDLE handle = CreateFileW(path.c_str(), GENERIC_READ | GENERIC_WRITE,
                                 FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                                nullptr, OPEN_EXISTING, flags, nullptr);
+                                nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (handle == INVALID_HANDLE_VALUE) return false;
     const bool ok = FlushFileBuffers(handle) != 0;
     CloseHandle(handle);

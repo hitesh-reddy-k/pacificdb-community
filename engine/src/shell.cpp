@@ -2,6 +2,7 @@
 #include <openssl/evp.h>
 #include "build_identity.hpp"
 #include "community_shell.hpp"
+#include "local_engine.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -14,7 +15,9 @@
 #include <iomanip>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <sstream>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -69,58 +72,39 @@ public:
     }
 };
 
-bool canConnect(const std::string& host, const std::string& port) {
-    addrinfo hints{};
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    addrinfo* addresses = nullptr;
-    if (getaddrinfo(host.c_str(), port.c_str(), &hints, &addresses) != 0) return false;
-    bool connected = false;
-    for (auto* address = addresses; address; address = address->ai_next) {
-        Socket socket = ::socket(address->ai_family, address->ai_socktype, address->ai_protocol);
-        if (socket == invalid_socket) continue;
-        connected = connect(socket, address->ai_addr,
-                            static_cast<int>(address->ai_addrlen)) == 0;
-        closeSocket(socket);
-        if (connected) break;
-    }
-    freeaddrinfo(addresses);
-    return connected;
-}
-
-std::string request(const std::string& host, const std::string& port,
-                    const nlohmann::json& command, int timeoutSeconds = 30);
-nlohmann::json parseServerResponse(const std::string& response,
-                                   const std::string& host,
-                                   const std::string& port);
-
-bool engineResponds(const std::string& host, const std::string& port) {
-    try {
-        const auto response = parseServerResponse(
-            request(host, port, {{"action", "ping"}, {"userId", "system"}}, 1),
-            host, port);
-        return response.value("status", "") == "pong";
-    } catch (...) {
-        return false;
-    }
-}
-
 bool isLocalHost(const std::string& host) {
     return host == "127.0.0.1" || host == "localhost" || host == "::1";
 }
 
-std::filesystem::path localDataHome() {
-    if (const char* configured = std::getenv("PACIFICDB_HOME"))
-        return std::filesystem::absolute(configured);
 #ifdef _WIN32
-    if (const char* local = std::getenv("LOCALAPPDATA"))
-        return std::filesystem::path(local) / "PacificDB";
-    if (const char* profile = std::getenv("USERPROFILE"))
-        return std::filesystem::path(profile) / "AppData" / "Local" / "PacificDB";
+std::optional<std::filesystem::path> windowsEnvironmentPath(
+    const wchar_t* name) {
+    const DWORD required = GetEnvironmentVariableW(name, nullptr, 0);
+    if (required == 0) return std::nullopt;
+    std::vector<wchar_t> value(required);
+    const DWORD written = GetEnvironmentVariableW(
+        name, value.data(), required);
+    if (written == 0 || written >= required) return std::nullopt;
+    return std::filesystem::path(std::wstring(value.data(), written));
+}
+#endif
+
+std::filesystem::path localDataHome() {
+#ifdef _WIN32
+    if (const auto configured = windowsEnvironmentPath(L"PACIFICDB_HOME"))
+        return std::filesystem::absolute(*configured);
+    if (const auto local = windowsEnvironmentPath(L"LOCALAPPDATA"))
+        return *local / "PacificDB";
+    if (const auto profile = windowsEnvironmentPath(L"USERPROFILE"))
+        return *profile / "AppData" / "Local" / "PacificDB";
 #elif defined(__APPLE__)
+    if (const char* configured = std::getenv("PACIFICDB_HOME"))
+        return std::filesystem::absolute(std::filesystem::u8path(configured));
     if (const char* home = std::getenv("HOME"))
         return std::filesystem::path(home) / "Library" / "Application Support" / "PacificDB";
 #else
+    if (const char* configured = std::getenv("PACIFICDB_HOME"))
+        return std::filesystem::absolute(std::filesystem::u8path(configured));
     if (const char* data = std::getenv("XDG_DATA_HOME"))
         return std::filesystem::path(data) / "pacificdb";
     if (const char* home = std::getenv("HOME"))
@@ -129,27 +113,13 @@ std::filesystem::path localDataHome() {
     throw std::runtime_error("could not determine PacificDB data directory");
 }
 
-void setEnvironment(const char* name, const std::string& value) {
-#ifdef _WIN32
-    if (_putenv_s(name, value.c_str()) != 0)
-        throw std::runtime_error(std::string("could not set ") + name);
-#else
-    if (setenv(name, value.c_str(), 1) != 0)
-        throw std::runtime_error(std::string("could not set ") + name);
-#endif
-}
-
-void setDefaultEnvironment(const char* name, const std::string& value) {
-    if (!std::getenv(name)) setEnvironment(name, value);
-}
-
 std::filesystem::path executablePath(const char* argv0) {
 #ifdef _WIN32
-    std::vector<char> buffer(MAX_PATH + 1);
-    const DWORD count = GetModuleFileNameA(nullptr, buffer.data(),
+    std::vector<wchar_t> buffer(32768);
+    const DWORD count = GetModuleFileNameW(nullptr, buffer.data(),
                                            static_cast<DWORD>(buffer.size()));
     if (count > 0 && count < buffer.size())
-        return std::filesystem::path(std::string(buffer.data(), count));
+        return std::filesystem::path(std::wstring(buffer.data(), count));
 #elif defined(__linux__)
     std::vector<char> buffer(PATH_MAX + 1);
     const auto count = readlink("/proc/self/exe", buffer.data(), PATH_MAX);
@@ -172,116 +142,40 @@ std::filesystem::path executablePath(const char* argv0) {
     return std::filesystem::absolute(supplied);
 }
 
-void ensureLocalEngine(const std::string& host, const std::string& port,
-                       const char* argv0, bool autoStart) {
-    if (!autoStart || !isLocalHost(host)) return;
-    if (engineResponds(host, port)) return;
-    if (canConnect(host, port)) {
-        throw std::runtime_error("port " + port +
-            " is in use by a service that is not PacificDB; choose another --port");
-    }
-
-    const auto home = localDataHome();
-    const auto data = home / "data";
-    const auto backup = home / "backup";
-    const auto restore = home / "restore";
-    std::filesystem::create_directories(data);
-    std::filesystem::create_directories(backup);
-    std::filesystem::create_directories(restore);
-    const auto startLock = home / ".engine-starting";
-    std::error_code lockError;
-    if (!std::filesystem::create_directory(startLock, lockError)) {
-        if (lockError) throw std::runtime_error("could not lock local engine startup: " +
-                                                lockError.message());
-        for (int attempt = 0; attempt < 300; ++attempt) {
-            if (engineResponds(host, port)) return;
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-        throw std::runtime_error("another PacificDB process did not finish starting the local engine");
-    }
-    struct StartLock {
-        std::filesystem::path path;
-        ~StartLock() { std::error_code ignored; std::filesystem::remove(path, ignored); }
-    } startLockGuard{startLock};
-    const int numericPort = std::stoi(port);
-    const int raftPort = numericPort == 9000 ? 9100 : std::min(numericPort + 1, 65535);
-    setDefaultEnvironment("PACIFICDB_HOME", home.string());
-    setDefaultEnvironment("PACIFICDB_ENVIRONMENT", "development");
-    setDefaultEnvironment("DATA_ROOT", data.string());
-    setDefaultEnvironment("BACKUP_ROOT", backup.string());
-    setDefaultEnvironment("RESTORE_DIR", restore.string());
-    setEnvironment("ENGINE_BIND_HOST", "127.0.0.1");
-    setDefaultEnvironment("ENGINE_AUTH_REQUIRED", "0");
-    setEnvironment("ENGINE_PORT", port);
-    setDefaultEnvironment("RAFT_LISTEN_PORT", std::to_string(raftPort));
-    setDefaultEnvironment("RAFT_CLUSTER_ID", "pacificdb-local");
-    setDefaultEnvironment("RAFT_NODE_ID", "node-1");
-    setDefaultEnvironment("RAFT_IS_LEADER", "1");
-    setDefaultEnvironment("MIN_QUORUM_SIZE", "1");
-    setDefaultEnvironment("ENGINE_CPU_CORES", "2");
-    setDefaultEnvironment("ENGINE_KEEPALIVE_MAX_REQUESTS", "1");
-
-    auto engine = executablePath(argv0).parent_path() /
+std::filesystem::path configuredEnginePath(
+    const std::filesystem::path& cliExecutable) {
 #ifdef _WIN32
-        "db_engine.exe";
+    const auto configured = windowsEnvironmentPath(L"PACIFICDB_ENGINE");
+    return configured ? *configured
+                      : cliExecutable.parent_path() / "db_engine.exe";
 #else
-        "db_engine";
+    const char* configured = std::getenv("PACIFICDB_ENGINE");
+    return configured && *configured
+        ? std::filesystem::u8path(configured)
+        : cliExecutable.parent_path() / "db_engine";
 #endif
-    if (!std::filesystem::is_regular_file(engine))
-        throw std::runtime_error("local engine is not installed next to pacificdb");
+}
 
-    unsigned long long processId = 0;
-#ifdef _WIN32
-    std::string command = "\"" + engine.string() + "\"";
-    STARTUPINFOA startup{};
-    startup.cb = sizeof(startup);
-    PROCESS_INFORMATION process{};
-    if (!CreateProcessA(nullptr, command.data(), nullptr, nullptr, FALSE,
-                        CREATE_NO_WINDOW | DETACHED_PROCESS, nullptr, nullptr,
-                        &startup, &process)) {
-        throw std::runtime_error("could not start local engine");
+std::chrono::milliseconds configuredStartupTimeout() {
+    constexpr long long defaultTimeoutMs = 120000;
+    const char* configured = std::getenv("PACIFICDB_STARTUP_TIMEOUT_MS");
+    if (!configured || !*configured) {
+        return std::chrono::milliseconds(defaultTimeoutMs);
     }
-    processId = process.dwProcessId;
-    CloseHandle(process.hThread);
-    CloseHandle(process.hProcess);
-#else
-    const pid_t child = fork();
-    if (child < 0) throw std::runtime_error("could not start local engine");
-    if (child == 0) {
-        if (setsid() < 0) _exit(126);
-        const auto log = (home / "engine.log").string();
-        const int descriptor = open(log.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0600);
-        if (descriptor < 0) _exit(126);
-        dup2(descriptor, STDOUT_FILENO);
-        dup2(descriptor, STDERR_FILENO);
-        close(descriptor);
-        execl(engine.c_str(), engine.filename().c_str(), static_cast<char*>(nullptr));
-        _exit(127);
-    }
-    processId = static_cast<unsigned long long>(child);
-#endif
-    const auto pidFile = home / "engine.pid";
-    std::ofstream pid(pidFile, std::ios::trunc);
-    if (!pid) throw std::runtime_error("could not write local engine PID");
-    pid << processId << '\n';
-    pid.close();
-#ifndef _WIN32
-    chmod(pidFile.c_str(), S_IRUSR | S_IWUSR);
-#endif
-
-    for (int attempt = 0; attempt < 300; ++attempt) {
-        if (engineResponds(host, port)) {
-            std::cout << "✓ Local engine started at " << host << ':' << port << '\n';
-            return;
+    try {
+        const long long timeout = std::stoll(configured);
+        if (timeout < 100 || timeout > 30LL * 60 * 1000) {
+            throw std::out_of_range("startup timeout");
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        return std::chrono::milliseconds(timeout);
+    } catch (...) {
+        throw std::runtime_error(
+            "PACIFICDB_STARTUP_TIMEOUT_MS must be from 100 to 1800000");
     }
-    throw std::runtime_error("local engine did not start; see " +
-                             (home / "engine.log").string());
 }
 
 std::string request(const std::string& host, const std::string& port,
-                    const nlohmann::json& command, int timeoutSeconds) {
+                    const nlohmann::json& command, int timeoutSeconds = 30) {
     addrinfo hints{};
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
@@ -448,7 +342,7 @@ nlohmann::json sendJson(const std::string& host, const std::string& port,
 
 void usage(std::ostream& output = std::cerr) {
     output << "usage: pacificdb [options] "
-                 "[shell|ping|request JSON|put-media|get-media|put-vector|query-vector]\n"
+                 "[shell|ping|stop|request JSON|put-media|get-media|put-vector|query-vector]\n"
                  "       options: --host HOST --port PORT --database NAME --no-start\n"
                  "                --help, -h  --version, -V\n";
 }
@@ -667,6 +561,45 @@ nlohmann::json uploadMedia(const std::string& host, const std::string& port,
     auto manifest = sendJson(host, port, withContext(std::move(begin), context)).at("media");
     if (manifest.value("status", "") == "ready") return manifest;
 
+    std::set<long long> received;
+    if (manifest.contains("received_indices") && manifest["received_indices"].is_array()) {
+        for (const auto& value : manifest["received_indices"])
+            if (value.is_number_integer() && value.get<long long>() >= 0)
+                received.insert(value.get<long long>());
+    }
+    long long receivedBytes = manifest.value("received_bytes", 0LL);
+    auto nextMissing = [&] {
+        for (long long candidate = 0; candidate < chunkCount; ++candidate)
+            if (!received.count(candidate)) return candidate;
+        return chunkCount;
+    };
+    auto updateProgress = [&](const nlohmann::json& progress, long long storedIndex,
+                              std::size_t storedBytes) {
+        if (progress.contains("received_indices") && progress["received_indices"].is_array()) {
+            received.clear();
+            for (const auto& value : progress["received_indices"])
+                if (value.is_number_integer() && value.get<long long>() >= 0)
+                    received.insert(value.get<long long>());
+        } else {
+            received.insert(storedIndex);
+        }
+        if (progress.contains("received_bytes") && progress["received_bytes"].is_number_integer())
+            receivedBytes = progress["received_bytes"].get<long long>();
+        else
+            receivedBytes += static_cast<long long>(storedBytes);
+    };
+    auto transportFailure = [](const std::exception& error) {
+        const std::string message = error.what();
+        return message.find("connection") != std::string::npos ||
+               message.find("timed out") != std::string::npos ||
+               message.find("complete response") != std::string::npos;
+    };
+    auto interrupted = [&](const std::exception& error) {
+        return pacificdb::cli::MediaUploadInterrupted(
+            manifest.at("id").get<std::string>(), nextMissing(),
+            static_cast<long long>(received.size()), receivedBytes, error.what());
+    };
+
     std::ifstream input(filename, std::ios::binary);
     std::vector<unsigned char> bytes(chunkBytes);
     long long index = 0;
@@ -675,6 +608,10 @@ nlohmann::json uploadMedia(const std::string& host, const std::string& port,
                    static_cast<std::streamsize>(bytes.size()));
         const auto count = static_cast<std::size_t>(input.gcount());
         if (count == 0) break;
+        if (received.count(index)) {
+            ++index;
+            continue;
+        }
         std::vector<unsigned char> chunk(bytes.begin(), bytes.begin() +
                                         static_cast<std::ptrdiff_t>(count));
         auto command = withContext({{"action", "community_media_put_chunk"},
@@ -683,12 +620,24 @@ nlohmann::json uploadMedia(const std::string& host, const std::string& port,
             {"sha256", sha256Hex(chunk.data(), chunk.size())}}, context);
         if (static_cast<long long>(command.dump().size() + 1) > maximum)
             throw std::runtime_error("serialized media chunk exceeds engine request limit");
-        sendJson(host, port, std::move(command));
+        try {
+            const auto stored = sendJson(host, port, std::move(command));
+            updateProgress(stored.contains("media") ? stored.at("media") : stored,
+                           index, count);
+        } catch (const std::exception& error) {
+            if (transportFailure(error)) throw interrupted(error);
+            throw;
+        }
         ++index;
     }
-    return sendJson(host, port, withContext({
-        {"action", "community_media_finalize"}, {"media_id", manifest.at("id")}},
-        context)).at("media");
+    try {
+        return sendJson(host, port, withContext({
+            {"action", "community_media_finalize"}, {"media_id", manifest.at("id")}},
+            context)).at("media");
+    } catch (const std::exception& error) {
+        if (transportFailure(error)) throw interrupted(error);
+        throw;
+    }
 }
 
 nlohmann::json downloadMedia(const std::string& host, const std::string& port,
@@ -882,10 +831,61 @@ int main(int argc, char** argv) {
             return 0;
         }
         if (positional.empty()) positional.push_back("shell");
+        const auto cliExecutable = executablePath(argv[0]);
+        const auto engineExecutable = std::filesystem::absolute(
+            configuredEnginePath(cliExecutable));
+        if (positional[0] == "stop") {
+            if (positional.size() != 1 || !isLocalHost(host)) {
+                throw std::runtime_error(
+                    "stop requires a local host and no positional arguments");
+            }
+            const auto metadata = pacificdb::cli::readProcessMetadata(
+                localDataHome() / "engine.metadata.json");
+            if (!metadata || !pacificdb::cli::processIsLive(metadata->pid)) {
+                throw std::runtime_error("engine_not_running: no live local engine");
+            }
+            const auto runningExecutable =
+                pacificdb::cli::processExecutable(metadata->pid);
+            if (!runningExecutable ||
+                !pacificdb::cli::sameExecutable(
+                    *runningExecutable, metadata->executable) ||
+                !pacificdb::cli::sameExecutable(
+                    *runningExecutable, engineExecutable) ||
+                metadata->port != numericPort) {
+                throw std::runtime_error(
+                    "engine_identity_mismatch: refusing to signal the process");
+            }
+            if (!pacificdb::cli::requestEngineShutdown(metadata->pid)) {
+                throw std::runtime_error(
+                    "engine_shutdown_unavailable: explicit shutdown event failed");
+            }
+            const auto deadline = std::chrono::steady_clock::now() +
+                std::chrono::seconds(30);
+            while (pacificdb::cli::processIsLive(metadata->pid) &&
+                   std::chrono::steady_clock::now() < deadline) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            }
+            if (pacificdb::cli::processIsLive(metadata->pid)) {
+                throw std::runtime_error(
+                    "engine_shutdown_timeout: engine is still running");
+            }
+            std::cout << nlohmann::json{{"status", "stopped"},
+                {"pid", metadata->pid}}.dump() << '\n';
+            return 0;
+        }
         const std::vector<std::string> commands{"ping", "request", "shell", "put-media",
                                                 "get-media", "put-vector", "query-vector"};
-        if (std::find(commands.begin(), commands.end(), positional[0]) != commands.end())
-            ensureLocalEngine(host, port, argv[0], autoStart);
+        if (std::find(commands.begin(), commands.end(), positional[0]) != commands.end() &&
+            isLocalHost(host)) {
+            pacificdb::cli::ensureLocalEngine({
+                host,
+                numericPort,
+                localDataHome(),
+                engineExecutable,
+                autoStart,
+                configuredStartupTimeout(),
+            }, std::cout);
+        }
         if (positional[0] == "ping" && positional.size() == 1) {
             return sendAndPrint(host, port, {{"action", "ping"}});
         }
@@ -1046,9 +1046,13 @@ int main(int argc, char** argv) {
                         std::cout << exportBackup(host, port, parsed.at("id"),
                             filename, context).dump(2) << '\n';
                     } else if (kind == "media_upload") {
-                        std::cout << uploadMedia(host, port, parsed.at("filename"),
-                            parsed.at("collection"), parsed.value("resume", ""), context)
-                            .dump(2) << '\n';
+                        try {
+                            std::cout << uploadMedia(host, port, parsed.at("filename"),
+                                parsed.at("collection"), parsed.value("resume", ""), context)
+                                .dump(2) << '\n';
+                        } catch (const pacificdb::cli::MediaUploadInterrupted& error) {
+                            std::cout << error.publicResponse().dump(2) << '\n';
+                        }
                     } else if (kind == "media_download") {
                         std::cout << downloadMedia(host, port, parsed.at("id"),
                             parsed.at("filename"), context).dump(2) << '\n';

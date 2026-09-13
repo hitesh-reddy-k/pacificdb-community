@@ -1,0 +1,95 @@
+[
+  {
+    "name": "healthy existing legacy engine",
+    "observations": {"protocolHealthy": true},
+    "expectedState": "healthy_existing",
+    "expectedCode": "engine_healthy_existing"
+  },
+  {
+    "name": "healthy existing identified engine",
+    "observations": {
+      "protocolHealthy": true,
+      "identityAvailable": true,
+      "identityMatches": true
+    },
+    "expectedState": "healthy_existing",
+    "expectedCode": "engine_healthy_existing"
+  },
+  {
+    "name": "protocol identity mismatch",
+    "observations": {
+      "protocolHealthy": true,
+      "identityAvailable": true,
+      "identityMatches": false
+    },
+    "expectedState": "unhealthy",
+    "expectedCode": "engine_identity_mismatch"
+  },
+  {
+    "name": "stale pid",
+    "observations": {"pidPresent": true},
+    "expectedState": "stale_pid",
+    "expectedCode": "engine_stale_pid"
+  },
+  {
+    "name": "reused pid",
+    "observations": {
+      "pidPresent": true,
+      "pidLive": true,
+      "executableIdentityKnown": true,
+      "executableMatches": false
+    },
+    "expectedState": "pid_reused",
+    "expectedCode": "engine_pid_reused"
+  },
+  {
+    "name": "matching process still starting",
+    "observations": {
+      "pidPresent": true,
+      "pidLive": true,
+      "executableIdentityKnown": true,
+      "executableMatches": true
+    },
+    "expectedState": "starting",
+    "expectedCode": "engine_starting"
+  },
+  {
+    "name": "matching process missed deadline",
+    "observations": {
+      "pidPresent": true,
+      "pidLive": true,
+      "executableIdentityKnown": true,
+      "executableMatches": true,
+      "startupDeadlineExpired": true
+    },
+    "expectedState": "unhealthy",
+    "expectedCode": "engine_unhealthy"
+  },
+  {
+    "name": "unrelated listener",
+    "observations": {"portOpen": true},
+    "expectedState": "port_conflict",
+    "expectedCode": "engine_port_conflict"
+  },
+  {
+    "name": "foreign data root owner",
+    "observations": {
+      "lockOwned": true,
+      "lockIdentityMatches": false
+    },
+    "expectedState": "data_root_in_use",
+    "expectedCode": "engine_data_root_in_use"
+  },
+  {
+    "name": "spawned child exited",
+    "observations": {"spawnedProcessExited": true},
+    "expectedState": "exited",
+    "expectedCode": "engine_exited"
+  },
+  {
+    "name": "engine absent and startable",
+    "observations": {},
+    "expectedState": "spawned",
+    "expectedCode": "engine_spawn_required"
+  }
+]

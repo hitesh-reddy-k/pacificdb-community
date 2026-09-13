@@ -1,12 +1,68 @@
 #include "env_config.hpp"
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <cstdlib>
+#include <cwchar>
 #include <algorithm>
 #include <cctype>
 #include <filesystem>
+#include <optional>
 #include <stdexcept>
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+namespace {
+
+#ifdef _WIN32
+std::string wideToUtf8(const wchar_t* value, std::size_t length) {
+    if (!value || length == 0) return {};
+    const int bytes = WideCharToMultiByte(
+        CP_UTF8, WC_ERR_INVALID_CHARS, value, static_cast<int>(length),
+        nullptr, 0, nullptr, nullptr);
+    if (bytes <= 0) {
+        throw std::runtime_error("cannot convert Windows environment to UTF-8");
+    }
+    std::string result(static_cast<std::size_t>(bytes), '\0');
+    if (WideCharToMultiByte(
+            CP_UTF8, WC_ERR_INVALID_CHARS, value, static_cast<int>(length),
+            result.data(), bytes, nullptr, nullptr) != bytes) {
+        throw std::runtime_error("cannot convert Windows environment to UTF-8");
+    }
+    return result;
+}
+
+std::optional<std::string> processEnvironmentUtf8(const char* name) {
+    std::wstring wideName;
+    for (const unsigned char* current =
+             reinterpret_cast<const unsigned char*>(name);
+         *current; ++current) {
+        wideName.push_back(static_cast<wchar_t>(*current));
+    }
+    const DWORD required = GetEnvironmentVariableW(
+        wideName.c_str(), nullptr, 0);
+    if (required == 0) return std::nullopt;
+    std::vector<wchar_t> value(required);
+    const DWORD written = GetEnvironmentVariableW(
+        wideName.c_str(), value.data(), required);
+    if (written == 0 || written >= required) {
+        throw std::runtime_error(
+            std::string("cannot read Windows environment variable ") + name);
+    }
+    return wideToUtf8(value.data(), written);
+}
+#else
+std::optional<std::string> processEnvironmentUtf8(const char* name) {
+    const char* value = std::getenv(name);
+    if (!value) return std::nullopt;
+    return std::string(value);
+}
+#endif
+
+}  // namespace
 
 // Static member definitions
 std::unordered_map<std::string, std::string> EnvConfig::values_;
@@ -20,22 +76,22 @@ void EnvConfig::load() {
     // Runtime configuration must not change with process cwd. Load only an
     // explicitly named absolute file and, when DATA_ROOT itself is explicitly
     // absolute, the root-owned .env. Process environment still wins below.
-    std::vector<std::pair<std::string, bool>> searchPaths;
-    if (const char* explicitFile = std::getenv("PACIFICDB_ENV_FILE")) {
-        const std::filesystem::path file(explicitFile);
+    std::vector<std::pair<std::filesystem::path, bool>> searchPaths;
+    if (const auto explicitFile = processEnvironmentUtf8("PACIFICDB_ENV_FILE")) {
+        const std::filesystem::path file = std::filesystem::u8path(*explicitFile);
         if (!file.is_absolute()) {
             throw std::runtime_error(
                 "PACIFICDB_ENV_FILE must be an absolute path");
         }
-        searchPaths.emplace_back(file.string(), true);
+        searchPaths.emplace_back(file, true);
     }
 
     // Add DATA_ROOT/.env if DATA_ROOT is set
-    const char* dataRoot = std::getenv("DATA_ROOT");
-    if (dataRoot && *dataRoot) {
-        const std::filesystem::path root(dataRoot);
+    const auto dataRoot = processEnvironmentUtf8("DATA_ROOT");
+    if (dataRoot && !dataRoot->empty()) {
+        const std::filesystem::path root = std::filesystem::u8path(*dataRoot);
         if (root.is_absolute()) {
-            searchPaths.emplace_back((root / ".env").string(), false);
+            searchPaths.emplace_back(root / ".env", false);
         }
     }
 
@@ -55,8 +111,8 @@ void EnvConfig::load() {
             }
             continue;
         }
-        std::cout << "[EnvConfig] Loading: " << path << "\n";
-        parseEnvFile(path);
+        std::cout << "[EnvConfig] Loading: " << path.u8string() << "\n";
+        parseEnvFile(path.u8string());
     }
 
     // Process environment variables ALWAYS take precedence
@@ -81,7 +137,7 @@ void EnvConfig::reload() {
 }
 
 void EnvConfig::parseEnvFile(const std::string& filepath) {
-    std::ifstream file(filepath);
+    std::ifstream file(std::filesystem::u8path(filepath));
     if (!file.is_open()) return;
 
     std::string line;
@@ -142,9 +198,21 @@ void EnvConfig::loadProcessEnvironment() {
         return false;
     };
 
+#ifdef _WIN32
+    std::unique_ptr<wchar_t, decltype(&FreeEnvironmentStringsW)> environment(
+        GetEnvironmentStringsW(), &FreeEnvironmentStringsW);
+    if (!environment) {
+        throw std::runtime_error("cannot read Windows process environment");
+    }
+    for (const wchar_t* env = environment.get(); *env != L'\0';
+         env += std::wcslen(env) + 1) {
+        const std::wstring wideEntry(env);
+        std::string entry = wideToUtf8(wideEntry.data(), wideEntry.size());
+#else
     extern char** environ;
-    for (char** env = environ; *env != nullptr; env++) {
+    for (char** env = environ; *env != nullptr; ++env) {
         std::string entry(*env);
+#endif
         auto pos = entry.find('=');
         if (pos == std::string::npos) continue;
 
@@ -325,14 +393,14 @@ EnvConfig::StorageConfig EnvConfig::getStorageConfig() {
         if (value.empty()) {
             throw std::runtime_error(field + " is required");
         }
-        const fs::path root(value);
+        const fs::path root = fs::u8path(value);
         if (!root.is_absolute()) {
             throw std::runtime_error(
                 field + " must be an explicit absolute path");
         }
         std::error_code ec;
         const fs::path canonical = fs::weakly_canonical(root, ec);
-        return (ec ? root.lexically_normal() : canonical).string();
+        return (ec ? root.lexically_normal() : canonical).u8string();
     };
 
     StorageConfig cfg;

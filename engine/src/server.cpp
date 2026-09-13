@@ -25,6 +25,9 @@
 #include "test_failpoint.hpp"
 #include "storage_path.hpp"
 #include "tls_transport.hpp"
+#include "socket_runtime.hpp"
+#include "local_engine.hpp"
+#include "structured_event.hpp"
 
 #include <openssl/evp.h>
 
@@ -90,6 +93,7 @@
 #include <optional>
 #include <cmath>
 #include <string_view>
+#include <system_error>
 
 #include <mutex>
 
@@ -476,6 +480,9 @@ static SocketSendResult sendTrackedPayload(SOCKET sock, const std::string& paylo
     SocketSendResult result;
     const char* cursor = payload.c_str();
     size_t remaining = payload.size();
+    int writableWaits = 0;
+    constexpr int kMaximumWritableWaits = 3;
+    constexpr auto kWritableWait = std::chrono::milliseconds(100);
 
     while (remaining > 0) {
         int sent = clientTransportSend(sock, cursor, remaining, sendFlags);
@@ -486,6 +493,7 @@ static SocketSendResult sendTrackedPayload(SOCKET sock, const std::string& paylo
             if (remaining > 0) {
                 result.partial = true;
             }
+            writableWaits = 0;
             continue;
         }
 
@@ -502,6 +510,13 @@ static SocketSendResult sendTrackedPayload(SOCKET sock, const std::string& paylo
         }
         if (err == WSAEWOULDBLOCK) {
             result.eagain = true;
+            int waitError = 0;
+            if (writableWaits++ < kMaximumWritableWaits &&
+                pacificdb::net::waitForSocketWritable(
+                    sock, kWritableWait, &waitError)) {
+                continue;
+            }
+            if (waitError != 0) result.errorCode = waitError;
             break;
         }
 #else
@@ -512,6 +527,13 @@ static SocketSendResult sendTrackedPayload(SOCKET sock, const std::string& paylo
         }
         if (err == EAGAIN || err == EWOULDBLOCK) {
             result.eagain = true;
+            int waitError = 0;
+            if (writableWaits++ < kMaximumWritableWaits &&
+                pacificdb::net::waitForSocketWritable(
+                    sock, kWritableWait, &waitError)) {
+                continue;
+            }
+            if (waitError != 0) result.errorCode = waitError;
             break;
         }
 #endif
@@ -524,7 +546,42 @@ static SocketSendResult sendTrackedPayload(SOCKET sock, const std::string& paylo
     if (!result.ok && result.errorCode == 0) {
         result.errorCode = SOCKET_ERROR_CODE;
     }
+    if (!result.ok) {
+        pacificdb::observability::emitStructuredEvent(std::cerr, {
+            "warn", "network", "response_delivery_failed", "",
+            "A response could not be delivered to the client",
+            {
+                {"native_error", result.errorCode},
+                {"bytes_sent", result.bytesSent},
+                {"partial", result.partial},
+            },
+        });
+    }
     return result;
+}
+
+static bool sendProtocolError(
+    SOCKET socket,
+    bool binaryWireV2,
+    const json& error) {
+    std::string payload;
+    if (binaryWireV2) {
+        const auto packed = json::to_msgpack(error);
+        if (packed.size() > 0x7fffffffU) return false;
+        const std::uint32_t framedLength =
+            static_cast<std::uint32_t>(packed.size()) | 0x80000000U;
+        const std::uint32_t networkLength = htonl(framedLength);
+        payload.assign(kEngineWireV2Magic, sizeof(kEngineWireV2Magic));
+        payload.append(
+            reinterpret_cast<const char*>(&networkLength),
+            sizeof(networkLength));
+        payload.append(
+            reinterpret_cast<const char*>(packed.data()), packed.size());
+    } else {
+        payload = error.dump();
+        payload.push_back('\n');
+    }
+    return sendTrackedPayload(socket, payload, 0).ok;
 }
 
 static bool looksLikeCompleteJsonObject(const std::string& buffer) {
@@ -822,7 +879,9 @@ static json sanitizeDeterministicPayload(const json& payload) {
             out["binaryData"] = json{{"_truncated", true}, {"length", len}};
         }
     }
-    for (const char* secret : {"password", "token", "key"}) {
+    for (const char* secret : {
+             "password", "token", "key", "local_discovery_nonce",
+             "discovery_nonce"}) {
         if (out.contains(secret)) out[secret] = "[redacted]";
     }
     if (out.value("action", "") == "community_media_put_chunk" &&
@@ -1864,27 +1923,46 @@ static std::string getOpStatus(unsigned long long id) {
 
 void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
     SOCKET sock = (SOCKET)clientSocket;
+    unsigned long long reqId = ++g_reqIdCounter;
     struct ClientSocketGuard {
         SOCKET sock;
         bool open;
-        explicit ClientSocketGuard(SOCKET s) : sock(s), open(s != INVALID_SOCKET) {
-            if (open) trackClientSocket(sock);
+        bool writeShutdown = false;
+        std::string operationId;
+        std::string reason = "completed";
+        explicit ClientSocketGuard(SOCKET s, unsigned long long id)
+            : sock(s), open(s != INVALID_SOCKET),
+              operationId("connection_" + std::to_string(id)) {
+            if (open) {
+                trackClientSocket(sock);
+                pacificdb::observability::emitStructuredEvent(std::cerr, {
+                    "debug", "network", "client_connected", operationId,
+                    "Client connection accepted", nlohmann::json::object(),
+                });
+            }
         }
+        void setReason(std::string value) { reason = std::move(value); }
+        void setWriteShutdown() { writeShutdown = true; }
         void closeNow() {
             if (!open) return;
             untrackClientSocket(sock);
             detachClientTls(sock);
+            if (!writeShutdown) {
 #ifdef _WIN32
-            shutdown(sock, SD_BOTH);
+                shutdown(sock, SD_BOTH);
 #else
-            shutdown(sock, SHUT_RDWR);
+                shutdown(sock, SHUT_RDWR);
 #endif
+            }
             CLOSE_SOCKET(sock);
             open = false;
+            pacificdb::observability::emitStructuredEvent(std::cerr, {
+                "debug", "network", "client_disconnected", operationId,
+                "Client connection closed", {{"reason", reason}},
+            });
         }
         ~ClientSocketGuard() { closeNow(); }
-    } clientSocketGuard(sock);
-    unsigned long long reqId = ++g_reqIdCounter;
+    } clientSocketGuard(sock, reqId);
     recordPipelineCounter("pacificdb_pipeline_dequeued_requests_total");
     recordLifecycleCounter("request_dequeued");
     decrementGaugeSafe(g_acceptQueueDepth);
@@ -1963,6 +2041,11 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
         socketClosedUs = steadyNowUs();
         setLifecycle("timeout_triggered_us", timeoutTriggeredUs);
         setLifecycle("socket_closed_us", socketClosedUs);
+        sendProtocolError(sock, false, {
+            {"error", "server_busy"},
+            {"reason", "queue_wait"},
+            {"retry_after_ms", 200},
+        });
         clientSocketGuard.closeNow();
         return;
     }
@@ -2005,10 +2088,6 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
     // TCP_NODELAY for low latency (disable Nagle's algorithm)
     setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char*)&optVal, sizeof(optVal));
 
-    // Set linger option - quick close for throughput
-    struct linger lingerOpt = { 1, 1 };  // Linger on, 1 second timeout (was 5)
-    setsockopt(sock, SOL_SOCKET, SO_LINGER, (char*)&lingerOpt, sizeof(lingerOpt));
-
 #ifdef __linux__
 #ifdef SO_ZEROCOPY
     if (g_socketZeroCopy) {
@@ -2049,11 +2128,19 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
         recvTimeoutSec = configuredRecvTimeoutSec;
     }
 
-    struct timeval recvTimeout;
-    recvTimeout.tv_sec = recvTimeoutSec;
-    recvTimeout.tv_usec = 0;
-    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&recvTimeout, sizeof(recvTimeout));
-    setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (char*)&recvTimeout, sizeof(recvTimeout));
+    try {
+        const auto socketTimeout = std::chrono::seconds(recvTimeoutSec);
+        pacificdb::net::setSocketTimeouts(sock, socketTimeout, socketTimeout);
+    } catch (const std::system_error& error) {
+        std::cerr << "[SERVER] socket timeout configuration failed, error="
+                  << error.code().value() << std::endl;
+        sendProtocolError(sock, false, {
+            {"error", "socket_configuration_failed"},
+            {"retryable", true},
+        });
+        clientSocketGuard.closeNow();
+        return;
+    }
 
     static const long long maxConnLifetimeMs = [] {
         if (const char* env = std::getenv("MAX_CONNECTION_LIFETIME_MS")) {
@@ -2107,11 +2194,20 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
             requestTiming = pacificdb::timing::makeRequestTimingContext();
             pacificdb::timing::setRequestTimingContext(requestTiming);
             // Idle recv/send timeout for subsequent requests
-            struct timeval _kaIdleTv;
-            _kaIdleTv.tv_sec = static_cast<long>(_kaIdleMs / 1000);
-            _kaIdleTv.tv_usec = static_cast<long>((_kaIdleMs % 1000) * 1000);
-            setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&_kaIdleTv, sizeof(_kaIdleTv));
-            setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (char*)&_kaIdleTv, sizeof(_kaIdleTv));
+            try {
+                const auto idleTimeout = std::chrono::milliseconds(_kaIdleMs);
+                pacificdb::net::setSocketTimeouts(
+                    sock, idleTimeout, idleTimeout);
+            } catch (const std::system_error& error) {
+                std::cerr << "[SERVER] keepalive timeout configuration failed, error="
+                          << error.code().value() << std::endl;
+                sendProtocolError(sock, false, {
+                    {"error", "socket_configuration_failed"},
+                    {"retryable", true},
+                });
+                clientSocketGuard.closeNow();
+                return;
+            }
         }
 
     // Increased buffer size and dynamic reading
@@ -2135,6 +2231,9 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
     }();
     char tempBuffer[65536]; // 64KB chunks
     int totalBytes = static_cast<int>(buffer.size());
+    pacificdb::net::ReceiveFailure receiveFailure =
+        pacificdb::net::ReceiveFailure::none;
+    int receiveError = 0;
 
     auto readStart = std::chrono::steady_clock::now();
 
@@ -2162,17 +2261,18 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
             auto aliveMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - connStart).count();
             if (aliveMs > maxConnLifetimeMs) {
-                std::string rej = "{\"error\":\"connection_ttl\",\"retry_after_ms\":200}\n";
                 recordLifecycleCounter("timeout_triggered");
                 timeoutTriggeredUs = steadyNowUs();
                 setLifecycle("timeout_triggered_us", timeoutTriggeredUs);
                 recordLifecycleCounter("response_send_started");
                 responseSendStartedUs = steadyNowUs();
                 setLifecycle("response_send_started_us", responseSendStartedUs);
-                auto ttlSend = sendTrackedPayload(sock, rej, 0);
-                if (ttlSend.partial) recordPipelineCounter("pacificdb_pipeline_response_send_partial_total");
-                if (ttlSend.eagain) recordPipelineCounter("pacificdb_pipeline_response_send_eagain_total");
-                if (!ttlSend.ok) recordPipelineCounter("pacificdb_pipeline_response_send_failed_total");
+                if (!sendProtocolError(sock, binaryWireV2, {
+                        {"error", "connection_ttl"},
+                        {"retry_after_ms", 200},
+                    })) {
+                    recordPipelineCounter("pacificdb_pipeline_response_send_failed_total");
+                }
                 recordLifecycleCounter("response_send_completed");
                 responseSendCompletedUs = steadyNowUs();
                 setLifecycle("response_send_completed_us", responseSendCompletedUs);
@@ -2196,25 +2296,26 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
 #endif
 
         if (bytes <= 0) {
-            if (bytes == 0) {
+            receiveError = bytes < 0 ? SOCKET_ERROR_CODE : 0;
+            receiveFailure = pacificdb::net::classifyReceiveFailure(
+                bytes, receiveError);
+            if (receiveFailure == pacificdb::net::ReceiveFailure::disconnected ||
+                receiveFailure == pacificdb::net::ReceiveFailure::reset) {
+                clientSocketGuard.setReason(
+                    receiveFailure == pacificdb::net::ReceiveFailure::reset
+                    ? "reset" : "peer_closed");
                 recordLifecycleCounter("client_disconnect");
                 recordTimeoutOriginCounter("client_disconnect");
                 setLifecycle("client_disconnect_us", steadyNowUs());
+            } else if (receiveFailure == pacificdb::net::ReceiveFailure::timeout) {
+                clientSocketGuard.setReason("receive_timeout");
+                recordLifecycleCounter("timeout_triggered");
+                recordTimeoutOriginCounter("request_receive");
+                setLifecycle("timeout_triggered_us", steadyNowUs());
             } else {
-#ifndef _WIN32
-                if (errno == EAGAIN || errno == EWOULDBLOCK || errno == ETIMEDOUT) {
-                    recordLifecycleCounter("timeout_triggered");
-                    recordTimeoutOriginCounter("response_send");
-                    setLifecycle("timeout_triggered_us", steadyNowUs());
-                } else if (errno == ECONNRESET || errno == EPIPE) {
-                    recordLifecycleCounter("client_disconnect");
-                    recordTimeoutOriginCounter("client_disconnect");
-                    setLifecycle("client_disconnect_us", steadyNowUs());
-                } else {
-                    recordPipelineCounter("pacificdb_pipeline_socket_recv_failed_total");
-                    std::cerr << "[SERVER] recv() failed on keepalive socket, errno=" << errno << std::endl;
-                }
-#endif
+                recordPipelineCounter("pacificdb_pipeline_socket_recv_failed_total");
+                std::cerr << "[SERVER] recv() failed on socket, error="
+                          << receiveError << std::endl;
             }
             break;
         }
@@ -2225,14 +2326,15 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
         // Safety limit: prevent unbounded memory growth
         if (totalBytes > maxInMemoryPayload) {
             std::cerr << "[SERVER] Payload exceeded in-memory limit (" << maxInMemoryPayload << ") - rejecting" << std::endl;
-            std::string rej = "{\"error\":\"payload_too_large\",\"max_bytes\": " + std::to_string(maxInMemoryPayload) + "}\n";
             recordLifecycleCounter("response_send_started");
             responseSendStartedUs = steadyNowUs();
             setLifecycle("response_send_started_us", responseSendStartedUs);
-            auto payloadSend = sendTrackedPayload(sock, rej, 0);
-            if (payloadSend.partial) recordPipelineCounter("pacificdb_pipeline_response_send_partial_total");
-            if (payloadSend.eagain) recordPipelineCounter("pacificdb_pipeline_response_send_eagain_total");
-            if (!payloadSend.ok) recordPipelineCounter("pacificdb_pipeline_response_send_failed_total");
+            if (!sendProtocolError(sock, binaryWireV2, {
+                    {"error", "payload_too_large"},
+                    {"max_bytes", maxInMemoryPayload},
+                })) {
+                recordPipelineCounter("pacificdb_pipeline_response_send_failed_total");
+            }
             recordLifecycleCounter("response_send_completed");
             responseSendCompletedUs = steadyNowUs();
             setLifecycle("response_send_completed_us", responseSendCompletedUs);
@@ -2242,6 +2344,23 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
             clientSocketGuard.closeNow();
             return;
         }
+    }
+
+    if (receiveFailure != pacificdb::net::ReceiveFailure::none) {
+        if (receiveFailure == pacificdb::net::ReceiveFailure::timeout) {
+            sendProtocolError(sock, binaryWireV2, {
+                {"error", "request_incomplete"},
+                {"retryable", true},
+            });
+        } else if (receiveFailure == pacificdb::net::ReceiveFailure::other) {
+            sendProtocolError(sock, binaryWireV2, {
+                {"error", "request_receive_failed"},
+                {"retryable", true},
+            });
+        }
+        recordLifecycleCounter("socket_closed");
+        clientSocketGuard.closeNow();
+        return;
     }
 
     if (buffer.empty()) {
@@ -2254,6 +2373,12 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
 
     if (framedPayloadTooLarge) {
         recordPipelineCounter("pacificdb_pipeline_rejected_requests_total");
+        if (!sendProtocolError(sock, true, {
+                {"error", "payload_too_large"},
+                {"max_bytes", maxInMemoryPayload},
+            })) {
+            recordPipelineCounter("pacificdb_pipeline_response_send_failed_total");
+        }
         clientSocketGuard.closeNow();
         return;
     }
@@ -2351,6 +2476,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
     std::string sstVisibilitySource;
     // Refused requests must not receive cluster or tracing telemetry.
     bool authRejected = false;
+    bool minimalProtocolError = false;
     auto execStart = std::chrono::steady_clock::now();
     if (hardReqLog) {
         std::cout << "[EXEC START] " << reqId << std::endl;
@@ -2359,7 +2485,8 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
     try {
     auto authStart = std::chrono::steady_clock::now();
     if (req.is_discarded()) {
-        res = { {"error", "Invalid JSON"} };
+        res = { {"error", "invalid_json"} };
+        minimalProtocolError = true;
     }
     else {
         DLOG("[SERVER] Action = " << action << std::endl);
@@ -2408,9 +2535,25 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
         else if (action == "ping") {
             // Include dynamic leader state so health checks can detect leadership changes
             res = { {"status", "pong"}, {"isLeader", RaftCore::instance().isLeader()},
+                    {"edition", "community"},
                     {"leader_term", RaftCore::instance().getCurrentTerm()},
                     {"commit_index", RaftCore::instance().getCommitIndex()},
                     {"last_applied", RaftCore::instance().getLastApplied()} };
+            const char* configuredNonce =
+                std::getenv("PACIFICDB_DISCOVERY_NONCE");
+            const char* instanceId = std::getenv("PACIFICDB_INSTANCE_ID");
+            const char* fingerprint =
+                std::getenv("PACIFICDB_DATA_ROOT_FINGERPRINT");
+            const std::string suppliedNonce = req.value(
+                "local_discovery_nonce", std::string());
+            if (configuredNonce && *configuredNonce && instanceId &&
+                *instanceId && fingerprint && *fingerprint &&
+                pacificdb::cli::constantTimeEquals(
+                    suppliedNonce, configuredNonce)) {
+                res["instance_id"] = instanceId;
+                res["engine_pid"] = pacificdb::cli::currentProcessId();
+                res["data_root_fingerprint"] = fingerprint;
+            }
         }
 
         // ---------------- COMMUNITY METADATA AND MEDIA ----------------
@@ -2512,10 +2655,12 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                           : json{{"error", "media_not_found"}};
         }
         else if (action == "community_media_cleanup") {
-            res = {{"status", "ok"},
-                   {"deleted", pacificdb::community::CommunityCatalog::instance().cleanupMedia(
-                                   req.value("userId", "system"),
-                                   req.value("media_id", ""))}};
+            const auto mediaId = req.value("media_id", std::string());
+            const auto deleted =
+                pacificdb::community::CommunityCatalog::instance().cleanupMedia(
+                    req.value("userId", "system"), mediaId);
+            res = {{"status", "ok"}, {"deleted", deleted}};
+            if (!mediaId.empty()) res["already_clean"] = deleted == 0;
         }
 
         // v3.8 Phase 2 — STALE-LEADER FENCING (in-core): the control plane pushes the
@@ -5934,18 +6079,39 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
 
         else {
             res = {
-                {"error", "Unknown action"},
-                {"action", action}
+                {"error", "unknown_action"},
+                {"action", action},
+                {"message", "Unknown action"},
             };
+            minimalProtocolError = true;
         }
     }
     } catch (const std::exception& e) {
         std::cerr << "[SERVER] Request execution exception (action=" << action << "): " << e.what() << std::endl;
-        res = {
-            {"error", "execution_exception"},
-            {"action", action},
-            {"message", e.what()}
-        };
+        if (action.rfind("community_media_", 0) == 0) {
+            const std::string message = e.what();
+            std::string code = "media_operation_failed";
+            if (message.find("not found") != std::string::npos) {
+                code = "media_not_found";
+            } else if (message.find("not resumable") != std::string::npos) {
+                code = "media_not_resumable";
+            } else if (message.find("conflicts with committed chunk") !=
+                       std::string::npos) {
+                code = "media_chunk_conflict";
+            } else if (message.find("checksum") != std::string::npos ||
+                       message.find("verification") != std::string::npos) {
+                code = "media_verification_failed";
+            } else if (dynamic_cast<const std::invalid_argument*>(&e)) {
+                code = "media_invalid_request";
+            }
+            res = {{"error", code}, {"action", action}, {"message", message}};
+        } else {
+            res = {
+                {"error", "execution_exception"},
+                {"action", action},
+                {"message", e.what()}
+            };
+        }
     } catch (...) {
         std::cerr << "[SERVER] Request execution unknown exception (action=" << action << ")" << std::endl;
         res = {
@@ -6132,9 +6298,11 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
 
     // Use an allowlist so future response decorations cannot silently leak
     // internals to an unauthenticated or unauthorized caller.
-    if (authRejected) {
+    if (authRejected || minimalProtocolError) {
         json refusal = json::object();
-        for (const char* key : {"error", "message", "action"}) {
+        for (const char* key : {
+                 "error", "message", "action", "retryable", "reason",
+                 "retry_after_ms", "max_bytes"}) {
             if (res.contains(key)) refusal[key] = res[key];
         }
         res = std::move(refusal);
@@ -6238,6 +6406,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
     if (sendResult.partial) recordPipelineCounter("pacificdb_pipeline_response_send_partial_total");
     if (sendResult.eagain) recordPipelineCounter("pacificdb_pipeline_response_send_eagain_total");
     if (!sendResult.ok) {
+        clientSocketGuard.setReason("response_delivery_failed");
         recordPipelineCounter("pacificdb_pipeline_response_send_failed_total");
         std::cerr << "[SERVER] Failed to send response, error: " << sendResult.errorCode << std::endl;
         recordTimeoutOriginCounter("response_send");
@@ -6256,6 +6425,27 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
         shutdown(sock, SD_SEND);
 #else
         shutdown(sock, SHUT_WR);
+#endif
+        clientSocketGuard.setWriteShutdown();
+#ifdef _WIN32
+        // Closing a Winsock socket with unread peer bytes can convert an
+        // otherwise successful response into WSAECONNRESET at the client.
+        // After the write half-close, give the peer a short bounded window to
+        // acknowledge the response and close its side before closesocket().
+        try {
+            pacificdb::net::setSocketTimeouts(
+                sock, std::chrono::milliseconds(50),
+                std::chrono::milliseconds(50));
+        } catch (...) {}
+        char discarded[1024];
+        std::size_t drained = 0;
+        while (drained < 4096) {
+            const int received = clientTransportRecv(
+                sock, discarded,
+                std::min<std::size_t>(sizeof(discarded), 4096 - drained), 0);
+            if (received <= 0) break;
+            drained += static_cast<std::size_t>(received);
+        }
 #endif
         recordLifecycleCounter("socket_closed");
         socketClosedUs = steadyNowUs();
@@ -6318,7 +6508,6 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
 
 void startServer() {
     g_serverLifecycleStarted = 1;
-    g_serverShutdownRequested = 0;
     g_serverReady = 0;
 #ifdef _WIN32
     WSADATA wsa;
@@ -6786,6 +6975,32 @@ void startServer() {
         if (sendResult.eagain) recordPipelineCounter("pacificdb_pipeline_response_send_eagain_total");
         if (!sendResult.ok) recordPipelineCounter("pacificdb_pipeline_response_send_failed_total");
         recordLifecycleCounter("response_send_completed");
+        if (sendResult.ok) {
+#ifdef _WIN32
+            shutdown(client, SD_SEND);
+#else
+            shutdown(client, SHUT_WR);
+#endif
+            // A Windows close with unread request bytes resets the connection
+            // and can discard an already-successful rejection send. Drain only
+            // a small bounded amount after the write half-close so the peer can
+            // observe the complete error without turning admission into a
+            // blocking or attacker-controlled read path.
+            try {
+                pacificdb::net::setSocketTimeouts(
+                    client, std::chrono::milliseconds(50),
+                    std::chrono::milliseconds(50));
+            } catch (...) {}
+            char discarded[1024];
+            std::size_t drained = 0;
+            while (drained < 4096) {
+                const int received = clientTransportRecv(
+                    client, discarded,
+                    std::min<std::size_t>(sizeof(discarded), 4096 - drained), 0);
+                if (received <= 0) break;
+                drained += static_cast<std::size_t>(received);
+            }
+        }
         recordLifecycleCounter("socket_closed");
         MetricsExporter::recordCustomMetric("pacificdb_pipeline_last_reject_send_us", static_cast<double>(steadyNowUs() - localSendStartUs));
         untrackClientSocket(client);
@@ -6991,6 +7206,17 @@ void startServer() {
 
     bool epollLoopCompleted = false;
     g_serverReady = 1;
+    const char* instance = std::getenv("PACIFICDB_INSTANCE_ID");
+    pacificdb::observability::emitStructuredEvent(std::cerr, {
+        "info", "engine", "engine_ready", instance ? instance : "",
+        "PacificDB engine is ready",
+        {
+            {"instance_id", instance ? instance : ""},
+            {"engine_pid", pacificdb::cli::currentProcessId()},
+            {"host", engineBindHost},
+            {"port", enginePort},
+        },
+    });
 #ifdef __linux__
     bool useEpoll = true;
     if (const char* ioModel = std::getenv("SERVER_IO_MODEL")) {

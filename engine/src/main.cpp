@@ -32,12 +32,19 @@
 #include "security_manager.hpp"
 #include "storage_path.hpp"
 #include "storage_root_guard.hpp"
+#include "local_engine.hpp"
+#include "structured_event.hpp"
 #include "test_failpoint.hpp"
 #include "build_identity.hpp"
+
+#include <atomic>
+#include <exception>
 
 #ifndef _WIN32
 #include <sys/stat.h>
 #include <unistd.h>
+#else
+#include <windows.h>
 #endif
 
 // Extern accessors from server.cpp for live connection/RPS metrics
@@ -49,6 +56,7 @@ static TXIDAllocator* g_txidAllocator = nullptr;
 static SnapshotManager* g_snapshotManager = nullptr;
 static GarbageCollector* g_garbageCollector = nullptr;
 static volatile std::sig_atomic_t g_terminationSignal = 0;
+static std::atomic<const char*> g_enginePhase{"entry"};
 
 static void handleTerminationSignal(int signalNumber) {
     g_terminationSignal = signalNumber;
@@ -64,12 +72,87 @@ static void handleTerminationSignal(int signalNumber) {
 #endif
 }
 
+#ifdef _WIN32
+static BOOL WINAPI handleConsoleControl(DWORD controlType) {
+    switch (controlType) {
+        case CTRL_C_EVENT:
+        case CTRL_BREAK_EVENT:
+        case CTRL_CLOSE_EVENT:
+        case CTRL_SHUTDOWN_EVENT:
+            handleTerminationSignal(SIGINT);
+            return TRUE;
+        default:
+            return FALSE;
+    }
+}
+
+class WindowsShutdownEvent {
+public:
+    explicit WindowsShutdownEvent(std::uint64_t pid) {
+        const std::wstring name = L"Local\\PacificDBEngineShutdown-" +
+            std::to_wstring(pid);
+        event_ = CreateEventW(nullptr, TRUE, FALSE, name.c_str());
+        if (!event_) {
+            throw std::runtime_error(
+                "could not create the Windows engine shutdown event");
+        }
+        watcher_ = std::thread([this] {
+            if (WaitForSingleObject(event_, INFINITE) == WAIT_OBJECT_0 &&
+                !stopping_.load()) {
+                handleTerminationSignal(SIGTERM);
+            }
+        });
+    }
+
+    ~WindowsShutdownEvent() {
+        stopping_.store(true);
+        if (event_) SetEvent(event_);
+        if (watcher_.joinable()) watcher_.join();
+        if (event_) CloseHandle(event_);
+    }
+
+    WindowsShutdownEvent(const WindowsShutdownEvent&) = delete;
+    WindowsShutdownEvent& operator=(const WindowsShutdownEvent&) = delete;
+
+private:
+    HANDLE event_ = nullptr;
+    std::atomic<bool> stopping_{false};
+    std::thread watcher_;
+};
+#endif
+
+static void emitFatalEvent(const std::string& message, int exitCode) noexcept {
+    try {
+        const char* instance = std::getenv("PACIFICDB_INSTANCE_ID");
+        pacificdb::observability::emitStructuredEvent(std::cerr, {
+            "fatal", "engine", "engine_fatal",
+            instance ? instance : "", message,
+            {
+                {"phase", g_enginePhase.load()},
+                {"instance_id", instance ? instance : ""},
+                {"exit_code", exitCode},
+            },
+        });
+    } catch (...) {
+        std::cerr << "{\"severity\":\"fatal\",\"subsystem\":\"engine\","
+                     "\"code\":\"engine_fatal\","
+                     "\"message\":\"fatal event formatting failed\"}\n";
+    }
+}
+
 // Cross-platform setenv
 static void setEnvironmentVariable(const char* name, const char* value) {
 #ifdef _WIN32
-    _putenv_s(name, value);
+    // Internal storage APIs currently consume UTF-8 through getenv(). Keep
+    // that CRT view UTF-8; path discovery itself is performed with Win32's
+    // UTF-16 environment APIs before values reach this point.
+    if (_putenv_s(name, value) != 0) {
+        throw std::runtime_error(std::string("could not set ") + name);
+    }
 #else
-    setenv(name, value, 1);
+    if (setenv(name, value, 1) != 0) {
+        throw std::runtime_error(std::string("could not set ") + name);
+    }
 #endif
 }
 
@@ -122,10 +205,10 @@ static void validateProductionAtRestEvidence() {
             std::string("cannot parse at-rest encryption evidence: ") + error.what());
     }
 
-    const std::string configuredRoot = std::filesystem::path(
-        EnvConfig::getString("DATA_ROOT", "")).lexically_normal().string();
-    const std::string observedRoot = std::filesystem::path(
-        evidence.value("dataRoot", "")).lexically_normal().string();
+    const std::string configuredRoot = std::filesystem::u8path(
+        EnvConfig::getString("DATA_ROOT", "")).lexically_normal().u8string();
+    const std::string observedRoot = std::filesystem::u8path(
+        evidence.value("dataRoot", "")).lexically_normal().u8string();
     const std::string protection = evidence.value("protection", "");
     static const std::set<std::string> allowedProtection = {
         "dm-crypt-luks", "fscrypt", "encrypted-managed-volume"};
@@ -156,7 +239,7 @@ static void validateProductionConfiguration() {
              std::pair<const char*, std::string>{"TLS_CERT_PATH", security.tlsCertPath},
              std::pair<const char*, std::string>{"TLS_KEY_PATH", security.tlsKeyPath},
              std::pair<const char*, std::string>{"TLS_CA_PATH", security.tlsCaPath}}) {
-        if (value.empty() || !std::filesystem::path(value).is_absolute()) {
+        if (value.empty() || !std::filesystem::u8path(value).is_absolute()) {
             throw std::runtime_error(std::string("production requires absolute ") + name);
         }
     }
@@ -207,7 +290,7 @@ static void validateProductionConfiguration() {
     }
 }
 
-int main(int argc, char** argv) {
+static int runEngine(int argc, char** argv) {
     if (argc == 2 && std::string(argv[1]) == "--version") {
         std::cout << "PacificDB Engine " << PACIFICDB_ENGINE_VERSION << "\n";
         return 0;
@@ -237,10 +320,14 @@ int main(int argc, char** argv) {
 #endif
     std::signal(SIGTERM, handleTerminationSignal);
     std::signal(SIGINT, handleTerminationSignal);
+#ifdef _WIN32
+    SetConsoleCtrlHandler(handleConsoleControl, TRUE);
+#endif
 
     // ============================================
     // PHASE 0: Load Environment Configuration
     // ============================================
+    g_enginePhase.store("configuration");
     EnvConfig::load();
     if (EnvConfig::getBool("ENGINE_VERBOSE", false)) {
         EnvConfig::dump();
@@ -257,9 +344,36 @@ int main(int argc, char** argv) {
     std::string dataRoot;
     std::string nodeIdStr;
     std::string clusterId;
+    std::string instanceId;
+    std::string discoveryNonce;
+    std::string storageConfigurationStage = "resolve_paths";
     StorageRootGuard storageRootGuard;
     try {
         storageCfg = EnvConfig::getStorageConfig();
+        instanceId = EnvConfig::getString("PACIFICDB_INSTANCE_ID", "");
+        if (instanceId.empty()) {
+            instanceId = "engine_" +
+                pacificdb::cli::generateDiscoveryToken().substr(0, 32);
+        }
+        discoveryNonce = EnvConfig::getString(
+            "PACIFICDB_DISCOVERY_NONCE", "");
+        if (discoveryNonce.empty()) {
+            discoveryNonce = pacificdb::cli::generateDiscoveryToken();
+        }
+        EnvConfig::set("PACIFICDB_INSTANCE_ID", instanceId);
+        EnvConfig::set("PACIFICDB_DISCOVERY_NONCE", discoveryNonce);
+        setEnvironmentVariable("PACIFICDB_INSTANCE_ID", instanceId.c_str());
+        setEnvironmentVariable(
+            "PACIFICDB_DISCOVERY_NONCE", discoveryNonce.c_str());
+        pacificdb::observability::emitStructuredEvent(std::cerr, {
+            "info", "engine", "engine_starting", instanceId,
+            "PacificDB engine is starting",
+            {
+                {"instance_id", instanceId},
+                {"engine_pid", pacificdb::cli::currentProcessId()},
+                {"engine_version", PACIFICDB_ENGINE_VERSION},
+            },
+        });
         nodeIdStr = EnvConfig::getString("RAFT_NODE_ID", "");
         if (nodeIdStr.empty()) {
             nodeIdStr = EnvConfig::getString("NODE_ID", "");
@@ -271,19 +385,59 @@ int main(int argc, char** argv) {
         if (clusterId.empty()) {
             throw std::runtime_error("RAFT_CLUSTER_ID is required");
         }
+        storageConfigurationStage = "acquire_root";
         storageRootGuard = StorageRootGuard::acquire(
-            storageCfg.dataRoot,
+            std::filesystem::u8path(storageCfg.dataRoot),
             clusterId,
             nodeIdStr,
-            PACIFICDB_STORAGE_FORMAT_VERSION);
-        dataRoot = storageRootGuard.canonicalRoot().string();
+            PACIFICDB_STORAGE_FORMAT_VERSION,
+            instanceId);
+        storageConfigurationStage = "fingerprint_root";
+        dataRoot = storageRootGuard.canonicalRoot().u8string();
+        const auto rootFingerprint =
+            pacificdb::cli::dataRootFingerprint(storageRootGuard.canonicalRoot());
         storageCfg.dataRoot = dataRoot;
         EnvConfig::set("DATA_ROOT", dataRoot);
         EnvConfig::set("DATA_DIR", dataRoot);
+        EnvConfig::set("PACIFICDB_DATA_ROOT_FINGERPRINT", rootFingerprint);
+        storageConfigurationStage = "publish_root_environment";
         setEnvironmentVariable("DATA_ROOT", dataRoot.c_str());
         setEnvironmentVariable("DATA_DIR", dataRoot.c_str());
+        setEnvironmentVariable(
+            "PACIFICDB_DATA_ROOT_FINGERPRINT", rootFingerprint.c_str());
+
+        const auto homeValue = EnvConfig::getString("PACIFICDB_HOME", "");
+        if (!homeValue.empty()) {
+            storageConfigurationStage = "create_home";
+            auto home = std::filesystem::absolute(
+                std::filesystem::u8path(homeValue)).lexically_normal();
+            std::filesystem::create_directories(home);
+            storageConfigurationStage = "identify_executable";
+            const auto executable =
+                pacificdb::cli::processExecutable(
+                    pacificdb::cli::currentProcessId());
+            if (!executable) {
+                throw std::runtime_error(
+                    "could not identify the local engine executable");
+            }
+            pacificdb::cli::EngineProcessMetadata metadata;
+            metadata.pid = pacificdb::cli::currentProcessId();
+            metadata.executable = *executable;
+            metadata.instanceId = instanceId;
+            metadata.dataRootFingerprint = rootFingerprint;
+            metadata.discoveryNonce = discoveryNonce;
+            metadata.port = EnvConfig::getInt("ENGINE_PORT", 9000);
+            metadata.startedAtMs =
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::system_clock::now().time_since_epoch()).count();
+            storageConfigurationStage = "write_process_metadata";
+            pacificdb::cli::writeProcessMetadata(
+                home / "engine.metadata.json", metadata);
+            pacificdb::cli::writeNumericPid(home / "engine.pid", metadata.pid);
+        }
     } catch (const std::exception& error) {
         std::cerr << "[MAIN] STORAGE_CONFIGURATION_REFUSED: "
+                  << "stage=" << storageConfigurationStage << " "
                   << error.what() << "\n";
         return 78;
     }
@@ -291,8 +445,8 @@ int main(int argc, char** argv) {
 
     std::cout << "[MAIN] Data root: " << dataRoot << "\n";
     std::cout << "[MAIN] Root identity: "
-              << storageRootGuard.identityPath().string() << "\n";
-    std::cout << "[MAIN] Root lock: " << storageRootGuard.lockPath().string() << "\n";
+              << storageRootGuard.identityPath().u8string() << "\n";
+    std::cout << "[MAIN] Root lock: " << storageRootGuard.lockPath().u8string() << "\n";
     std::cout << "[MAIN] WAL dir:   " << storageCfg.walDir << "\n";
     std::cout << "[MAIN] SST dir:   " << storageCfg.sstDir << "\n";
     std::cout << "[MAIN] Backups:   " << storageCfg.backupDir << "\n";
@@ -301,17 +455,19 @@ int main(int argc, char** argv) {
     // PHASE 0: Crash Recovery
     // ============================================
     std::cout << "\n[MAIN] ========== CRASH RECOVERY PHASE ==========\n";
+    g_enginePhase.store("recovery");
     pacificdb::test::hitFailpoint("FP_SHUTDOWN_BEFORE_LISTENER_BIND", 1);
-    const char* raftLogPath = std::getenv("RAFT_LOG_PATH");
+    const std::string raftLogPath = EnvConfig::getString("RAFT_LOG_PATH", "");
     std::filesystem::path raftLogFile =
-        raftLogPath && *raftLogPath
-        ? std::filesystem::path(raftLogPath)
-        : std::filesystem::path(dataRoot) / "raft.log";
+        !raftLogPath.empty()
+        ? std::filesystem::u8path(raftLogPath)
+        : std::filesystem::u8path(dataRoot) / "raft.log";
     try {
         if (!raftLogFile.is_absolute()) {
             throw std::runtime_error("RAFT_LOG_PATH must be absolute");
         }
-        raftLogFile = validateContainedStoragePath(dataRoot, raftLogFile);
+        raftLogFile = validateContainedStoragePath(
+            std::filesystem::u8path(dataRoot), raftLogFile);
     } catch (const std::exception& error) {
         std::cerr << "[MAIN] STORAGE_CONFIGURATION_REFUSED: "
                   << error.what() << "\n";
@@ -335,7 +491,7 @@ int main(int argc, char** argv) {
     RecoveryManager::RecoveryState recoveryState;
     try {
         recoveryState =
-            RecoveryManager::executeRecovery(dataRoot, raftLogFile.string());
+            RecoveryManager::executeRecovery(dataRoot, raftLogFile.u8string());
     } catch (const std::exception& error) {
         // Recovery walks every persisted artifact before the listener starts.
         // A symlink or special-file escape is a storage-configuration refusal,
@@ -583,12 +739,28 @@ int main(int argc, char** argv) {
                   << "\n";
     }
 
+    g_enginePhase.store("server_startup");
     std::cout << "\n[MAIN] ========== SERVER STARTUP ==========\n";
+#ifdef _WIN32
+    WindowsShutdownEvent shutdownEvent(
+        pacificdb::cli::currentProcessId());
+#endif
     startServer();  // socket server loop
 
     // ============================================
     // CLEANUP ON EXIT
     // ============================================
+    g_enginePhase.store("shutdown");
+    if (serverShutdownRequested()) {
+        pacificdb::observability::emitStructuredEvent(std::cerr, {
+            "info", "engine", "engine_shutdown_requested", instanceId,
+            "PacificDB engine shutdown was requested",
+            {
+                {"instance_id", instanceId},
+                {"signal", static_cast<int>(g_terminationSignal)},
+            },
+        });
+    }
     std::cout << "\n[MAIN] ========== SHUTDOWN PHASE ==========\n";
     const auto shutdownStartedAt = std::chrono::steady_clock::now();
     const auto logShutdownElapsed = [&shutdownStartedAt](const char* stage) {
@@ -642,9 +814,11 @@ int main(int argc, char** argv) {
     logShutdownElapsed("wal_stopped");
 
     // Mark clean shutdown only after the force-flush contract is proven.
+    bool cleanMarkerWritten = false;
     if (cleanFlushComplete) {
         try {
             RecoveryManager::markCleanShutdown(dataRoot);
+            cleanMarkerWritten = true;
             std::cout << "[MAIN] ✓ Clean shutdown marker v2 written" << std::endl;
             logShutdownElapsed("clean_marker_written");
         } catch (const std::exception& error) {
@@ -658,6 +832,16 @@ int main(int argc, char** argv) {
 
     MemoryManager::stop();
     logShutdownElapsed("memory_manager_stopped");
+    if (cleanMarkerWritten) {
+        pacificdb::observability::emitStructuredEvent(std::cerr, {
+            "info", "engine", "engine_shutdown_complete", instanceId,
+            "PacificDB engine shutdown completed",
+            {
+                {"instance_id", instanceId},
+                {"clean_shutdown", true},
+            },
+        });
+    }
 #ifndef _WIN32
     if (g_terminationSignal) {
         // All owned services, queues, storage workers and durability markers
@@ -676,4 +860,28 @@ int main(int argc, char** argv) {
     std::cout << "[MAIN] Shutdown complete" << std::endl;
 
     return 0;
+}
+
+int main(int argc, char** argv) {
+    std::set_terminate([] {
+        std::string message = "uncaught unknown exception";
+        if (const auto current = std::current_exception()) {
+            try {
+                std::rethrow_exception(current);
+            } catch (const std::exception& error) {
+                message = error.what();
+            } catch (...) {
+            }
+        }
+        emitFatalEvent(message, 70);
+        std::_Exit(70);
+    });
+    try {
+        return runEngine(argc, argv);
+    } catch (const std::exception& error) {
+        emitFatalEvent(error.what(), 70);
+    } catch (...) {
+        emitFatalEvent("uncaught unknown exception", 70);
+    }
+    return 70;
 }

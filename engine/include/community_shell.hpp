@@ -2,6 +2,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <stdexcept>
 #include <string>
 
 namespace pacificdb::cli {
@@ -10,6 +11,20 @@ struct ShellContext {
     std::string database;
     std::string projectId;
     std::string token;
+};
+
+class MediaUploadInterrupted final : public std::runtime_error {
+public:
+    MediaUploadInterrupted(std::string uploadId, long long nextChunk,
+                           long long receivedChunks, long long receivedBytes,
+                           std::string cause);
+    nlohmann::json publicResponse() const;
+
+private:
+    std::string uploadId_;
+    long long nextChunk_;
+    long long receivedChunks_;
+    long long receivedBytes_;
 };
 
 nlohmann::json parseShellCommand(const std::string& line,

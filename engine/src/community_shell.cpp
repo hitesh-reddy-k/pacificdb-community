@@ -7,6 +7,20 @@
 #include <vector>
 
 namespace pacificdb::cli {
+
+MediaUploadInterrupted::MediaUploadInterrupted(
+    std::string uploadId, long long nextChunk, long long receivedChunks,
+    long long receivedBytes, std::string cause)
+    : std::runtime_error("media upload interrupted: " + cause),
+      uploadId_(std::move(uploadId)), nextChunk_(nextChunk),
+      receivedChunks_(receivedChunks), receivedBytes_(receivedBytes) {}
+
+nlohmann::json MediaUploadInterrupted::publicResponse() const {
+    return {{"status", "resumable"}, {"error", "media_upload_interrupted"},
+            {"upload_id", uploadId_}, {"next_chunk", nextChunk_},
+            {"received_chunks", receivedChunks_},
+            {"received_bytes", receivedBytes_}, {"resumable", true}};
+}
 namespace {
 using json = nlohmann::json;
 

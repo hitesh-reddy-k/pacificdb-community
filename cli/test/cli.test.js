@@ -7,6 +7,7 @@ import test from 'node:test';
 import { PassThrough } from 'node:stream';
 import { main } from '../src/cli.js';
 import { parseShellCommand, runShell } from '../src/shell.js';
+import { MediaUploadError } from '@pacificdb/client';
 
 test('friendly parser maps Community commands and rejects Cloud commands', () => {
   const context = { database: 'app' };
@@ -64,6 +65,26 @@ test('shell persists local context and dispatches project/database commands', as
   assert.equal(context.database, 'app');
   assert.equal((await readFile(path.join(cliHome, 'history'), 'utf8')).includes('exit'),
                false);
+});
+
+test('shell prints structured resumable media interruption details', async () => {
+  const cliHome = await mkdtemp(path.join(os.tmpdir(), 'pacificdb-shell-resume-'));
+  await writeFile(path.join(cliHome, 'context.json'), JSON.stringify({ database: 'app' }));
+  const client = { database: '', token: '', async uploadMediaFile() {
+    throw new MediaUploadError('media upload interrupted', { uploadId: 'media_resume',
+      nextChunk: 1, receivedChunks: 1, receivedBytes: 65_536 });
+  } };
+  const input = new PassThrough();
+  const output = new PassThrough();
+  let text = '';
+  output.on('data', (chunk) => { text += chunk; });
+  const running = runShell(client, { input, output }, { cliHome });
+  input.end('upload media file.bin\nexit\n');
+  await running;
+  assert.match(text, /"status": "resumable"/);
+  assert.match(text, /"error": "media_upload_interrupted"/);
+  assert.match(text, /"upload_id": "media_resume"/);
+  assert.match(text, /"next_chunk": 1/);
 });
 
 test('shell rejects nonexistent project and database without changing context', async () => {

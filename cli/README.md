@@ -11,7 +11,7 @@ npm install --global @pacificdb/cli@beta
 pacificdb
 ```
 
-This package is PacificDB CLI `0.1.0-beta.12`.
+This package is PacificDB CLI `0.1.0-beta.13`.
 
 Plain `pacificdb` opens the shell. For a loopback connection, it starts
 `db_engine` automatically when the executable is available on `PATH`.
@@ -51,6 +51,14 @@ Media uses bounded, sequential, checksummed chunks:
 upload video ./demo.mp4 --collection videos
 list media
 download media media_... ./downloaded.mp4
+```
+
+After a transport interruption, both native and npm shells print a structured
+`media_upload_interrupted` response containing the stable `upload_id` and
+`next_chunk`. Resume that same upload explicitly:
+
+```text
+upload video ./demo.mp4 --collection videos --resume media_...
 ```
 
 Manual backup export includes every physical backup file:

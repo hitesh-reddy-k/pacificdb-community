@@ -22,16 +22,22 @@ done
 "$BUILD_DIR/db_engine_community_api_key_test"
 "$BUILD_DIR/db_engine_community_query_test"
 "$BUILD_DIR/db_engine_native_shell_parser_test"
-test "$("$BUILD_DIR/pacificdb" --version)" = "PacificDB 0.1.0-beta.12"
-test "$("$BUILD_DIR/pacificdb" -V)" = "PacificDB 0.1.0-beta.12"
+"$BUILD_DIR/db_engine_socket_runtime_test"
+test "$("$BUILD_DIR/pacificdb" --version)" = "PacificDB 0.1.0-beta.13"
+test "$("$BUILD_DIR/pacificdb" -V)" = "PacificDB 0.1.0-beta.13"
 node intelligence/test.js
 test -s site/pacificdb-logo.png
 node scripts/test-site-docs.mjs
-! rg -n 'pacificdb-local(?:\.cmd)?' README.md cli/README.md site/index.html
+if command -v rg >/dev/null 2>&1; then
+  ! rg -n 'pacificdb-local(?:\.cmd)?' README.md cli/README.md site/index.html
+else
+  ! grep -En 'pacificdb-local(\.cmd)?' README.md cli/README.md site/index.html
+fi
 npm install --ignore-scripts --no-audit --no-fund
 npm run test:npm
 scripts/test-community-autostart.sh "$BUILD_DIR"
 node scripts/test-community-e2e.mjs "$BUILD_DIR"
+node scripts/test-p0-protocol-errors.mjs "$BUILD_DIR"
 node scripts/test-community-contract-matrix.mjs "$BUILD_DIR"
 node scripts/test-community-restart-matrix.mjs "$BUILD_DIR"
 scripts/test-community-disk-full.sh "$BUILD_DIR"
@@ -47,8 +53,15 @@ legacy_product=basta
 legacy_product+=base
 paid_tier=enter
 paid_tier+=prise
-if rg -n -i "$legacy_product|$paid_tier" . --glob '!.git/**' --glob '!**/target/**' \
-    --glob '!docs/superpowers/**'; then
+if command -v rg >/dev/null 2>&1; then
+  branding_match=$(rg -n -i "$legacy_product|$paid_tier" . --glob '!.git/**' \
+    --glob '!**/target/**' --glob '!docs/superpowers/**' || true)
+else
+  branding_match=$(grep -RInI -E "$legacy_product|$paid_tier" . \
+    --exclude-dir=.git --exclude-dir=target --exclude-dir=superpowers || true)
+fi
+if test -n "$branding_match"; then
+  printf '%s\n' "$branding_match"
   echo 'excluded branding found' >&2; exit 1
 fi
 for forbidden in auto_scaler geo_replication gossip_protocol cluster_manager \

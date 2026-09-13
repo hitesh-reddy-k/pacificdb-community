@@ -2,6 +2,7 @@ import readline from 'node:readline/promises';
 import { appendFile, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { MediaUploadError } from '@pacificdb/client';
 
 export const SHELL_HELP = `Authentication
   login <username>                     Sign in
@@ -423,9 +424,17 @@ export async function runShell(client, streams, options = {}) {
         printResponse(streams.output, { status: 'ok', backup_id: parsed.id,
           filename, files: exported.files, size_bytes: exported.sizeBytes });
       } else if (parsed.kind === 'mediaUpload') {
-        const media = await client.uploadMediaFile(parsed.collection, parsed.filename,
-          { resume: parsed.resume });
-        printResponse(streams.output, media, 'community_media_finalize');
+        try {
+          const media = await client.uploadMediaFile(parsed.collection, parsed.filename,
+            { resume: parsed.resume });
+          printResponse(streams.output, media, 'community_media_finalize');
+        } catch (error) {
+          if (!(error instanceof MediaUploadError)) throw error;
+          printResponse(streams.output, { status: 'resumable', error: error.code,
+            upload_id: error.uploadId, next_chunk: error.nextChunk,
+            received_chunks: error.receivedChunks, received_bytes: error.receivedBytes,
+            resumable: error.resumable });
+        }
       } else if (parsed.kind === 'mediaDownload') {
         printResponse(streams.output,
           await client.downloadMediaFile(parsed.id, parsed.filename));

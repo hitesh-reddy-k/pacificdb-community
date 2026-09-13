@@ -51,6 +51,12 @@ request limits, and other machine resources still apply. `putMedia` and
 `getMedia` remain available for Buffer-sized callers whose entire encoded
 document fits in one request.
 
+If the connection is interrupted after the engine assigns an ID, the method
+throws the exported `MediaUploadError`. Its `uploadId`, `nextChunk`,
+`receivedChunks`, `receivedBytes`, and `resumable` fields can be persisted and
+passed back as `{ resume: error.uploadId }`. Resume uses the engine's durable
+chunk index and sends only missing or uncertain chunks.
+
 Export a manual backup, including all physical data files, as one checksummed
 JSON document without buffering the full backup in memory:
 

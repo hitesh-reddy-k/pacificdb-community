@@ -11,6 +11,7 @@
 #include <iostream>
 #include <mutex>
 #include <set>
+#include <stdexcept>
 #include <string>
 #include <thread>
 
@@ -41,6 +42,8 @@ bool allowedTestMode() {
         || std::strcmp(mode, "div001_progress_guard") == 0
         || std::strcmp(mode, "div001_durability_crash") == 0
         || std::strcmp(mode, "div001_safety_fences") == 0
+        || std::strcmp(mode, "local_engine_startup") == 0
+        || std::strcmp(mode, "media_upload_recovery") == 0
         || std::strcmp(mode, "lsm_checkpoint_crash") == 0;
 }
 
@@ -166,6 +169,22 @@ void hitFailpoint(const char* name, std::uint64_t raftIndex) {
     std::cerr << "[TEST_FAILPOINT] reached name=" << name
               << " raftIndex=" << raftIndex
               << " action=" << action << std::endl;
+    if (action == "delay" && std::strcmp(name, "FP_SHUTDOWN_BEFORE_LISTENER_BIND") == 0 &&
+        exactEnv("PACIFICDB_TEST_MODE", "local_engine_startup")) {
+        const char* configuredDelay = std::getenv("PACIFICDB_TEST_STARTUP_DELAY_MS");
+        try {
+            if (!configuredDelay || !*configuredDelay) throw std::invalid_argument("missing");
+            std::size_t consumed = 0;
+            const long long delay = std::stoll(configuredDelay, &consumed);
+            if (configuredDelay[consumed] != '\0' || delay < 1 || delay > 180000)
+                throw std::out_of_range("invalid");
+            std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+            return;
+        } catch (...) {
+            std::cerr << "[TEST_FAILPOINT] invalid PACIFICDB_TEST_STARTUP_DELAY_MS" << std::endl;
+            std::_Exit(87);
+        }
+    }
     if (action == "pause") {
         waitAtNamedBarrier();
         return;

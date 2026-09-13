@@ -103,7 +103,7 @@ function clientWith(token, database = '') {
 }
 
 async function interactiveOriginalProjectFlow() {
-  const child = spawn(cliBinary, ['--port', String(port), 'shell'], {
+  const child = spawn(cliBinary, ['--port', String(port), '--no-start', 'shell'], {
     cwd: repositoryRoot, env: environment, stdio: ['pipe', 'pipe', 'pipe']
   });
   let output = '';
@@ -134,7 +134,7 @@ async function freshShellProjectRead(id, unknown = false) {
     'show project'];
   if (unknown) commands.push('use project definitely-does-not-exist', 'show project');
   commands.push('exit');
-  const child = spawn(cliBinary, ['--port', String(port), 'shell'], {
+  const child = spawn(cliBinary, ['--port', String(port), '--no-start', 'shell'], {
     cwd: repositoryRoot, env: environment, stdio: ['pipe', 'pipe', 'pipe']
   });
   let output = '';

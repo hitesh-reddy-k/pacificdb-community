@@ -7924,6 +7924,25 @@ void RaftCore::handleFollowerConn(int clientSock, const std::atomic<size_t>& pen
 }
 
 void RaftCore::snapshotLoop() {
+    // Standalone Community writes bypass replicated Raft log application, so
+    // cluster snapshot maintenance has no log to compact. Running the first
+    // snapshot at the 1,024-entry boundary needlessly freezes the LSM apply
+    // path and, on Windows, can break in-flight client response delivery.
+    // Explicitly disabling the bypass restores normal single-node Raft
+    // snapshot behavior for operators who require it.
+    const bool standaloneBypass = [&]() {
+        if (!peers_.empty()) return false;
+        const char* value = std::getenv("RAFT_STANDALONE_BYPASS");
+        if (!value) value = std::getenv("RAFT_BYPASS_SINGLE_NODE");
+        if (!value || !*value) return true;
+        std::string normalized(value);
+        std::transform(normalized.begin(), normalized.end(), normalized.begin(),
+            [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        return normalized != "0" && normalized != "false" &&
+               normalized != "no" && normalized != "off";
+    }();
+    if (standaloneBypass) return;
+
     if (waitForShutdown(std::chrono::seconds(10))) return;
 
     static const std::optional<long long> snapshotIntervalSeconds = []() -> std::optional<long long> {

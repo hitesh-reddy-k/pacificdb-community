@@ -38,5 +38,12 @@ int main() {
         rejected = true;
     }
     assert(rejected);
+    const pacificdb::cli::MediaUploadInterrupted interrupted(
+        "media_resume", 1, 1, 65536, "connection closed");
+    const auto resumable = interrupted.publicResponse();
+    assert(resumable.at("status") == "resumable");
+    assert(resumable.at("error") == "media_upload_interrupted");
+    assert(resumable.at("upload_id") == "media_resume");
+    assert(resumable.at("next_chunk") == 1);
     std::cout << "NATIVE_SHELL_PARSER_PASS\n";
 }

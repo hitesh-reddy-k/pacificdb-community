@@ -345,3 +345,24 @@ node --check scripts/test-community-restart-matrix.mjs
 No test process, mount, test container, or temporary firewall rule remained
 after the final cleanup audit. Package-smoke cleanup removes its disposable
 extraction and data roots.
+
+## Beta.13 lifecycle/media reliability candidate — 2026-09-14
+
+This addendum records uncommitted candidate evidence and does not supersede the
+published beta.11 certification above.
+
+| Gate | Current evidence | Status |
+|---|---|---|
+| Framed protocol errors | Six malformed/oversized/incomplete request cases | Confirmed |
+| Local discovery | No-start, eight-launcher race, healthy engine, stale PID, unrelated port | Confirmed |
+| Client disconnect lifecycle | Five cycles, 16 clients, 10,000 issued writes; 5,000 acknowledged IDs exact | Confirmed |
+| Acknowledged-write recovery | 10,000/8 exact IDs before and after restart | Confirmed |
+| Media boundaries | 1 byte through 10 MiB, five filename classes, byte/SHA equality after SIGKILL | Confirmed |
+| SDK/shell interruption identity | TCP interruption fixture; same ID resumes only missing chunks | Confirmed |
+| Windows host baseline | Windows 11 10.0.26200; installed beta.12; npm command precedes native executable | Confirmed |
+| Current Windows source build | MSVC/vcpkg release build; protocol, discovery, lifecycle, load/restart, and 10 MiB media suite | Confirmed |
+| Current macOS installed packages | Requires a macOS runner or non-publishing CI | Unverified |
+
+The Windows PATH root cause is repaired in the candidate installer helper by
+prepending and deduplicating the Community `bin` directory. No installed
+Windows package or existing data was modified during baseline inspection.

@@ -6,7 +6,7 @@ on:
       version:
         description: Version to build without publishing
         required: true
-        default: 0.1.0-beta.12
+        default: 0.1.0-beta.13
   push:
     tags: ["v*"]
 
@@ -33,10 +33,17 @@ jobs:
           cpack --config build/CPackConfig.cmake -G DEB -B dist
           mv dist/*.deb "dist/pacificdb-community-$version-linux-amd64.deb"
           scripts/test-native-package.sh "dist/pacificdb-community-$version-linux-amd64.deb" "$version"
+          package_root="$RUNNER_TEMP/p0-installed"
+          dpkg-deb -x "dist/pacificdb-community-$version-linux-amd64.deb" "$package_root"
+          PACIFICDB_P0_MEDIA_100MB=1 PACIFICDB_P0_SOAK=1 \
+            node scripts/test-p0-installed.mjs "$package_root/usr" \
+            "$RUNNER_TEMP/p0-evidence-linux-amd64.json"
       - uses: actions/upload-artifact@v4
         with:
           name: linux-amd64
-          path: dist/*.deb
+          path: |
+            dist/*.deb
+            ${{ runner.temp }}/p0-evidence-linux-amd64.json
 
   windows:
     runs-on: windows-2025
@@ -142,8 +149,8 @@ jobs:
             throw "Windows installer did not add PacificDB to the user PATH"
           }
           $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ";$userPath"
-          if ((Get-Command pacificdb.exe).Source -ne "$bin\pacificdb.exe") {
-            throw "pacificdb.exe is not available through PATH"
+          if ((Get-Command pacificdb).Source -ne "$bin\pacificdb.exe") {
+            throw "unqualified pacificdb does not resolve to the Community executable"
           }
           $env:PACIFICDB_HOME = "$env:RUNNER_TEMP\pacificdb-installed-test"
           Remove-Item Env:DATA_ROOT,Env:BACKUP_ROOT,Env:RESTORE_DIR -ErrorAction SilentlyContinue
@@ -164,6 +171,11 @@ jobs:
           } finally {
             if ($localPid) { Stop-Process -Id $localPid -Force -ErrorAction SilentlyContinue }
           }
+          $env:PACIFICDB_P0_MEDIA_100MB = '1'
+          $env:PACIFICDB_P0_SOAK = '1'
+          & scripts/test-p0-windows.ps1 -PackageRoot $installRoot `
+            -EvidencePath "$env:RUNNER_TEMP\p0-evidence-windows-x64.json"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $uninstall = Start-Process -FilePath "$installRoot\Uninstall.exe" `
             -ArgumentList '/S', "_?=$installRoot" -PassThru
           if (-not $uninstall.WaitForExit(60000)) {
@@ -179,7 +191,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: windows-x64
-          path: dist/*.exe
+          path: |
+            dist/*.exe
+            ${{ runner.temp }}/p0-evidence-windows-x64.json
 
   macos:
     strategy:
@@ -244,10 +258,15 @@ jobs:
             if ! kill -0 "$installed_pid" 2>/dev/null; then break; fi
             sleep 0.25
           done
+          PACIFICDB_P0_MEDIA_100MB=1 PACIFICDB_P0_SOAK=1 \
+            node scripts/test-p0-installed.mjs /usr/local \
+            "$RUNNER_TEMP/p0-evidence-macos-${{ matrix.arch }}.json"
       - uses: actions/upload-artifact@v4
         with:
           name: macos-${{ matrix.arch }}
-          path: dist/*.pkg
+          path: |
+            dist/*.pkg
+            ${{ runner.temp }}/p0-evidence-macos-${{ matrix.arch }}.json
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')

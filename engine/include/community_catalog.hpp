@@ -2,6 +2,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <array>
 #include <mutex>
 #include <set>
 #include <string>
@@ -47,6 +48,8 @@ public:
                      bool allowReady = true);
     long long cleanupMedia(const std::string& userId,
                            const std::string& mediaId = {});
+    json reconcileMedia(const std::string& userId,
+                        const std::string& mediaId = {});
     json recordRestore(const std::string& userId, const std::string& backupId,
                        const std::string& targetDirectory, bool success,
                        const std::string& error);
@@ -55,6 +58,10 @@ public:
 private:
     std::mutex initializeMutex_;
     std::set<std::pair<std::string, std::string>> initializedRoots_;
+    std::array<std::mutex, 64> mediaMutexes_;
+
+    std::mutex& mediaMutex(const std::string& userId,
+                           const std::string& mediaId);
 };
 
 }  // namespace pacificdb::community

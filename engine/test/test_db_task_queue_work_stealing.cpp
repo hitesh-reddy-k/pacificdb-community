@@ -48,7 +48,7 @@ void testBasicWorkStealing() {
     std::cout << "\n=== Test 1: Basic Work Stealing with Imbalanced Load ===\n";
 
     // Create queue with 4 shards
-    DBTaskQueueSharded queue(4, 2, 100);  // 4 shards, 2 workers each, 100 capacity
+    DBTaskQueueSharded queue(4, 2, 256);  // 4 shards, 2 workers each, 256 capacity
 
     taskCount.store(0);
     completedCount.store(0);
@@ -58,7 +58,10 @@ void testBasicWorkStealing() {
 
     // Shard 0: 100 tasks (hash to "shard0")
     for (int i = 0; i < 100; ++i) {
-        queue.enqueue(simpleTask, DBTaskQueueSharded::Priority::MEDIUM, "shard0");
+        queue.enqueue([]() {
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+            ++completedCount;
+        }, DBTaskQueueSharded::Priority::MEDIUM, "shard0");
         ++expectedTasks;
     }
 
@@ -92,6 +95,14 @@ void testBasicWorkStealing() {
         }
     }
 
+    // Wait for the observable successful steal instead of racing an idle
+    // worker's first 50 ms wake-up.
+    const auto stealDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(1);
+    while (queue.getWorkStealSuccesses() == 0 &&
+           std::chrono::steady_clock::now() < stealDeadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
     // Check results
     std::cout << "\nResults:\n";
     std::cout << "  Tasks completed: " << completedCount.load() << "/" << expectedTasks << "\n";
@@ -102,7 +113,8 @@ void testBasicWorkStealing() {
     std::cout << "  Processed tasks: " << queue.getProcessedTasks() << "\n";
 
     assert(completedCount.load() == expectedTasks);
-    assert(queue.getWorkStealAttempts() > 0);  // At least some attempts
+    assert(queue.getWorkStealAttempts() > 0);
+    assert(queue.getWorkStealSuccesses() > 0);
     std::cout << "✅ Test 1 passed: Work stealing reduced queue imbalance\n";
 }
 
