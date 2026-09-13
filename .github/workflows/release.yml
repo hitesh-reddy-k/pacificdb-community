@@ -53,7 +53,7 @@ jobs:
         shell: pwsh
         run: |
           choco install nsis -y --no-progress
-          vcpkg install openssl:x64-windows-static lz4:x64-windows-static
+          vcpkg install --triplet x64-windows-static
       - name: Build Windows installer
         shell: pwsh
         env:
