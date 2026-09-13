@@ -145,7 +145,9 @@ export class PacificDBClient {
       throw new Error('engine request limit is too small for media chunks');
     }
     const safeChunkBytes = Math.floor((maxRequestBytes - REQUEST_RESERVE_BYTES) * 3 / 4);
-    const sourceChunkBytes = Math.min(MAX_SOURCE_CHUNK_BYTES,
+    const mediaChunkBytes = Number.isSafeInteger(capabilities.media_chunk_source_max_bytes)
+      ? capabilities.media_chunk_source_max_bytes : MAX_SOURCE_CHUNK_BYTES;
+    const sourceChunkBytes = Math.min(MAX_SOURCE_CHUNK_BYTES, mediaChunkBytes,
       chunkBytes ?? safeChunkBytes, safeChunkBytes);
     if (!Number.isSafeInteger(sourceChunkBytes) || sourceChunkBytes < 64 * 1024) {
       throw new Error('media chunk size must be at least 64 KiB');

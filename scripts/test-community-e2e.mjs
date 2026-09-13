@@ -152,6 +152,7 @@ try {
     project_id: isolated.id });
   client.database = 'app';
   await client.createCollection('users');
+  await assert.rejects(client.createCollection('users'), /collection_already_exists/);
   await client.createCollection('vectors');
   await client.insert('users', { id: 'persistent', name: 'Ada', active: true,
     score: 7, ratio: 1.5, empty: null, tags: ['math', 'code'],
@@ -215,7 +216,7 @@ try {
   const genericByShell = path.join(testRoot, 'shell-upload.bin');
   await writeFile(mediaFile, mediaBytes);
   await writeFile(uploadedByShell, Buffer.from('community-image'));
-  await writeFile(videoByShell, Buffer.from('community-video'));
+  await writeFile(videoByShell, Buffer.alloc(5_260_600, 17));
   await writeFile(genericByShell, Buffer.from('community-generic-media'));
   const media = await client.uploadMediaFile('videos', mediaFile, { chunkBytes: 262_144 });
   assert.equal(media.chunk_count, 3);
@@ -307,6 +308,7 @@ try {
   assert.match(shellOutput, /PACIFICDB[\s\S]*COMMUNITY BETA/i);
   assert.match(shellOutput, /Grace Hopper/);
   assert.match(shellOutput, /"status": "pong"/);
+  assert.match(shellOutput, /"chunk_count": 6/);
   assert.equal(sha256(await readFile(downloadFile)), sha256(mediaBytes));
 
   const invalidCommands = [

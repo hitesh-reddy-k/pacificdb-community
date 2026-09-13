@@ -106,7 +106,8 @@ test('uploads and downloads media sequentially in bounded chunks', async (t) => 
       requests.push(request);
       let response;
       if (request.action === 'community_capabilities') {
-        response = { status: 'ok', max_request_bytes: 1_048_576 };
+        response = { status: 'ok', max_request_bytes: 1_048_576,
+          media_chunk_source_max_bytes: 262_144 };
       } else if (request.action === 'community_media_begin') {
         manifest = { id: 'media_test', status: 'uploading',
           filename: request.filename, size_bytes: request.size_bytes,
@@ -132,8 +133,7 @@ test('uploads and downloads media sequentially in bounded chunks', async (t) => 
   const client = new PacificDBClient({
     host: '127.0.0.1', port: server.address().port, database: 'app'
   });
-  const uploaded = await client.uploadMediaFile('videos', input,
-                                                 { chunkBytes: 262_144 });
+  const uploaded = await client.uploadMediaFile('videos', input);
   assert.equal(uploaded.status, 'ready');
   assert.equal(requests.filter((r) =>
     r.action === 'community_media_put_chunk').length, 3);

@@ -113,9 +113,10 @@ async function runCase(category) {
   }
   async function stop(signal = 'SIGINT') {
     if (!engine || engine.exitCode !== null) return;
+    const exited = once(engine, 'exit');
     engine.kill(signal);
     const timer = setTimeout(() => engine.kill('SIGKILL'), 8000);
-    await once(engine, 'exit');
+    await exited;
     clearTimeout(timer);
   }
 

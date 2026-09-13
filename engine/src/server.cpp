@@ -872,6 +872,8 @@ static int configuredMaxRequestBytes() {
     return bytes;
 }
 
+constexpr int kMediaChunkSourceMaxBytes = 1024 * 1024;
+
 static std::string base64Encode(const std::vector<unsigned char>& bytes) {
     if (bytes.empty()) return {};
     std::string encoded(4 * ((bytes.size() + 2) / 3), '\0');
@@ -2160,7 +2162,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
             auto aliveMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - connStart).count();
             if (aliveMs > maxConnLifetimeMs) {
-                std::string rej = "{\"error\":\"connection_ttl\",\"retry_after_ms\":200}";
+                std::string rej = "{\"error\":\"connection_ttl\",\"retry_after_ms\":200}\n";
                 recordLifecycleCounter("timeout_triggered");
                 timeoutTriggeredUs = steadyNowUs();
                 setLifecycle("timeout_triggered_us", timeoutTriggeredUs);
@@ -2223,7 +2225,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
         // Safety limit: prevent unbounded memory growth
         if (totalBytes > maxInMemoryPayload) {
             std::cerr << "[SERVER] Payload exceeded in-memory limit (" << maxInMemoryPayload << ") - rejecting" << std::endl;
-            std::string rej = "{\"error\":\"payload_too_large\",\"max_bytes\": " + std::to_string(maxInMemoryPayload) + "}";
+            std::string rej = "{\"error\":\"payload_too_large\",\"max_bytes\": " + std::to_string(maxInMemoryPayload) + "}\n";
             recordLifecycleCounter("response_send_started");
             responseSendStartedUs = steadyNowUs();
             setLifecycle("response_send_started_us", responseSendStartedUs);
@@ -2415,7 +2417,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
         else if (action == "community_capabilities") {
             res = {{"status", "ok"},
                    {"max_request_bytes", configuredMaxRequestBytes()},
-                   {"media_chunk_source_max_bytes", 4 * 1024 * 1024}};
+                   {"media_chunk_source_max_bytes", kMediaChunkSourceMaxBytes}};
         }
         else if (action == "community_project_create") {
             const auto project = pacificdb::community::CommunityCatalog::instance()
@@ -2884,6 +2886,8 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                 validateCollectionStorageBeforeReplication(userId, dbName, coll);
 
                 if (!dbName.empty() && !coll.empty()) {
+                    static std::mutex createCollectionMutex;
+                    std::lock_guard<std::mutex> createLock(createCollectionMutex);
                     std::string writeConsistency = normalizeReadConsistencyMode(req.value("consistency", std::string("eventual")));
                     if (rejectStaleLeaderTerm(req, writeConsistency, res)) {
                         // Response already set for stale leader term.
@@ -2911,18 +2915,26 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                         {"traceparent", traceParent}
                     };
 
+                    const bool alreadyExists = DatabaseEngine::collectionExists(
+                        userId, dbName, coll);
                     bool committed = false;
-                    if (RaftCore::instance().isEnabled()) {
+                    if (!alreadyExists && RaftCore::instance().isEnabled()) {
                         auto replicationStart = std::chrono::steady_clock::now();
                         committed = RaftCore::instance().replicateAndApply(entry, OperationPriority::HIGH, raftTimeoutMs);
                         auto replicationEnd = std::chrono::steady_clock::now();
                         pacificdb::timing::recordStage(pacificdb::timing::Stage::Replication,
                             static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(replicationEnd - replicationStart).count()));
-                    } else {
+                    } else if (!alreadyExists) {
                         committed = !DatabaseEngine::createCollection(userId, dbName, coll).empty();
                     }
 
-                    if (!committed) {
+                    if (alreadyExists) {
+                        res = {
+                            {"error", "collection_already_exists"},
+                            {"message", "collection already exists"},
+                            {"collection", coll}
+                        };
+                    } else if (!committed) {
                         res = {
                             {"error", "write_not_committed"},
                             {"message", "createCollection did not reach quorum commit"},
@@ -6767,7 +6779,9 @@ void startServer() {
         }
         recordLifecycleCounter("response_send_started");
         const uint64_t localSendStartUs = steadyNowUs();
-        auto sendResult = sendTrackedPayload(client, payload, 0);
+        const std::string framedPayload = !payload.empty() && payload.back() == '\n'
+            ? payload : payload + "\n";
+        auto sendResult = sendTrackedPayload(client, framedPayload, 0);
         if (sendResult.partial) recordPipelineCounter("pacificdb_pipeline_response_send_partial_total");
         if (sendResult.eagain) recordPipelineCounter("pacificdb_pipeline_response_send_eagain_total");
         if (!sendResult.ok) recordPipelineCounter("pacificdb_pipeline_response_send_failed_total");

@@ -41,8 +41,8 @@ See [docs/COMMUNITY_P0_CERTIFICATION.md](docs/COMMUNITY_P0_CERTIFICATION.md) for
 the measured results.
 
 Physical power-controller testing, mixed-version rolling upgrades, an
-independent security review, and signed native Windows/macOS artifacts remain
-open before a broader production-readiness claim.
+independent security review, and macOS signing and notarization remain open
+before a broader production-readiness claim.
 
 ## Community operational boundary
 

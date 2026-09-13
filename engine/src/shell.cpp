@@ -56,6 +56,8 @@ public:
         if (WSAStartup(MAKEWORD(2, 2), &data) != 0) {
             throw std::runtime_error("could not initialize Windows networking");
         }
+        SetConsoleCP(CP_UTF8);
+        SetConsoleOutputCP(CP_UTF8);
 #else
         std::signal(SIGPIPE, SIG_IGN);
 #endif
@@ -216,6 +218,7 @@ void ensureLocalEngine(const std::string& host, const std::string& port,
     setDefaultEnvironment("RAFT_NODE_ID", "node-1");
     setDefaultEnvironment("RAFT_IS_LEADER", "1");
     setDefaultEnvironment("MIN_QUORUM_SIZE", "1");
+    setDefaultEnvironment("ENGINE_CPU_CORES", "2");
     setDefaultEnvironment("ENGINE_KEEPALIVE_MAX_REQUESTS", "1");
 
     auto engine = executablePath(argv0).parent_path() /
@@ -646,8 +649,13 @@ nlohmann::json uploadMedia(const std::string& host, const std::string& port,
         withContext({{"action", "community_capabilities"}}, context));
     const long long maximum = capabilities.value("max_request_bytes", 0LL);
     if (maximum <= 64 * 1024) throw std::runtime_error("engine request limit is too small");
+    const long long mediaMaximum = capabilities.value(
+        "media_chunk_source_max_bytes", 4LL * 1024 * 1024);
+    if (mediaMaximum < 64 * 1024)
+        throw std::runtime_error("engine media chunk limit is too small");
     const std::size_t chunkBytes = static_cast<std::size_t>(std::min<long long>(
-        4LL * 1024 * 1024, (maximum - 64LL * 1024) * 3 / 4));
+        4LL * 1024 * 1024,
+        std::min(mediaMaximum, (maximum - 64LL * 1024) * 3 / 4)));
     if (chunkBytes < 64 * 1024) throw std::runtime_error("derived media chunk is too small");
     const auto chunkCount = static_cast<long long>((size + chunkBytes - 1) / chunkBytes);
     const std::string checksum = fileSha256(filename);

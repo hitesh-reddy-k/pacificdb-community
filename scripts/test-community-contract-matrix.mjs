@@ -184,7 +184,7 @@ try {
     beforeEmptyDelete - 1);
   await rejects(client, { action: 'insert', collection: 'docs',
     data: { id: 'too-large', value: 'x'.repeat(3 * 1024 * 1024) } },
-  /closed|too large|request|response/i);
+  /payload_too_large/);
 
   // Every Community aggregation stage, combinations, malformed forms and equivalence.
   const empty = await client.request({ action: 'aggregate', collection: 'docs', pipeline: [] });

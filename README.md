@@ -8,7 +8,7 @@
   Self-hosted documents, vectors, media, backups, and RF3 replication.
 </p>
 
-> **Beta:** `0.1.0-beta.11` is a tested Community release candidate for evaluation,
+> **Beta:** `0.1.0-beta.12` is a tested Community release candidate for evaluation,
 > development, staging, and controlled early-adopter deployments. Read
 > [the certification report](docs/COMMUNITY_P0_CERTIFICATION.md) before storing
 > critical data.
@@ -60,8 +60,9 @@ reused by later CLI and application connections. Use `--no-start` when the CLI
 must only connect to an already-running engine. Check the installed release
 without starting the engine with `pacificdb --version`.
 
-Windows and macOS beta installers are currently unsigned. Review the
-[certification status](docs/COMMUNITY_P0_CERTIFICATION.md) before installation.
+Windows beta installers are code-signed. macOS signing and notarization remain
+pending. Review the [certification status](docs/COMMUNITY_P0_CERTIFICATION.md)
+before installation.
 
 ### npm
 
@@ -72,7 +73,7 @@ npm install --global @pacificdb/cli@beta
 npm install @pacificdb/client@beta
 ```
 
-The npm `beta` tag installs `0.1.0-beta.11` for both the CLI and Node.js
+The npm `beta` tag installs `0.1.0-beta.12` for both the CLI and Node.js
 client.
 
 The npm CLI is a client. It can automatically start `db_engine` when a native

@@ -65,6 +65,7 @@ function localEnvironment(home, port) {
     RAFT_NODE_ID: process.env.RAFT_NODE_ID || 'node-1',
     RAFT_IS_LEADER: process.env.RAFT_IS_LEADER || '1',
     MIN_QUORUM_SIZE: process.env.MIN_QUORUM_SIZE || '1',
+    ENGINE_CPU_CORES: process.env.ENGINE_CPU_CORES || '2',
     ENGINE_KEEPALIVE_MAX_REQUESTS: process.env.ENGINE_KEEPALIVE_MAX_REQUESTS || '1'
   };
 }

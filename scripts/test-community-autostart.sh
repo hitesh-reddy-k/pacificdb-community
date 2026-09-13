@@ -45,6 +45,7 @@ run_concurrent_start "'$build_dir/pacificdb'" "$native_home" "$native_port" "$na
 printf 'help\nquit\n' | PACIFICDB_HOME="$native_home" \
   "$build_dir/pacificdb" --port "$native_port" >"$native_home/shell.out"
 grep -q 'COMMUNITY BETA' "$native_home/shell.out"
+grep -Eq 'ENGINE_CPU_CORES override: [0-9]+ -> 2' "$native_home/engine.log"
 
 blocking_port=$(free_port)
 blocking_raft_port=$(free_port)
@@ -61,6 +62,7 @@ run_concurrent_start "node cli/bin/pacificdb.js" "$node_home" "$node_port" "$nod
 printf 'help\nquit\n' | PACIFICDB_HOME="$node_home" PACIFICDB_ENGINE="$build_dir/db_engine" \
   node cli/bin/pacificdb.js --port "$node_port" >"$node_home/shell.out"
 grep -q 'COMMUNITY BETA' "$node_home/shell.out"
+grep -Eq 'ENGINE_CPU_CORES override: [0-9]+ -> 2' "$node_home/engine.log"
 
 disabled_port=$(free_port)
 if PACIFICDB_HOME="$disabled_home" "$build_dir/pacificdb" \
