@@ -60,9 +60,9 @@ reused by later CLI and application connections. Use `--no-start` when the CLI
 must only connect to an already-running engine. Check the installed release
 without starting the engine with `pacificdb --version`.
 
-Windows beta installers are code-signed. macOS signing and notarization remain
-pending. Review the [certification status](docs/COMMUNITY_P0_CERTIFICATION.md)
-before installation.
+Windows and macOS beta installers are currently unsigned. Verify downloads
+against `SHA256SUMS` and review the
+[certification status](docs/COMMUNITY_P0_CERTIFICATION.md) before installation.
 
 ### npm
 
@@ -306,8 +306,8 @@ mvn -f sdk/java/pom.xml test
 
 The Linux candidate passed 57 retained test units, genuine ENOSPC coverage across
 21 write categories, six 10-minute RF3 load rounds, partition/election checks,
-and real Debian package installation. Physical power-controller testing and
-signed native Windows/macOS certification remain open.
+and real Debian package installation. Physical power-controller testing,
+Windows signing, and macOS signing and notarization remain open.
 
 - [Certification report](docs/COMMUNITY_P0_CERTIFICATION.md)
 - [Security policy](SECURITY.md)

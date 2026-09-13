@@ -96,7 +96,7 @@ pacificdb</code></pre></div>
           <li>Open the package and complete the installer.</li>
           <li>Open Terminal and run <code>pacificdb</code>.</li>
         </ol>
-        <aside class="callout"><strong>Installer verification</strong><p>Windows releases are code-signed. macOS notarization is pending. Verify every package using the release <a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v0.1.0-beta.12/SHA256SUMS">SHA-256 manifest</a>.</p></aside>
+        <aside class="callout warning"><strong>Unsigned beta installers</strong><p>Windows signing and macOS signing and notarization are pending. The operating system may show an unknown-publisher warning. Verify every package using the release <a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v0.1.0-beta.12/SHA256SUMS">SHA-256 manifest</a>.</p></aside>
 
         <h3>npm CLI and Node.js client</h3>
         <p>Node.js 18 or newer is required. The public npm <code>beta</code> tag installs <strong>0.1.0-beta.12</strong> for both the CLI and Node.js client.</p>
@@ -395,7 +395,7 @@ pacificdb --host db.example.internal --port 9000 ping --no-start</code></pre></d
           <details><summary><code>select a database with: use &lt;name&gt;</code></summary><p>Create or select a database before running collection, document, media, or vector commands. Run <code>list databases</code> and then <code>use app</code>.</p></details>
           <details><summary>A project cannot be selected</summary><p><code>use project</code> expects the canonical ID returned by <code>create project</code> or <code>list projects</code>, rather than the display name.</p></details>
           <details><summary>The engine is unavailable</summary><p>Run <code>status</code>. Check <code>engine.log</code> under the platform home, confirm the host and port, and use <code>pacificdb --no-start</code> only when an engine is already running.</p></details>
-          <details><summary>An installer is blocked by the operating system</summary><p>The Beta.12 Windows installer is code-signed. macOS notarization is pending. Confirm the package checksum against the release manifest and follow your organization's installation policy.</p></details>
+          <details><summary>An installer is blocked by the operating system</summary><p>Beta.12 Windows and macOS packages are unsigned. Confirm the package checksum against the release manifest and follow your organization's policy for unsigned software.</p></details>
         </div>
       </section>
 
@@ -403,7 +403,7 @@ pacificdb --host db.example.internal --port 9000 ping --no-start</code></pre></d
         <p class="section-kicker">OPERATE</p>
         <h2>Beta status and support</h2>
         <p>Beta.12 is tested by the retained Linux suite, real Debian package installation, cross-platform installer jobs, genuine disk-full scenarios, RF3 replication, network partition/election checks, and 64/128-client RF3 campaigns. It remains a beta rather than a universal production certification.</p>
-        <p>Open work includes physical power/storage-controller testing, mixed-version rolling upgrades, an independent security assessment, and macOS signing and notarization.</p>
+        <p>Open work includes physical power/storage-controller testing, mixed-version rolling upgrades, an independent security assessment, Windows signing, and macOS signing and notarization.</p>
         <div class="support-grid">
           <a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/main/docs/COMMUNITY_P0_CERTIFICATION.md"><strong>Certification report</strong><span>See measured tests and limits →</span></a>
           <a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/main/COMMUNITY_SCOPE.md"><strong>Community scope</strong><span>See included capabilities →</span></a>
