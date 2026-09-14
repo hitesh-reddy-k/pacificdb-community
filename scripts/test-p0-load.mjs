@@ -22,6 +22,20 @@ const clientCount = Number(process.env.PACIFICDB_P0_SOAK === '1' ? 16 :
 assert.ok(Number.isSafeInteger(writes) && writes > 0);
 assert.ok(Number.isSafeInteger(clientCount) && clientCount > 0 && clientCount <= 128);
 
+async function withLocalPortRetry(operation) {
+  const deadline = Date.now() + 120000;
+  let delay = 25;
+  while (true) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (error?.code !== 'EADDRNOTAVAIL' || Date.now() >= deadline) throw error;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      delay = Math.min(delay * 2, 1000);
+    }
+  }
+}
+
 async function freePort() {
   const server = net.createServer();
   await new Promise((resolve, reject) => server.once('error', reject)
@@ -89,7 +103,8 @@ async function stop() {
 }
 async function exactIds() {
   const client = new PacificDBClient({ port, database: 'load', timeoutMs: 60000 });
-  const response = await client.find('records', {}, { limit: -1 });
+  const response = await withLocalPortRetry(() =>
+    client.find('records', {}, { limit: -1 }));
   return response.data.map((document) => document.id).sort();
 }
 
@@ -108,13 +123,16 @@ try {
   await Promise.all(clients.map(async (client, worker) => {
     for (let index = worker; index < writes; index += clientCount) {
       const id = expected[index];
-      const result = await client.insert('records', { id, index, worker, value: 1 });
+      const result = await withLocalPortRetry(() =>
+        client.insert('records', { id, index, worker, value: 1 }));
       assert.equal(result.status, 'ok');
       acknowledged.add(id);
       if (process.env.PACIFICDB_P0_SOAK === '1' && index % 250 === 0)
-        await client.updateOne('records', { id }, { value: 2 });
+        await withLocalPortRetry(() =>
+          client.updateOne('records', { id }, { value: 2 }));
       if (process.env.PACIFICDB_P0_SOAK === '1' && index % 100 === 0)
-        assert.equal((await client.find('records', { id }, { limit: 1 })).count, 1);
+        assert.equal((await withLocalPortRetry(() =>
+          client.find('records', { id }, { limit: 1 }))).count, 1);
     }
   }));
   assert.equal(engine.pid, originalPid);

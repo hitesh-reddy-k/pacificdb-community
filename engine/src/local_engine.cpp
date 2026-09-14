@@ -981,10 +981,13 @@ LocalEngineResult ensureLocalEngine(
     const auto startLock = options.home / ".engine-starting";
     auto inspection = inspectEngine(options);
     auto state = classifyEngineState(inspection.observations);
-    if (state == EngineState::pid_reused && fs::is_directory(startLock)) {
+    if ((state == EngineState::pid_reused ||
+         state == EngineState::data_root_in_use) &&
+        fs::is_directory(startLock)) {
         // A freshly forked child can briefly still resolve to the launcher
-        // executable before exec() publishes db_engine. Only the active
-        // startup lock makes this observation transitional.
+        // executable, or acquire the storage lock before publishing its
+        // metadata. Only the active startup lock makes these observations
+        // transitional.
         state = EngineState::starting;
     }
     if (!options.autoStart) {
