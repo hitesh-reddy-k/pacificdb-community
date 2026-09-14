@@ -33,8 +33,8 @@ function run(command, args, env = environment) {
     child.stdout.on('data', (chunk) => { output += chunk; });
     child.stderr.on('data', (chunk) => { output += chunk; });
     child.once('error', reject);
-    child.once('close', (code) => code === 0 ? resolve(output) :
-      reject(new Error(`${command} exited ${code}\n${output}`)));
+    child.once('close', (code, signal) => code === 0 ? resolve(output) :
+      reject(new Error(`${command} exited ${code ?? `by signal ${signal}`}\n${output}`)));
   });
 }
 async function removeTemporaryBase() {

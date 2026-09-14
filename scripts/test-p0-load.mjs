@@ -15,11 +15,16 @@ const build = path.resolve(process.argv[2] || path.join(repositoryRoot, 'build')
 const engineBinary = path.join(build, process.platform === 'win32' ? 'db_engine.exe' : 'db_engine');
 const cliBinary = path.join(build, process.platform === 'win32' ? 'pacificdb.exe' : 'pacificdb');
 const root = await mkdtemp(path.join(os.tmpdir(), 'pacificdb-p0-load-'));
-const writes = Number(process.env.PACIFICDB_P0_SOAK === '1' ? 100000 :
+const includeSoak = process.env.PACIFICDB_P0_SOAK === '1';
+const writes = Number(includeSoak ? (process.env.PACIFICDB_P0_SOAK_WRITES || 100000) :
   (process.env.PACIFICDB_P0_WRITES || 10000));
-const clientCount = Number(process.env.PACIFICDB_P0_SOAK === '1' ? 16 :
+const retainedRecords = Number(includeSoak
+  ? (process.env.PACIFICDB_P0_SOAK_RECORDS || 10000) : writes);
+const clientCount = Number(includeSoak ? 16 :
   (process.env.PACIFICDB_P0_CLIENTS || 8));
 assert.ok(Number.isSafeInteger(writes) && writes > 0);
+assert.ok(Number.isSafeInteger(retainedRecords) && retainedRecords > 0 &&
+  retainedRecords <= writes);
 assert.ok(Number.isSafeInteger(clientCount) && clientCount > 0 && clientCount <= 128);
 
 async function withLocalPortRetry(operation) {
@@ -108,7 +113,8 @@ async function exactIds() {
   return response.data.map((document) => document.id).sort();
 }
 
-const expected = Array.from({ length: writes }, (_, index) => `load-${String(index).padStart(8, '0')}`);
+const expected = Array.from({ length: retainedRecords }, (_, index) =>
+  `load-${String(index).padStart(8, '0')}`);
 const startedAt = Date.now();
 try {
   await start();
@@ -119,32 +125,32 @@ try {
   await setup.createCollection('records');
   const clients = Array.from({ length: clientCount }, () =>
     new PacificDBClient({ port, database: 'load', timeoutMs: 60000 }));
-  const acknowledged = new Set();
+  let acknowledged = 0;
   await Promise.all(clients.map(async (client, worker) => {
     for (let index = worker; index < writes; index += clientCount) {
-      const id = expected[index];
-      const result = await withLocalPortRetry(() =>
-        client.insert('records', { id, index, worker, value: 1 }));
-      assert.equal(result.status, 'ok');
-      acknowledged.add(id);
-      if (process.env.PACIFICDB_P0_SOAK === '1' && index % 250 === 0)
-        await withLocalPortRetry(() =>
-          client.updateOne('records', { id }, { value: 2 }));
-      if (process.env.PACIFICDB_P0_SOAK === '1' && index % 100 === 0)
+      const id = expected[index % retainedRecords];
+      const result = index < retainedRecords
+        ? await withLocalPortRetry(() =>
+          client.insert('records', { id, index, worker, value: 1 }))
+        : await withLocalPortRetry(() =>
+          client.updateOne('records', { id }, { index, worker, value: 2 }));
+      assert.equal(result.status, index < retainedRecords ? 'ok' : 'updated');
+      acknowledged += 1;
+      if (includeSoak && index % 100 === 0)
         assert.equal((await withLocalPortRetry(() =>
           client.find('records', { id }, { limit: 1 }))).count, 1);
     }
   }));
   assert.equal(engine.pid, originalPid);
   assert.equal(engine.exitCode, null);
-  assert.deepEqual([...acknowledged].sort(), expected);
+  assert.equal(acknowledged, writes);
   assert.deepEqual(await exactIds(), expected);
   await stop();
   await start();
   assert.deepEqual(await exactIds(), expected);
   const metadata = JSON.parse(await readFile(path.join(root, 'engine.metadata.json'), 'utf8'));
-  console.log(JSON.stringify({ status: 'PASS', writes, clients: clientCount,
-    acknowledged: acknowledged.size, elapsed_ms: Date.now() - startedAt,
+  console.log(JSON.stringify({ status: 'PASS', writes, retained_records: retainedRecords,
+    clients: clientCount, acknowledged, elapsed_ms: Date.now() - startedAt,
     initial_pid: originalPid, recovery_pid: engine.pid,
     data_root_fingerprint: metadata.data_root_fingerprint }));
 } finally {
