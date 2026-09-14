@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { access, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -54,7 +54,10 @@ const evidence = { schema: 'pacificdb.p0-evidence.v1', platform: process.platfor
   executable: path.join(binaryRoot, executable), started_at: new Date().toISOString(), tests: [] };
 try {
   const version = (await run(path.join(binaryRoot, executable), ['--version'])).trim();
-  assert.match(version, /^PacificDB 0\.1\.0-beta\.12$/);
+  const sourcePackage = JSON.parse(await readFile(
+    path.join(repositoryRoot, 'cli', 'package.json'), 'utf8'));
+  const expectedVersion = process.env.PACIFICDB_P0_EXPECTED_VERSION || sourcePackage.version;
+  assert.equal(version, `PacificDB ${expectedVersion}`);
   evidence.version = version;
   const cases = [
     ['protocol', 'test-p0-protocol-errors.mjs'],

@@ -35,7 +35,8 @@ jobs:
           scripts/test-native-package.sh "dist/pacificdb-community-$version-linux-amd64.deb" "$version"
           package_root="$RUNNER_TEMP/p0-installed"
           dpkg-deb -x "dist/pacificdb-community-$version-linux-amd64.deb" "$package_root"
-          PACIFICDB_P0_MEDIA_100MB=1 PACIFICDB_P0_SOAK=1 \
+          PACIFICDB_P0_EXPECTED_VERSION="$version" \
+            PACIFICDB_P0_MEDIA_100MB=1 PACIFICDB_P0_SOAK=1 \
             node scripts/test-p0-installed.mjs "$package_root/usr" \
             "$RUNNER_TEMP/p0-evidence-linux-amd64.json"
       - uses: actions/upload-artifact@v4
@@ -66,6 +67,7 @@ jobs:
           cmake -S engine -B build -A x64 `
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
             -DVCPKG_TARGET_TRIPLET=x64-windows-static `
+            -DVCPKG_INSTALLED_DIR="$pwd/vcpkg_installed" `
             -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded `
             -DPACIFICDB_ENGINE_VERSION="$version"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -173,6 +175,7 @@ jobs:
           }
           $env:PACIFICDB_P0_MEDIA_100MB = '1'
           $env:PACIFICDB_P0_SOAK = '1'
+          $env:PACIFICDB_P0_EXPECTED_VERSION = $version
           & scripts/test-p0-windows.ps1 -PackageRoot $installRoot `
             -EvidencePath "$env:RUNNER_TEMP\p0-evidence-windows-x64.json"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -258,7 +261,8 @@ jobs:
             if ! kill -0 "$installed_pid" 2>/dev/null; then break; fi
             sleep 0.25
           done
-          PACIFICDB_P0_MEDIA_100MB=1 PACIFICDB_P0_SOAK=1 \
+          PACIFICDB_P0_EXPECTED_VERSION="$version" \
+            PACIFICDB_P0_MEDIA_100MB=1 PACIFICDB_P0_SOAK=1 \
             node scripts/test-p0-installed.mjs /usr/local \
             "$RUNNER_TEMP/p0-evidence-macos-${{ matrix.arch }}.json"
       - uses: actions/upload-artifact@v4
