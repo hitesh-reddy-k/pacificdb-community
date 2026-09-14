@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { access, readFile } from 'node:fs/promises';
-import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -27,20 +26,61 @@ async function assertLocalReferences(filename, html) {
     await access(targetPath);
 
     if (fragment) {
-      const targetHtml = targetName === filename ? html : await readFile(targetPath, 'utf8');
+      const targetHtml = relativeFile && relativeFile !== filename
+        ? await readFile(targetPath, 'utf8')
+        : html;
       assert.ok(elementIds(targetHtml).has(fragment), `missing fragment target: ${reference}`);
     }
   }
 }
 
-const [index, docs, css, javascript] = await Promise.all([
+const [index, docs] = await Promise.all([
   readSiteFile('index.html'),
-  readSiteFile('docs.html'),
-  readSiteFile('docs.css'),
-  readSiteFile('docs.js')
+  readSiteFile('docs.html')
 ]);
 
+for (const asset of [
+  'assets/pacificdb-logo-lockup.png',
+  'assets/pacificdb-logo-original.png',
+  'assets/pacificdb-logo-symbol.png'
+]) {
+  await access(path.join(siteRoot, asset));
+}
+
 assert.match(index, /href=["']docs\.html["'][^>]*>Documentation</);
+assert.match(index, /href=["']docs\.html#quickstart["']/);
+assert.doesNotMatch(index, /hitesh-reddy-k\.github\.io\/pacificdb-community\/docs\.html/);
+assert.match(index, /id=["']sdks["']/);
+
+for (const landingSection of ['top', 'why', 'how', 'features', 'downloads', 'start', 'sdks']) {
+  assert.ok(elementIds(index).has(landingSection), `missing landing section: ${landingSection}`);
+}
+
+for (const platform of [
+  'linux-amd64.deb',
+  'windows-x64.exe',
+  'macos-arm64.pkg',
+  'macos-x86_64.pkg'
+]) {
+  assert.ok(index.includes(platform), `missing download platform: ${platform}`);
+}
+
+assert.match(index, /const releaseBase=['"]https:\/\/github\.com\/hitesh-reddy-k\/pacificdb-community\/releases\/download\/v0\.1\.0-beta\.13/);
+assert.match(index, /id=["']mac-arch["']/);
+assert.match(index, /id=["']mac-download["']/);
+assert.match(index, /navigator\.clipboard/);
+assert.match(index, /document\.createRange/);
+assert.match(index, /prefers-reduced-motion:\s*reduce/);
+assert.match(index, /<style>[\s\S]*@media\(max-width:720px\)/);
+assert.match(index, /classList\.add\('motion-ready'\)/);
+assert.match(index, /\.motion-ready \.motion-reveal\{[^}]*opacity:0/);
+assert.match(index, /data-reveal/);
+assert.match(index, /--scroll-shift/);
+assert.match(index, /requestAnimationFrame\(flushScrollMotion\)/);
+assert.match(index, /id=["']landingScrollProgress["']/);
+assert.doesNotMatch(index, /\.motion-ready \.motion-reveal\[data-reveal="(?:left|right)"\]/);
+assert.doesNotMatch(index, /--scroll-scale/);
+assert.doesNotMatch(index, /\['\.(?:hero-copy|proof-inner|why-grid|features|downloads|closing \.wrap)'/);
 
 const requiredSections = [
   'install', 'quickstart', 'authentication', 'projects', 'databases',
@@ -48,33 +88,31 @@ const requiredSections = [
   'api-keys', 'media', 'vectors', 'configuration', 'security',
   'troubleshooting', 'beta-status'
 ];
-const ids = elementIds(docs);
+const docsIds = elementIds(docs);
 for (const section of requiredSections) {
-  assert.ok(ids.has(section), `missing documentation section: ${section}`);
+  assert.ok(docsIds.has(section), `missing documentation section: ${section}`);
   assert.match(docs, new RegExp(`href=["']#${section}["']`));
 }
 
-assert.match(docs, /href=["']docs\.css["']/);
-assert.match(docs, /src=["']docs\.js["']/);
-assert.match(docs, /pacificdb-logo\.png/);
-assert.match(css, /@media\s*\(max-width:\s*760px\)/);
+assert.match(docs, /data-doc-search/);
+assert.match(docs, /navigator\.clipboard/);
+assert.match(docs, /IntersectionObserver/);
+assert.match(docs, /id=["']scrollProgress["']/);
+assert.match(docs, /<style>[\s\S]*@media\(max-width:760px\)/);
+assert.doesNotMatch(docs, /motion-reveal|flushScrollMotion|--scroll-shift/);
 
 await Promise.all([
   assertLocalReferences('index.html', index),
   assertLocalReferences('docs.html', docs)
 ]);
 
-const require = createRequire(import.meta.url);
-const docsModule = require(path.join(siteRoot, 'docs.js'));
-assert.equal(typeof docsModule.filterDocumentationItems, 'function');
-assert.deepEqual(
-  docsModule.filterDocumentationItems(['Install PacificDB', 'Vector search', 'Backups'], 'VECTOR'),
-  [false, true, false]
-);
-assert.deepEqual(
-  docsModule.filterDocumentationItems(['Install PacificDB', 'Vector search'], '   '),
-  [true, true]
-);
-assert.match(javascript, /navigator\.clipboard/);
+for (const obsolete of ['style.css', 'docs.css', 'app.js', 'docs.js', 'pacificdb-logo.png']) {
+  await assert.rejects(
+    access(path.join(siteRoot, obsolete)),
+    error => error?.code === 'ENOENT',
+    `${obsolete} should be removed`
+  );
+  assert.doesNotMatch(index + docs, new RegExp(obsolete.replace('.', '\\.')));
+}
 
 console.log('PacificDB website documentation checks passed');

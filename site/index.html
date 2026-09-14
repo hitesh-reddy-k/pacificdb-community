@@ -1,78 +1,353 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="PacificDB Community: a self-hosted document database with vector search, Raft replication, and a native shell. Download the beta and build locally.">
-  <meta name="theme-color" content="#092c2c">
-  <title>PacificDB — Your data. Your waters.</title>
-  <link rel="icon" href="pacificdb-logo.png" type="image/png">
-  <link rel="stylesheet" href="style.css">
-  <script src="app.js" defer></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="PacificDB Community: a self-hosted document database with vector search, resumable media, RF3 replication, and a native shell.">
+<meta name="theme-color" content="#050c1d">
+<title>PacificDB — Your data. Your waters.</title>
+<style>
+:root{
+  --bg:#050b18;--bg-2:#08152b;--panel:#0b1b36;--paper:#f5f8ff;--paper-2:#edf3ff;
+  --ink:#10213f;--white:#f8fbff;--muted:#96a9c8;--muted-dark:#65789a;--line:#1b3561;
+  --mint:#78d9ff;--mint-2:#4f9cff;--cyan:#55d8ff;--lime:#8d7dff;--warning:#f2c879;
+  --max:1220px;--radius:24px;--ease:cubic-bezier(.22,.8,.2,1);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:92px}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit;text-decoration:none}button,select{font:inherit}.wrap{width:min(calc(100% - 48px),var(--max));margin:auto}
+::selection{background:#9de7c8;color:#07162e}
+.skip{position:fixed;top:-80px;left:16px;z-index:1000;padding:10px 14px;border-radius:10px;background:white;color:#050c1d}.skip:focus{top:16px}
+
+/* NAV */
+.nav{position:fixed;top:0;left:0;right:0;z-index:100;border-bottom:1px solid transparent;transition:background .25s,border-color .25s,box-shadow .25s}
+.nav.scrolled{background:rgba(244,246,239,.88);backdrop-filter:blur(18px);border-color:#d9e0d4;box-shadow:0 8px 32px rgba(7,28,29,.06)}
+.nav-inner{height:78px;display:flex;align-items:center;justify-content:space-between;gap:24px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:760;font-size:20px;letter-spacing:-.03em}.brand .db{font-weight:500;margin-left:-8px}.nav-links{display:flex;align-items:center;gap:28px;font-size:13px;color:#496080}.nav-links a{position:relative;padding:9px 0}.nav-links a:after{content:"";position:absolute;left:0;right:0;bottom:2px;height:1px;background:#17386f;transform:scaleX(0);transform-origin:left;transition:transform .2s}.nav-links a:hover:after{transform:scaleX(1)}
+.nav:not(.scrolled) .brand{color:#f8fbff}.nav:not(.scrolled) .nav-links{color:#aabbd8}.nav-cta{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;background:#10366f;color:white;font-size:13px;font-weight:650;transition:transform .2s var(--ease),background .2s}.nav-cta:hover{transform:translateY(-1px);background:#194a91}
+
+
+.brand-lockup{display:block;width:174px;height:auto;object-fit:contain}.footer-lockup{width:148px}.brand{min-width:174px}.brand-mark{display:none}.core-logo{width:64px;height:48px;object-fit:contain;object-position:center;margin:0 auto 4px;filter:drop-shadow(0 0 16px rgba(16,175,255,.22))}.core>div{display:flex;flex-direction:column;align-items:center}.core strong{margin-top:2px}.core span{margin-top:2px}
+
+/* HERO */
+.hero{position:relative;min-height:780px;padding:138px 0 76px;background:radial-gradient(1200px 520px at 70% 8%,rgba(126,216,188,.13),transparent 62%),linear-gradient(180deg,#050c1d 0%,#07152e 70%,#081b38 100%);color:white;overflow:hidden}
+.hero:after{content:"";position:absolute;left:0;right:0;bottom:-2px;height:90px;background:linear-gradient(to bottom,transparent,#f5f8ff);pointer-events:none}
+.hero-grid{display:grid;grid-template-columns:.88fr 1.12fr;gap:54px;align-items:center;position:relative;z-index:2}
+.hero-copy{padding-bottom:28px}.eyebrow{display:flex;align-items:center;gap:10px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;font-weight:720}.eyebrow .live-dot{width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 0 rgba(184,239,181,.45);animation:pulse 2.2s ease-out infinite}.badge{font-size:9px;letter-spacing:.08em;padding:4px 7px;border:1px solid rgba(184,239,181,.28);border-radius:999px;color:#c9e6ff;background:rgba(184,239,181,.07)}
+@keyframes pulse{70%{box-shadow:0 0 0 9px rgba(184,239,181,0)}}
+.hero h1{font-size:clamp(62px,7.2vw,102px);line-height:.92;letter-spacing:-.065em;margin:26px 0 24px;font-weight:610;max-width:700px}.hero h1 em{font-family:Georgia,"Times New Roman",serif;font-weight:400;font-style:italic;color:var(--mint);letter-spacing:-.045em}.hero-desc{max-width:570px;color:#aebed8;font-size:18px;line-height:1.72;margin:0}.hero-actions{display:flex;align-items:center;gap:24px;margin-top:32px;flex-wrap:wrap}.btn{display:inline-flex;align-items:center;justify-content:center;gap:12px;border-radius:11px;padding:13px 18px;font-size:13px;font-weight:700;border:1px solid transparent;transition:transform .2s var(--ease),background .2s,border-color .2s}.btn:hover{transform:translateY(-2px)}.btn.primary{background:var(--mint);color:#0b2623}.btn.primary:hover{background:#cbf6c6}.btn.ghost{border-color:#294c88;color:#dbe8ff;background:rgba(255,255,255,.02)}.btn.ghost:hover{border-color:#4f6f9d;background:rgba(255,255,255,.04)}
+.hero-foot{margin-top:24px;color:#6f84a7;font-size:11px;letter-spacing:.02em}
+
+/* Hero engine visual */
+.engine-visual{position:relative;height:600px;isolation:isolate}.engine-visual:before{content:"";position:absolute;inset:7% 0 0;background:radial-gradient(circle at 50% 48%,rgba(114,225,220,.16),transparent 32%),radial-gradient(circle at 50% 54%,rgba(184,239,181,.08),transparent 52%);filter:blur(12px)}
+.engine-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:36px 36px;mask-image:radial-gradient(circle at center,black,transparent 74%);opacity:.55}
+.engine-orbit{position:absolute;left:50%;top:48%;border:1px solid rgba(126,216,188,.14);border-radius:50%;transform:translate(-50%,-50%) rotate(-11deg)}.engine-orbit.o1{width:500px;height:214px;animation:orbitA 18s linear infinite}.engine-orbit.o2{width:590px;height:258px;transform:translate(-50%,-50%) rotate(16deg);animation:orbitB 24s linear infinite}.engine-orbit.o3{width:430px;height:430px;border-color:rgba(114,225,220,.08);animation:orbitC 30s linear infinite}@keyframes orbitA{to{transform:translate(-50%,-50%) rotate(349deg)}}@keyframes orbitB{to{transform:translate(-50%,-50%) rotate(376deg)}}@keyframes orbitC{to{transform:translate(-50%,-50%) rotate(349deg)}}
+.core{position:absolute;left:50%;top:48%;width:176px;height:176px;transform:translate(-50%,-50%);border-radius:50%;display:grid;place-items:center;text-align:center;background:radial-gradient(circle at 34% 28%,#1f5e55,#0d3431 55%,#08221f 100%);border:1px solid #3f7068;box-shadow:inset 0 0 46px rgba(114,225,220,.11),0 22px 90px rgba(0,0,0,.34),0 0 0 18px rgba(114,225,220,.025)}.core svg{width:48px;height:48px;margin-bottom:7px}.core strong{display:block;font-size:13px}.core span{font-size:9px;letter-spacing:.12em;color:#7ea39a;text-transform:uppercase}.core-ripple{position:absolute;inset:-1px;border:1px solid rgba(114,225,220,.4);border-radius:50%;animation:ripple 3.6s ease-out infinite}@keyframes ripple{0%{transform:scale(.92);opacity:.7}85%,100%{transform:scale(1.55);opacity:0}}
+.model-card{position:absolute;width:176px;border:1px solid #244a83;border-radius:15px;background:linear-gradient(180deg,rgba(16,54,51,.94),rgba(8,35,34,.96));padding:14px 15px;box-shadow:0 18px 44px rgba(0,0,0,.28);backdrop-filter:blur(10px);overflow:hidden}.model-card:after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 25%,rgba(255,255,255,.06),transparent 68%);transform:translateX(-130%);animation:sheen 7s ease-in-out infinite}@keyframes sheen{0%,64%{transform:translateX(-130%)}85%,100%{transform:translateX(130%)}}.model-card strong{display:block;font-size:12px}.model-card small{display:block;margin-top:5px;color:#7590b8;font-size:10px}.model-card .mini{margin-top:11px;height:34px}.document-card{left:2%;top:17%;animation:floatOne 7s ease-in-out infinite}.vector-card{right:0;top:13%;animation:floatTwo 8s ease-in-out infinite}.media-card{right:2%;bottom:11%;animation:floatOne 8.6s ease-in-out -2s infinite}.query-card{left:1%;bottom:12%;animation:floatTwo 7.6s ease-in-out -1s infinite}@keyframes floatOne{50%{transform:translateY(-7px)}}@keyframes floatTwo{50%{transform:translateY(7px)}}
+.json-lines{display:grid;gap:5px}.json-lines i{height:4px;border-radius:2px;background:#77a6df}.json-lines i:nth-child(1){width:76%}.json-lines i:nth-child(2){width:54%;background:var(--mint-2)}.json-lines i:nth-child(3){width:67%}.vec-dots{display:flex;gap:5px;align-items:end}.vec-dots i{width:5px;border-radius:3px;background:#54b8ff;height:var(--h);opacity:var(--o)}.media-chunks{display:flex;gap:4px;align-items:center;height:100%}.media-chunks i{display:block;width:21px;height:25px;border-radius:5px;border:1px solid #3c65a2;background:#17386f;animation:chunk 2.6s ease-in-out infinite}.media-chunks i:nth-child(2){animation-delay:.2s}.media-chunks i:nth-child(3){animation-delay:.4s}.media-chunks i:nth-child(4){animation-delay:.6s}.media-chunks i:nth-child(5){animation-delay:.8s}@keyframes chunk{50%{transform:translateY(-5px);border-color:#61c6ff;background:#1c4a8b}}.query-bars{display:flex;gap:4px;align-items:end;height:100%}.query-bars i{width:12px;border-radius:3px 3px 1px 1px;background:#244c8b;height:var(--h)}.query-bars i:nth-child(4),.query-bars i:nth-child(5){background:var(--mint-2)}
+.flow-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;z-index:-1}.flow-svg path{fill:none;stroke:#3f65a4;stroke-width:1.2;stroke-dasharray:4 8;opacity:.72}.flow-svg .storage-path{stroke:#4b82c9}.flow-svg .packet{fill:#9be7ff;filter:drop-shadow(0 0 7px #55c8ff)}
+.storage-rail{position:absolute;left:50%;bottom:1%;transform:translateX(-50%);display:flex;align-items:center;gap:0;width:82%;max-width:520px}.storage-node{position:relative;flex:1;padding:11px 6px;border-top:1px solid #294b82;text-align:center;color:#7289aa;font-size:9px;text-transform:uppercase;letter-spacing:.08em}.storage-node:before{content:"";position:absolute;width:7px;height:7px;top:-4px;left:50%;transform:translateX(-50%);border-radius:50%;background:#275796;border:2px solid #081b38;box-shadow:0 0 0 0 rgba(184,239,181,.35)}.storage-node.active{color:#d5e8ff}.storage-node.active:before{background:var(--mint);box-shadow:0 0 0 7px rgba(184,239,181,.07),0 0 18px rgba(184,239,181,.34)}
+
+/* STRIP */
+.proof-strip{position:relative;margin-top:-36px;z-index:10}.proof-inner{display:grid;grid-template-columns:1.2fr repeat(4,1fr);border:1px solid #dbe5f6;background:rgba(249,250,246,.96);border-radius:18px;overflow:hidden;box-shadow:0 18px 50px rgba(7,28,29,.08)}.proof-cell{padding:21px 20px;border-right:1px solid #e1e8f4}.proof-cell:last-child{border-right:0}.proof-cell span{display:block;color:#687b99;font-size:10px;text-transform:uppercase;letter-spacing:.11em}.proof-cell b{display:block;margin-top:6px;font-size:13px;font-weight:650}.proof-cell.intro{background:#edf4ff}.proof-cell.intro b{font-size:14px}
+
+/* GENERIC */
+.section{padding:116px 0}.section.dark{background:var(--bg);color:white}.kicker{font-size:10px;font-weight:760;letter-spacing:.18em;text-transform:uppercase;color:#617ba4}.dark .kicker{color:#67a8e8}.section-title{font-size:clamp(44px,5.4vw,72px);line-height:1.02;letter-spacing:-.052em;margin:16px 0 18px;font-weight:590}.section-title em{font-family:Georgia,serif;font-weight:400;font-style:italic}.section-lead{font-size:17px;line-height:1.72;color:#697d9b;max-width:680px}.dark .section-lead{color:#91a9c9}.section-head{display:grid;grid-template-columns:1.25fr .75fr;align-items:end;gap:60px;margin-bottom:60px}.section-head .section-lead{margin:0}
+
+/* HOW IT WORKS */
+.how{padding-top:138px}.how-stage{position:relative;min-height:660px;border:1px solid #183a73;border-radius:28px;background:radial-gradient(700px 380px at 50% 46%,rgba(114,225,220,.08),transparent 68%),#07162f;overflow:hidden}.how-stage:before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:44px 44px;mask-image:linear-gradient(to bottom,black 30%,transparent 100%)}
+.how-topline{position:absolute;top:24px;left:28px;right:28px;display:flex;justify-content:space-between;align-items:center;z-index:5}.auto-pill{display:flex;align-items:center;gap:8px;color:#7891b3;font-size:10px;text-transform:uppercase;letter-spacing:.1em}.auto-pill i{width:7px;height:7px;border-radius:50%;background:var(--mint);animation:pulse 2s infinite}.phase-name{font-size:12px;color:#d3e3fb;font-weight:680}
+.pipeline{position:absolute;left:3.5%;right:3.5%;top:110px;bottom:44px;display:grid;grid-template-columns:190px 1fr 196px;gap:38px;align-items:center}.input-lane,.output-lane{display:grid;gap:15px}.lane-card{position:relative;border:1px solid #1d417a;border-radius:16px;background:#0b1f43;padding:16px;min-height:116px;transition:opacity .5s,transform .5s,border-color .5s,background .5s}.lane-card.dim{opacity:.36;transform:scale(.97)}.lane-card.lit{border-color:#4f9eff;background:#0d2c5f}.lane-card .type{font-size:9px;text-transform:uppercase;letter-spacing:.13em;color:#6f8eb8}.lane-card b{display:block;margin-top:7px;font-size:14px}.lane-card p{margin:6px 0 0;color:#7893ba;font-size:10px;line-height:1.55}.lane-card .icon{position:absolute;right:13px;top:13px;width:29px;height:29px;border-radius:9px;display:grid;place-items:center;background:#10366f;color:#89d5ff;font:700 11px ui-monospace,monospace}
+.engine-diagram{position:relative;height:100%;min-height:460px}.engine-shell{position:absolute;left:50%;top:48%;width:300px;height:330px;transform:translate(-50%,-50%);border:1px solid #355f9f;border-radius:26px;background:linear-gradient(180deg,#0d2855,#081a38);box-shadow:0 30px 90px rgba(0,0,0,.27);padding:22px}.engine-shell-head{display:flex;align-items:center;justify-content:space-between;padding-bottom:17px;border-bottom:1px solid #214377}.engine-shell-head strong{font-size:13px}.engine-shell-head span{font-size:9px;color:#6f8db6;text-transform:uppercase;letter-spacing:.12em}.engine-modules{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.module{position:relative;min-height:64px;border:1px solid #23457e;border-radius:13px;background:#0b2149;padding:11px;transition:border-color .45s,background .45s,box-shadow .45s,transform .45s}.module span{display:block;font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:#6582aa}.module b{display:block;margin-top:5px;font-size:11px}.module.active{border-color:#51baff;background:#10366f;box-shadow:0 0 25px rgba(107,210,195,.11);transform:translateY(-2px)}.engine-footer{display:flex;gap:7px;margin-top:12px}.engine-footer span{flex:1;border:1px solid #234844;border-radius:10px;padding:8px;text-align:center;font-size:8px;color:#71938b}.engine-footer span.active{border-color:#4d87cb;color:#c7dcfa;background:#0d2c5c}
+.pipeline-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.pipeline-svg path{fill:none;stroke:#37629e;stroke-width:1.3;stroke-dasharray:5 8}.pipeline-svg .pulse-line{stroke:#4eb5ff;stroke-dasharray:2 7;animation:dashMove 2.5s linear infinite}@keyframes dashMove{to{stroke-dashoffset:-72}}.p-dot{fill:#9eeaff;filter:drop-shadow(0 0 6px #58cfff)}
+.phase-copy{position:absolute;bottom:25px;left:50%;transform:translateX(-50%);width:min(780px,86%);display:grid;grid-template-columns:130px 1fr;gap:18px;align-items:start;border-top:1px solid #253f6c;padding-top:16px;color:#89a1c2}.phase-copy b{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:#d4e6ff}.phase-copy p{margin:0;font-size:11px;line-height:1.65}
+
+
+.ops-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}.ops-card{position:relative;border:1px solid #17386c;border-radius:16px;background:#071a39;padding:17px;min-height:112px;overflow:hidden;transition:border-color .45s,background .45s,transform .45s}.ops-card:before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:#54b8ff;transform:scaleY(0);transform-origin:bottom;animation:opsPulse 12s var(--ease) infinite}.ops-card:nth-child(2):before{animation-delay:3s}.ops-card:nth-child(3):before{animation-delay:6s}.ops-card:nth-child(4):before{animation-delay:9s}@keyframes opsPulse{0%,22%{transform:scaleY(0)}28%,48%{transform:scaleY(1)}58%,100%{transform:scaleY(0)}}.ops-card span{display:block;font-size:8px;text-transform:uppercase;letter-spacing:.14em;color:#6a86ad}.ops-card b{display:block;font-size:12px;margin-top:7px}.ops-card p{margin:6px 0 0;color:#728eb3;font-size:9px;line-height:1.55}
+
+/* WHY */
+.why-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:52px}.why-card{position:relative;min-height:275px;border:1px solid #d9e3f3;border-radius:20px;background:#fbfdff;padding:24px;overflow:hidden;transition:transform .25s var(--ease),box-shadow .25s,border-color .25s}.why-card:hover{transform:translateY(-4px);border-color:#b9cbea;box-shadow:0 16px 40px rgba(10,42,39,.07)}.why-card .number{font:500 11px ui-monospace,monospace;color:#8497b4}.why-card h3{font-size:21px;letter-spacing:-.035em;margin:68px 0 10px}.why-card p{font-size:13px;line-height:1.65;color:#687c9c;margin:0}.why-card .why-symbol{position:absolute;right:22px;top:21px;width:52px;height:52px;border-radius:16px;background:#edf4ff;border:1px solid #dce7f8;display:grid;place-items:center;color:#315d9e;font:700 17px ui-monospace,monospace}.why-card .why-line{position:absolute;left:24px;right:24px;bottom:22px;height:1px;background:#e2eaf6;overflow:hidden}.why-card .why-line:after{content:"";position:absolute;left:0;top:0;width:38%;height:100%;background:#4e91ff;animation:whySweep 5s var(--ease) infinite}@keyframes whySweep{0%,20%{transform:translateX(-130%)}65%,100%{transform:translateX(360%)}}
+
+/* ORIGINAL FEATURE TRIO */
+.feature-section{background:#edf3ff;border-block:1px solid #dce6f5}.features{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.feature{position:relative;min-height:350px;background:#fbfdff;border:1px solid #dbe5f5;border-radius:22px;padding:28px;overflow:hidden}.feature h3{font-size:24px;letter-spacing:-.04em;margin:150px 0 10px}.feature p{color:#687c9c;font-size:13px;line-height:1.7;margin:0}.feature-label{display:block;margin-top:22px;font-size:9px;letter-spacing:.14em;text-transform:uppercase;font-weight:760}.feature-visual{position:absolute;left:22px;right:22px;top:23px;height:110px;border-radius:17px;background:#eef4ff;border:1px solid #dce8fa;overflow:hidden}.doc-v{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:18px;transform:rotate(-4deg)}.doc-v i{display:block;height:62px;border:1px solid #bfd2ef;border-radius:8px;background:#fbfdff;box-shadow:0 8px 18px rgba(15,47,43,.05);animation:docWave 4.6s ease-in-out infinite}.doc-v i:nth-child(2){animation-delay:.3s}.doc-v i:nth-child(3){animation-delay:.6s}@keyframes docWave{50%{transform:translateY(-8px)}}.vector-v{position:relative}.vector-v i{position:absolute;width:7px;height:7px;border-radius:50%;background:#5b95e5;left:var(--x);top:var(--y);opacity:var(--o)}.vector-v:after{content:"";position:absolute;width:46px;height:46px;border-radius:50%;border:1px solid #508cff;left:50%;top:50%;transform:translate(-50%,-50%);animation:searchRing 3s ease-out infinite}@keyframes searchRing{0%{transform:translate(-50%,-50%) scale(.35);opacity:0}35%{opacity:1}100%{transform:translate(-50%,-50%) scale(1.8);opacity:0}}.media-v{display:flex;gap:5px;align-items:center;padding:24px}.media-v i{display:block;height:52px;flex:1;border-radius:7px;border:1px solid #bdd2f1;background:linear-gradient(180deg,#dceaff,#f7faff);animation:mediaFlow 3s ease-in-out infinite}.media-v i:nth-child(2){animation-delay:.13s}.media-v i:nth-child(3){animation-delay:.26s}.media-v i:nth-child(4){animation-delay:.39s}.media-v i:nth-child(5){animation-delay:.52s}.media-v i:nth-child(6){animation-delay:.65s}@keyframes mediaFlow{50%{transform:translateY(-9px);background:#cbdfff}}
+.durability{display:flex;gap:14px;align-items:center;padding:22px 0 0;margin-top:30px;border-top:1px solid #d9e4f4;font-size:12px;color:#697e9e}.durability .d-dot{width:8px;height:8px;border-radius:50%;background:#5895e8}.durability p{margin:0;flex:1}.durability a{font-weight:700;color:#2c5798}
+
+/* DOWNLOADS */
+.download-section{background:#e8f0ff;border-block:1px solid #d3e0f4}.release-note{display:flex;gap:10px;align-items:center;color:#687c9b;font-size:12px;margin:0 0 22px}.downloads{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}.download-card{background:#fbfdff;border:1px solid #cedcf1;border-radius:20px;padding:25px;display:flex;flex-direction:column;min-height:430px;transition:transform .22s var(--ease),box-shadow .22s}.download-card:hover{transform:translateY(-3px);box-shadow:0 16px 36px rgba(23,58,52,.08)}.platform{height:55px;display:flex;align-items:center;font:700 28px ui-monospace,monospace;color:#173d79}.download-card h3{font-size:25px;letter-spacing:-.04em;margin:10px 0 4px}.download-card>p,.download-card label{color:#687c9c;font-size:12px}.download-card select{width:100%;border:1px solid #c8d8ef;border-radius:8px;padding:9px 10px;background:white;color:#173d78}.format{font-size:10px;color:#7084a5;margin:auto 0 16px}.download-btn{width:100%;background:#6fc5ff;color:#0b2b58;border:1px solid #56b1f2}.download-btn:hover{background:#90d7ff}.install-flow{padding:17px 0 0 18px;margin:0;color:#667b99;font-size:11px;line-height:1.65}.install-flow li+li{margin-top:7px}.install-flow code{font-size:9px;overflow-wrap:anywhere}.download-disclosure{font-size:11px;color:#687e9d;margin:24px 0 10px;max-width:870px}.download-links{display:flex;gap:24px;flex-wrap:wrap;font-size:11px;font-weight:700}
+
+/* QUICKSTART */
+.start-grid{display:grid;grid-template-columns:.75fr 1.25fr;gap:70px}.start-copy{position:sticky;top:120px;align-self:start}.start-copy .section-title{font-size:clamp(44px,4.5vw,62px)}.start-copy p{color:#687c9c;font-size:14px;line-height:1.7}.steps{border-top:1px solid #dbe5f4}.step{display:grid;grid-template-columns:48px 1fr;gap:20px;padding:28px 0;border-bottom:1px solid #dbe5f4}.step-num{font:600 11px ui-monospace,monospace;color:#6c86ab;padding-top:5px}.step h3{font-size:20px;letter-spacing:-.03em;margin:0}.step p{font-size:12px;color:#6a7f9f;line-height:1.65}.code{position:relative;background:#081b3a;color:#dbeaff;border:1px solid #21447e;border-radius:14px;padding:16px 48px 16px 16px;overflow:auto;font:11px/1.75 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap}.copy{position:absolute;right:10px;top:10px;border:1px solid #405d89;background:#102d60;color:#9fb7d9;border-radius:7px;padding:5px 8px;font-size:9px;cursor:pointer}.copy:hover{color:white;border-color:#6786af}.hint{font-size:10px!important}.example{display:grid;grid-template-columns:.8fr 1.2fr;gap:52px;align-items:center;margin-top:92px}.example-copy h2{font-size:38px;letter-spacing:-.045em;margin:14px 0}.example-copy p{color:#6a7f9f;font-size:13px;line-height:1.7}.package-links{display:flex;gap:18px;flex-wrap:wrap;font-size:11px;font-weight:700;margin-top:24px}.editor{background:#071a39;color:#dbeaff;border:1px solid #23487e;border-radius:18px;overflow:hidden;box-shadow:0 24px 60px rgba(13,48,43,.13)}.editor-head,.editor-foot{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid #1d3d72;color:#8299bb;font:10px ui-monospace,monospace}.editor-head .dots{display:flex;gap:5px}.editor-head .dots i{width:7px;height:7px;border-radius:50%;background:#5874a1}.editor pre{margin:0;padding:22px;overflow:auto;font:11px/1.85 ui-monospace,SFMono-Regular,Menlo,monospace}.editor-foot{border-bottom:0;border-top:1px solid #1d3d72;justify-content:flex-start;gap:8px}.editor-foot i{width:7px;height:7px;border-radius:50%;background:var(--mint)}
+
+/* CTA/FOOT */
+.closing{position:relative;background:#050d20;color:white;text-align:center;padding:112px 0;overflow:hidden}.closing:before{content:"";position:absolute;width:760px;height:320px;border-radius:50%;left:50%;bottom:-240px;transform:translateX(-50%);background:radial-gradient(circle at 50% 0%,rgba(126,216,188,.18),transparent 65%);border:1px solid rgba(126,216,188,.15)}.closing .kicker{color:#74a8df}.closing h2{font-size:clamp(48px,6vw,78px);letter-spacing:-.055em;margin:16px 0}.closing p{color:#92a8c8}.closing .btn{margin-top:18px;position:relative;z-index:2}.footer{background:#050d20;color:#8299bb;border-top:1px solid #16366b}.footer-in{min-height:100px;display:flex;align-items:center;justify-content:space-between;gap:20px}.footer .brand{color:white;font-size:17px}.footer small{font-size:10px}.footer-links{display:flex;gap:20px;font-size:10px}
+
+@media(max-width:1020px){.ops-strip{grid-template-columns:1fr 1fr}.hero-grid{grid-template-columns:1fr}.hero{padding-top:120px}.engine-visual{height:560px}.hero-copy{max-width:760px}.section-head{grid-template-columns:1fr;gap:20px}.proof-inner{grid-template-columns:1fr 1fr 1fr}.proof-cell:nth-child(3){border-right:0}.proof-cell.intro{grid-column:span 2}.pipeline{grid-template-columns:150px 1fr 160px;gap:22px}.why-grid{grid-template-columns:1fr 1fr}.features{grid-template-columns:1fr}.feature{min-height:270px}.feature h3{margin-top:125px}.downloads{grid-template-columns:1fr}.download-card{min-height:0}.start-grid{grid-template-columns:1fr}.start-copy{position:static}.example{grid-template-columns:1fr}}
+@media(max-width:720px){.brand{min-width:150px}.brand-lockup{width:150px}.footer-lockup{width:142px}.ops-strip{grid-template-columns:1fr}.wrap{width:min(calc(100% - 28px),var(--max))}.nav-inner{height:70px}.nav-links{display:none}.nav-cta{padding:9px 11px}.hero{min-height:auto;padding:108px 0 64px}.hero h1{font-size:64px}.hero-desc{font-size:15px}.engine-visual{height:560px;margin-top:15px}.model-card{width:145px;padding:12px}.document-card{left:0;top:16%}.vector-card{right:0;top:14%}.media-card{right:0;bottom:16%}.query-card{left:0;bottom:17%}.core{width:145px;height:145px}.engine-orbit.o1{width:390px}.engine-orbit.o2{width:440px}.engine-orbit.o3{width:320px;height:320px}.storage-rail{width:96%;bottom:5px}.storage-node{font-size:7px;padding-inline:2px}.proof-strip{margin-top:-18px}.proof-inner{grid-template-columns:1fr 1fr}.proof-cell.intro{grid-column:span 2}.proof-cell:nth-child(3){border-right:1px solid #e1e8f4}.proof-cell:nth-child(even){border-right:0}.section{padding:82px 0}.how{padding-top:100px}.section-title{font-size:45px}.pipeline{position:relative;left:auto;right:auto;top:auto;bottom:auto;padding:76px 16px 100px;grid-template-columns:1fr;gap:18px}.how-stage{min-height:auto}.input-lane,.output-lane{grid-template-columns:1fr 1fr}.lane-card{min-height:100px}.engine-diagram{min-height:390px}.engine-shell{width:280px;height:320px}.pipeline-svg{display:none}.phase-copy{bottom:18px;width:calc(100% - 32px);grid-template-columns:1fr}.how-topline{left:18px;right:18px}.why-grid{grid-template-columns:1fr}.why-card{min-height:230px}.feature{padding:22px}.section-head{margin-bottom:38px}.downloads{gap:12px}.start-grid{gap:35px}.step{grid-template-columns:34px 1fr}.example{margin-top:70px}.footer-in{flex-direction:column;align-items:flex-start;padding:26px 0}.footer-links{flex-wrap:wrap}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.live-dot,.engine-orbit,.model-card,.model-card:after,.core-ripple,.media-chunks i,.pulse-line,.why-line:after,.doc-v i,.vector-v:after,.media-v i{animation:none!important}.btn,.why-card,.download-card{transition:none}.flow-svg animateMotion{display:none}.ops-card:before{animation:none!important}}
+
+/* BLUE MOTION SYSTEM — production refinement */
+:root{--blue:#2f6bff;--blue-2:#4f9cff;--cyan:#55d8ff;--violet:#7b6cff;--navy:#050b18;--navy-2:#07162f;--soft-blue:#edf4ff;--line-blue:#d9e5f6}
+body{background:#f5f8ff}
+.hero{background:radial-gradient(880px 520px at 72% 27%,rgba(47,107,255,.23),transparent 63%),radial-gradient(720px 440px at 95% 75%,rgba(85,216,255,.11),transparent 65%),linear-gradient(180deg,#050b18 0%,#06132a 54%,#081b38 100%)}
+.hero:before{content:"";position:absolute;inset:-20% -10% 0 30%;background:conic-gradient(from 220deg at 55% 55%,transparent,rgba(79,156,255,.08),transparent 32%,rgba(85,216,255,.06),transparent 58%);filter:blur(42px);animation:auroraDrift 16s ease-in-out infinite alternate;pointer-events:none}.hero:after{background:linear-gradient(to bottom,transparent,#f5f8ff)}
+@keyframes auroraDrift{0%{transform:translate3d(-2%,0,0) rotate(-4deg) scale(1)}100%{transform:translate3d(4%,2%,0) rotate(4deg) scale(1.05)}}
+.hero-ambient{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.68;mix-blend-mode:screen;z-index:0}
+.hero-grid{z-index:2}.hero h1 em{color:#78d9ff;text-shadow:0 0 36px rgba(85,216,255,.12)}
+.hero-desc{color:#aebed8}.btn.primary{background:linear-gradient(135deg,#68dcff 0%,#4f9cff 55%,#7b6cff 135%);color:#041128;box-shadow:0 12px 34px rgba(47,107,255,.2)}.btn.primary:hover{background:linear-gradient(135deg,#82e3ff,#68aaff 58%,#8d80ff);box-shadow:0 16px 46px rgba(47,107,255,.3)}
+.btn.ghost{border-color:#294c88;color:#dbe8ff;background:rgba(255,255,255,.025)}.nav-cta{background:#12356d}.nav-cta:hover{background:#194a91}.nav.scrolled{background:rgba(245,248,255,.88);border-color:#d9e5f6;box-shadow:0 8px 32px rgba(7,22,47,.06)}
+.engine-visual{perspective:1100px}.engine-grid{background-image:linear-gradient(rgba(112,160,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(112,160,255,.04) 1px,transparent 1px);mask-image:radial-gradient(circle at center,black,transparent 77%)}
+.engine-orbit{border-color:rgba(85,216,255,.16);filter:drop-shadow(0 0 18px rgba(47,107,255,.08))}.engine-orbit.o3{border-color:rgba(123,108,255,.12)}
+.core{background:radial-gradient(circle at 34% 28%,#1d5cae,#0d2d63 52%,#071b3b 100%);border-color:#427dd0;box-shadow:inset 0 0 50px rgba(85,216,255,.11),0 28px 100px rgba(0,0,0,.38),0 0 0 18px rgba(79,156,255,.025),0 0 90px rgba(47,107,255,.10)}
+.core-ripple{border-color:rgba(85,216,255,.48)}
+.model-card{border-color:#244a83;background:linear-gradient(180deg,rgba(13,39,80,.93),rgba(7,25,56,.96));box-shadow:0 18px 48px rgba(0,0,0,.30),inset 0 1px rgba(255,255,255,.025);transition:border-color .45s var(--ease),box-shadow .45s var(--ease)}
+.model-card:before{content:"";position:absolute;left:0;top:0;width:100%;height:2px;background:linear-gradient(90deg,transparent,#55d8ff,transparent);opacity:.08;animation:modelSignal 12s ease-in-out infinite}.vector-card:before{animation-delay:3s}.media-card:before{animation-delay:6s}.query-card:before{animation-delay:9s}@keyframes modelSignal{0%,15%,100%{opacity:.06;transform:translateX(-55%)}25%,38%{opacity:.9;transform:translateX(0)}48%{opacity:.08;transform:translateX(55%)}}
+.model-card strong{color:#f4f8ff}.model-card small{color:#7896c1}.json-lines i{background:#76a8e7}.json-lines i:nth-child(2){background:#55d8ff}.vec-dots i{background:linear-gradient(#55d8ff,#6f7cff)}.media-chunks i{border-color:#3c65a2;background:#17386f}.query-bars i{background:#244c8b}.query-bars i:nth-child(4),.query-bars i:nth-child(5){background:#55d8ff}
+.flow-svg path{stroke:#4169aa;stroke-dasharray:5 9;animation:pathDrift 9s linear infinite}.flow-svg .storage-path{stroke:#5297e2}.flow-svg .packet{fill:#bceeff;filter:drop-shadow(0 0 8px #55d8ff)}@keyframes pathDrift{to{stroke-dashoffset:-84}}
+.storage-node{border-top-color:#2b4e88;color:#718bb1}.storage-node:before{background:#2c62aa;border-color:#081b38}.storage-node.active{color:#d9eaff}.storage-node.active:before{background:#55d8ff;box-shadow:0 0 0 7px rgba(85,216,255,.08),0 0 22px rgba(85,216,255,.55)}
+.proof-inner{border-color:#d9e5f6;background:rgba(251,253,255,.96);box-shadow:0 20px 58px rgba(22,52,96,.10)}.proof-cell{border-color:#e1e8f4}.proof-cell.intro{background:linear-gradient(135deg,#edf4ff,#f6f9ff)}.proof-cell span{color:#6a7e9e}
+.section.dark{background:linear-gradient(180deg,#050c1d,#07162f 68%,#061229)}.dark .kicker{color:#68a9ec}.dark .section-lead{color:#91a9c9}.kicker{color:#617ba4}.section-lead{color:#697d9b}
+.how-stage{border-color:#1a3f79;background:radial-gradient(760px 430px at 50% 44%,rgba(47,107,255,.12),transparent 66%),radial-gradient(520px 360px at 60% 52%,rgba(85,216,255,.06),transparent 68%),#07162f;box-shadow:inset 0 1px rgba(255,255,255,.025),0 28px 90px rgba(0,0,0,.22)}
+.how-stage:before{background-image:linear-gradient(rgba(98,147,235,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(98,147,235,.035) 1px,transparent 1px)}
+.how-stage:after{content:"";position:absolute;top:0;bottom:0;width:38%;left:-45%;background:linear-gradient(90deg,transparent,rgba(79,156,255,.055),transparent);transform:skewX(-12deg);animation:stageSweep 8s ease-in-out infinite;pointer-events:none;z-index:1}@keyframes stageSweep{0%,18%{left:-45%;opacity:0}36%{opacity:1}66%{left:108%;opacity:.85}85%,100%{left:108%;opacity:0}}
+.how-topline,.pipeline,.phase-copy,.phase-progress{z-index:3}.phase-progress{position:absolute;top:58px;left:28px;right:28px;display:grid;grid-template-columns:repeat(5,1fr);gap:7px}.phase-progress i{display:block;height:2px;border-radius:4px;background:#17386d;overflow:hidden;transition:background .55s}.phase-progress i.active{background:linear-gradient(90deg,#55d8ff,#4f9cff);box-shadow:0 0 12px rgba(85,216,255,.32)}
+.auto-pill{color:#7993b9}.auto-pill i{background:#55d8ff}.phase-name{color:#d3e3fb}.lane-card{border-color:#1d417a;background:#0b1f43}.lane-card.lit{border-color:#4f9eff;background:linear-gradient(180deg,#102f64,#0d2856);box-shadow:0 12px 34px rgba(47,107,255,.10)}.lane-card .type{color:#6e94c3}.lane-card p{color:#7896bd}.lane-card .icon{background:#12366f;color:#8bdcff}
+.engine-shell{border-color:#3565a8;background:linear-gradient(180deg,#0d2855,#081a38);box-shadow:0 34px 100px rgba(0,0,0,.32),0 0 60px rgba(47,107,255,.07)}.engine-shell:after{content:"";position:absolute;left:17px;right:17px;top:54px;height:1px;background:linear-gradient(90deg,transparent,#55d8ff,transparent);opacity:.25;animation:engineScan 4.2s ease-in-out infinite}@keyframes engineScan{0%,100%{transform:translateY(0);opacity:.08}48%{transform:translateY(236px);opacity:.45}52%{opacity:.12}}
+.engine-shell-head{border-color:#214377}.engine-shell-head span{color:#7192ba}.module{border-color:#23457e;background:#0b2149}.module.active{border-color:#55bfff;background:#10366f;box-shadow:0 0 30px rgba(85,191,255,.14);transform:translateY(-2px) scale(1.018)}.module span{color:#6785ad}.engine-footer span{border-color:#234a83;color:#7390b7}.engine-footer span.active{border-color:#4f94dc;color:#d4e6ff;background:#0d2c5c}
+.pipeline-svg path{stroke:#37629e}.pipeline-svg .pulse-line{stroke:#55baff}.p-dot{fill:#b9ebff;filter:drop-shadow(0 0 8px #55d8ff)}.phase-copy{border-color:#274778;color:#8ba5c8}.phase-copy b{color:#d6e7ff}
+.ops-card{border-color:#17386c;background:#081a38}.ops-card:before{background:linear-gradient(#55d8ff,#4f9cff)}.ops-card span{color:#6888b2}.ops-card p{color:#7390b6}
+.why-card{border-color:#d9e3f3;background:#fbfdff}.why-card:hover{border-color:#b9cbea;box-shadow:0 20px 50px rgba(31,73,137,.09)}.why-card .number{color:#8497b4}.why-card p{color:#687c9c}.why-card .why-symbol{background:linear-gradient(145deg,#edf4ff,#e4efff);border-color:#dce7f8;color:#315d9e;box-shadow:inset 0 1px white}.why-card .why-line{background:#e2eaf6}.why-card .why-line:after{background:linear-gradient(90deg,#4f9cff,#55d8ff,#7b6cff)}
+.feature-section{background:#edf3ff;border-color:#dce6f5}.feature{background:#fbfdff;border-color:#dbe5f5}.feature-visual{background:linear-gradient(145deg,#eef4ff,#f7faff);border-color:#dce8fa}.feature p{color:#687c9c}.doc-v i{border-color:#bfd2ef;background:#fbfdff}.vector-v i{background:#5b95e5}.vector-v:after{border-color:#508cff}.media-v i{border-color:#bdd2f1;background:linear-gradient(180deg,#dceaff,#f7faff)}.durability{border-color:#d9e4f4;color:#697e9e}.durability .d-dot{background:#4f9cff}.durability a{color:#315d9e}
+.download-section{background:linear-gradient(180deg,#e8f0ff,#eef4ff);border-color:#d3e0f4}.download-card{background:#fbfdff;border-color:#cedcf1}.download-card:hover{box-shadow:0 18px 42px rgba(31,73,137,.09)}.platform{color:#173d79}.download-card>p,.download-card label{color:#687c9c}.download-card select{border-color:#c8d8ef;color:#173d78}.format{color:#7084a5}.download-btn{background:linear-gradient(135deg,#73d6ff,#5aa8ff);color:#08234b;border-color:#56b1f2}.download-btn:hover{background:linear-gradient(135deg,#8be0ff,#71b8ff)}.install-flow{color:#667b99}.download-disclosure{color:#687e9d}
+.code{background:#071a39;color:#dbeaff;border-color:#21447e}.copy{border-color:#405d89;background:#102d60;color:#a5bde0}.copy:hover{border-color:#68a3e7}.editor{background:#061832;color:#dbeaff;border-color:#23487e;box-shadow:0 26px 70px rgba(17,55,110,.17)}.editor-head,.editor-foot{border-color:#1d3d72;color:#849bc0}.editor-head .dots i{background:#5874a1}.editor-foot i{background:#55d8ff}
+.closing{background:radial-gradient(720px 300px at 50% 100%,rgba(47,107,255,.18),transparent 70%),linear-gradient(180deg,#050c1d,#06142c);}.closing:before{background:radial-gradient(circle at 50% 0%,rgba(85,216,255,.19),transparent 65%);border-color:rgba(79,156,255,.16)}.closing .kicker{color:#74a8df}.closing p{color:#92a8c8}.footer{background:#06142c;color:#8299bb;border-color:#16366b}
+.motion-reveal{opacity:1;filter:none;transform:none}
+.motion-ready .motion-reveal{--reveal-y:72px;opacity:0;filter:blur(12px);transform:translate3d(0,var(--reveal-y),0);transition:opacity .82s var(--ease),transform 1.05s var(--ease),filter .9s var(--ease);will-change:opacity,transform,filter}
+.motion-ready .motion-reveal[data-reveal="soft"]{--reveal-y:42px}.motion-ready .motion-reveal[data-reveal="deep"]{--reveal-y:102px}.motion-ready .motion-reveal.visible{opacity:1;filter:blur(0);transform:translate3d(0,0,0)}
+.scroll-depth{translate:0 var(--scroll-shift,0px);will-change:translate}.scroll-glow{position:relative;isolation:isolate;overflow:clip}.scroll-glow>.wrap{position:relative;z-index:1}.scroll-glow:after{content:"";position:absolute;z-index:0;right:-220px;top:10%;width:540px;height:540px;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgba(22,217,244,.13),rgba(13,120,255,.055) 38%,transparent 70%);transform:translate3d(0,var(--glow-shift,0px),0);will-change:transform}.scroll-glow:nth-of-type(even):after{right:auto;left:-260px;background:radial-gradient(circle,rgba(111,124,255,.11),rgba(13,120,255,.045) 40%,transparent 70%)}
+.landing-progress{position:fixed;z-index:99;right:18px;top:50%;width:3px;height:138px;transform:translateY(-50%);overflow:hidden;border-radius:99px;background:rgba(108,151,215,.16);box-shadow:0 0 0 1px rgba(100,159,238,.08)}.landing-progress i{display:block;width:100%;height:0;background:linear-gradient(180deg,#16d9f4,#0d78ff,#7b6cff);box-shadow:0 0 16px rgba(22,217,244,.75);transition:height .12s linear}
+@media(max-width:720px){.motion-ready .motion-reveal{--reveal-y:48px}.motion-ready .motion-reveal[data-reveal="soft"]{--reveal-y:30px}.motion-ready .motion-reveal[data-reveal="deep"]{--reveal-y:66px}.landing-progress{right:7px;height:96px}}
+@media(prefers-reduced-motion:reduce){.hero:before,.model-card:before,.how-stage:after,.engine-shell:after,.flow-svg path{animation:none!important}.motion-ready .motion-reveal,.motion-reveal{opacity:1!important;filter:none!important;transform:none!important;transition:none!important}.scroll-depth{translate:0 0!important}.scroll-glow:after{transform:none!important}.landing-progress i{transition:none!important}}
+
+
+
+/* BLUE + DARK BLACK FINAL THEME */
+:root{
+  --bg:#030712;
+  --bg-2:#071325;
+  --bg-3:#0a1a33;
+  --panel:#0b1830;
+  --panel-2:#102241;
+  --panel-3:#0e203d;
+  --paper:#eaf2ff;
+  --paper-2:#c8d8f8;
+  --ink:#eaf2ff;
+  --muted:#97abd0;
+  --muted-dark:#8ea6cf;
+  --line:#18345f;
+  --mint:#72d7ff;
+  --mint-2:#4f9cff;
+  --cyan:#55d8ff;
+  --lime:#7b6cff;
+}
+body{background:linear-gradient(180deg,#030712 0%,#050d1c 100%);color:var(--ink)}
+::selection{background:#55d8ff33;color:#fff}
+.nav.scrolled{background:rgba(3,8,18,.82);border-color:#173057;box-shadow:0 12px 36px rgba(0,0,0,.28)}
+.nav.scrolled .brand,.nav.scrolled .nav-links{color:#d8e5ff}
+.nav.scrolled .nav-links a:after{background:#55d8ff}
+.nav-cta{background:linear-gradient(180deg,#1a58cc,#1447a6);box-shadow:0 8px 24px rgba(20,71,166,.25)}
+.hero{background:radial-gradient(1000px 520px at 72% 10%,rgba(79,156,255,.24),transparent 58%),radial-gradient(800px 400px at 20% 0%,rgba(85,216,255,.14),transparent 52%),linear-gradient(180deg,#030712 0%,#071325 62%,#091935 100%)}
+.hero:after{background:linear-gradient(to bottom,transparent,#060f20)}
+.hero-desc,.hero-foot{color:#a8bbdc}.badge{border-color:#255296;background:rgba(85,216,255,.08)}
+.btn.primary{background:linear-gradient(180deg,#6fd3ff,#4fa0ff);color:#041325}.btn.primary:hover{background:linear-gradient(180deg,#83dbff,#62adff)}
+.btn.ghost{border-color:#24497f;background:rgba(255,255,255,.03)}
+.engine-grid{opacity:.42}.core{background:radial-gradient(circle at 34% 28%,#1954a6,#0a2f67 58%,#07152f 100%);border-color:#2e6fd4;box-shadow:inset 0 0 52px rgba(85,216,255,.13),0 22px 90px rgba(0,0,0,.42),0 0 0 18px rgba(85,216,255,.04)}
+.core span{color:#95b8e8}
+.model-card{background:linear-gradient(180deg,rgba(8,23,46,.95),rgba(5,16,32,.97));border-color:#1f467e;box-shadow:0 18px 44px rgba(0,0,0,.36)}
+.model-card small{color:#8ba6d2}
+.flow-svg path{stroke:#2a5694}.flow-svg .storage-path{stroke:#4f9cff}.flow-svg .packet{fill:#8ae4ff;filter:drop-shadow(0 0 8px #55d8ff)}
+.storage-node{border-top-color:#21487f;color:#83a2d0}.storage-node.active{color:#ebf4ff}.storage-node.active:before{background:#72d7ff;box-shadow:0 0 0 7px rgba(85,216,255,.10),0 0 18px rgba(85,216,255,.45)}
+.proof-inner,.how-stage,.why-card,.feature,.download-card,.code,.editor,.ops-card{background:linear-gradient(180deg,#0a1630,#0b1832);border-color:#18345f;box-shadow:0 16px 36px rgba(0,0,0,.16)}
+.proof-inner{background:linear-gradient(180deg,#0a1630,#081225)}
+.proof-cell{border-color:#16345f}.proof-cell.intro{background:linear-gradient(180deg,#0c1c3a,#0a1731)}
+.proof-cell h3,.ops-card h3,.feature h3,.download-card h3,.step h3,.example-copy h2,.section-title,.section-head p,.closing h2,.brand,.footer .brand{color:#edf4ff}
+.proof-cell p,.ops-card p,.feature p,.download-card>p,.download-card label,.durability p,.step p,.example-copy p,.section-copy,.download-disclosure,.download-links,.release-note,.why-card p,.closing p,.footer,.footer small,.footer-links,.start-copy p{color:#95a9ce}
+.proof-strip{margin-top:-34px}
+.proof-cell strong,.ops-value,.why-kicker,.kicker,.section-kicker,.eyebrow{color:#8fdcff}
+.how{background:linear-gradient(180deg,#060f20 0%,#071427 100%)}
+.section-head .section-copy{color:#9ab0d7}
+.phase-copy,.engine-shell,.lane-card{background:linear-gradient(180deg,#0b1832,#0a1630);border-color:#18365f}
+.phase-copy p,.phase-meta,.lane-card p{color:#96a9ce}
+.phase-progress span{background:#14305a;border-color:#244a84;color:#9cb5de}.phase-progress span.active{background:linear-gradient(180deg,#4f9cff,#2f6bff);color:#fff;border-color:#61c6ff;box-shadow:0 8px 20px rgba(47,107,255,.25)}
+.why{background:linear-gradient(180deg,#060f20,#081326)}
+.feature-section{background:linear-gradient(180deg,#071427,#08172d);border-block-color:#153055}
+.feature{background:linear-gradient(180deg,#0b1831,#0a1630)}
+.feature-visual{background:#0d1d39;border-color:#1b3b69}
+.doc-v i,.media-v i{background:#0f2448;border-color:#24508f;box-shadow:none}.vector-v i{background:#67b9ff}.media-v i{background:linear-gradient(180deg,#13305f,#0f2346)}
+.durability{border-top-color:#153159}.durability a{color:#77cfff}
+.download-section{background:linear-gradient(180deg,#071427,#08172d);border-block-color:#153055}
+.download-card{background:linear-gradient(180deg,#0b1831,#0a1630);border-color:#18355f}
+.download-card select{background:#09172d;border-color:#234879;color:#eaf2ff}
+.download-btn{background:linear-gradient(180deg,#6fd3ff,#4f9cff);border-color:#61c6ff;color:#041325}.download-btn:hover{background:linear-gradient(180deg,#84dbff,#62adff)}
+.code{background:#061326;border-color:#1d4074}.copy{background:#10254a;border-color:#2d5691;color:#bdd3f7}
+.editor{background:#071325;border-color:#1c3d70}.editor-head,.editor-foot{border-color:#17345e;color:#8aa4cd}
+.example .package-links a,.download-links a,.durability a,.repo-link,.text-link{color:#8fdcff}
+.closing{background:linear-gradient(180deg,#030712 0%,#040b17 100%)}
+.closing:before{background:radial-gradient(circle at 50% 0%,rgba(79,156,255,.18),transparent 65%);border-color:rgba(85,216,255,.12)}
+.footer{background:#030712;border-top-color:#16345c}
+.section{padding:98px 0}
+@media(max-width:720px){.proof-strip{margin-top:-18px}.section{padding:78px 0}}
+
+
+/* FINAL BRAND SYSTEM — exact supplied PacificDB logo */
+:root{--bg:#000311;--bg-2:#030817;--panel:#061126;--paper:#000311;--paper-2:#040a18;--ink:#e9f2ff;--white:#f7fbff;--muted:#8ea6ca;--muted-dark:#6f84a6;--line:#12294d;--mint:#16d9f4;--mint-2:#0d78ff;--cyan:#10afff;--lime:#4567c0;--warning:#f2c879}
+body{background:#000311;color:var(--ink)}
+.hero{background:radial-gradient(1000px 560px at 74% 8%,rgba(13,120,255,.20),transparent 60%),radial-gradient(800px 420px at 16% 20%,rgba(22,217,244,.08),transparent 55%),linear-gradient(180deg,#000311 0%,#020817 70%,#031025 100%)}
+.hero:after{background:linear-gradient(to bottom,transparent,#000311)}
+.nav:not(.scrolled){background:linear-gradient(180deg,rgba(0,3,17,.78),transparent);}
+.nav.scrolled{background:rgba(0,3,17,.82);border-color:#112a50;box-shadow:0 10px 36px rgba(0,0,0,.34)}
+.nav-links{color:#8da5c8}.nav:not(.scrolled) .nav-links{color:#aabbd8}.nav-links a:after{background:linear-gradient(90deg,#0d78ff,#16d9f4)}
+.nav-cta{background:linear-gradient(135deg,#123b84,#0b6fbd);border:1px solid #1e5ca3}.nav-cta:hover{background:linear-gradient(135deg,#164a9e,#0d82d8)}
+.btn.primary{background:linear-gradient(135deg,#16d9f4 0%,#10afff 46%,#0d78ff 100%);color:#001126;box-shadow:0 14px 38px rgba(13,120,255,.24)}
+.btn.ghost{border-color:#214a82;color:#d9eaff;background:rgba(5,16,35,.5)}
+.section{background:#000311;color:#e9f2ff}.section.dark{background:linear-gradient(180deg,#000311 0%,#020817 100%)}
+.section-head .section-copy,.section-lead,.why-card p,.feature p,.download-card>p,.download-card label,.durability p,.step p,.example-copy p,.download-disclosure,.release-note,.start-copy p{color:#8ea6ca}
+.section-title,.section-head p,.proof-cell h3,.ops-card h3,.feature h3,.download-card h3,.step h3,.example-copy h2,.closing h2,.brand,.footer .brand{color:#f1f6ff}
+.kicker,.dark .kicker{color:#55cfff}
+.how,.why,.feature-section,.download-section{background:linear-gradient(180deg,#000311,#030a18);border-color:#10284a}
+.why-card,.feature,.download-card{background:linear-gradient(180deg,#061126,#040c1d);border-color:#143257;box-shadow:none}
+.why-card:hover,.feature:hover,.download-card:hover{border-color:#2160a4;box-shadow:0 18px 60px rgba(5,69,140,.16)}
+.why-card .why-symbol{background:#071a35;border-color:#174273;color:#6fdcff}.why-card .why-line{background:#102747}.why-card .why-line:after{background:linear-gradient(90deg,#17377b,#0d78ff,#16d9f4)}
+.feature-visual{background:#030b1b;border-color:#15355e}.doc-v i{background:#07162c;border-color:#1a3f70;box-shadow:0 8px 22px rgba(0,0,0,.18)}
+.media-v i{background:linear-gradient(180deg,#0b2242,#061126);border-color:#1a4274}.download-card select{background:#030a18;border-color:#1b477b;color:#eaf4ff}.download-btn{background:linear-gradient(135deg,#16d9f4,#0d78ff);border-color:#36c9ff;color:#001126}.download-btn:hover{background:linear-gradient(135deg,#40e2f6,#1c8dff)}
+.code,.editor{background:#020817;border-color:#153963;box-shadow:0 24px 60px rgba(0,0,0,.32)}.copy{background:#071a35;border-color:#27578f;color:#a9d4ff}.copy:hover{border-color:#45a8ff;color:#fff}
+.closing{background:radial-gradient(720px 300px at 50% 100%,rgba(13,120,255,.16),transparent 70%),#000311}.closing:before{background:radial-gradient(circle at 50% 0%,rgba(22,217,244,.18),transparent 65%);border-color:rgba(16,175,255,.14)}.footer{background:#00020c;border-color:#10294c;color:#7f97bb}
+.proof-strip,.ops-strip{background:#020817;border-color:#112b50}.proof-cell,.ops-card{border-color:#112b50}.proof-cell p,.ops-card p{color:#8ea6ca}.core{background:radial-gradient(circle at 50% 45%,rgba(13,120,255,.16),transparent 64%),#020817;border-color:#24548b;box-shadow:0 0 0 1px rgba(16,175,255,.05),0 28px 100px rgba(0,0,0,.42)}.core-ripple{border-color:rgba(22,217,244,.22)}
+.engine-shell{background:linear-gradient(180deg,#071a37,#020b1a);border-color:#1c4d83}.module{background:#06162d;border-color:#164172}.module.active{background:linear-gradient(180deg,#0a3970,#072650);border-color:#36cfff;box-shadow:0 0 32px rgba(16,175,255,.18)}.engine-footer span{border-color:#153d69;color:#7196bd}.engine-footer span.active{border-color:#1e76b6;color:#d8efff;background:#082852}
+
+</style>
 </head>
 <body>
-  <a class="skip" href="#main">Skip to content</a>
-  <header class="navigation wrap">
-    <a class="brand" href="#" aria-label="PacificDB home"><img src="pacificdb-logo.png" width="40" height="40" alt="">Pacific<span>DB</span></a>
-    <nav aria-label="Main navigation"><a href="#features">Why PacificDB</a><a href="docs.html">Documentation</a><a href="#downloads">Downloads</a><a href="#start">Quickstart</a></nav>
-    <a class="repo-link" href="https://github.com/hitesh-reddy-k/pacificdb-community">GitHub <span aria-hidden="true">↗</span></a>
-  </header>
-  <main id="main">
-    <section class="hero wrap">
-      <div class="hero-copy">
-        <p class="eyebrow"><span class="dot"></span> PACIFICDB COMMUNITY <span class="badge">BETA</span></p>
-        <h1>Your data.<br>Your <em>waters.</em></h1>
-        <p class="hero-description">Documents, vectors, and media. One database you can run on your own machine. Build something that’s yours.</p>
-        <div class="actions"><a class="button primary" href="#downloads">Download PacificDB <span aria-hidden="true">↓</span></a><a class="text-link" href="#start">Start building <span aria-hidden="true">→</span></a></div>
-        <p class="hero-footnote">Self-hosted · Open-source core · Free to get started</p>
-      </div>
-      <div class="ocean" aria-hidden="true">
-        <img class="hero-mark" src="pacificdb-logo.png" alt="">
-        <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="orbit orbit-three"></div>
-        <div class="ocean-label">A HOME FOR YOUR DATA</div>
-        <div class="data-layer layer-back"><span>03 / MEDIA</span><b>0101 <i>1010</i> 0110</b></div>
-        <div class="data-layer layer-mid"><span>02 / VECTORS</span><b>[ 0.2, <i>0.8</i>, 0.4 ]</b></div>
-        <div class="data-layer layer-front"><span>01 / DOCUMENTS</span><b>{ <i>possibilities</i>: ∞ }</b></div>
-        <div class="ocean-coordinate">LOCAL FIRST. POSSIBILITIES OPEN.</div>
-      </div>
-    </section>
-    <div class="capability-strip"><div class="wrap"><span>Built for builders</span><b>Document storage</b><span class="separator">/</span><b>Vector search</b><span class="separator">/</span><b>Raft replication</b><span class="separator">/</span><b>Native CLI</b></div></div>
+<a class="skip" href="#main">Skip to content</a>
+<div class="landing-progress" aria-hidden="true"><i id="landingScrollProgress"></i></div>
+<header class="nav" id="nav"><div class="wrap nav-inner">
+  <a class="brand" href="#top" aria-label="PacificDB home"><img class="brand-lockup" src="assets/pacificdb-logo-lockup.png" alt="PacificDB"></a>
+  <nav class="nav-links" aria-label="Main navigation"><a href="#why">Why PacificDB</a><a href="#how">How it works</a><a href="#downloads">Downloads</a><a href="#start">Quickstart</a><a href="docs.html">Documentation</a></nav>
+  <a class="nav-cta" href="https://github.com/hitesh-reddy-k/pacificdb-community">GitHub ↗</a>
+</div></header>
+<main id="main">
+<section class="hero" id="top"><canvas class="hero-ambient" id="heroAmbient" aria-hidden="true"></canvas><div class="wrap hero-grid">
+  <div class="hero-copy">
+    <p class="eyebrow"><span class="live-dot"></span> PACIFICDB COMMUNITY <span class="badge">BETA.13</span></p>
+    <h1>Your data.<br>Your <em>waters.</em></h1>
+    <p class="hero-desc">Documents, vectors, and media. One database you can run on your own machine. Build something that’s yours.</p>
+    <div class="hero-actions"><a class="btn primary" href="#downloads">Download PacificDB ↓</a><a class="btn ghost" href="#how">See how it works →</a></div>
+    <p class="hero-foot">Self-hosted · Open-source core · Free to get started</p>
+  </div>
+  <div class="engine-visual" aria-label="Animated PacificDB multi-model database diagram">
+    <div class="engine-grid"></div><div class="engine-orbit o1"></div><div class="engine-orbit o2"></div><div class="engine-orbit o3"></div>
+    <svg class="flow-svg" viewBox="0 0 700 600" preserveAspectRatio="none" aria-hidden="true">
+      <path id="h1" d="M110 150 C210 175 230 245 350 285"/><path id="h2" d="M605 130 C505 165 485 230 350 285"/><path id="h3" d="M610 455 C520 425 480 355 350 305"/><path id="h4" d="M100 455 C210 425 240 355 350 305"/><path class="storage-path" d="M350 375 C350 425 350 470 350 520"/>
+      <circle class="packet" r="4"><animateMotion dur="3.8s" repeatCount="indefinite" path="M110 150 C210 175 230 245 350 285"/></circle>
+      <circle class="packet" r="4"><animateMotion dur="4.6s" begin=".9s" repeatCount="indefinite" path="M605 130 C505 165 485 230 350 285"/></circle>
+      <circle class="packet" r="4"><animateMotion dur="5.2s" begin="1.8s" repeatCount="indefinite" path="M610 455 C520 425 480 355 350 305"/></circle>
+      <circle class="packet" r="3.5"><animateMotion dur="4.2s" begin="2.4s" repeatCount="indefinite" path="M100 455 C210 425 240 355 350 305"/></circle>
+      <circle class="packet" r="4"><animateMotion dur="2.5s" repeatCount="indefinite" path="M350 375 C350 425 350 470 350 520"/></circle>
+    </svg>
+    <article class="model-card document-card"><strong>Documents</strong><small>JSON CRUD · filters · aggregation</small><div class="mini json-lines"><i></i><i></i><i></i></div></article>
+    <article class="model-card vector-card"><strong>Vectors</strong><small>Similarity search + metadata</small><div class="mini vec-dots"><i style="--h:12px;--o:.45"></i><i style="--h:26px;--o:.8"></i><i style="--h:18px;--o:.6"></i><i style="--h:31px;--o:1"></i><i style="--h:22px;--o:.75"></i><i style="--h:14px;--o:.5"></i></div></article>
+    <article class="model-card media-card"><strong>Media</strong><small>Images · audio · video · files</small><div class="mini media-chunks"><i></i><i></i><i></i><i></i><i></i></div></article>
+    <article class="model-card query-card"><strong>Queries</strong><small>Exact filters + nearest vectors</small><div class="mini query-bars"><i style="--h:14px"></i><i style="--h:21px"></i><i style="--h:29px"></i><i style="--h:34px"></i><i style="--h:27px"></i><i style="--h:17px"></i></div></article>
+    <div class="core"><div><img class="core-logo" src="assets/pacificdb-logo-symbol.png" alt=""><strong>PacificDB</strong><span>one engine</span></div><i class="core-ripple"></i></div>
+    <div class="storage-rail" id="storageRail"><div class="storage-node active">WAL</div><div class="storage-node">LSM</div><div class="storage-node">Indexes</div><div class="storage-node">Snapshot</div><div class="storage-node">RF3</div></div>
+  </div>
+</div></section>
 
-    <section class="wrap section" id="features">
-      <div class="section-heading"><div><p class="eyebrow">LESS FRICTION. MORE BUILDING.</p><h2>A little more possibility<br>in every query.</h2></div><p>Your data doesn’t fit into just one shape.<br>Give it a place that understands more.</p></div>
-      <div class="features">
-        <article><span class="feature-symbol" aria-hidden="true">{ }</span><h3>Start with documents.</h3><p>Store JSON documents. Filter, project, paginate, and query with secondary indexes and aggregation helpers.</p><span class="small-label">FAMILIAR BY DESIGN</span></article>
-        <article><span class="feature-symbol" aria-hidden="true">↗</span><h3>Find what’s similar.</h3><p>Store embeddings and search with vector indexes, similarity scoring, and metadata filters.</p><span class="small-label">GO BEYOND EXACT MATCHES</span></article>
-        <article><span class="feature-symbol" aria-hidden="true">≋</span><h3>Keep more together.</h3><p>Stream images, GIFs, audio, video, and other files in bounded, verified chunks alongside your documents.</p><span class="small-label">MEDIA MEETS METADATA</span></article>
-      </div>
-      <div class="durability"><span class="dot"></span><p>Under the surface: WAL, LSM storage, checksums, snapshots, and RF3 Raft replication.</p><a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/main/COMMUNITY_SCOPE.md">Explore the scope ↗</a></div>
-    </section>
+<div class="proof-strip"><div class="wrap proof-inner">
+  <div class="proof-cell intro"><span>Built for builders</span><b>One self-hosted engine for more of your app’s data.</b></div>
+  <div class="proof-cell"><span>Model</span><b>JSON documents</b></div><div class="proof-cell"><span>Search</span><b>Vector similarity</b></div><div class="proof-cell"><span>Storage</span><b>Resumable media</b></div><div class="proof-cell"><span>Availability</span><b>RF3 Raft</b></div>
+</div></div>
 
-    <section class="download-section" id="downloads"><div class="wrap section">
-      <div class="section-heading"><div><p class="eyebrow">MAKE YOURSELF AT HOME</p><h2>Your machine.<br>Your database.</h2></div><p>Choose your operating system.<br>Each installer includes the engine and native CLI.</p></div>
-      <p class="release-note"><span class="badge">COMMUNITY BETA</span> v0.1.0-beta.13 · Direct installer downloads</p>
-      <div class="downloads">
-        <article class="download-card"><div class="platform-icon" aria-hidden="true">L<span>_</span></div><h3>Linux</h3><p>Ubuntu &amp; Debian · x86-64</p><span class="format">.deb package</span><a class="button download" data-platform="linux-amd64.deb" href="#">Download deb ↓</a><ol class="install-flow"><li><b>Download</b> the package above.</li><li><b>Install</b> <code>sudo apt install ./pacificdb-community-*-linux-amd64.deb</code></li><li><b>Open</b> <code>pacificdb</code>; the local engine starts automatically.</li></ol></article>
-        <article class="download-card"><div class="platform-icon windows-icon" aria-hidden="true"><i></i><i></i><i></i><i></i></div><h3>Windows</h3><p>Windows · x64</p><span class="format">.exe installer</span><a class="button download" data-platform="windows-x64.exe" href="#">Download exe ↓</a><ol class="install-flow"><li><b>Download</b> the installer above.</li><li><b>Install</b> by opening the downloaded <code>.exe</code>.</li><li><b>Open</b> Command Prompt and run <code>pacificdb</code>.</li></ol></article>
-        <article class="download-card"><div class="platform-icon" aria-hidden="true">⌘</div><h3>macOS</h3><label for="mac-arch">Processor</label><select id="mac-arch"><option value="macos-arm64.pkg">Apple silicon (M-series)</option><option value="macos-x86_64.pkg">Intel</option></select><span class="format">.pkg installer</span><a class="button download" id="mac-download" data-platform="macos-arm64.pkg" href="#">Download pkg ↓</a><ol class="install-flow"><li><b>Download</b> the package for your processor.</li><li><b>Install</b> by opening the downloaded <code>.pkg</code>.</li><li><b>Open</b> Terminal and run <code>pacificdb</code>.</li></ol></article>
+<section class="section dark how" id="how"><div class="wrap">
+  <div class="section-head"><div><p class="kicker">HOW PACIFICDB WORKS</p><h2 class="section-title">Different data shapes.<br><em>One engine underneath.</em></h2></div><p class="section-lead">PacificDB keeps documents, vector embeddings, and media workflows close to one storage and replication path. The diagram runs automatically so visitors can see the system—not just read a feature list.</p></div>
+  <div class="how-stage" id="howStage">
+    <div class="how-topline"><div class="auto-pill"><i></i> Automatic system walkthrough</div><div class="phase-name" id="phaseName">01 · Ingest</div></div>
+    <div class="phase-progress" id="phaseProgress" aria-hidden="true"><i class="active"></i><i></i><i></i><i></i><i></i></div>
+    <div class="pipeline">
+      <div class="input-lane" id="inputLane">
+        <article class="lane-card lit" data-model="documents"><span class="type">Document</span><b>JSON record</b><p>CRUD, filters, projections, aggregation.</p><span class="icon">{ }</span></article>
+        <article class="lane-card" data-model="vectors"><span class="type">Vector</span><b>Embedding</b><p>Finite numeric vectors with metadata.</p><span class="icon">↗</span></article>
+        <article class="lane-card" data-model="media"><span class="type">Media</span><b>File chunks</b><p>Bounded, sequential, checksummed transfer.</p><span class="icon">≋</span></article>
       </div>
-      <p class="download-disclosure">Windows and macOS beta installers are unsigned. Verify downloads against the release checksums. These builds are for evaluation. <a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/main/COMMUNITY_SCOPE.md">See release readiness.</a></p>
-      <p class="download-links"><a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v0.1.0-beta.13/SHA256SUMS">Download checksums ↓</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community">Build from source ↗</a></p>
-    </div></section>
+      <div class="engine-diagram">
+        <svg class="pipeline-svg" viewBox="0 0 540 460" preserveAspectRatio="none" aria-hidden="true">
+          <path class="pulse-line" d="M0 105 C100 105 115 160 170 180"/><path class="pulse-line" d="M0 230 C100 230 120 220 170 220"/><path class="pulse-line" d="M0 350 C100 350 115 280 170 255"/>
+          <path d="M370 185 C430 170 455 110 540 105"/><path d="M370 220 C440 220 470 230 540 230"/><path d="M370 255 C435 280 465 340 540 350"/>
+          <circle class="p-dot" r="4"><animateMotion dur="3.2s" repeatCount="indefinite" path="M0 105 C100 105 115 160 170 180"/></circle><circle class="p-dot" r="4"><animateMotion dur="3.8s" begin=".8s" repeatCount="indefinite" path="M0 230 C100 230 120 220 170 220"/></circle><circle class="p-dot" r="4"><animateMotion dur="4.4s" begin="1.5s" repeatCount="indefinite" path="M0 350 C100 350 115 280 170 255"/></circle>
+        </svg>
+        <div class="engine-shell">
+          <div class="engine-shell-head"><strong>PacificDB engine</strong><span>local / self-hosted</span></div>
+          <div class="engine-modules"><div class="module active" data-module="query"><span>Query</span><b>CRUD + filters</b></div><div class="module" data-module="vector"><span>Vector</span><b>Similarity index</b></div><div class="module" data-module="media"><span>Media</span><b>Chunk verifier</b></div><div class="module" data-module="index"><span>Indexes</span><b>Secondary + vector</b></div><div class="module" data-module="wal"><span>Durability</span><b>WAL + LSM</b></div><div class="module" data-module="snapshot"><span>Recovery</span><b>Snapshots</b></div></div>
+          <div class="engine-footer"><span data-foot="auth">Auth / TLS</span><span data-foot="raft">RF3 Raft</span><span data-foot="backup">Backup</span></div>
+        </div>
+      </div>
+      <div class="output-lane" id="outputLane">
+        <article class="lane-card lit" data-output="find"><span class="type">Structured query</span><b>Matching documents</b><p>Return filtered JSON results.</p><span class="icon">✓</span></article>
+        <article class="lane-card" data-output="similar"><span class="type">Similarity</span><b>Nearest vectors</b><p>Cosine / supported metrics and k.</p><span class="icon">≈</span></article>
+        <article class="lane-card" data-output="download"><span class="type">Media retrieval</span><b>Verified chunks</b><p>Download stored file content.</p><span class="icon">↓</span></article>
+      </div>
+    </div>
+    <div class="phase-copy"><b id="phaseKicker">INGEST</b><p id="phaseText">Applications send JSON documents, vector embeddings, or media chunks through the same PacificDB deployment.</p></div>
+  </div>
+  <div class="ops-strip" aria-label="PacificDB operational capabilities">
+    <article class="ops-card"><span>Protect</span><b>Backup & restore</b><p>Create, verify, export, restore, and inspect restore history.</p></article>
+    <article class="ops-card"><span>Secure</span><b>Auth, API keys & TLS</b><p>Password authentication, roles, tenant boundaries, and audit logs.</p></article>
+    <article class="ops-card"><span>Connect</span><b>Shells & SDKs</b><p>Native/npm shells plus Node.js, Python, and Java clients.</p></article>
+    <article class="ops-card"><span>Ship</span><b>Packages & containers</b><p>Debian, Windows, macOS, Docker, Kubernetes, and Helm packaging.</p></article>
+  </div>
+</div></section>
 
-    <section class="wrap section getting-started" id="start">
-      <div class="start-intro"><p class="eyebrow">FROM DOWNLOAD TO FIRST DOCUMENT</p><h2>Hello,<br><em>PacificDB.</em></h2><p>Install the database. Open a shell.<br>Connect your app. That’s the flow.</p><a class="text-link" href="docs.html#quickstart">Read the documentation →</a></div>
-      <div class="steps">
-        <article class="step"><span class="step-number">01</span><div><h3>Open PacificDB</h3><p>After installing, run one command. It starts your local engine and opens the shell.</p><div class="code-line"><code id="launch-command">pacificdb</code><button class="copy" data-copy="launch-command" aria-label="Copy PacificDB launch command">Copy</button></div><p class="hint">Local mode binds to 127.0.0.1:9000. Configure TLS and authentication before any network deployment.</p></div></article>
-        <article class="step"><span class="step-number">02</span><div><h3>Create your first document</h3><p>Use the friendly shell commands:</p><div class="code-line"><pre id="shell-command">create database hello
-use hello
-create collection ideas
-insert ideas {"id":"first","title":"Hello PacificDB"}
-find ideas {"id":"first"}</pre><button class="copy" data-copy="shell-command" aria-label="Copy shell commands">Copy</button></div><details><summary>Prefer the npm CLI?</summary><p>With Node.js 18+ installed, use:</p><div class="code-line"><code id="cli-command">npm install --global @pacificdb/cli@beta</code><button class="copy" data-copy="cli-command" aria-label="Copy npm CLI install command">Copy</button></div><p class="hint">The npm beta tag installs beta.13.</p></details></div></article>
-        <article class="step"><span class="step-number">03</span><div><h3>Give your app a connection</h3><p>Install the published beta.13 Node.js client in your project.</p><div class="code-line"><code id="npm-command">npm install @pacificdb/client@beta</code><button class="copy" data-copy="npm-command" aria-label="Copy npm client install command">Copy</button></div><p class="hint">Save the example below as <code>hello.mjs</code>, then run <code>node hello.mjs</code>.</p></div></article>
-      </div>
-    </section>
-    <section class="wrap example-section"><div class="example-copy"><p class="eyebrow">SMALL API. ROOM TO GROW.</p><h2>Your first document.<br>The start of something.</h2><p>Create a database and collection, then write and read a document with the published beta.13 Node.js client.</p><div class="package-links"><a href="https://www.npmjs.com/package/@pacificdb/client">@pacificdb/client ↗</a><a href="https://www.npmjs.com/package/@pacificdb/cli">@pacificdb/cli ↗</a></div></div><div class="editor"><div class="editor-bar"><span><i></i><i></i><i></i></span><span>hello.mjs</span><button class="copy" data-copy="example" aria-label="Copy Node.js example">Copy</button></div><pre><code id="example">import { PacificDBClient } from '@pacificdb/client';
+<section class="section" id="why"><div class="wrap">
+  <p class="kicker">WHY PACIFICDB</p><h2 class="section-title">Keep more of your stack<br><em>in one place.</em></h2><p class="section-lead">PacificDB is for builders who want a self-hosted data engine without automatically splitting application state across a document database, a vector store, and a separate media pipeline.</p>
+  <div class="why-grid">
+    <article class="why-card"><span class="number">01</span><span class="why-symbol">1×</span><h3>One engine, three data shapes.</h3><p>Store JSON documents, vector embeddings, and resumable media through one database product and one developer workflow.</p><i class="why-line"></i></article>
+    <article class="why-card"><span class="number">02</span><span class="why-symbol">W</span><h3>Durability under every model.</h3><p>WAL, LSM storage, crash recovery, compaction, checksums, and snapshots sit underneath the application surface.</p><i class="why-line"></i></article>
+    <article class="why-card"><span class="number">03</span><span class="why-symbol">R3</span><h3>Replication is part of the engine.</h3><p>RF3 Raft provides elections, follower recovery, and snapshot catch-up instead of leaving availability entirely to the application.</p><i class="why-line"></i></article>
+    <article class="why-card"><span class="number">04</span><span class="why-symbol">⌂</span><h3>Run it on your machine.</h3><p>Native packages, Docker, CLI, and Node/Python/Java clients give you a self-hosted path from local development to controlled deployments.</p><i class="why-line"></i></article>
+  </div>
+</div></section>
+
+<section class="section feature-section" id="features"><div class="wrap">
+  <div class="section-head"><div><p class="kicker">LESS FRICTION. MORE BUILDING.</p><h2 class="section-title">A little more possibility<br>in every query.</h2></div><p class="section-lead">Your data doesn’t fit into just one shape. Give it a place that understands more.</p></div>
+  <div class="features">
+    <article class="feature"><div class="feature-visual doc-v"><i></i><i></i><i></i></div><h3>Start with documents.</h3><p>Store JSON documents. Filter, project, paginate, and query with secondary indexes and aggregation helpers.</p><span class="feature-label">FAMILIAR BY DESIGN</span></article>
+    <article class="feature"><div class="feature-visual vector-v"><i style="--x:14%;--y:23%;--o:0.5"></i><i style="--x:27%;--y:55%;--o:0.7"></i><i style="--x:38%;--y:33%;--o:0.4"></i><i style="--x:47%;--y:62%;--o:0.8"></i><i style="--x:58%;--y:24%;--o:0.55"></i><i style="--x:69%;--y:49%;--o:0.9"></i><i style="--x:81%;--y:30%;--o:0.4"></i><i style="--x:84%;--y:72%;--o:0.7"></i><i style="--x:21%;--y:77%;--o:0.45"></i><i style="--x:63%;--y:79%;--o:0.5"></i><i style="--x:49%;--y:42%;--o:1"></i></div><h3>Find what’s similar.</h3><p>Store embeddings and search with vector indexes, similarity scoring, and metadata filters.</p><span class="feature-label">GO BEYOND EXACT MATCHES</span></article>
+    <article class="feature"><div class="feature-visual media-v"><i></i><i></i><i></i><i></i><i></i><i></i></div><h3>Keep more together.</h3><p>Stream images, GIFs, audio, video, and other files in bounded, verified chunks alongside your documents.</p><span class="feature-label">MEDIA MEETS METADATA</span></article>
+  </div>
+  <div class="durability"><span class="d-dot"></span><p>Under the surface: WAL, LSM storage, checksums, snapshots, and RF3 Raft replication.</p><a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/main/COMMUNITY_SCOPE.md">Explore the scope ↗</a></div>
+</div></section>
+
+<section class="section download-section" id="downloads"><div class="wrap">
+  <div class="section-head"><div><p class="kicker">MAKE YOURSELF AT HOME</p><h2 class="section-title">Your machine.<br>Your database.</h2></div><p class="section-lead">Choose your operating system. Each installer includes the engine and native CLI.</p></div>
+  <p class="release-note"><span class="badge" style="color:#315d9e;border-color:#b9cbea;background:#edf4ff">COMMUNITY BETA</span> v0.1.0-beta.13 · Direct installer downloads</p>
+  <div class="downloads">
+    <article class="download-card"><div class="platform">L_</div><h3>Linux</h3><p>Ubuntu & Debian · x86-64</p><span class="format">.deb package</span><a class="btn download-btn" data-platform="linux-amd64.deb" href="#">Download deb ↓</a><ol class="install-flow"><li><b>Download</b> the package above.</li><li><b>Install</b> <code>sudo apt install ./pacificdb-community-*-linux-amd64.deb</code></li><li><b>Open</b> <code>pacificdb</code>; the local engine starts automatically.</li></ol></article>
+    <article class="download-card"><div class="platform">⊞</div><h3>Windows</h3><p>Windows · x64</p><span class="format">.exe installer</span><a class="btn download-btn" data-platform="windows-x64.exe" href="#">Download exe ↓</a><ol class="install-flow"><li><b>Download</b> the installer above.</li><li><b>Install</b> by opening the downloaded <code>.exe</code>.</li><li><b>Open</b> Command Prompt and run <code>pacificdb</code>.</li></ol></article>
+    <article class="download-card"><div class="platform">⌘</div><h3>macOS</h3><label for="mac-arch">Processor</label><select id="mac-arch"><option value="macos-arm64.pkg">Apple silicon (M-series)</option><option value="macos-x86_64.pkg">Intel</option></select><span class="format">.pkg installer</span><a class="btn download-btn" id="mac-download" data-platform="macos-arm64.pkg" href="#">Download pkg ↓</a><ol class="install-flow"><li><b>Download</b> the package for your processor.</li><li><b>Install</b> by opening the downloaded <code>.pkg</code>.</li><li><b>Open</b> Terminal and run <code>pacificdb</code>.</li></ol></article>
+  </div>
+  <p class="download-disclosure">Windows and macOS beta installers are unsigned. Verify downloads against the release checksums. These builds are for evaluation. <a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/main/COMMUNITY_SCOPE.md"><u>See release readiness.</u></a></p>
+  <p class="download-links"><a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v0.1.0-beta.13/SHA256SUMS">Download checksums ↓</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community">Build from source ↗</a></p>
+</div></section>
+
+<section class="section" id="start"><div class="wrap">
+  <div class="start-grid"><div class="start-copy"><p class="kicker">FROM DOWNLOAD TO FIRST DOCUMENT</p><h2 class="section-title">Hello,<br><em>PacificDB.</em></h2><p>Install the database. Open a shell. Connect your app. That’s the flow.</p><a class="btn" style="padding-left:0;color:#315d9e" href="docs.html#quickstart">Read the documentation →</a></div>
+  <div class="steps">
+    <article class="step"><span class="step-num">01</span><div><h3>Open PacificDB</h3><p>After installing, run one command. It starts your local engine and opens the shell.</p><div class="code" id="launch-command">pacificdb<button class="copy" data-copy="launch-command">Copy</button></div><p class="hint">Local mode binds to 127.0.0.1:9000. Configure TLS and authentication before any network deployment.</p></div></article>
+    <article class="step"><span class="step-num">02</span><div><h3>Create your first document</h3><p>Use the friendly shell commands:</p><div class="code" id="shell-command">create database hello\nuse hello\ncreate collection ideas\ninsert ideas {"id":"first","title":"Hello PacificDB"}\nfind ideas {"id":"first"}<button class="copy" data-copy="shell-command">Copy</button></div></div></article>
+    <article class="step"><span class="step-num">03</span><div><h3>Give your app a connection</h3><p>Install the published beta.13 Node.js client in your project.</p><div class="code" id="npm-command">npm install @pacificdb/client@beta<button class="copy" data-copy="npm-command">Copy</button></div><p class="hint">Save the example below as <code>hello.mjs</code>, then run <code>node hello.mjs</code>.</p></div></article>
+  </div></div>
+  <div class="example" id="sdks"><div class="example-copy"><p class="kicker">SMALL API. ROOM TO GROW.</p><h2>Your first document.<br>The start of something.</h2><p>Create a database and collection, then write and read a document with the published beta.13 Node.js client.</p><div class="package-links"><a href="https://www.npmjs.com/package/@pacificdb/client">@pacificdb/client ↗</a><a href="https://www.npmjs.com/package/@pacificdb/cli">@pacificdb/cli ↗</a></div></div>
+  <div class="editor"><div class="editor-head"><span class="dots"><i></i><i></i><i></i></span><span>hello.mjs</span></div><pre><code>import { PacificDBClient } from '@pacificdb/client';
 
 const db = new PacificDBClient({
   host: '127.0.0.1', port: 9000, database: 'hello'
@@ -84,10 +359,128 @@ await db.insert('ideas', {
   id: 'first', title: 'Something worth building'
 });
 
-console.log(await db.find('ideas', { id: 'first' }));</code></pre><div class="editor-footer"><span class="dot"></span> Local connection · JSON over TCP</div></div></section>
-    <section class="wrap closing"><p class="eyebrow">OPEN SOURCE. OPEN POSSIBILITIES.</p><h2>Build on your own terms.</h2><p>Explore the code, try the beta, and help shape what comes next.</p><a class="button primary" href="https://github.com/hitesh-reddy-k/pacificdb-community">Explore PacificDB on GitHub ↗</a></section>
-  </main>
-  <footer class="wrap"><a class="brand" href="#"><img src="pacificdb-logo.png" alt="" width="30" height="30">Pacific<span>DB</span></a><p>Community beta · Self-hosted</p><div><a href="docs.html">Documentation</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/main/LICENSE">AGPLv3 core</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community/tree/main/sdk">Apache 2.0 SDKs</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community/issues">Feedback ↗</a></div></footer>
-  <p class="sr-only" id="copy-status" role="status"></p>
-</body>
-</html>
+console.log(await db.find('ideas', { id: 'first' }));</code></pre><div class="editor-foot"><i></i> Local connection · JSON over TCP</div></div></div>
+</div></section>
+
+<section class="closing"><div class="wrap"><p class="kicker">OPEN SOURCE. OPEN POSSIBILITIES.</p><h2>Build on your own terms.</h2><p>Explore the code, try the beta, and help shape what comes next.</p><a class="btn primary" href="https://github.com/hitesh-reddy-k/pacificdb-community">Explore PacificDB on GitHub ↗</a></div></section>
+</main>
+<footer class="footer"><div class="wrap footer-in"><a class="brand" href="#top" aria-label="PacificDB home"><img class="brand-lockup footer-lockup" src="assets/pacificdb-logo-lockup.png" alt="PacificDB"></a><small>Community beta · Self-hosted</small><div class="footer-links"><a href="docs.html">Documentation</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/main/LICENSE">AGPLv3 core</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community/tree/main/sdk">Apache 2.0 SDKs</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community/issues">Feedback ↗</a></div></div></footer>
+<p id="copyStatus" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)"></p>
+<script>
+(() => {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const nav = document.getElementById('nav');
+  const onScroll = () => nav.classList.toggle('scrolled', scrollY > 18);
+  addEventListener('scroll', onScroll, {passive:true}); onScroll();
+
+  // Hero durability rail: calm, automatic, communicates write progression.
+  const rail = [...document.querySelectorAll('#storageRail .storage-node')];
+  let railIndex = 0;
+  if (!reduce) setInterval(() => { rail.forEach((n,i)=>n.classList.toggle('active', i===railIndex)); railIndex=(railIndex+1)%rail.length; }, 1150);
+
+  // Automatic multi-model walkthrough. No controls required.
+  const phases = [
+    {name:'01 · Ingest', kicker:'INGEST', text:'Applications send JSON documents, vector embeddings, or media chunks through the same PacificDB deployment.', models:['documents','vectors','media'], mods:['query','vector','media'], outs:[], foot:['auth']},
+    {name:'02 · Index', kicker:'INDEX', text:'Structured fields can use secondary indexes while vector data is prepared for similarity search and media chunks are verified.', models:['documents','vectors','media'], mods:['index','vector','media'], outs:[], foot:['auth']},
+    {name:'03 · Persist', kicker:'PERSIST', text:'Writes flow through WAL and LSM storage with checksums and snapshots providing a durable recovery path.', models:['documents','vectors','media'], mods:['wal','snapshot'], outs:[], foot:['backup']},
+    {name:'04 · Replicate', kicker:'REPLICATE', text:'RF3 Raft keeps a leader and followers coordinated, with election and snapshot catch-up capabilities for recovery.', models:['documents','vectors','media'], mods:['wal','snapshot'], outs:[], foot:['raft']},
+    {name:'05 · Query', kicker:'QUERY', text:'Applications can filter documents, run vector similarity queries, or retrieve media without moving to a different database product.', models:[], mods:['query','vector','media','index'], outs:['find','similar','download'], foot:['auth','raft']}
+  ];
+  const phaseName=document.getElementById('phaseName'), phaseKicker=document.getElementById('phaseKicker'), phaseText=document.getElementById('phaseText');
+  const modelCards=[...document.querySelectorAll('[data-model]')], modules=[...document.querySelectorAll('[data-module]')], outputs=[...document.querySelectorAll('[data-output]')], foots=[...document.querySelectorAll('[data-foot]')];
+  let p=0;
+  function applyPhase(idx){ const x=phases[idx]; phaseName.textContent=x.name; phaseKicker.textContent=x.kicker; phaseText.textContent=x.text; const seg=[...document.querySelectorAll('#phaseProgress i')]; seg.forEach((el,i)=>el.classList.toggle('active',i===idx)); const st=document.getElementById('howStage'); if(st){st.classList.remove('phase-change'); void st.offsetWidth; st.classList.add('phase-change');}
+    modelCards.forEach(el=>{ const on=x.models.includes(el.dataset.model); el.classList.toggle('lit',on); el.classList.toggle('dim',x.models.length>0&&!on); });
+    modules.forEach(el=>el.classList.toggle('active',x.mods.includes(el.dataset.module)));
+    outputs.forEach(el=>{ const on=x.outs.includes(el.dataset.output); el.classList.toggle('lit',on); el.classList.toggle('dim',x.outs.length>0&&!on); });
+    foots.forEach(el=>el.classList.toggle('active',x.foot.includes(el.dataset.foot)));
+  }
+  applyPhase(0);
+  if(!reduce){ const stage=document.getElementById('howStage'); let phaseTimer=null; const start=()=>{if(phaseTimer)return;phaseTimer=setInterval(()=>{p=(p+1)%phases.length;applyPhase(p)},4200)}; const stop=()=>{clearInterval(phaseTimer);phaseTimer=null};
+    const io=new IntersectionObserver(es=>es.forEach(e=>e.isIntersecting?start():stop()),{threshold:.18}); io.observe(stage); }
+
+  // Preserve current release download behavior from the production site.
+  const releaseBase='https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v0.1.0-beta.13';
+  function updateDownloads(){ document.querySelectorAll('[data-platform]').forEach(link=>{link.href=`${releaseBase}/pacificdb-community-0.1.0-beta.13-${link.dataset.platform}`;link.textContent=`Download ${link.dataset.platform.split('.').pop()} ↓`;}); }
+  const mac=document.getElementById('mac-arch'); if(mac) mac.addEventListener('change',e=>{document.getElementById('mac-download').dataset.platform=e.target.value;updateDownloads()}); updateDownloads();
+
+  document.querySelectorAll('[data-copy]').forEach(button=>button.addEventListener('click',async()=>{const target=document.getElementById(button.dataset.copy);const clone=target.cloneNode(true);clone.querySelectorAll('button').forEach(b=>b.remove());const text=clone.textContent.trim();try{await navigator.clipboard.writeText(text);button.textContent='Copied';document.getElementById('copyStatus').textContent='Copied to clipboard.';setTimeout(()=>button.textContent='Copy',1500)}catch{const range=document.createRange(),selection=getSelection();range.selectNodeContents(target);selection.removeAllRanges();selection.addRange(range);document.getElementById('copyStatus').textContent='Clipboard unavailable. The command is selected for manual copying.'}}));
+
+  // Layered scroll reveals and depth motion. The CSS gate keeps content visible if JavaScript is unavailable.
+  if(!reduce){
+    document.documentElement.classList.add('motion-ready');
+
+    const revealTargets=[...document.querySelectorAll('.section-head,.proof-cell,.ops-card,.why-card,.durability,.feature,.release-note,.download-card,.download-disclosure,.download-links,.start-copy,.step,.example,.closing .wrap')];
+    const revealDepths=['soft','standard','deep','standard'];
+    revealTargets.forEach((el,i)=>{
+      el.classList.add('motion-reveal');
+      el.dataset.reveal=revealDepths[i%revealDepths.length];
+      el.style.transitionDelay=((i%4)*95)+'ms';
+    });
+
+    if('IntersectionObserver'in window){
+      const revealObserver=new IntersectionObserver(entries=>entries.forEach(entry=>entry.target.classList.toggle('visible',entry.isIntersecting)),{threshold:.09,rootMargin:'-3% 0px -5% 0px'});
+      requestAnimationFrame(()=>revealTargets.forEach(el=>revealObserver.observe(el)));
+    }else{
+      revealTargets.forEach(el=>el.classList.add('visible'));
+    }
+
+    const depthTargets=[
+      ['.engine-grid',28],['.core',42],['.flow-svg',20],['.engine-shell',30],
+      ['.feature-visual',22],['.platform',16]
+    ].flatMap(([selector,distance])=>[...document.querySelectorAll(selector)].map(el=>({el,distance})));
+    depthTargets.forEach(item=>item.el.classList.add('scroll-depth'));
+
+    const glowSections=[...document.querySelectorAll('.section')];
+    glowSections.forEach(section=>section.classList.add('scroll-glow'));
+    const landingProgress=document.getElementById('landingScrollProgress');
+    let scrollMotionFrame=0;
+
+    function flushScrollMotion(){
+      scrollMotionFrame=0;
+      const viewport=Math.max(1,innerHeight);
+      const maxScroll=Math.max(1,document.documentElement.scrollHeight-viewport);
+      const pageProgress=Math.max(0,Math.min(1,scrollY/maxScroll));
+      landingProgress.style.height=(pageProgress*100).toFixed(2)+'%';
+
+      depthTargets.forEach(({el,distance})=>{
+        const rect=el.getBoundingClientRect();
+        const offset=Math.max(-1.25,Math.min(1.25,(rect.top+rect.height/2)/viewport-.5));
+        el.style.setProperty('--scroll-shift',(-offset*distance).toFixed(2)+'px');
+      });
+
+      glowSections.forEach(section=>{
+        const rect=section.getBoundingClientRect();
+        const offset=Math.max(-1.3,Math.min(1.3,(rect.top+rect.height/2)/viewport-.5));
+        section.style.setProperty('--glow-shift',(-offset*110).toFixed(2)+'px');
+      });
+    }
+
+    const requestScrollMotion=()=>{
+      if(scrollMotionFrame)return;
+      scrollMotionFrame=requestAnimationFrame(flushScrollMotion);
+    };
+    addEventListener('scroll',requestScrollMotion,{passive:true});
+    addEventListener('resize',requestScrollMotion,{passive:true});
+    requestScrollMotion();
+  }
+
+  // Lightweight ambient data-water field in the hero. It is decorative and gracefully disappears when canvas is unavailable.
+  if(!reduce){
+    const canvas=document.getElementById('heroAmbient');
+    const hero=document.getElementById('top');
+    if(canvas && hero){
+      const ctx=canvas.getContext('2d'); let w=0,h=0,dpr=1,raf=0,visible=true;
+      const pts=Array.from({length:34},(_,i)=>({x:Math.random(),y:Math.random(),r:Math.random()*1.35+.35,s:Math.random()*.00015+.000045,p:Math.random()*Math.PI*2}));
+      function resize(){const r=hero.getBoundingClientRect();dpr=Math.min(devicePixelRatio||1,1.5);w=Math.max(1,r.width);h=Math.max(1,r.height);canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
+      function draw(t){if(!visible){raf=requestAnimationFrame(draw);return}ctx.clearRect(0,0,w,h);const time=t*.001;
+        for(let band=0;band<3;band++){ctx.beginPath();for(let x=0;x<=w;x+=18){const y=h*(.18+band*.25)+Math.sin(x*.006+time*(.28+band*.07)+band)*12+Math.sin(x*.0022-time*.18)*8;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.strokeStyle=`rgba(${band===1?'85,216,255':'79,156,255'},${.035+band*.012})`;ctx.lineWidth=1;ctx.stroke()}
+        pts.forEach((p,i)=>{p.y-=p.s*16;if(p.y<-.03){p.y=1.03;p.x=Math.random()}const x=p.x*w+Math.sin(time*.25+p.p)*12,y=p.y*h;ctx.beginPath();ctx.arc(x,y,p.r,0,Math.PI*2);ctx.fillStyle=i%5===0?'rgba(85,216,255,.42)':'rgba(111,151,255,.22)';ctx.fill()});raf=requestAnimationFrame(draw)}
+      const ro=new ResizeObserver(resize);ro.observe(hero);resize();const vio=new IntersectionObserver(es=>es.forEach(e=>visible=e.isIntersecting),{threshold:.02});vio.observe(hero);raf=requestAnimationFrame(draw);
+      addEventListener('pagehide',()=>{cancelAnimationFrame(raf);ro.disconnect();vio.disconnect()},{once:true});
+    }
+  }
+
+})();
+</script>
+</body></html>
