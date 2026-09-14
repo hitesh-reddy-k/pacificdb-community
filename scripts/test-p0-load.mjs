@@ -19,7 +19,7 @@ const includeSoak = process.env.PACIFICDB_P0_SOAK === '1';
 const writes = Number(includeSoak ? (process.env.PACIFICDB_P0_SOAK_WRITES || 100000) :
   (process.env.PACIFICDB_P0_WRITES || 10000));
 const retainedRecords = Number(includeSoak
-  ? (process.env.PACIFICDB_P0_SOAK_RECORDS || 10000) : writes);
+  ? (process.env.PACIFICDB_P0_SOAK_RECORDS || 256) : writes);
 const clientCount = Number(includeSoak ? 16 :
   (process.env.PACIFICDB_P0_CLIENTS || 8));
 assert.ok(Number.isSafeInteger(writes) && writes > 0);

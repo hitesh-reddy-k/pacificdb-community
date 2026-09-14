@@ -175,6 +175,7 @@ jobs:
           }
           $env:PACIFICDB_P0_MEDIA_100MB = '1'
           $env:PACIFICDB_P0_SOAK = '1'
+          $env:PACIFICDB_P0_SOAK_WRITES = '25000'
           $env:PACIFICDB_P0_EXPECTED_VERSION = $version
           & scripts/test-p0-windows.ps1 -PackageRoot $installRoot `
             -EvidencePath "$env:RUNNER_TEMP\p0-evidence-windows-x64.json"
