@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="PacificDB Community: a self-hosted document database with vector search, resumable media, RF3 replication, and a native shell.">
+<meta name="description" content="PacificDB Community unifies JSON documents, vector search, resumable media, verified backups, and RF3 replication in one self-hosted database.">
 <meta name="theme-color" content="#050c1d">
-<title>PacificDB — Your data. Your waters.</title>
+<title>PacificDB — Built for data that refuses one shape.</title>
 <style>
 :root{
   --bg:#050b18;--bg-2:#08152b;--panel:#0b1b36;--paper:#f5f8ff;--paper-2:#edf3ff;
@@ -36,7 +36,7 @@ a{color:inherit;text-decoration:none}button,select{font:inherit}.wrap{width:min(
 .hero-grid{display:grid;grid-template-columns:.88fr 1.12fr;gap:54px;align-items:center;position:relative;z-index:2}
 .hero-copy{padding-bottom:28px}.eyebrow{display:flex;align-items:center;gap:10px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;font-weight:720}.eyebrow .live-dot{width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 0 rgba(184,239,181,.45);animation:pulse 2.2s ease-out infinite}.badge{font-size:9px;letter-spacing:.08em;padding:4px 7px;border:1px solid rgba(184,239,181,.28);border-radius:999px;color:#c9e6ff;background:rgba(184,239,181,.07)}
 @keyframes pulse{70%{box-shadow:0 0 0 9px rgba(184,239,181,0)}}
-.hero h1{font-size:clamp(62px,7.2vw,102px);line-height:.92;letter-spacing:-.065em;margin:26px 0 24px;font-weight:610;max-width:700px}.hero h1 em{font-family:Georgia,"Times New Roman",serif;font-weight:400;font-style:italic;color:var(--mint);letter-spacing:-.045em}.hero-desc{max-width:570px;color:#aebed8;font-size:18px;line-height:1.72;margin:0}.hero-actions{display:flex;align-items:center;gap:24px;margin-top:32px;flex-wrap:wrap}.btn{display:inline-flex;align-items:center;justify-content:center;gap:12px;border-radius:11px;padding:13px 18px;font-size:13px;font-weight:700;border:1px solid transparent;transition:transform .2s var(--ease),background .2s,border-color .2s}.btn:hover{transform:translateY(-2px)}.btn.primary{background:var(--mint);color:#0b2623}.btn.primary:hover{background:#cbf6c6}.btn.ghost{border-color:#294c88;color:#dbe8ff;background:rgba(255,255,255,.02)}.btn.ghost:hover{border-color:#4f6f9d;background:rgba(255,255,255,.04)}
+.hero h1{font-size:clamp(58px,5.6vw,80px);line-height:.94;letter-spacing:-.065em;margin:26px 0 24px;font-weight:610;max-width:700px}.hero h1 em{font-family:Georgia,"Times New Roman",serif;font-weight:400;font-style:italic;color:var(--mint);letter-spacing:-.045em}.hero-desc{max-width:570px;color:#aebed8;font-size:18px;line-height:1.72;margin:0}.hero-actions{display:flex;align-items:center;gap:24px;margin-top:32px;flex-wrap:wrap}.btn{display:inline-flex;align-items:center;justify-content:center;gap:12px;border-radius:11px;padding:13px 18px;font-size:13px;font-weight:700;border:1px solid transparent;transition:transform .2s var(--ease),background .2s,border-color .2s}.btn:hover{transform:translateY(-2px)}.btn.primary{background:var(--mint);color:#0b2623}.btn.primary:hover{background:#cbf6c6}.btn.ghost{border-color:#294c88;color:#dbe8ff;background:rgba(255,255,255,.02)}.btn.ghost:hover{border-color:#4f6f9d;background:rgba(255,255,255,.04)}
 .hero-foot{margin-top:24px;color:#6f84a7;font-size:11px;letter-spacing:.02em}
 
 /* Hero engine visual */
@@ -83,7 +83,7 @@ a{color:inherit;text-decoration:none}button,select{font:inherit}.wrap{width:min(
 .closing{position:relative;background:#050d20;color:white;text-align:center;padding:112px 0;overflow:hidden}.closing:before{content:"";position:absolute;width:760px;height:320px;border-radius:50%;left:50%;bottom:-240px;transform:translateX(-50%);background:radial-gradient(circle at 50% 0%,rgba(126,216,188,.18),transparent 65%);border:1px solid rgba(126,216,188,.15)}.closing .kicker{color:#74a8df}.closing h2{font-size:clamp(48px,6vw,78px);letter-spacing:-.055em;margin:16px 0}.closing p{color:#92a8c8}.closing .btn{margin-top:18px;position:relative;z-index:2}.footer{background:#050d20;color:#8299bb;border-top:1px solid #16366b}.footer-in{min-height:100px;display:flex;align-items:center;justify-content:space-between;gap:20px}.footer .brand{color:white;font-size:17px}.footer small{font-size:10px}.footer-links{display:flex;gap:20px;font-size:10px}
 
 @media(max-width:1020px){.ops-strip{grid-template-columns:1fr 1fr}.hero-grid{grid-template-columns:1fr}.hero{padding-top:120px}.engine-visual{height:560px}.hero-copy{max-width:760px}.section-head{grid-template-columns:1fr;gap:20px}.proof-inner{grid-template-columns:1fr 1fr 1fr}.proof-cell:nth-child(3){border-right:0}.proof-cell.intro{grid-column:span 2}.pipeline{grid-template-columns:150px 1fr 160px;gap:22px}.why-grid{grid-template-columns:1fr 1fr}.features{grid-template-columns:1fr}.feature{min-height:270px}.feature h3{margin-top:125px}.downloads{grid-template-columns:1fr}.download-card{min-height:0}.start-grid{grid-template-columns:1fr}.start-copy{position:static}.example{grid-template-columns:1fr}}
-@media(max-width:720px){.brand{min-width:150px}.brand-lockup{width:150px}.footer-lockup{width:142px}.ops-strip{grid-template-columns:1fr}.wrap{width:min(calc(100% - 28px),var(--max))}.nav-inner{height:70px}.nav-links{display:none}.nav-cta{padding:9px 11px}.hero{min-height:auto;padding:108px 0 64px}.hero h1{font-size:64px}.hero-desc{font-size:15px}.engine-visual{height:560px;margin-top:15px}.model-card{width:145px;padding:12px}.document-card{left:0;top:16%}.vector-card{right:0;top:14%}.media-card{right:0;bottom:16%}.query-card{left:0;bottom:17%}.core{width:145px;height:145px}.engine-orbit.o1{width:390px}.engine-orbit.o2{width:440px}.engine-orbit.o3{width:320px;height:320px}.storage-rail{width:96%;bottom:5px}.storage-node{font-size:7px;padding-inline:2px}.proof-strip{margin-top:-18px}.proof-inner{grid-template-columns:1fr 1fr}.proof-cell.intro{grid-column:span 2}.proof-cell:nth-child(3){border-right:1px solid #e1e8f4}.proof-cell:nth-child(even){border-right:0}.section{padding:82px 0}.how{padding-top:100px}.section-title{font-size:45px}.pipeline{position:relative;left:auto;right:auto;top:auto;bottom:auto;padding:76px 16px 100px;grid-template-columns:1fr;gap:18px}.how-stage{min-height:auto}.input-lane,.output-lane{grid-template-columns:1fr 1fr}.lane-card{min-height:100px}.engine-diagram{min-height:390px}.engine-shell{width:280px;height:320px}.pipeline-svg{display:none}.phase-copy{bottom:18px;width:calc(100% - 32px);grid-template-columns:1fr}.how-topline{left:18px;right:18px}.why-grid{grid-template-columns:1fr}.why-card{min-height:230px}.feature{padding:22px}.section-head{margin-bottom:38px}.downloads{gap:12px}.start-grid{gap:35px}.step{grid-template-columns:34px 1fr}.example{margin-top:70px}.footer-in{flex-direction:column;align-items:flex-start;padding:26px 0}.footer-links{flex-wrap:wrap}}
+@media(max-width:720px){.brand{min-width:150px}.brand-lockup{width:150px}.footer-lockup{width:142px}.ops-strip{grid-template-columns:1fr}.wrap{width:min(calc(100% - 28px),var(--max))}.nav-inner{height:70px}.nav-links{display:none}.nav-cta{padding:9px 11px}.hero{min-height:auto;padding:108px 0 64px}.hero h1{font-size:54px}.hero-desc{font-size:15px}.engine-visual{height:560px;margin-top:15px}.model-card{width:145px;padding:12px}.document-card{left:0;top:16%}.vector-card{right:0;top:14%}.media-card{right:0;bottom:16%}.query-card{left:0;bottom:17%}.core{width:145px;height:145px}.engine-orbit.o1{width:390px}.engine-orbit.o2{width:440px}.engine-orbit.o3{width:320px;height:320px}.storage-rail{width:96%;bottom:5px}.storage-node{font-size:7px;padding-inline:2px}.proof-strip{margin-top:-18px}.proof-inner{grid-template-columns:1fr 1fr}.proof-cell.intro{grid-column:span 2}.proof-cell:nth-child(3){border-right:1px solid #e1e8f4}.proof-cell:nth-child(even){border-right:0}.section{padding:82px 0}.how{padding-top:100px}.section-title{font-size:45px}.pipeline{position:relative;left:auto;right:auto;top:auto;bottom:auto;padding:76px 16px 100px;grid-template-columns:1fr;gap:18px}.how-stage{min-height:auto}.input-lane,.output-lane{grid-template-columns:1fr 1fr}.lane-card{min-height:100px}.engine-diagram{min-height:390px}.engine-shell{width:280px;height:320px}.pipeline-svg{display:none}.phase-copy{bottom:18px;width:calc(100% - 32px);grid-template-columns:1fr}.how-topline{left:18px;right:18px}.why-grid{grid-template-columns:1fr}.why-card{min-height:230px}.feature{padding:22px}.section-head{margin-bottom:38px}.downloads{gap:12px}.start-grid{gap:35px}.step{grid-template-columns:34px 1fr}.example{margin-top:70px}.footer-in{flex-direction:column;align-items:flex-start;padding:26px 0}.footer-links{flex-wrap:wrap}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.live-dot,.engine-orbit,.model-card,.model-card:after,.core-ripple,.media-chunks i,.pulse-line,.why-line:after,.doc-v i,.vector-v:after,.media-v i{animation:none!important}.btn,.why-card,.download-card{transition:none}.flow-svg animateMotion{display:none}.ops-card:before{animation:none!important}}
 
 /* BLUE MOTION SYSTEM — production refinement */
@@ -239,10 +239,10 @@ body{background:#000311;color:var(--ink)}
 <section class="hero" id="top"><canvas class="hero-ambient" id="heroAmbient" aria-hidden="true"></canvas><div class="wrap hero-grid">
   <div class="hero-copy">
     <p class="eyebrow"><span class="live-dot"></span> PACIFICDB COMMUNITY <span class="badge">BETA.13</span></p>
-    <h1>Your data.<br>Your <em>waters.</em></h1>
-    <p class="hero-desc">Documents, vectors, and media. One database you can run on your own machine. Build something that’s yours.</p>
+    <h1>Built for data<br>that refuses<br><em>one shape.</em></h1>
+    <p class="hero-desc">Documents, vector search, resumable media, verified backups, and RF3 replication—unified in one self-hosted database you control.</p>
     <div class="hero-actions"><a class="btn primary" href="#downloads">Download PacificDB ↓</a><a class="btn ghost" href="#how">See how it works →</a></div>
-    <p class="hero-foot">Self-hosted · Open-source core · Free to get started</p>
+    <p class="hero-foot">Local-first · Open source · No hosted service required</p>
   </div>
   <div class="engine-visual" aria-label="Animated PacificDB multi-model database diagram">
     <div class="engine-grid"></div><div class="engine-orbit o1"></div><div class="engine-orbit o2"></div><div class="engine-orbit o3"></div>
@@ -254,30 +254,30 @@ body{background:#000311;color:var(--ink)}
       <circle class="packet" r="3.5"><animateMotion dur="4.2s" begin="2.4s" repeatCount="indefinite" path="M100 455 C210 425 240 355 350 305"/></circle>
       <circle class="packet" r="4"><animateMotion dur="2.5s" repeatCount="indefinite" path="M350 375 C350 425 350 470 350 520"/></circle>
     </svg>
-    <article class="model-card document-card"><strong>Documents</strong><small>JSON CRUD · filters · aggregation</small><div class="mini json-lines"><i></i><i></i><i></i></div></article>
-    <article class="model-card vector-card"><strong>Vectors</strong><small>Similarity search + metadata</small><div class="mini vec-dots"><i style="--h:12px;--o:.45"></i><i style="--h:26px;--o:.8"></i><i style="--h:18px;--o:.6"></i><i style="--h:31px;--o:1"></i><i style="--h:22px;--o:.75"></i><i style="--h:14px;--o:.5"></i></div></article>
-    <article class="model-card media-card"><strong>Media</strong><small>Images · audio · video · files</small><div class="mini media-chunks"><i></i><i></i><i></i><i></i><i></i></div></article>
-    <article class="model-card query-card"><strong>Queries</strong><small>Exact filters + nearest vectors</small><div class="mini query-bars"><i style="--h:14px"></i><i style="--h:21px"></i><i style="--h:29px"></i><i style="--h:34px"></i><i style="--h:27px"></i><i style="--h:17px"></i></div></article>
+    <article class="model-card document-card"><strong>Documents</strong><small>CRUD · filters · aggregation</small><div class="mini json-lines"><i></i><i></i><i></i></div></article>
+    <article class="model-card vector-card"><strong>Vectors</strong><small>Similarity + metadata filters</small><div class="mini vec-dots"><i style="--h:12px;--o:.45"></i><i style="--h:26px;--o:.8"></i><i style="--h:18px;--o:.6"></i><i style="--h:31px;--o:1"></i><i style="--h:22px;--o:.75"></i><i style="--h:14px;--o:.5"></i></div></article>
+    <article class="model-card media-card"><strong>Media</strong><small>Resumable · checksummed chunks</small><div class="mini media-chunks"><i></i><i></i><i></i><i></i><i></i></div></article>
+    <article class="model-card query-card"><strong>Queries</strong><small>Documents · vectors · media</small><div class="mini query-bars"><i style="--h:14px"></i><i style="--h:21px"></i><i style="--h:29px"></i><i style="--h:34px"></i><i style="--h:27px"></i><i style="--h:17px"></i></div></article>
     <div class="core"><div><img class="core-logo" src="assets/pacificdb-logo-symbol.png" alt=""><strong>PacificDB</strong><span>one engine</span></div><i class="core-ripple"></i></div>
     <div class="storage-rail" id="storageRail"><div class="storage-node active">WAL</div><div class="storage-node">LSM</div><div class="storage-node">Indexes</div><div class="storage-node">Snapshot</div><div class="storage-node">RF3</div></div>
   </div>
 </div></section>
 
 <div class="proof-strip"><div class="wrap proof-inner">
-  <div class="proof-cell intro"><span>Built for builders</span><b>One self-hosted engine for more of your app’s data.</b></div>
-  <div class="proof-cell"><span>Model</span><b>JSON documents</b></div><div class="proof-cell"><span>Search</span><b>Vector similarity</b></div><div class="proof-cell"><span>Storage</span><b>Resumable media</b></div><div class="proof-cell"><span>Availability</span><b>RF3 Raft</b></div>
+  <div class="proof-cell intro"><span>Data does not stay in one box</span><b>Give every shape one durable home.</b></div>
+  <div class="proof-cell"><span>Query</span><b>JSON documents</b></div><div class="proof-cell"><span>Search</span><b>Indexed vectors</b></div><div class="proof-cell"><span>Protect</span><b>Verified backups</b></div><div class="proof-cell"><span>Available</span><b>RF3 Raft</b></div>
 </div></div>
 
 <section class="section dark how" id="how"><div class="wrap">
-  <div class="section-head"><div><p class="kicker">HOW PACIFICDB WORKS</p><h2 class="section-title">Different data shapes.<br><em>One engine underneath.</em></h2></div><p class="section-lead">PacificDB keeps documents, vector embeddings, and media workflows close to one storage and replication path. The diagram runs automatically so visitors can see the system—not just read a feature list.</p></div>
+  <div class="section-head"><div><p class="kicker">HOW PACIFICDB WORKS</p><h2 class="section-title">Every shape enters.<br><em>One engine carries it.</em></h2></div><p class="section-lead">JSON records, embeddings, and file chunks move through a shared engine for querying, indexing, durability, recovery, and replication.</p></div>
   <div class="how-stage" id="howStage">
     <div class="how-topline"><div class="auto-pill"><i></i> Automatic system walkthrough</div><div class="phase-name" id="phaseName">01 · Ingest</div></div>
     <div class="phase-progress" id="phaseProgress" aria-hidden="true"><i class="active"></i><i></i><i></i><i></i><i></i></div>
     <div class="pipeline">
       <div class="input-lane" id="inputLane">
-        <article class="lane-card lit" data-model="documents"><span class="type">Document</span><b>JSON record</b><p>CRUD, filters, projections, aggregation.</p><span class="icon">{ }</span></article>
-        <article class="lane-card" data-model="vectors"><span class="type">Vector</span><b>Embedding</b><p>Finite numeric vectors with metadata.</p><span class="icon">↗</span></article>
-        <article class="lane-card" data-model="media"><span class="type">Media</span><b>File chunks</b><p>Bounded, sequential, checksummed transfer.</p><span class="icon">≋</span></article>
+        <article class="lane-card lit" data-model="documents"><span class="type">Document</span><b>JSON record</b><p>Filter, project, paginate, aggregate.</p><span class="icon">{ }</span></article>
+        <article class="lane-card" data-model="vectors"><span class="type">Vector</span><b>Embedding</b><p>Similarity search with metadata filters.</p><span class="icon">↗</span></article>
+        <article class="lane-card" data-model="media"><span class="type">Media</span><b>File chunks</b><p>Resumable, sequential, SHA-256 verified.</p><span class="icon">≋</span></article>
       </div>
       <div class="engine-diagram">
         <svg class="pipeline-svg" viewBox="0 0 540 460" preserveAspectRatio="none" aria-hidden="true">
@@ -287,48 +287,48 @@ body{background:#000311;color:var(--ink)}
         </svg>
         <div class="engine-shell">
           <div class="engine-shell-head"><strong>PacificDB engine</strong><span>local / self-hosted</span></div>
-          <div class="engine-modules"><div class="module active" data-module="query"><span>Query</span><b>CRUD + filters</b></div><div class="module" data-module="vector"><span>Vector</span><b>Similarity index</b></div><div class="module" data-module="media"><span>Media</span><b>Chunk verifier</b></div><div class="module" data-module="index"><span>Indexes</span><b>Secondary + vector</b></div><div class="module" data-module="wal"><span>Durability</span><b>WAL + LSM</b></div><div class="module" data-module="snapshot"><span>Recovery</span><b>Snapshots</b></div></div>
-          <div class="engine-footer"><span data-foot="auth">Auth / TLS</span><span data-foot="raft">RF3 Raft</span><span data-foot="backup">Backup</span></div>
+          <div class="engine-modules"><div class="module active" data-module="query"><span>Query</span><b>CRUD + explain</b></div><div class="module" data-module="vector"><span>Vector</span><b>Similarity index</b></div><div class="module" data-module="media"><span>Media</span><b>Chunk verifier</b></div><div class="module" data-module="index"><span>Indexes</span><b>B-tree + vector</b></div><div class="module" data-module="wal"><span>Durability</span><b>WAL + LSM</b></div><div class="module" data-module="snapshot"><span>Recovery</span><b>Snapshots</b></div></div>
+          <div class="engine-footer"><span data-foot="auth">RBAC / TLS</span><span data-foot="raft">RF3 Raft</span><span data-foot="backup">Backup / restore</span></div>
         </div>
       </div>
       <div class="output-lane" id="outputLane">
-        <article class="lane-card lit" data-output="find"><span class="type">Structured query</span><b>Matching documents</b><p>Return filtered JSON results.</p><span class="icon">✓</span></article>
-        <article class="lane-card" data-output="similar"><span class="type">Similarity</span><b>Nearest vectors</b><p>Cosine / supported metrics and k.</p><span class="icon">≈</span></article>
-        <article class="lane-card" data-output="download"><span class="type">Media retrieval</span><b>Verified chunks</b><p>Download stored file content.</p><span class="icon">↓</span></article>
+        <article class="lane-card lit" data-output="find"><span class="type">Structured query</span><b>Matching documents</b><p>Return projected, bounded JSON results.</p><span class="icon">✓</span></article>
+        <article class="lane-card" data-output="similar"><span class="type">Similarity</span><b>Nearest vectors</b><p>Rank matches using supported metrics.</p><span class="icon">≈</span></article>
+        <article class="lane-card" data-output="download"><span class="type">Media retrieval</span><b>Verified content</b><p>Resume or download stored file chunks.</p><span class="icon">↓</span></article>
       </div>
     </div>
-    <div class="phase-copy"><b id="phaseKicker">INGEST</b><p id="phaseText">Applications send JSON documents, vector embeddings, or media chunks through the same PacificDB deployment.</p></div>
+    <div class="phase-copy"><b id="phaseKicker">INGEST</b><p id="phaseText">Applications send JSON documents, vector embeddings, or resumable media chunks through the same PacificDB deployment.</p></div>
   </div>
   <div class="ops-strip" aria-label="PacificDB operational capabilities">
-    <article class="ops-card"><span>Protect</span><b>Backup & restore</b><p>Create, verify, export, restore, and inspect restore history.</p></article>
-    <article class="ops-card"><span>Secure</span><b>Auth, API keys & TLS</b><p>Password authentication, roles, tenant boundaries, and audit logs.</p></article>
-    <article class="ops-card"><span>Connect</span><b>Shells & SDKs</b><p>Native/npm shells plus Node.js, Python, and Java clients.</p></article>
-    <article class="ops-card"><span>Ship</span><b>Packages & containers</b><p>Debian, Windows, macOS, Docker, Kubernetes, and Helm packaging.</p></article>
+    <article class="ops-card"><span>Protect</span><b>Verified backup & restore</b><p>Create snapshots, verify them, export every physical file, and inspect restore history.</p></article>
+    <article class="ops-card"><span>Secure</span><b>TLS, keys & boundaries</b><p>TLS/mTLS, passwords, API keys, RBAC, tenant isolation, and audit logs.</p></article>
+    <article class="ops-card"><span>Observe</span><b>Metrics & diagnostics</b><p>Health checks, Prometheus metrics, logs, and storage diagnostics for operators.</p></article>
+    <article class="ops-card"><span>Scale</span><b>RF3 & explicit sharding</b><p>Raft elections and catch-up plus explicit placement, migration, and rebalance controls.</p></article>
   </div>
 </div></section>
 
 <section class="section" id="why"><div class="wrap">
-  <p class="kicker">WHY PACIFICDB</p><h2 class="section-title">Keep more of your stack<br><em>in one place.</em></h2><p class="section-lead">PacificDB is for builders who want a self-hosted data engine without automatically splitting application state across a document database, a vector store, and a separate media pipeline.</p>
+  <p class="kicker">WHY PACIFICDB</p><h2 class="section-title">One system of record.<br><em>More room to build.</em></h2><p class="section-lead">PacificDB keeps related application data together without forcing you to operate a document database, vector store, media pipeline, and backup path as separate products.</p>
   <div class="why-grid">
-    <article class="why-card"><span class="number">01</span><span class="why-symbol">1×</span><h3>One engine, three data shapes.</h3><p>Store JSON documents, vector embeddings, and resumable media through one database product and one developer workflow.</p><i class="why-line"></i></article>
-    <article class="why-card"><span class="number">02</span><span class="why-symbol">W</span><h3>Durability under every model.</h3><p>WAL, LSM storage, crash recovery, compaction, checksums, and snapshots sit underneath the application surface.</p><i class="why-line"></i></article>
-    <article class="why-card"><span class="number">03</span><span class="why-symbol">R3</span><h3>Replication is part of the engine.</h3><p>RF3 Raft provides elections, follower recovery, and snapshot catch-up instead of leaving availability entirely to the application.</p><i class="why-line"></i></article>
-    <article class="why-card"><span class="number">04</span><span class="why-symbol">⌂</span><h3>Run it on your machine.</h3><p>Native packages, Docker, CLI, and Node/Python/Java clients give you a self-hosted path from local development to controlled deployments.</p><i class="why-line"></i></article>
+    <article class="why-card"><span class="number">01</span><span class="why-symbol">1×</span><h3>One path for every shape.</h3><p>Write documents, embeddings, and resumable media through one database, one protocol, and one operational model.</p><i class="why-line"></i></article>
+    <article class="why-card"><span class="number">02</span><span class="why-symbol">W</span><h3>Recovery is engineered in.</h3><p>WAL, LSM storage, compaction, checksums, snapshots, and crash recovery protect more than the happy path.</p><i class="why-line"></i></article>
+    <article class="why-card"><span class="number">03</span><span class="why-symbol">R3</span><h3>Distribution stays explicit.</h3><p>RF3 Raft handles elections and follower catch-up; sharding controls placement, migration, and rebalance.</p><i class="why-line"></i></article>
+    <article class="why-card"><span class="number">04</span><span class="why-symbol">⌂</span><h3>Run where your data belongs.</h3><p>Native packages, Docker, Kubernetes, Helm, CLI tools, and three SDKs carry you from local work to controlled deployments.</p><i class="why-line"></i></article>
   </div>
 </div></section>
 
 <section class="section feature-section" id="features"><div class="wrap">
-  <div class="section-head"><div><p class="kicker">LESS FRICTION. MORE BUILDING.</p><h2 class="section-title">A little more possibility<br>in every query.</h2></div><p class="section-lead">Your data doesn’t fit into just one shape. Give it a place that understands more.</p></div>
+  <div class="section-head"><div><p class="kicker">BUILT BEYOND ONE MODEL</p><h2 class="section-title">Documents are the start.<br><em>Not the boundary.</em></h2></div><p class="section-lead">Use the model that fits each part of your application while keeping the data close to the same durable core.</p></div>
   <div class="features">
-    <article class="feature"><div class="feature-visual doc-v"><i></i><i></i><i></i></div><h3>Start with documents.</h3><p>Store JSON documents. Filter, project, paginate, and query with secondary indexes and aggregation helpers.</p><span class="feature-label">FAMILIAR BY DESIGN</span></article>
-    <article class="feature"><div class="feature-visual vector-v"><i style="--x:14%;--y:23%;--o:0.5"></i><i style="--x:27%;--y:55%;--o:0.7"></i><i style="--x:38%;--y:33%;--o:0.4"></i><i style="--x:47%;--y:62%;--o:0.8"></i><i style="--x:58%;--y:24%;--o:0.55"></i><i style="--x:69%;--y:49%;--o:0.9"></i><i style="--x:81%;--y:30%;--o:0.4"></i><i style="--x:84%;--y:72%;--o:0.7"></i><i style="--x:21%;--y:77%;--o:0.45"></i><i style="--x:63%;--y:79%;--o:0.5"></i><i style="--x:49%;--y:42%;--o:1"></i></div><h3>Find what’s similar.</h3><p>Store embeddings and search with vector indexes, similarity scoring, and metadata filters.</p><span class="feature-label">GO BEYOND EXACT MATCHES</span></article>
-    <article class="feature"><div class="feature-visual media-v"><i></i><i></i><i></i><i></i><i></i><i></i></div><h3>Keep more together.</h3><p>Stream images, GIFs, audio, video, and other files in bounded, verified chunks alongside your documents.</p><span class="feature-label">MEDIA MEETS METADATA</span></article>
+    <article class="feature"><div class="feature-visual doc-v"><i></i><i></i><i></i></div><h3>Query the shape you know.</h3><p>Store JSON documents with filters, projection, pagination, bounded aggregation, explain metadata, and secondary indexes.</p><span class="feature-label">DOCUMENT WORKFLOWS INCLUDED</span></article>
+    <article class="feature"><div class="feature-visual vector-v"><i style="--x:14%;--y:23%;--o:0.5"></i><i style="--x:27%;--y:55%;--o:0.7"></i><i style="--x:38%;--y:33%;--o:0.4"></i><i style="--x:47%;--y:62%;--o:0.8"></i><i style="--x:58%;--y:24%;--o:0.55"></i><i style="--x:69%;--y:49%;--o:0.9"></i><i style="--x:81%;--y:30%;--o:0.4"></i><i style="--x:84%;--y:72%;--o:0.7"></i><i style="--x:21%;--y:77%;--o:0.45"></i><i style="--x:63%;--y:79%;--o:0.5"></i><i style="--x:49%;--y:42%;--o:1"></i></div><h3>Search by meaning.</h3><p>Store finite numeric embeddings, rank nearest matches with vector indexes, and narrow results with metadata filters.</p><span class="feature-label">SIMILARITY WITHOUT A SECOND STORE</span></article>
+    <article class="feature"><div class="feature-visual media-v"><i></i><i></i><i></i><i></i><i></i><i></i></div><h3>Move files without losing state.</h3><p>Upload images, GIFs, audio, video, and arbitrary files in bounded chunks with SHA-256 verification and explicit resume IDs.</p><span class="feature-label">MEDIA THAT CAN PICK UP AGAIN</span></article>
   </div>
-  <div class="durability"><span class="d-dot"></span><p>Under the surface: WAL, LSM storage, checksums, snapshots, and RF3 Raft replication.</p><a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/main/COMMUNITY_SCOPE.md">Explore the scope ↗</a></div>
+  <div class="durability"><span class="d-dot"></span><p>Under every model: WAL, LSM storage, checksums, snapshots, recovery, RF3 Raft, and operator-controlled backups.</p><a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/main/COMMUNITY_SCOPE.md">Explore the exact scope ↗</a></div>
 </div></section>
 
 <section class="section download-section" id="downloads"><div class="wrap">
-  <div class="section-head"><div><p class="kicker">MAKE YOURSELF AT HOME</p><h2 class="section-title">Your machine.<br>Your database.</h2></div><p class="section-lead">Choose your operating system. Each installer includes the engine and native CLI.</p></div>
+  <div class="section-head"><div><p class="kicker">RUN IT WHERE DATA LIVES</p><h2 class="section-title">Your infrastructure.<br><em>Your database.</em></h2></div><p class="section-lead">Start with an installer that includes the engine and native CLI. Docker, Kubernetes, and Helm deployment files are available in the repository.</p></div>
   <p class="release-note"><span class="badge" style="color:#315d9e;border-color:#b9cbea;background:#edf4ff">COMMUNITY BETA</span> v0.1.0-beta.13 · Direct installer downloads</p>
   <div class="downloads">
     <article class="download-card"><div class="platform">L_</div><h3>Linux</h3><p>Ubuntu & Debian · x86-64</p><span class="format">.deb package</span><a class="btn download-btn" data-platform="linux-amd64.deb" href="#">Download deb ↓</a><ol class="install-flow"><li><b>Download</b> the package above.</li><li><b>Install</b> <code>sudo apt install ./pacificdb-community-*-linux-amd64.deb</code></li><li><b>Open</b> <code>pacificdb</code>; the local engine starts automatically.</li></ol></article>
@@ -340,13 +340,13 @@ body{background:#000311;color:var(--ink)}
 </div></section>
 
 <section class="section" id="start"><div class="wrap">
-  <div class="start-grid"><div class="start-copy"><p class="kicker">FROM DOWNLOAD TO FIRST DOCUMENT</p><h2 class="section-title">Hello,<br><em>PacificDB.</em></h2><p>Install the database. Open a shell. Connect your app. That’s the flow.</p><a class="btn" style="padding-left:0;color:#315d9e" href="docs.html#quickstart">Read the documentation →</a></div>
+  <div class="start-grid"><div class="start-copy"><p class="kicker">FROM ZERO TO YOUR FIRST WRITE</p><h2 class="section-title">Start local.<br><em>Build outward.</em></h2><p>Install the engine, open the shell, and connect an application without handing your data to a hosted service.</p><a class="btn" style="padding-left:0;color:#315d9e" href="docs.html#quickstart">Read the documentation →</a></div>
   <div class="steps">
-    <article class="step"><span class="step-num">01</span><div><h3>Open PacificDB</h3><p>After installing, run one command. It starts your local engine and opens the shell.</p><div class="code" id="launch-command">pacificdb<button class="copy" data-copy="launch-command">Copy</button></div><p class="hint">Local mode binds to 127.0.0.1:9000. Configure TLS and authentication before any network deployment.</p></div></article>
-    <article class="step"><span class="step-num">02</span><div><h3>Create your first document</h3><p>Use the friendly shell commands:</p><div class="code" id="shell-command">create database hello\nuse hello\ncreate collection ideas\ninsert ideas {"id":"first","title":"Hello PacificDB"}\nfind ideas {"id":"first"}<button class="copy" data-copy="shell-command">Copy</button></div></div></article>
-    <article class="step"><span class="step-num">03</span><div><h3>Give your app a connection</h3><p>Install the published beta.13 Node.js client in your project.</p><div class="code" id="npm-command">npm install @pacificdb/client@beta<button class="copy" data-copy="npm-command">Copy</button></div><p class="hint">Save the example below as <code>hello.mjs</code>, then run <code>node hello.mjs</code>.</p></div></article>
+    <article class="step"><span class="step-num">01</span><div><h3>Start one local engine</h3><p>Run one command to launch the loopback engine and enter the interactive shell.</p><div class="code" id="launch-command">pacificdb<button class="copy" data-copy="launch-command">Copy</button></div><p class="hint">Local mode binds to 127.0.0.1:9000. Configure TLS and authentication before any network deployment.</p></div></article>
+    <article class="step"><span class="step-num">02</span><div><h3>Shape your first data</h3><p>Create a database and collection, then write and find a JSON document:</p><div class="code" id="shell-command">create database hello\nuse hello\ncreate collection ideas\ninsert ideas {"id":"first","title":"Hello PacificDB"}\nfind ideas {"id":"first"}<button class="copy" data-copy="shell-command">Copy</button></div></div></article>
+    <article class="step"><span class="step-num">03</span><div><h3>Connect the application</h3><p>Add the published beta.13 Node.js client and use the same local engine from code.</p><div class="code" id="npm-command">npm install @pacificdb/client@beta<button class="copy" data-copy="npm-command">Copy</button></div><p class="hint">Save the example below as <code>hello.mjs</code>, then run <code>node hello.mjs</code>.</p></div></article>
   </div></div>
-  <div class="example" id="sdks"><div class="example-copy"><p class="kicker">SMALL API. ROOM TO GROW.</p><h2>Your first document.<br>The start of something.</h2><p>Create a database and collection, then write and read a document with the published beta.13 Node.js client.</p><div class="package-links"><a href="https://www.npmjs.com/package/@pacificdb/client">@pacificdb/client ↗</a><a href="https://www.npmjs.com/package/@pacificdb/cli">@pacificdb/cli ↗</a></div></div>
+  <div class="example" id="sdks"><div class="example-copy"><p class="kicker">ONE PROTOCOL. THREE CLIENTS.</p><h2>Meet your data<br>where your code lives.</h2><p>Connect through Node.js, Python, or Java. This first write uses the published beta.13 Node.js client and the Community JSON-over-TCP protocol.</p><div class="package-links"><a href="https://www.npmjs.com/package/@pacificdb/client">@pacificdb/client ↗</a><a href="https://www.npmjs.com/package/@pacificdb/cli">@pacificdb/cli ↗</a></div></div>
   <div class="editor"><div class="editor-head"><span class="dots"><i></i><i></i><i></i></span><span>hello.mjs</span></div><pre><code>import { PacificDBClient } from '@pacificdb/client';
 
 const db = new PacificDBClient({
@@ -362,7 +362,7 @@ await db.insert('ideas', {
 console.log(await db.find('ideas', { id: 'first' }));</code></pre><div class="editor-foot"><i></i> Local connection · JSON over TCP</div></div></div>
 </div></section>
 
-<section class="closing"><div class="wrap"><p class="kicker">OPEN SOURCE. OPEN POSSIBILITIES.</p><h2>Build on your own terms.</h2><p>Explore the code, try the beta, and help shape what comes next.</p><a class="btn primary" href="https://github.com/hitesh-reddy-k/pacificdb-community">Explore PacificDB on GitHub ↗</a></div></section>
+<section class="closing"><div class="wrap"><p class="kicker">OPEN SOURCE. SELF-HOSTED.</p><h2>Give every shape a home.</h2><p>Run the Community beta, inspect the engine, and help build a database that keeps more of your stack together.</p><a class="btn primary" href="https://github.com/hitesh-reddy-k/pacificdb-community">Explore PacificDB on GitHub ↗</a></div></section>
 </main>
 <footer class="footer"><div class="wrap footer-in"><a class="brand" href="#top" aria-label="PacificDB home"><img class="brand-lockup footer-lockup" src="assets/pacificdb-logo-lockup.png" alt="PacificDB"></a><small>Community beta · Self-hosted</small><div class="footer-links"><a href="docs.html">Documentation</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/main/LICENSE">AGPLv3 core</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community/tree/main/sdk">Apache 2.0 SDKs</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community/issues">Feedback ↗</a></div></div></footer>
 <p id="copyStatus" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)"></p>
@@ -380,11 +380,11 @@ console.log(await db.find('ideas', { id: 'first' }));</code></pre><div class="ed
 
   // Automatic multi-model walkthrough. No controls required.
   const phases = [
-    {name:'01 · Ingest', kicker:'INGEST', text:'Applications send JSON documents, vector embeddings, or media chunks through the same PacificDB deployment.', models:['documents','vectors','media'], mods:['query','vector','media'], outs:[], foot:['auth']},
-    {name:'02 · Index', kicker:'INDEX', text:'Structured fields can use secondary indexes while vector data is prepared for similarity search and media chunks are verified.', models:['documents','vectors','media'], mods:['index','vector','media'], outs:[], foot:['auth']},
-    {name:'03 · Persist', kicker:'PERSIST', text:'Writes flow through WAL and LSM storage with checksums and snapshots providing a durable recovery path.', models:['documents','vectors','media'], mods:['wal','snapshot'], outs:[], foot:['backup']},
-    {name:'04 · Replicate', kicker:'REPLICATE', text:'RF3 Raft keeps a leader and followers coordinated, with election and snapshot catch-up capabilities for recovery.', models:['documents','vectors','media'], mods:['wal','snapshot'], outs:[], foot:['raft']},
-    {name:'05 · Query', kicker:'QUERY', text:'Applications can filter documents, run vector similarity queries, or retrieve media without moving to a different database product.', models:[], mods:['query','vector','media','index'], outs:['find','similar','download'], foot:['auth','raft']}
+    {name:'01 · Ingest', kicker:'INGEST', text:'Applications send JSON documents, vector embeddings, or resumable media chunks through the same PacificDB deployment.', models:['documents','vectors','media'], mods:['query','vector','media'], outs:[], foot:['auth']},
+    {name:'02 · Index', kicker:'INDEX', text:'Secondary B-tree indexes accelerate structured fields while vector indexes prepare embeddings for similarity search.', models:['documents','vectors','media'], mods:['index','vector','media'], outs:[], foot:['auth']},
+    {name:'03 · Persist', kicker:'PERSIST', text:'Writes move through WAL and LSM storage; checksums, compaction, snapshots, and backups provide recovery paths.', models:['documents','vectors','media'], mods:['wal','snapshot'], outs:[], foot:['backup']},
+    {name:'04 · Replicate', kicker:'REPLICATE', text:'RF3 Raft coordinates leaders and followers with elections, recovery diagnostics, and snapshot catch-up.', models:['documents','vectors','media'], mods:['wal','snapshot'], outs:[], foot:['raft']},
+    {name:'05 · Query', kicker:'QUERY', text:'Filter documents, rank vector matches, or retrieve verified media without crossing into another database product.', models:[], mods:['query','vector','media','index'], outs:['find','similar','download'], foot:['auth','raft']}
   ];
   const phaseName=document.getElementById('phaseName'), phaseKicker=document.getElementById('phaseKicker'), phaseText=document.getElementById('phaseText');
   const modelCards=[...document.querySelectorAll('[data-model]')], modules=[...document.querySelectorAll('[data-module]')], outputs=[...document.querySelectorAll('[data-output]')], foots=[...document.querySelectorAll('[data-foot]')];
