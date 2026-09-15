@@ -27,6 +27,7 @@ test "$("$BUILD_DIR/pacificdb" --version)" = "PacificDB 0.1.0-beta.13"
 test "$("$BUILD_DIR/pacificdb" -V)" = "PacificDB 0.1.0-beta.13"
 node intelligence/test.js
 python3 scripts/test-release-consistency.py
+python3 scripts/test-workflow-contract.py
 test -s site/assets/pacificdb-logo-symbol.png
 node scripts/test-site-docs.mjs
 if command -v rg >/dev/null 2>&1; then

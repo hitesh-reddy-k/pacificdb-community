@@ -1,6 +1,12 @@
 name: Build release installers
 
 on:
+  workflow_call:
+    inputs:
+      version:
+        description: Version embedded in non-publishing validation artifacts
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       version:
