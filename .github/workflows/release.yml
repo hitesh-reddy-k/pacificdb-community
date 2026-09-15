@@ -45,12 +45,13 @@ jobs:
             PACIFICDB_P0_MEDIA_100MB=1 PACIFICDB_P0_SOAK=1 \
             node scripts/test-p0-installed.mjs "$package_root/usr" \
             "$RUNNER_TEMP/p0-evidence-linux-amd64.json"
+          mv "$RUNNER_TEMP/p0-evidence-linux-amd64.json" dist/p0-evidence-linux-amd64.json
       - uses: actions/upload-artifact@v4
         with:
           name: linux-amd64
           path: |
-            dist/*.deb
-            ${{ runner.temp }}/p0-evidence-linux-amd64.json
+            dist/pacificdb-community-*-linux-amd64.deb
+            dist/p0-evidence-linux-amd64.json
 
   windows:
     runs-on: windows-2025
@@ -198,12 +199,13 @@ jobs:
             throw "Windows uninstaller did not remove PacificDB from PATH"
           }
           Rename-Item $installer.FullName "pacificdb-community-$version-windows-x64.exe"
+          Move-Item "$env:RUNNER_TEMP\p0-evidence-windows-x64.json" "dist\p0-evidence-windows-x64.json"
       - uses: actions/upload-artifact@v4
         with:
           name: windows-x64
           path: |
-            dist/*.exe
-            ${{ runner.temp }}/p0-evidence-windows-x64.json
+            dist/pacificdb-community-*-windows-x64.exe
+            dist/p0-evidence-windows-x64.json
 
   macos:
     strategy:
@@ -273,12 +275,14 @@ jobs:
             PACIFICDB_P0_MEDIA_100MB=1 PACIFICDB_P0_SOAK=1 \
             node scripts/test-p0-installed.mjs /usr/local \
             "$RUNNER_TEMP/p0-evidence-macos-${{ matrix.arch }}.json"
+          mv "$RUNNER_TEMP/p0-evidence-macos-${{ matrix.arch }}.json" \
+            "dist/p0-evidence-macos-${{ matrix.arch }}.json"
       - uses: actions/upload-artifact@v4
         with:
           name: macos-${{ matrix.arch }}
           path: |
-            dist/*.pkg
-            ${{ runner.temp }}/p0-evidence-macos-${{ matrix.arch }}.json
+            dist/pacificdb-community-*-macos-${{ matrix.arch }}.pkg
+            dist/p0-evidence-macos-${{ matrix.arch }}.json
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
