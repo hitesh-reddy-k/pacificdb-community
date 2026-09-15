@@ -11,6 +11,13 @@ def require(path: str, *needles: str) -> None:
             raise AssertionError(f"{path} must contain {needle!r}")
 
 
+def forbid(path: str, *needles: str) -> None:
+    text = (ROOT / path).read_text(encoding="utf-8")
+    for needle in needles:
+        if needle in text:
+            raise AssertionError(f"{path} must not contain {needle!r}")
+
+
 require(
     ".github/workflows/release.yml",
     "workflow_call:",
@@ -26,4 +33,5 @@ require(
     "uses: ./.github/workflows/release.yml",
     "version: 0.1.0-ci.${{ github.run_number }}",
 )
+forbid(".github/workflows/ci.yml", "secrets: inherit")
 print("WORKFLOW_CONTRACT_PASS")

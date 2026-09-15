@@ -43,4 +43,3 @@ jobs:
     uses: ./.github/workflows/release.yml
     with:
       version: 0.1.0-ci.${{ github.run_number }}
-    secrets: inherit
