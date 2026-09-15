@@ -287,6 +287,7 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           path: dist
@@ -295,7 +296,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           cd dist
-          sha256sum * > SHA256SUMS
+          python3 ../scripts/verify-release-artifacts.py \
+            --dist . --version "${GITHUB_REF_NAME#v}" --output RELEASE-MANIFEST.json
+          sha256sum pacificdb-community-* p0-evidence-*.json RELEASE-MANIFEST.json > SHA256SUMS
           gh release create "$GITHUB_REF_NAME" * --repo "$GITHUB_REPOSITORY" \
-            --prerelease --generate-notes
+            --draft --prerelease --generate-notes
+          verify_dir="$RUNNER_TEMP/published-release"
+          mkdir -p "$verify_dir"
+          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --dir "$verify_dir"
+          (cd "$verify_dir" && sha256sum -c SHA256SUMS)
+          gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease
