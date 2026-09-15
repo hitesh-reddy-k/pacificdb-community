@@ -45,10 +45,14 @@ if [[ -n "$evidence" ]]; then
   image_id=$(docker image inspect "$image" --format '{{.Id}}')
   version=$(docker image inspect "$image" --format '{{index .Config.Labels "org.opencontainers.image.version"}}')
   revision=$(docker image inspect "$image" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')
+  registry_digest=""
+  if [[ "$image" == *@sha256:* ]]; then registry_digest=${image#*@}; fi
   jq -n --arg image "$image" --arg image_id "$image_id" \
     --arg version "$version" --arg revision "$revision" \
+    --arg registry_digest "$registry_digest" \
     '{status:"PASS", image:$image, image_id:$image_id, version:$version,
-      revision:$revision, non_root:true, read_only_root:true,
+      revision:$revision, registry_digest:$registry_digest,
+      non_root:true, read_only_root:true,
       application_ping:true, write_read:true}' >"$evidence"
 fi
 

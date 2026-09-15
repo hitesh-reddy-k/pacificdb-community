@@ -49,6 +49,9 @@ def require_flat_release_uploads() -> None:
             "dist/pacificdb-community-*-macos-${{ matrix.arch }}.pkg",
             "dist/p0-evidence-macos-${{ matrix.arch }}.json",
         ],
+        "linux-amd64-container": [
+            "dist/p0-evidence-linux-amd64-container.json",
+        ],
     }
     for artifact_name, expected_paths in expected_uploads.items():
         actual_paths = upload_paths(workflow, artifact_name)
@@ -95,4 +98,24 @@ require(
 )
 forbid(".github/workflows/ci.yml", "secrets: inherit")
 require_flat_release_uploads()
+require(
+    ".github/workflows/release.yml",
+    "container:",
+    "docker/setup-buildx-action@v3",
+    "docker/login-action@v3",
+    "docker/build-push-action@v6",
+    "push-by-digest=true",
+    "p0-evidence-linux-amd64-container.json",
+    "container_publish:",
+    "needs: [container]",
+    "needs: [linux, windows, macos, container_publish]",
+    "docker buildx imagetools create",
+    "packages: write",
+    '--revision "$GITHUB_SHA"',
+)
+forbid(
+    ".github/workflows/release.yml",
+    "ghcr.io/hitesh-reddy-k/pacificdb-community:latest",
+    "ghcr.io/hitesh-reddy-k/pacificdb-community:beta",
+)
 print("WORKFLOW_CONTRACT_PASS")

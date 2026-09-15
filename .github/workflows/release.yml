@@ -284,14 +284,119 @@ jobs:
             dist/pacificdb-community-*-macos-${{ matrix.arch }}.pkg
             dist/p0-evidence-macos-${{ matrix.arch }}.json
 
+  container:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      IMAGE_NAME: ghcr.io/hitesh-reddy-k/pacificdb-community
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Resolve immutable image metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          if [[ "$GITHUB_REF" != refs/tags/v* ]]; then version="${{ inputs.version }}"; fi
+          created=$(git show -s --format=%cI HEAD)
+          printf 'IMAGE_VERSION=%s\nIMAGE_CREATED=%s\nLOCAL_IMAGE=pacificdb-community:ci-%s\n' \
+            "$version" "$created" "$GITHUB_SHA" >> "$GITHUB_ENV"
+      - name: Build local validation image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/docker/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: ${{ env.LOCAL_IMAGE }}
+          build-args: |
+            PACIFICDB_ENGINE_VERSION=${{ env.IMAGE_VERSION }}
+            PACIFICDB_GIT_COMMIT=${{ github.sha }}
+            PACIFICDB_BUILD_TIMESTAMP=${{ env.IMAGE_CREATED }}
+      - name: Smoke-test local validation image
+        run: |
+          mkdir -p dist
+          scripts/test-container-image.sh "$LOCAL_IMAGE" \
+            dist/p0-evidence-linux-amd64-container.json
+      - uses: actions/upload-artifact@v4
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        with:
+          name: linux-amd64-container
+          path: |
+            dist/p0-evidence-linux-amd64-container.json
+
+  container_publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [container]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE_NAME: ghcr.io/hitesh-reddy-k/pacificdb-community
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Resolve immutable image metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'IMAGE_VERSION=%s\nIMAGE_CREATED=%s\n' "${GITHUB_REF_NAME#v}" \
+            "$(git show -s --format=%cI HEAD)" >> "$GITHUB_ENV"
+      - name: Authenticate to GHCR for release digest
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Build and push release image by digest
+        id: release_image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/docker/Dockerfile
+          platforms: linux/amd64
+          outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+          provenance: mode=max
+          sbom: true
+          build-args: |
+            PACIFICDB_ENGINE_VERSION=${{ env.IMAGE_VERSION }}
+            PACIFICDB_GIT_COMMIT=${{ github.sha }}
+            PACIFICDB_BUILD_TIMESTAMP=${{ env.IMAGE_CREATED }}
+      - name: Smoke-test exact release digest
+        env:
+          RELEASE_DIGEST: ${{ steps.release_image.outputs.digest }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          image="$IMAGE_NAME@$RELEASE_DIGEST"
+          docker pull "$image"
+          scripts/test-container-image.sh "$image" \
+            dist/p0-evidence-linux-amd64-container.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-amd64-container
+          path: |
+            dist/p0-evidence-linux-amd64-container.json
+
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [linux, windows, macos]
+    needs: [linux, windows, macos, container_publish]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+      packages: write
+    env:
+      IMAGE_NAME: ghcr.io/hitesh-reddy-k/pacificdb-community
     steps:
       - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
       - uses: actions/download-artifact@v4
         with:
           path: dist
@@ -303,7 +408,8 @@ jobs:
           set -euo pipefail
           cd dist
           python3 ../scripts/verify-release-artifacts.py \
-            --dist . --version "${GITHUB_REF_NAME#v}" --output RELEASE-MANIFEST.json
+            --dist . --version "${GITHUB_REF_NAME#v}" --revision "$GITHUB_SHA" \
+            --output RELEASE-MANIFEST.json
           sha256sum pacificdb-community-* p0-evidence-*.json RELEASE-MANIFEST.json > SHA256SUMS
           gh release create "$GITHUB_REF_NAME" * --repo "$GITHUB_REPOSITORY" \
             --draft --prerelease --generate-notes
@@ -311,4 +417,9 @@ jobs:
           mkdir -p "$verify_dir"
           gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --dir "$verify_dir"
           (cd "$verify_dir" && sha256sum -c SHA256SUMS)
+          image_ref=$(jq -r '.image' p0-evidence-linux-amd64-container.json)
+          test "$image_ref" = "$(jq -r '.oci_image' RELEASE-MANIFEST.json)"
+          docker buildx imagetools inspect "$image_ref" >/dev/null
+          docker buildx imagetools create \
+            --tag "$IMAGE_NAME:${GITHUB_REF_NAME#v}" "$image_ref"
           gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease

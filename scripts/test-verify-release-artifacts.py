@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import importlib.util
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -21,6 +22,7 @@ EVIDENCE = [
     "p0-evidence-windows-x64.json",
     "p0-evidence-macos-arm64.json",
     "p0-evidence-macos-x86_64.json",
+    "p0-evidence-linux-amd64-container.json",
 ]
 
 
@@ -34,7 +36,17 @@ class VerifyReleaseArtifactsTests(unittest.TestCase):
 
     def populate(self, names):
         for name in names:
-            (self.root / name).write_text(name, encoding="utf-8")
+            if name == "p0-evidence-linux-amd64-container.json":
+                content = json.dumps({
+                    "status": "PASS",
+                    "version": "1.0.0",
+                    "revision": "a" * 40,
+                    "registry_digest": "sha256:" + "b" * 64,
+                    "image": "ghcr.io/hitesh-reddy-k/pacificdb-community@sha256:" + "b" * 64,
+                })
+            else:
+                content = name
+            (self.root / name).write_text(content, encoding="utf-8")
 
     def test_missing_required_artifact_fails(self):
         self.populate(INSTALLERS[:-1] + EVIDENCE)
@@ -49,13 +61,25 @@ class VerifyReleaseArtifactsTests(unittest.TestCase):
 
     def test_complete_artifacts_have_stable_hashes(self):
         self.populate(INSTALLERS + EVIDENCE)
-        manifest = verifier.build_manifest(self.root, "1.0.0")
+        manifest = verifier.build_manifest(self.root, "1.0.0", "a" * 40)
         self.assertEqual(manifest["version"], "1.0.0")
         self.assertEqual(
             [item["name"] for item in manifest["artifacts"]],
             sorted(INSTALLERS + EVIDENCE),
         )
         self.assertTrue(all(len(item["sha256"]) == 64 for item in manifest["artifacts"]))
+
+    def test_container_evidence_must_match_release_identity(self):
+        self.populate(INSTALLERS + EVIDENCE)
+        evidence = self.root / "p0-evidence-linux-amd64-container.json"
+        evidence.write_text(json.dumps({
+            "status": "PASS",
+            "version": "0.9.0",
+            "revision": "c" * 40,
+            "registry_digest": "not-a-digest",
+        }), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "container evidence"):
+            verifier.build_manifest(self.root, "1.0.0", "a" * 40)
 
 
 if __name__ == "__main__":

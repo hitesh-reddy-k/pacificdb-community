@@ -115,5 +115,20 @@ require(
     "build*",
     "node_modules",
 )
+require(
+    ".github/workflows/ci.yml",
+    "azure/setup-helm@v4.3.1",
+    "kubeconform-linux-amd64.tar.gz",
+    "9bc2bffbf71f261128533edaf912153948b7ff238f9a531ae6d34466ec287883",
+    "scripts/test-helm-deployment.sh",
+)
+require(
+    "scripts/test-helm-deployment.sh",
+    "helm lint",
+    "helm template",
+    "kubeconform -strict",
+    "PRODUCTION_PLACEHOLDER_FAIL_CLOSED",
+    "HELM_DEPLOYMENT_PASS",
+)
 
 print("DEPLOYMENT_CONTRACT_PASS")
