@@ -60,7 +60,8 @@ if command -v rg >/dev/null 2>&1; then
     --glob '!**/target/**' --glob '!docs/superpowers/**' || true)
 else
   branding_match=$(grep -RInI -E "$legacy_product|$paid_tier" . \
-    --exclude-dir=.git --exclude-dir=target --exclude-dir=superpowers || true)
+    --exclude-dir=.git --exclude-dir='build*' --exclude-dir=node_modules \
+    --exclude-dir=target --exclude-dir=superpowers || true)
 fi
 if test -n "$branding_match"; then
   printf '%s\n' "$branding_match"

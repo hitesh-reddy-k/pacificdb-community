@@ -102,7 +102,7 @@ async function stopEngine(signal = 'SIGINT') {
 }
 
 async function runShell(lines) {
-  const child = spawn(cliBinary, ['--port', String(enginePort), 'shell'], {
+  const child = spawn(cliBinary, ['--no-start', '--port', String(enginePort), 'shell'], {
     cwd: root, env: { ...process.env, PACIFICDB_CLI_HOME: cliHome },
     stdio: ['pipe', 'pipe', 'pipe']
   });
