@@ -311,6 +311,7 @@ Windows signing, and macOS signing and notarization remain open.
 
 - [Certification report](docs/COMMUNITY_P0_CERTIFICATION.md)
 - [Production release procedure](docs/PRODUCTION_RELEASE.md)
+- [Container and Kubernetes deployment](deploy/helm/pacificdb/README.md)
 - [Security policy](SECURITY.md)
 - [Issue tracker](https://github.com/hitesh-reddy-k/pacificdb-community/issues)
 

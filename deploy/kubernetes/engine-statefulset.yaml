@@ -3,6 +3,8 @@ kind: Service
 metadata:
   name: pacificdb-engine
   namespace: pacificdb
+  annotations:
+    pacificdb.io/profile: development
 spec:
   clusterIP: None
   selector: { app: pacificdb-engine }
@@ -24,6 +26,7 @@ spec:
     metadata:
       labels: { app: pacificdb-engine }
       annotations:
+        pacificdb.io/profile: development
         prometheus.io/scrape: "true"
         prometheus.io/port: "9090"
     spec:
@@ -31,7 +34,7 @@ spec:
       securityContext: { runAsNonRoot: true, fsGroup: 10001 }
       containers:
         - name: engine
-          image: pacificdb/community:beta
+          image: ghcr.io/hitesh-reddy-k/pacificdb-community:beta
           securityContext:
             allowPrivilegeEscalation: false
             capabilities: { drop: ["ALL"] }
