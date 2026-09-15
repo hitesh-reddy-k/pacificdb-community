@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/hitesh-reddy-k/pacificdb-community/main/site/pacificdb-logo.png" width="112" alt="PacificDB logo">
+  <img src="https://raw.githubusercontent.com/hitesh-reddy-k/pacificdb-community/main/site/assets/pacificdb-logo-symbol.png" width="112" alt="PacificDB logo">
 </p>
 
 # PacificDB Java client

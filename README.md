@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="site/pacificdb-logo.png" width="144" alt="PacificDB logo">
+  <img src="site/assets/pacificdb-logo-symbol.png" width="144" alt="PacificDB logo">
 </p>
 
 <h1 align="center">PacificDB Community</h1>

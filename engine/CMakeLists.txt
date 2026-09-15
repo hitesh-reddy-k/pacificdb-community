@@ -395,8 +395,9 @@ install(FILES
     ${CMAKE_SOURCE_DIR}/.env.example
     DESTINATION ${CMAKE_INSTALL_DATADIR}/pacificdb
 )
-install(FILES ${CMAKE_SOURCE_DIR}/../site/pacificdb-logo.png
-    DESTINATION ${CMAKE_INSTALL_DATADIR}/pacificdb)
+install(FILES ${CMAKE_SOURCE_DIR}/../site/assets/pacificdb-logo-symbol.png
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/pacificdb
+    RENAME pacificdb-logo.png)
 
 set(CPACK_PACKAGE_NAME "pacificdb-community")
 set(CPACK_PACKAGE_VENDOR "PacificDB")
