@@ -420,6 +420,10 @@ jobs:
           image_ref=$(jq -r '.image' p0-evidence-linux-amd64-container.json)
           test "$image_ref" = "$(jq -r '.oci_image' RELEASE-MANIFEST.json)"
           docker buildx imagetools inspect "$image_ref" >/dev/null
+          image_alias="$IMAGE_NAME:${GITHUB_REF_NAME#v}"
           docker buildx imagetools create \
-            --tag "$IMAGE_NAME:${GITHUB_REF_NAME#v}" "$image_ref"
+            --tag "$image_alias" "$image_ref"
+          alias_digest=$(docker buildx imagetools inspect "$image_alias" |
+            awk '$1 == "Digest:" {print $2; exit}')
+          test "$alias_digest" = "${image_ref#*@}"
           gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease

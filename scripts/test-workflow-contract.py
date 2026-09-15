@@ -110,6 +110,7 @@ require(
     "needs: [container]",
     "needs: [linux, windows, macos, container_publish]",
     "docker buildx imagetools create",
+    'test "$alias_digest" = "${image_ref#*@}"',
     "packages: write",
     '--revision "$GITHUB_SHA"',
 )
