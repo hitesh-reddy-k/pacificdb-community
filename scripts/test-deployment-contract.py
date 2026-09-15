@@ -90,5 +90,30 @@ require(
     "development-only",
     "values-production.yaml",
 )
+require(
+    "deploy/docker/Dockerfile",
+    'org.opencontainers.image.source=',
+    'org.opencontainers.image.licenses="AGPL-3.0-only"',
+    'org.opencontainers.image.created=',
+    "--target db_engine pacificdb",
+    "/usr/local/bin/pacificdb-healthcheck",
+    "USER 10001:10001",
+)
+require(
+    "deploy/docker/healthcheck.sh",
+    "PACIFICDB_ENVIRONMENT",
+    "openssl s_client",
+    '"action":"ping"',
+    "health.crt",
+    "health.key",
+    "ca.crt",
+)
+require(
+    ".dockerignore",
+    ".git",
+    ".worktrees",
+    "build*",
+    "node_modules",
+)
 
 print("DEPLOYMENT_CONTRACT_PASS")

@@ -128,6 +128,7 @@ spec:
             - { name: TLS_CERT_PATH, value: /etc/pacificdb/client-tls/tls.crt }
             - { name: TLS_KEY_PATH, value: /etc/pacificdb/client-tls/tls.key }
             - { name: TLS_CA_PATH, value: /etc/pacificdb/client-tls/ca.crt }
+            - { name: PACIFICDB_TLS_SERVER_NAME, value: {{ printf "%s.%s.svc.cluster.local" (include "pacificdb.name" .) .Release.Namespace | quote }} }
             - { name: RAFT_TLS_ENABLED, value: "true" }
             - { name: RAFT_TLS_CERT_PATH, value: /etc/pacificdb/raft-tls/tls.crt }
             - { name: RAFT_TLS_KEY_PATH, value: /etc/pacificdb/raft-tls/tls.key }
