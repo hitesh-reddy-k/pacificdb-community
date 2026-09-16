@@ -1,0 +1,16 @@
+.git
+.github
+.worktrees
+.superpowers
+build*
+**/build
+**/target
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+benchmarks/results
+benchmarks/reports
+docs
+site
+*.log
+*.pid

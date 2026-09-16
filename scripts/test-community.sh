@@ -23,10 +23,13 @@ done
 "$BUILD_DIR/db_engine_community_query_test"
 "$BUILD_DIR/db_engine_native_shell_parser_test"
 "$BUILD_DIR/db_engine_socket_runtime_test"
-test "$("$BUILD_DIR/pacificdb" --version)" = "PacificDB 0.1.0-beta.13"
-test "$("$BUILD_DIR/pacificdb" -V)" = "PacificDB 0.1.0-beta.13"
+test "$("$BUILD_DIR/pacificdb" --version)" = "PacificDB 0.1.0-beta.14"
+test "$("$BUILD_DIR/pacificdb" -V)" = "PacificDB 0.1.0-beta.14"
 node intelligence/test.js
-test -s site/pacificdb-logo.png
+python3 scripts/test-release-consistency.py
+python3 scripts/test-workflow-contract.py
+python3 scripts/test-deployment-contract.py
+test -s site/assets/pacificdb-logo-symbol.png
 node scripts/test-site-docs.mjs
 if command -v rg >/dev/null 2>&1; then
   ! rg -n 'pacificdb-local(?:\.cmd)?' README.md cli/README.md site/index.html
@@ -58,7 +61,8 @@ if command -v rg >/dev/null 2>&1; then
     --glob '!**/target/**' --glob '!docs/superpowers/**' || true)
 else
   branding_match=$(grep -RInI -E "$legacy_product|$paid_tier" . \
-    --exclude-dir=.git --exclude-dir=target --exclude-dir=superpowers || true)
+    --exclude-dir=.git --exclude-dir='build*' --exclude-dir=node_modules \
+    --exclude-dir=target --exclude-dir=superpowers || true)
 fi
 if test -n "$branding_match"; then
   printf '%s\n' "$branding_match"

@@ -1,0 +1,27 @@
+# This overlay intentionally cannot render by itself. Replace every REQUIRED
+# value through a private operator values file or --set before deployment.
+production:
+  enabled: true
+
+replicaCount: 3
+
+image:
+  repository: ghcr.io/hitesh-reddy-k/pacificdb-community
+  tag: ""
+  digest: sha256:REQUIRED_64_HEX_IMAGE_DIGEST
+  pullPolicy: IfNotPresent
+
+storage:
+  className: ""
+  size: 20Gi
+
+backupStorage:
+  className: ""
+  size: 50Gi
+
+security:
+  authRequired: true
+  clientTlsSecret: ""
+  raftTlsSecret: ""
+  bootstrapSecret: ""
+  encryptionEvidenceConfigMap: ""

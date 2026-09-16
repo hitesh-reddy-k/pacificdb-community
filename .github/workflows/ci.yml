@@ -1,0 +1,61 @@
+name: Required production checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install native and Python test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ liblz4-dev libssl-dev
+          python -m pip install pytest
+      - name: Install kubeconform
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/kubeconform-linux-amd64.tar.gz"
+          curl --fail --location --silent --show-error --output "$archive" \
+            https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-amd64.tar.gz
+          printf '%s  %s\n' \
+            9bc2bffbf71f261128533edaf912153948b7ff238f9a531ae6d34466ec287883 \
+            "$archive" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/kubeconform-bin"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/kubeconform-bin" kubeconform
+          printf '%s\n' "$RUNNER_TEMP/kubeconform-bin" >> "$GITHUB_PATH"
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: python3 scripts/test-release-consistency.py
+      - run: python3 scripts/test-workflow-contract.py
+      - run: scripts/test-helm-deployment.sh
+      - run: scripts/test-community.sh build
+
+  packages:
+    uses: ./.github/workflows/release.yml
+    with:
+      version: 0.1.0-ci.${{ github.run_number }}

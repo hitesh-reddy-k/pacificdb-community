@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="site/pacificdb-logo.png" width="144" alt="PacificDB logo">
+  <img src="site/assets/pacificdb-logo-symbol.png" width="144" alt="PacificDB logo">
 </p>
 
 <h1 align="center">PacificDB Community</h1>
@@ -8,7 +8,7 @@
   Self-hosted documents, vectors, media, backups, and RF3 replication.
 </p>
 
-> **Beta:** `0.1.0-beta.13` is a Community prerelease candidate for evaluation,
+> **Beta:** `0.1.0-beta.14` is a Community prerelease candidate for evaluation,
 > development, staging, and controlled early-adopter deployments. Read
 > [the certification report](docs/COMMUNITY_P0_CERTIFICATION.md) before storing
 > critical data.
@@ -26,6 +26,19 @@
 - Debian, Windows, macOS, Docker, Kubernetes, and Helm packaging
 
 See [COMMUNITY_SCOPE.md](COMMUNITY_SCOPE.md) for the exact boundary.
+
+## Beta.14 transport and ingestion
+
+- The Node.js SDK reuses a persistent connection pool (16 sockets by default,
+  configurable from 1 through 32) and provides explicit `connect()` and `close()`
+  lifecycle methods.
+- `insertMany(collection, documents)` sends one batch through the engine's
+  grouped WAL and LSM path.
+- The retained end-to-end suite verifies a 500-document batch before and after
+  graceful and abrupt engine restarts.
+- The published durability-matched benchmark measured 3,135 records/sec for
+  PacificDB and 7,298 records/sec for MongoDB 8.3.8 on the test host. See the
+  [methodology and raw samples](docs/benchmarks/2026-09-16-insert-many.md).
 
 ## Install
 
@@ -73,7 +86,7 @@ npm install --global @pacificdb/cli@beta
 npm install @pacificdb/client@beta
 ```
 
-The npm `beta` tag installs `0.1.0-beta.13` for both the CLI and Node.js
+The npm `beta` tag installs `0.1.0-beta.14` for both the CLI and Node.js
 client.
 
 The npm CLI is a client. It can automatically start `db_engine` when a native
@@ -310,6 +323,8 @@ and real Debian package installation. Physical power-controller testing,
 Windows signing, and macOS signing and notarization remain open.
 
 - [Certification report](docs/COMMUNITY_P0_CERTIFICATION.md)
+- [Production release procedure](docs/PRODUCTION_RELEASE.md)
+- [Container and Kubernetes deployment](deploy/helm/pacificdb/README.md)
 - [Security policy](SECURITY.md)
 - [Issue tracker](https://github.com/hitesh-reddy-k/pacificdb-community/issues)
 

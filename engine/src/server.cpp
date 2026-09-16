@@ -4687,9 +4687,10 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
             };
 
             if (action == "insertMany") {
-                json docs = req.value("documents", json::array());
+                json docs = req.contains("data")
+                    ? req["data"] : req.value("documents", json::array());
                 if (!docs.is_array()) {
-                    res = { {"error", "documents array required"} };
+                    res = { {"error", "insertMany data array required"} };
                 } else {
                     std::string uid = req.value("userId", "system");
                     std::string db = req.value("dbName", "");

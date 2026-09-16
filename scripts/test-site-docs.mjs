@@ -38,6 +38,8 @@ const [index, docs] = await Promise.all([
   readSiteFile('index.html'),
   readSiteFile('docs.html')
 ]);
+const clientPackage = JSON.parse(await readFile(
+  path.join(repositoryRoot, 'sdk/node/package.json'), 'utf8'));
 
 for (const asset of [
   'assets/pacificdb-logo-lockup.png',
@@ -65,7 +67,9 @@ for (const platform of [
   assert.ok(index.includes(platform), `missing download platform: ${platform}`);
 }
 
-assert.match(index, /const releaseBase=['"]https:\/\/github\.com\/hitesh-reddy-k\/pacificdb-community\/releases\/download\/v0\.1\.0-beta\.13/);
+assert.ok(index.includes(
+  `const releaseBase='https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v${clientPackage.version}'`),
+`landing page release URL must match ${clientPackage.version}`);
 assert.match(index, /id=["']mac-arch["']/);
 assert.match(index, /id=["']mac-download["']/);
 assert.match(index, /navigator\.clipboard/);

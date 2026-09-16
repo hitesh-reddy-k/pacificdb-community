@@ -8,6 +8,198 @@ import path from 'node:path';
 
 const MAX_SOURCE_CHUNK_BYTES = 4 * 1024 * 1024;
 const REQUEST_RESERVE_BYTES = 64 * 1024;
+const DEFAULT_POOL_SIZE = 16;
+const MAX_POOL_SIZE = 32;
+
+function responseError(value) {
+  const code = String(value.error);
+  const detail = typeof value.message === 'string' && value.message !== code
+    ? `${code}: ${value.message}` : code;
+  return Object.assign(new Error(detail), { response: value });
+}
+
+class PooledConnection {
+  constructor(pool) {
+    this.pool = pool;
+    this.socket = null;
+    this.connecting = null;
+    this.connected = false;
+    this.current = null;
+    this.response = '';
+  }
+
+  async connect() {
+    if (this.connected && this.socket && !this.socket.destroyed) return;
+    if (this.connecting) return this.connecting;
+
+    const options = { host: this.pool.host, port: this.pool.port,
+      ...(this.pool.ca ? { ca: this.pool.ca } : {}) };
+    const socket = this.pool.useTls ? tls.connect(options) : net.createConnection(options);
+    this.socket = socket;
+    this.response = '';
+    const connectedEvent = this.pool.useTls ? 'secureConnect' : 'connect';
+    this.connecting = new Promise((resolve, reject) => {
+      const onConnect = () => {
+        cleanup();
+        if (socket !== this.socket || socket.destroyed) {
+          reject(new Error('PacificDB connection closed while connecting'));
+          return;
+        }
+        this.connected = true;
+        socket.unref();
+        resolve();
+      };
+      const onError = (error) => {
+        cleanup();
+        reject(error);
+      };
+      const onClose = () => {
+        cleanup();
+        reject(new Error('PacificDB connection closed while connecting'));
+      };
+      const cleanup = () => {
+        socket.off(connectedEvent, onConnect);
+        socket.off('error', onError);
+        socket.off('close', onClose);
+      };
+      socket.once(connectedEvent, onConnect);
+      socket.once('error', onError);
+      socket.once('close', onClose);
+    }).finally(() => { this.connecting = null; });
+
+    socket.on('data', (chunk) => this.onData(socket, chunk));
+    socket.on('error', (error) => this.onFailure(socket, error));
+    socket.on('end', () => this.onFailure(socket,
+      new Error('PacificDB closed before returning a JSON response')));
+    socket.on('close', () => {
+      if (socket !== this.socket) return;
+      this.connected = false;
+      this.socket = null;
+      this.response = '';
+    });
+    return this.connecting;
+  }
+
+  onData(socket, chunk) {
+    if (socket !== this.socket || !this.current) return;
+    this.response += chunk;
+    const newline = this.response.indexOf('\n');
+    if (newline < 0) return;
+    const wire = this.response.slice(0, newline);
+    this.response = this.response.slice(newline + 1);
+    let value;
+    try {
+      value = JSON.parse(wire);
+    } catch (error) {
+      this.finish(new Error(`PacificDB server at ${this.pool.host}:${this.pool.port} returned ` +
+        'a non-JSON response; verify the host and port'), true);
+      return;
+    }
+    if (value?.error) this.finish(responseError(value));
+    else this.finish(null, false, value);
+  }
+
+  onFailure(socket, error) {
+    if (socket !== this.socket) return;
+    this.connected = false;
+    if (this.current) this.finish(error, true);
+  }
+
+  finish(error, destroy = false, value) {
+    const current = this.current;
+    if (!current) return;
+    this.current = null;
+    clearTimeout(current.timer);
+    if (destroy && this.socket && !this.socket.destroyed) this.socket.destroy();
+    else if (this.socket && !this.socket.destroyed) this.socket.unref();
+    if (error) current.reject(error);
+    else current.resolve(value);
+  }
+
+  async request(wire) {
+    if (this.current) throw new Error('PacificDB pool assigned concurrent socket requests');
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => this.finish(
+        new Error('PacificDB request timed out'), true), this.pool.timeoutMs);
+      timer.unref?.();
+      this.current = { resolve, reject, timer };
+      this.connect().then(() => {
+        if (!this.current || !this.socket || this.socket.destroyed) return;
+        this.socket.ref();
+        this.socket.write(wire, (error) => {
+          if (error) this.finish(error, true);
+        });
+      }).catch((error) => this.finish(error, true));
+    });
+  }
+
+  close(error) {
+    if (this.current) this.finish(error, true);
+    if (this.socket && !this.socket.destroyed) this.socket.destroy();
+    this.connected = false;
+    this.socket = null;
+    this.response = '';
+  }
+}
+
+class ConnectionPool {
+  constructor({ host, port, useTls, ca, timeoutMs, poolSize }) {
+    Object.assign(this, { host, port, useTls, ca, timeoutMs, poolSize });
+    this.connections = [];
+    this.idle = [];
+    this.queue = [];
+    this.closed = false;
+  }
+
+  newConnection() {
+    const connection = new PooledConnection(this);
+    this.connections.push(connection);
+    return connection;
+  }
+
+  dispatch(connection, job) {
+    connection.request(job.wire).then(job.resolve, job.reject).finally(() => {
+      // Give an older one-request-per-connection server a chance to deliver
+      // its FIN before assigning more work to this slot. Keep-alive engines
+      // retain the same socket; closed peers reconnect on the next request.
+      setImmediate(() => {
+        if (this.closed) return;
+        const next = this.queue.shift();
+        if (next) this.dispatch(connection, next);
+        else this.idle.push(connection);
+      });
+    });
+  }
+
+  request(wire) {
+    if (this.closed) return Promise.reject(new Error('PacificDB client is closed'));
+    return new Promise((resolve, reject) => {
+      const job = { wire, resolve, reject };
+      const connection = this.idle.pop();
+      if (connection) this.dispatch(connection, job);
+      else if (this.connections.length < this.poolSize) {
+        this.dispatch(this.newConnection(), job);
+      } else this.queue.push(job);
+    });
+  }
+
+  async connect() {
+    if (this.closed) throw new Error('PacificDB client is closed');
+    while (this.connections.length < this.poolSize) {
+      this.idle.push(this.newConnection());
+    }
+    await Promise.all(this.connections.map((connection) => connection.connect()));
+  }
+
+  close() {
+    if (this.closed) return;
+    this.closed = true;
+    const error = new Error('PacificDB client is closed');
+    for (const job of this.queue.splice(0)) job.reject(error);
+    for (const connection of this.connections) connection.close(error);
+    this.idle.length = 0;
+  }
+}
 
 export class MediaUploadError extends Error {
   constructor(message, { code = 'media_upload_interrupted', uploadId,
@@ -34,7 +226,11 @@ function mediaType(filename) {
 
 export class PacificDBClient {
   constructor({ host = '127.0.0.1', port = 9000, userId = 'system',
-                database = '', tls: useTls = false, ca, timeoutMs = 30000 } = {}) {
+                database = '', tls: useTls = false, ca, timeoutMs = 30000,
+                poolSize = DEFAULT_POOL_SIZE, token = '' } = {}) {
+    if (!Number.isSafeInteger(poolSize) || poolSize < 1 || poolSize > MAX_POOL_SIZE) {
+      throw new RangeError(`poolSize must be an integer between 1 and ${MAX_POOL_SIZE}`);
+    }
     this.host = host;
     this.port = port;
     this.userId = userId;
@@ -42,53 +238,23 @@ export class PacificDBClient {
     this.useTls = useTls;
     this.ca = ca;
     this.timeoutMs = timeoutMs;
-    this.token = '';
+    this.token = token;
+    this.poolSize = poolSize;
+    this._pool = new ConnectionPool({ host, port, useTls, ca, timeoutMs, poolSize });
   }
 
   request(command) {
     const payload = { userId: this.userId, dbName: this.database,
       ...(this.token ? { token: this.token } : {}), ...command };
-    return new Promise((resolve, reject) => {
-      let response = '';
-      let settled = false;
-      const options = { host: this.host, port: this.port,
-        ...(this.ca ? { ca: this.ca } : {}) };
-      const socket = this.useTls ? tls.connect(options) : net.createConnection(options);
-      const fail = (error) => {
-        if (settled) return;
-        settled = true;
-        socket.destroy();
-        reject(error);
-      };
-      socket.setTimeout(this.timeoutMs, () => fail(new Error('PacificDB request timed out')));
-      socket.on('error', fail);
-      socket.on('connect', () => socket.write(JSON.stringify(payload) + '\n'));
-      socket.on('data', (chunk) => {
-        response += chunk;
-        const newline = response.indexOf('\n');
-        if (newline < 0 || settled) return;
-        settled = true;
-        socket.end();
-        try {
-          const value = JSON.parse(response.slice(0, newline));
-          if (value?.error) {
-            const code = String(value.error);
-            const detail = typeof value.message === 'string' && value.message !== code
-              ? `${code}: ${value.message}` : code;
-            reject(Object.assign(new Error(detail), { response: value }));
-          }
-          else resolve(value);
-        } catch (error) {
-          if (error instanceof SyntaxError) {
-            reject(new Error(`PacificDB server at ${this.host}:${this.port} returned ` +
-              'a non-JSON response; verify the host and port'));
-          } else reject(error);
-        }
-      });
-      socket.on('end', () => {
-        if (!settled) fail(new Error('PacificDB closed before returning a JSON response'));
-      });
-    });
+    return this._pool.request(JSON.stringify(payload) + '\n');
+  }
+
+  connect() {
+    return this._pool.connect();
+  }
+
+  close() {
+    this._pool.close();
   }
 
   capabilities() {
@@ -115,6 +281,10 @@ export class PacificDBClient {
   }
   insert(collection, data) {
     return this.request({ action: 'insert', collection, data });
+  }
+  insertMany(collection, data) {
+    if (!Array.isArray(data)) throw new TypeError('insertMany data must be an array');
+    return this.request({ action: 'insertMany', collection, data });
   }
   find(collection, filter = {}, { limit = -1, offset = 0 } = {}) {
     return this.request({ action: 'find', collection, filter, limit, offset });

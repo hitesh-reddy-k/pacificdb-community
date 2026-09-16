@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(db_engine LANGUAGES CXX)
 
-set(PACIFICDB_ENGINE_VERSION "0.1.0-beta.13" CACHE STRING "PacificDB engine semantic version")
+set(PACIFICDB_ENGINE_VERSION "0.1.0-beta.14" CACHE STRING "PacificDB engine semantic version")
 set(PACIFICDB_STORAGE_FORMAT_VERSION "2" CACHE STRING "PacificDB on-disk storage format version")
 set(PACIFICDB_RAFT_PROTOCOL_VERSION "2" CACHE STRING "PacificDB Raft wire protocol version")
 execute_process(
@@ -395,8 +395,9 @@ install(FILES
     ${CMAKE_SOURCE_DIR}/.env.example
     DESTINATION ${CMAKE_INSTALL_DATADIR}/pacificdb
 )
-install(FILES ${CMAKE_SOURCE_DIR}/../site/pacificdb-logo.png
-    DESTINATION ${CMAKE_INSTALL_DATADIR}/pacificdb)
+install(FILES ${CMAKE_SOURCE_DIR}/../site/assets/pacificdb-logo-symbol.png
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/pacificdb
+    RENAME pacificdb-logo.png)
 
 set(CPACK_PACKAGE_NAME "pacificdb-community")
 set(CPACK_PACKAGE_VENDOR "PacificDB")

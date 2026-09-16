@@ -1,0 +1,13 @@
+{{- if .Values.production.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "pacificdb.name" . }}
+  labels:
+    {{- include "pacificdb.labels" . | nindent 4 }}
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      {{- include "pacificdb.selectorLabels" . | nindent 6 }}
+{{- end }}

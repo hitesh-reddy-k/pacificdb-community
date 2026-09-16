@@ -57,11 +57,11 @@ const engineEnv = {
   MIN_QUORUM_SIZE: '1',
   ENGINE_CPU_CORES: '2',
   CONN_MIN_THREADS: '2',
-  CONN_MAX_THREADS: '8',
+  CONN_MAX_THREADS: '32',
   CONN_MAX_QUEUE: '256',
   MAX_CONNECTIONS: '64',
   ADAPTIVE_ADMISSION: '0',
-  ENGINE_KEEPALIVE_MAX_REQUESTS: '1',
+  ENGINE_KEEPALIVE_MAX_REQUESTS: '10000',
   DBQ_SHARDS: '2',
   DBQ_WORKERS_PER_SHARD: '1',
   DBQ_MAX_QUEUE_PER_SHARD: '256'
@@ -70,14 +70,18 @@ const engineEnv = {
 let engine;
 let logStream;
 async function waitForEngine(port = enginePort) {
-  const probe = new PacificDBClient({ port, timeoutMs: 500 });
+  const probe = new PacificDBClient({ port, timeoutMs: 500, poolSize: 1 });
   let lastError;
-  for (let attempt = 0; attempt < 120; attempt += 1) {
-    try {
-      const result = await probe.request({ action: 'ping' });
-      if (result.status === 'pong') return;
-    } catch (error) { lastError = error; }
-    await new Promise((resolve) => setTimeout(resolve, 100));
+  try {
+    for (let attempt = 0; attempt < 120; attempt += 1) {
+      try {
+        const result = await probe.request({ action: 'ping' });
+        if (result.status === 'pong') return;
+      } catch (error) { lastError = error; }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  } finally {
+    probe.close();
   }
   throw new Error(`engine did not become ready: ${lastError?.message || 'unknown error'}`);
 }
@@ -102,7 +106,7 @@ async function stopEngine(signal = 'SIGINT') {
 }
 
 async function runShell(lines) {
-  const child = spawn(cliBinary, ['--port', String(enginePort), 'shell'], {
+  const child = spawn(cliBinary, ['--no-start', '--port', String(enginePort), 'shell'], {
     cwd: root, env: { ...process.env, PACIFICDB_CLI_HOME: cliHome },
     stdio: ['pipe', 'pipe', 'pipe']
   });
@@ -124,10 +128,21 @@ function assertPublicOutput(output) {
   assert.doesNotMatch(output, new RegExp(adminPassword));
 }
 
+async function rejectedListDatabases(token) {
+  const rejectedClient = new PacificDBClient({ port: enginePort, token, poolSize: 1 });
+  try {
+    await assert.rejects(rejectedClient.request({ action: 'listDatabases' }),
+      /unauthorized/);
+  } finally {
+    rejectedClient.close();
+  }
+}
+
+let client;
 try {
   console.log('E2E: start authenticated engine');
   await startEngine();
-  const client = new PacificDBClient({ port: enginePort });
+  client = new PacificDBClient({ port: enginePort });
   await assert.rejects(client.request({ action: 'listDatabases' }), /unauthorized/);
   await assert.rejects(client.authenticate('admin', 'wrong-password'),
     /authentication_failed/);
@@ -157,6 +172,15 @@ try {
   await client.insert('users', { id: 'persistent', name: 'Ada', active: true,
     score: 7, ratio: 1.5, empty: null, tags: ['math', 'code'],
     profile: { city: 'London' }, unicode: 'నమస్తే' });
+  const batchDocuments = Array.from({ length: 500 }, (_, index) => ({
+    id: `batch-${index}`, batch: 'insertMany-e2e', value: index
+  }));
+  const batch = await client.insertMany('users', batchDocuments);
+  assert.equal(batch.status, 'ok');
+  assert.equal(batch.inserted, batchDocuments.length);
+  assert.equal(batch.failed, 0);
+  assert.equal((await client.request({ action: 'count', collection: 'users',
+    filter: { batch: 'insertMany-e2e' } })).count, batchDocuments.length);
   await client.request({ action: 'community_database_map', database: 'app',
     project_id: alpha.id });
   assert.deepEqual((await client.request({ action: 'community_database_list',
@@ -170,9 +194,7 @@ try {
   const racedKeys = await Promise.all(Array.from({ length: 6 }, (_, index) =>
     client.request({ action: 'api_key_create', name: `race-key-${index}`, role: 'read' })));
   await Promise.all(racedKeys.map((key) => client.request({ action: 'api_key_revoke', id: key.id })));
-  await Promise.all(racedKeys.map((key) => assert.rejects(
-    new PacificDBClient({ port: enginePort, token: key.key }).request({ action: 'listDatabases' }),
-    /unauthorized/)));
+  await Promise.all(racedKeys.map((key) => rejectedListDatabases(key.key)));
   const duplicateWrites = await Promise.allSettled(Array.from({ length: 8 }, (_, index) =>
     client.insert('users', { id: 'duplicate-race', value: index })));
   assert.ok(duplicateWrites.some((result) => result.status === 'fulfilled'));
@@ -382,6 +404,8 @@ try {
   client.token = durableAdmin.key;
   client.database = 'app';
   assert.equal((await client.find('users', { id: 'persistent' })).data[0].name, 'Ada');
+  assert.equal((await client.request({ action: 'count', collection: 'users',
+    filter: { batch: 'insertMany-e2e' } })).count, batchDocuments.length);
   assert.equal((await client.request({ action: 'community_project_get', id: alpha.id }))
     .project.name, 'alpha');
   assert.equal((await client.request({ action: 'community_database_project',
@@ -394,8 +418,7 @@ try {
     .backup.backup_id === backup.backup_id);
   assert.ok((await client.request({ action: 'list_restores' })).restores.some((entry) =>
     entry.backup_id === backup.backup_id && entry.status === 'completed'));
-  await assert.rejects(new PacificDBClient({ port: enginePort,
-    token: racedKeys[0].key }).request({ action: 'listDatabases' }), /unauthorized/);
+  await rejectedListDatabases(racedKeys[0].key);
   const resumedAfterRestart = await client.uploadMediaFile('videos', mediaFile,
     { chunkBytes: 262_144, resume: restartIncomplete.id });
   assert.equal(resumedAfterRestart.status, 'ready');
@@ -428,8 +451,7 @@ try {
     backup_id: backup.backup_id })).backup.backup_id, backup.backup_id);
   assert.ok((await client.request({ action: 'list_restores' })).restores.some((entry) =>
     entry.backup_id === backup.backup_id && entry.status === 'completed'));
-  await assert.rejects(new PacificDBClient({ port: enginePort,
-    token: racedKeys[0].key }).request({ action: 'listDatabases' }), /unauthorized/);
+  await rejectedListDatabases(racedKeys[0].key);
   assert.equal((await client.request({ action: 'community_media_get',
     media_id: persistentMedia.id })).media.status, 'ready');
   assert.equal((await client.queryVector('vectors', [0.9, 0.1], { k: 1 }))
@@ -469,16 +491,19 @@ try {
   assert.equal(restoredDocument.data[0].name, 'Ada');
   assert.equal((await restoredClient.request({ action: 'community_project_get',
     id: alpha.id })).project.name, 'alpha');
+  restoredClient.close();
   await stopEngine();
 
   const shellCommandCount = shellCommands.length + invalidCommands.length +
     isolationCommands.length + freshShellCommands.length - 4;
     // one password response follows each login
   console.log(JSON.stringify({ status: 'PASS', root: testRoot,
-    shell_commands_executed: shellCommandCount, media_chunks: 3, concurrent_writes: 24,
+    shell_commands_executed: shellCommandCount, media_chunks: 3,
+    insert_many_documents: batchDocuments.length, concurrent_writes: 24,
     concurrent_project_creates: 6, concurrent_api_key_create_revoke: 6,
     concurrent_media_chunks: 4, graceful_restarts: 1, abrupt_restarts: 1 }, null, 2));
 } finally {
+  client?.close();
   await stopEngine().catch(() => {});
   if (process.env.PACIFICDB_KEEP_E2E_ROOT !== '1') await rm(testRoot, { recursive: true });
 }

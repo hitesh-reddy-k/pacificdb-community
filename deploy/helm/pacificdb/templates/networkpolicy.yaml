@@ -1,0 +1,42 @@
+{{- if .Values.production.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "pacificdb.name" . }}
+  labels:
+    {{- include "pacificdb.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "pacificdb.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              pacificdb.io/client: "true"
+      ports:
+        - { protocol: TCP, port: 9000 }
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "pacificdb.selectorLabels" . | nindent 14 }}
+      ports:
+        - { protocol: TCP, port: 9001 }
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "pacificdb.selectorLabels" . | nindent 14 }}
+      ports:
+        - { protocol: TCP, port: 9001 }
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+{{- end }}

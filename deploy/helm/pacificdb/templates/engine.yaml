@@ -1,65 +1,204 @@
+{{- $production := .Values.production.enabled -}}
+{{- $clientTlsSecret := .Values.security.clientTlsSecret -}}
+{{- $raftTlsSecret := .Values.security.raftTlsSecret -}}
+{{- $bootstrapSecret := .Values.security.bootstrapSecret -}}
+{{- $evidenceConfigMap := .Values.security.encryptionEvidenceConfigMap -}}
+{{- if $production -}}
+  {{- if ne (int .Values.replicaCount) 3 -}}
+    {{- fail "production replicaCount must be exactly 3" -}}
+  {{- end -}}
+  {{- if not (hasPrefix "sha256:" .Values.image.digest) -}}
+    {{- fail "production image.digest must start with sha256:" -}}
+  {{- end -}}
+  {{- if not (regexMatch "^sha256:[0-9a-f]{64}$" .Values.image.digest) -}}
+    {{- fail "production image.digest must contain exactly 64 lowercase hexadecimal characters" -}}
+  {{- end -}}
+  {{- $clientTlsSecret = required "production security.clientTlsSecret is required" .Values.security.clientTlsSecret -}}
+  {{- $raftTlsSecret = required "production security.raftTlsSecret is required" .Values.security.raftTlsSecret -}}
+  {{- $bootstrapSecret = required "production security.bootstrapSecret is required" .Values.security.bootstrapSecret -}}
+  {{- $evidenceConfigMap = required "production security.encryptionEvidenceConfigMap is required" .Values.security.encryptionEvidenceConfigMap -}}
+  {{- $_ := required "production storage.className is required" .Values.storage.className -}}
+  {{- $_ := required "production backupStorage.className is required" .Values.backupStorage.className -}}
+  {{- $_ := required "production storage.size is required" .Values.storage.size -}}
+  {{- $_ := required "production backupStorage.size is required" .Values.backupStorage.size -}}
+{{- end -}}
 {{- $peers := list -}}
 {{- range $i := until (int .Values.replicaCount) -}}
-{{- $id := printf "%s-pacificdb-%d" $.Release.Name $i -}}
-{{- $host := printf "%s.%s-pacificdb.%s.svc.cluster.local:9001" $id $.Release.Name $.Release.Namespace -}}
-{{- $peers = append $peers (printf "%s@%s" $id $host) -}}
-{{- end }}
+  {{- $id := printf "%s-%d" (include "pacificdb.name" $) $i -}}
+  {{- $host := printf "%s.%s.%s.svc.cluster.local:9001" $id (include "pacificdb.name" $) $.Release.Namespace -}}
+  {{- $peers = append $peers (printf "%s@%s" $id $host) -}}
+{{- end -}}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Release.Name }}-pacificdb
+  name: {{ include "pacificdb.name" . }}
+  labels:
+    {{- include "pacificdb.labels" . | nindent 4 }}
 spec:
   clusterIP: None
-  selector: { app.kubernetes.io/name: pacificdb, app.kubernetes.io/instance: {{ .Release.Name }} }
+  publishNotReadyAddresses: true
+  selector:
+    {{- include "pacificdb.selectorLabels" . | nindent 4 }}
   ports:
-    - { name: client, port: 9000 }
-    - { name: raft, port: 9001 }
+    - { name: client, port: 9000, targetPort: client }
+    - { name: raft, port: 9001, targetPort: raft }
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ .Release.Name }}-pacificdb
+  name: {{ include "pacificdb.name" . }}
+  labels:
+    {{- include "pacificdb.labels" . | nindent 4 }}
+  annotations:
+    pacificdb.io/profile: {{ ternary "production" "development" $production | quote }}
 spec:
-  serviceName: {{ .Release.Name }}-pacificdb
+  serviceName: {{ include "pacificdb.name" . }}
+  podManagementPolicy: Parallel
   replicas: {{ .Values.replicaCount }}
   selector:
-    matchLabels: { app.kubernetes.io/name: pacificdb, app.kubernetes.io/instance: {{ .Release.Name }} }
+    matchLabels:
+      {{- include "pacificdb.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      labels: { app.kubernetes.io/name: pacificdb, app.kubernetes.io/instance: {{ .Release.Name }} }
+      labels:
+        {{- include "pacificdb.selectorLabels" . | nindent 8 }}
+      annotations:
+        pacificdb.io/profile: {{ ternary "production" "development" $production | quote }}
     spec:
-      securityContext: { runAsNonRoot: true, fsGroup: 10001 }
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      {{- if $production }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              {{- include "pacificdb.selectorLabels" . | nindent 14 }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  {{- include "pacificdb.selectorLabels" . | nindent 18 }}
+      {{- end }}
       containers:
         - name: engine
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: {{ ternary (printf "%s@%s" .Values.image.repository .Values.image.digest) (printf "%s:%s" .Values.image.repository .Values.image.tag) $production | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: ["ALL"] } }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
           ports:
             - { name: client, containerPort: 9000 }
             - { name: raft, containerPort: 9001 }
           env:
-            - { name: RAFT_CLUSTER_ID, value: pacificdb-community }
             - name: RAFT_NODE_ID
               valueFrom: { fieldRef: { fieldPath: metadata.name } }
+            - { name: RAFT_CLUSTER_ID, value: pacificdb-community }
+            - { name: RAFT_PEERS, value: {{ join "," $peers | quote }} }
             - { name: DATA_ROOT, value: /var/lib/pacificdb/data }
             - { name: BACKUP_ROOT, value: /var/lib/pacificdb/backup }
             - { name: RESTORE_DIR, value: /var/lib/pacificdb/restore }
+            - { name: LOG_DIR, value: /var/log/pacificdb }
+            - { name: TMP_DIR, value: /tmp }
+            - { name: ENGINE_PORT, value: "9000" }
+            - { name: RAFT_LISTEN_PORT, value: "9001" }
+            - { name: RAFT_REPLICATION_MODE, value: {{ ternary "sync" "async" $production | quote }} }
+            - { name: MIN_QUORUM_SIZE, value: {{ ternary "2" "1" $production | quote }} }
+            - { name: ENGINE_AUTH_REQUIRED, value: {{ ternary "true" (toString .Values.security.authRequired) $production | quote }} }
+            {{- if $production }}
+            - { name: PACIFICDB_ENVIRONMENT, value: production }
+            - name: ENGINE_BIND_HOST
+              valueFrom: { fieldRef: { fieldPath: status.podIP } }
+            - name: RAFT_BIND_HOST
+              valueFrom: { fieldRef: { fieldPath: status.podIP } }
+            - { name: RBAC_ENABLED, value: "true" }
+            - { name: AUDIT_LOGGING_ENABLED, value: "true" }
+            - { name: TLS_ENABLED, value: "true" }
+            - { name: TLS_REQUIRE_CLIENT_CERT, value: "true" }
+            - { name: TLS_CERT_PATH, value: /etc/pacificdb/client-tls/tls.crt }
+            - { name: TLS_KEY_PATH, value: /etc/pacificdb/client-tls/tls.key }
+            - { name: TLS_CA_PATH, value: /etc/pacificdb/client-tls/ca.crt }
+            - { name: PACIFICDB_TLS_SERVER_NAME, value: {{ printf "%s.%s.svc.cluster.local" (include "pacificdb.name" .) .Release.Namespace | quote }} }
+            - { name: RAFT_TLS_ENABLED, value: "true" }
+            - { name: RAFT_TLS_CERT_PATH, value: /etc/pacificdb/raft-tls/tls.crt }
+            - { name: RAFT_TLS_KEY_PATH, value: /etc/pacificdb/raft-tls/tls.key }
+            - { name: RAFT_TLS_CA_PATH, value: /etc/pacificdb/raft-tls/ca.crt }
+            - { name: WAL_FSYNC_ENABLED, value: "true" }
+            - { name: WAL_FLUSH_ON_COMMIT, value: "true" }
+            - { name: PACIFICDB_AT_REST_ENCRYPTION_EVIDENCE_PATH, value: /etc/pacificdb/at-rest/evidence.json }
+            - name: PACIFICDB_ENGINE_ADMIN_USERNAME
+              valueFrom: { secretKeyRef: { name: {{ $bootstrapSecret }}, key: username } }
+            - name: PACIFICDB_ENGINE_ADMIN_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ $bootstrapSecret }}, key: password } }
+            {{- else }}
+            - { name: PACIFICDB_ENVIRONMENT, value: development }
             - { name: ENGINE_BIND_HOST, value: 0.0.0.0 }
             - { name: RAFT_BIND_HOST, value: 0.0.0.0 }
-            - { name: RAFT_REPLICATION_MODE, value: sync }
-            - { name: MIN_QUORUM_SIZE, value: "2" }
-            - { name: RAFT_PEERS, value: {{ join "," $peers | quote }} }
-            - { name: ENGINE_AUTH_REQUIRED, value: "{{ .Values.security.authRequired }}" }
-          resources: {{ toYaml .Values.resources | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
-            - { name: data, mountPath: /var/lib/pacificdb }
+            - { name: data, mountPath: /var/lib/pacificdb/data }
+            - { name: backup, mountPath: /var/lib/pacificdb/backup }
+            - { name: restore, mountPath: /var/lib/pacificdb/restore }
+            - { name: logs, mountPath: /var/log/pacificdb }
+            - { name: tmp, mountPath: /tmp }
+            {{- if $production }}
+            - { name: client-tls, mountPath: /etc/pacificdb/client-tls, readOnly: true }
+            - { name: raft-tls, mountPath: /etc/pacificdb/raft-tls, readOnly: true }
+            - { name: at-rest-evidence, mountPath: /etc/pacificdb/at-rest, readOnly: true }
+            {{- end }}
+          {{- if $production }}
+          startupProbe:
+            exec: { command: ["/usr/local/bin/pacificdb-healthcheck", "startup"] }
+            failureThreshold: 60
+            periodSeconds: 5
+          readinessProbe:
+            exec: { command: ["/usr/local/bin/pacificdb-healthcheck", "readiness"] }
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            exec: { command: ["/usr/local/bin/pacificdb-healthcheck", "liveness"] }
+            periodSeconds: 10
+            failureThreshold: 5
+          {{- else }}
           readinessProbe: { tcpSocket: { port: client }, initialDelaySeconds: 5 }
           livenessProbe: { tcpSocket: { port: client }, initialDelaySeconds: 15 }
+          {{- end }}
+      volumes:
+        - { name: restore, emptyDir: {} }
+        - { name: logs, emptyDir: {} }
+        - { name: tmp, emptyDir: {} }
+        {{- if $production }}
+        - name: client-tls
+          secret: { secretName: {{ $clientTlsSecret }}, defaultMode: 0440 }
+        - name: raft-tls
+          secret: { secretName: {{ $raftTlsSecret }}, defaultMode: 0440 }
+        - name: at-rest-evidence
+          configMap: { name: {{ $evidenceConfigMap }}, defaultMode: 0444 }
+        {{- end }}
   volumeClaimTemplates:
     - metadata: { name: data }
       spec:
         accessModes: [ReadWriteOnce]
         {{- if .Values.storage.className }}
-        storageClassName: {{ .Values.storage.className }}
+        storageClassName: {{ .Values.storage.className | quote }}
         {{- end }}
         resources: { requests: { storage: {{ .Values.storage.size }} } }
+    - metadata: { name: backup }
+      spec:
+        accessModes: [ReadWriteOnce]
+        {{- if .Values.backupStorage.className }}
+        storageClassName: {{ .Values.backupStorage.className | quote }}
+        {{- end }}
+        resources: { requests: { storage: {{ .Values.backupStorage.size }} } }

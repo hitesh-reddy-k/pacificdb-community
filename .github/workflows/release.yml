@@ -1,12 +1,18 @@
 name: Build release installers
 
 on:
+  workflow_call:
+    inputs:
+      version:
+        description: Version embedded in non-publishing validation artifacts
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       version:
         description: Version to build without publishing
         required: true
-        default: 0.1.0-beta.13
+        default: 0.1.0-beta.14
   push:
     tags: ["v*"]
 
@@ -39,12 +45,13 @@ jobs:
             PACIFICDB_P0_MEDIA_100MB=1 PACIFICDB_P0_SOAK=1 \
             node scripts/test-p0-installed.mjs "$package_root/usr" \
             "$RUNNER_TEMP/p0-evidence-linux-amd64.json"
+          mv "$RUNNER_TEMP/p0-evidence-linux-amd64.json" dist/p0-evidence-linux-amd64.json
       - uses: actions/upload-artifact@v4
         with:
           name: linux-amd64
           path: |
-            dist/*.deb
-            ${{ runner.temp }}/p0-evidence-linux-amd64.json
+            dist/pacificdb-community-*-linux-amd64.deb
+            dist/p0-evidence-linux-amd64.json
 
   windows:
     runs-on: windows-2025
@@ -192,12 +199,13 @@ jobs:
             throw "Windows uninstaller did not remove PacificDB from PATH"
           }
           Rename-Item $installer.FullName "pacificdb-community-$version-windows-x64.exe"
+          Move-Item "$env:RUNNER_TEMP\p0-evidence-windows-x64.json" "dist\p0-evidence-windows-x64.json"
       - uses: actions/upload-artifact@v4
         with:
           name: windows-x64
           path: |
-            dist/*.exe
-            ${{ runner.temp }}/p0-evidence-windows-x64.json
+            dist/pacificdb-community-*-windows-x64.exe
+            dist/p0-evidence-windows-x64.json
 
   macos:
     strategy:
@@ -267,20 +275,128 @@ jobs:
             PACIFICDB_P0_MEDIA_100MB=1 PACIFICDB_P0_SOAK=1 \
             node scripts/test-p0-installed.mjs /usr/local \
             "$RUNNER_TEMP/p0-evidence-macos-${{ matrix.arch }}.json"
+          mv "$RUNNER_TEMP/p0-evidence-macos-${{ matrix.arch }}.json" \
+            "dist/p0-evidence-macos-${{ matrix.arch }}.json"
       - uses: actions/upload-artifact@v4
         with:
           name: macos-${{ matrix.arch }}
           path: |
-            dist/*.pkg
-            ${{ runner.temp }}/p0-evidence-macos-${{ matrix.arch }}.json
+            dist/pacificdb-community-*-macos-${{ matrix.arch }}.pkg
+            dist/p0-evidence-macos-${{ matrix.arch }}.json
+
+  container:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      IMAGE_NAME: ghcr.io/hitesh-reddy-k/pacificdb-community
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Resolve immutable image metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          if [[ "$GITHUB_REF" != refs/tags/v* ]]; then version="${{ inputs.version }}"; fi
+          created=$(git show -s --format=%cI HEAD)
+          printf 'IMAGE_VERSION=%s\nIMAGE_CREATED=%s\nLOCAL_IMAGE=pacificdb-community:ci-%s\n' \
+            "$version" "$created" "$GITHUB_SHA" >> "$GITHUB_ENV"
+      - name: Build local validation image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/docker/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: ${{ env.LOCAL_IMAGE }}
+          build-args: |
+            PACIFICDB_ENGINE_VERSION=${{ env.IMAGE_VERSION }}
+            PACIFICDB_GIT_COMMIT=${{ github.sha }}
+            PACIFICDB_BUILD_TIMESTAMP=${{ env.IMAGE_CREATED }}
+      - name: Smoke-test local validation image
+        run: |
+          mkdir -p dist
+          scripts/test-container-image.sh "$LOCAL_IMAGE" \
+            dist/p0-evidence-linux-amd64-container.json
+      - uses: actions/upload-artifact@v4
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        with:
+          name: linux-amd64-container
+          path: |
+            dist/p0-evidence-linux-amd64-container.json
+
+  container_publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [container]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE_NAME: ghcr.io/hitesh-reddy-k/pacificdb-community
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Resolve immutable image metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'IMAGE_VERSION=%s\nIMAGE_CREATED=%s\n' "${GITHUB_REF_NAME#v}" \
+            "$(git show -s --format=%cI HEAD)" >> "$GITHUB_ENV"
+      - name: Authenticate to GHCR for release digest
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Build and push release image by digest
+        id: release_image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/docker/Dockerfile
+          platforms: linux/amd64
+          outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+          provenance: mode=max
+          sbom: true
+          build-args: |
+            PACIFICDB_ENGINE_VERSION=${{ env.IMAGE_VERSION }}
+            PACIFICDB_GIT_COMMIT=${{ github.sha }}
+            PACIFICDB_BUILD_TIMESTAMP=${{ env.IMAGE_CREATED }}
+      - name: Smoke-test exact release digest
+        env:
+          RELEASE_DIGEST: ${{ steps.release_image.outputs.digest }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          image="$IMAGE_NAME@$RELEASE_DIGEST"
+          docker pull "$image"
+          scripts/test-container-image.sh "$image" \
+            dist/p0-evidence-linux-amd64-container.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-amd64-container
+          path: |
+            dist/p0-evidence-linux-amd64-container.json
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [linux, windows, macos]
+    needs: [linux, windows, macos, container_publish]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+      packages: write
+    env:
+      IMAGE_NAME: ghcr.io/hitesh-reddy-k/pacificdb-community
     steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
       - uses: actions/download-artifact@v4
         with:
           path: dist
@@ -289,7 +405,31 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           cd dist
-          sha256sum * > SHA256SUMS
-          gh release create "$GITHUB_REF_NAME" * --repo "$GITHUB_REPOSITORY" \
-            --prerelease --generate-notes
+          python3 ../scripts/verify-release-artifacts.py \
+            --dist . --version "${GITHUB_REF_NAME#v}" --revision "$GITHUB_SHA" \
+            --output RELEASE-MANIFEST.json
+          sha256sum pacificdb-community-* p0-evidence-*.json RELEASE-MANIFEST.json > SHA256SUMS
+          notes="../docs/releases/$GITHUB_REF_NAME.md"
+          if test -f "$notes"; then
+            gh release create "$GITHUB_REF_NAME" * --repo "$GITHUB_REPOSITORY" \
+              --draft --prerelease --notes-file "$notes"
+          else
+            gh release create "$GITHUB_REF_NAME" * --repo "$GITHUB_REPOSITORY" \
+              --draft --prerelease --generate-notes
+          fi
+          verify_dir="$RUNNER_TEMP/published-release"
+          mkdir -p "$verify_dir"
+          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --dir "$verify_dir"
+          (cd "$verify_dir" && sha256sum -c SHA256SUMS)
+          image_ref=$(jq -r '.image' p0-evidence-linux-amd64-container.json)
+          test "$image_ref" = "$(jq -r '.oci_image' RELEASE-MANIFEST.json)"
+          docker buildx imagetools inspect "$image_ref" >/dev/null
+          image_alias="$IMAGE_NAME:${GITHUB_REF_NAME#v}"
+          docker buildx imagetools create \
+            --tag "$image_alias" "$image_ref"
+          alias_digest=$(docker buildx imagetools inspect "$image_alias" |
+            awk '$1 == "Digest:" {print $2; exit}')
+          test "$alias_digest" = "${image_ref#*@}"
+          gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease

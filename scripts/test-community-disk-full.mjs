@@ -239,7 +239,7 @@ async function runCase(category) {
 }
 
 async function runCliStateFailure(cliHome, port, commands, expected) {
-  const child = spawn(cliBinary, ['--port', String(port), 'shell'], {
+  const child = spawn(cliBinary, ['--no-start', '--port', String(port), 'shell'], {
     cwd: repositoryRoot,
     env: { ...process.env, PACIFICDB_CLI_HOME: cliHome },
     stdio: ['pipe', 'pipe', 'pipe']

@@ -1,0 +1,17 @@
+production:
+  enabled: true
+replicaCount: 3
+image:
+  repository: ghcr.io/hitesh-reddy-k/pacificdb-community
+  digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+storage:
+  className: encrypted-data
+  size: 20Gi
+backupStorage:
+  className: encrypted-backup
+  size: 50Gi
+security:
+  clientTlsSecret: pacificdb-client-tls
+  raftTlsSecret: pacificdb-raft-tls
+  bootstrapSecret: pacificdb-bootstrap
+  encryptionEvidenceConfigMap: pacificdb-at-rest-evidence

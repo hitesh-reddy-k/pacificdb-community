@@ -1,14 +1,31 @@
-replicaCount: 3
+# Default profile: local development only. Use values-production.yaml plus
+# operator-supplied secret, storage, evidence, and digest values for production.
+production:
+  enabled: false
+
+replicaCount: 1
+
 image:
-  repository: pacificdb/community
+  repository: ghcr.io/hitesh-reddy-k/pacificdb-community
   tag: beta
+  digest: ""
   pullPolicy: IfNotPresent
+
 storage:
   className: ""
   size: 20Gi
+
+backupStorage:
+  className: ""
+  size: 50Gi
+
 resources:
   requests: { cpu: 500m, memory: 1Gi }
   limits: { cpu: "2", memory: 4Gi }
+
 security:
   authRequired: false
-  accountsSecret: ""
+  clientTlsSecret: ""
+  raftTlsSecret: ""
+  bootstrapSecret: ""
+  encryptionEvidenceConfigMap: ""
