@@ -11,6 +11,7 @@ RUN apt-get update \
        ca-certificates cmake g++ liblz4-dev libssl-dev make \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
+COPY LICENSE ./LICENSE
 COPY engine/ ./engine/
 RUN cmake -S engine -B /build \
       -DCMAKE_BUILD_TYPE=Release \
