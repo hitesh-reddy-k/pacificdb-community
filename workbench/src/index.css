@@ -1,0 +1,165 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Custom scrollbar ──────────────────────────────────────── */
+::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: #3d4555; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #5a6378; }
+
+/* ─── Selection ─────────────────────────────────────────────── */
+::selection { background: #1a72ff33; color: #e8ecf0; }
+
+/* ─── Base resets ───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #c5cedb;
+  background: #0d0f12;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none; /* prevent accidental text selection in app chrome */
+}
+
+/* Allow text selection in data areas */
+.selectable { user-select: text; }
+
+/* ─── CodeMirror / Monaco overrides ────────────────────────── */
+.cm-editor {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+  font-size: 12px !important;
+  height: 100%;
+}
+.cm-editor.cm-focused { outline: none !important; }
+.cm-scroller { overflow: auto !important; }
+
+/* ─── Custom components ─────────────────────────────────────── */
+@layer components {
+  .panel {
+    @apply bg-surface-800 border border-surface-500/30;
+  }
+
+  .btn {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium
+           transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-0;
+  }
+  .btn-primary {
+    @apply btn bg-pacific-600 text-white hover:bg-pacific-500 focus:ring-pacific-500/40
+           active:bg-pacific-700 disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .btn-ghost {
+    @apply btn text-surface-200 hover:bg-surface-600/60 hover:text-surface-50
+           focus:ring-surface-500/40 active:bg-surface-600;
+  }
+  .btn-danger {
+    @apply btn bg-danger/10 text-danger border border-danger/30
+           hover:bg-danger/20 focus:ring-danger/30;
+  }
+  .btn-outline {
+    @apply btn border border-surface-500/50 text-surface-200 hover:bg-surface-600/50
+           hover:border-surface-400 focus:ring-pacific-500/30;
+  }
+
+  .input {
+    @apply w-full bg-surface-700 border border-surface-500/50 rounded px-2.5 py-1.5
+           text-surface-100 placeholder-surface-300 text-sm
+           focus:outline-none focus:border-pacific-500 focus:ring-1 focus:ring-pacific-500/30
+           transition-colors duration-150;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-2xs font-medium;
+  }
+  .badge-blue    { @apply badge bg-pacific-500/20 text-pacific-300 border border-pacific-500/30; }
+  .badge-green   { @apply badge bg-success/20 text-success border border-success/30; }
+  .badge-yellow  { @apply badge bg-warning/20 text-warning border border-warning/30; }
+  .badge-red     { @apply badge bg-danger/20 text-danger border border-danger/30; }
+  .badge-gray    { @apply badge bg-surface-600 text-surface-300 border border-surface-500/30; }
+  .badge-purple  { @apply badge bg-purple-500/20 text-purple-300 border border-purple-500/30; }
+
+  .nav-item {
+    @apply flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm text-surface-300
+           hover:bg-surface-600/50 hover:text-surface-100 transition-all duration-100
+           cursor-pointer;
+  }
+  .nav-item.active {
+    @apply bg-pacific-500/15 text-pacific-300 border-l-2 border-pacific-500;
+  }
+
+  .section-header {
+    @apply text-2xs font-semibold uppercase tracking-widest text-surface-400 px-2 py-1;
+  }
+
+  .divider {
+    @apply border-t border-surface-500/30 my-1;
+  }
+
+  .status-dot {
+    @apply w-2 h-2 rounded-full flex-shrink-0;
+  }
+  .status-connected     { @apply status-dot bg-status-connected animate-pulse-dot; }
+  .status-connecting    { @apply status-dot bg-status-connecting animate-pulse-dot; }
+  .status-disconnected  { @apply status-dot bg-status-disconnected; }
+  .status-error         { @apply status-dot bg-status-error; }
+  .status-authenticated { @apply status-dot bg-status-authenticated animate-pulse-dot; }
+
+  .card {
+    @apply bg-surface-800 border border-surface-500/30 rounded-lg p-4
+           hover:border-surface-500/50 transition-colors duration-150;
+  }
+
+  .code {
+    @apply font-mono text-xs bg-surface-700 px-1.5 py-0.5 rounded text-pacific-300 selectable;
+  }
+
+  .tag {
+    @apply inline-block px-2 py-0.5 rounded-full text-2xs font-medium
+           bg-surface-600 text-surface-300 border border-surface-500/30;
+  }
+}
+
+/* ─── Animations ────────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #1a1e26 25%, #22272f 50%, #1a1e26 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+/* ─── Electron window drag region ───────────────────────────── */
+.drag-region {
+  -webkit-app-region: drag;
+}
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* ─── Context menus ─────────────────────────────────────────── */
+.context-menu {
+  @apply fixed z-50 bg-surface-700 border border-surface-500/50 rounded-md py-1
+         shadow-menu min-w-40 animate-fade-in;
+}
+.context-menu-item {
+  @apply flex items-center gap-2 px-3 py-1.5 text-sm text-surface-200
+         hover:bg-surface-600 hover:text-surface-50 cursor-pointer transition-colors;
+}
+.context-menu-separator {
+  @apply divider mx-2;
+}
