@@ -35,6 +35,83 @@ test('preserves the public engine detail in request errors', async (t) => {
     /execution_exception: media upload has missing chunks/);
 });
 
+test('reuses a bounded persistent connection pool under concurrent load', async () => {
+  let connections = 0;
+  const sockets = new Set();
+  const server = net.createServer((socket) => {
+    connections += 1;
+    sockets.add(socket);
+    socket.on('close', () => sockets.delete(socket));
+    let wire = '';
+    socket.on('data', (chunk) => {
+      wire += chunk;
+      while (wire.includes('\n')) {
+        const newline = wire.indexOf('\n');
+        const request = JSON.parse(wire.slice(0, newline));
+        wire = wire.slice(newline + 1);
+        setTimeout(() => socket.write(JSON.stringify({ sequence: request.sequence }) + '\n'), 5);
+      }
+    });
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const client = new PacificDBClient({ host: '127.0.0.1',
+    port: server.address().port, poolSize: 4 });
+  try {
+    const first = await Promise.all(Array.from({ length: 24 }, (_, sequence) =>
+      client.request({ action: 'ping', sequence })));
+    assert.deepEqual(first.map(({ sequence }) => sequence),
+      Array.from({ length: 24 }, (_, sequence) => sequence));
+    assert.equal(connections, 4);
+    await Promise.all(Array.from({ length: 8 }, (_, sequence) =>
+      client.request({ action: 'ping', sequence })));
+    assert.equal(connections, 4);
+  } finally {
+    client.close();
+    for (const socket of sockets) socket.destroy();
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test('prewarms the configured pool and sends insertMany data in one request', async () => {
+  let connections = 0;
+  let received;
+  let resolvePrewarmed;
+  const prewarmed = new Promise((resolve) => { resolvePrewarmed = resolve; });
+  const sockets = new Set();
+  const server = net.createServer((socket) => {
+    connections += 1;
+    if (connections === 3) resolvePrewarmed();
+    sockets.add(socket);
+    socket.on('close', () => sockets.delete(socket));
+    let wire = '';
+    socket.on('data', (chunk) => {
+      wire += chunk;
+      const newline = wire.indexOf('\n');
+      if (newline < 0) return;
+      received = JSON.parse(wire.slice(0, newline));
+      socket.write(JSON.stringify({ status: 'ok', inserted: received.data.length }) + '\n');
+    });
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const client = new PacificDBClient({ host: '127.0.0.1',
+    port: server.address().port, database: 'app', poolSize: 3 });
+  try {
+    await client.connect();
+    await prewarmed;
+    assert.equal(connections, 3);
+    assert.deepEqual(await client.insertMany('users', [{ id: '1' }, { id: '2' }]),
+      { status: 'ok', inserted: 2 });
+    assert.equal(received.action, 'insertMany');
+    assert.deepEqual(received.data, [{ id: '1' }, { id: '2' }]);
+    assert.equal(received.documents, undefined);
+    assert.throws(() => client.insertMany('users', {}), /must be an array/);
+  } finally {
+    client.close();
+    for (const socket of sockets) socket.destroy();
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
 test('reports a non-PacificDB server without leaking a JSON parser error', async (t) => {
   const server = net.createServer((socket) => socket.once('data', () =>
     socket.end('HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n')));

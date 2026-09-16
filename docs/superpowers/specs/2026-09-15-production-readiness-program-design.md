@@ -164,7 +164,7 @@ published release.
 
 ## Upgrade and durability design
 
-The supported first stable upgrade path is the latest published beta.13 to the
+The supported first stable upgrade path is the latest published beta.14 to the
 new stable candidate. An RF3 harness upgrades one follower at a time, waits for
 catch-up and health, transfers leadership away from the old leader, upgrades
 the final node, and validates acknowledged writes and replica convergence

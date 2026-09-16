@@ -11,6 +11,22 @@ import { PacificDBClient } from '@pacificdb/client';
 const db = new PacificDBClient({ host: '127.0.0.1', port: 9000, database: 'app' });
 await db.insert('users', { id: '1', name: 'Ada' });
 console.log(await db.find('users', { name: 'Ada' }));
+db.close();
+```
+
+The client reuses up to 16 persistent TCP/TLS connections by default. Set
+`poolSize` from 1 through 32 to tune concurrency, call `await db.connect()` to
+prewarm the full pool before latency-sensitive work, and call `db.close()`
+when the client is no longer needed.
+
+Insert a batch in one engine request and one WAL batch:
+
+```js
+const result = await db.insertMany('users', [
+  { id: '2', name: 'Grace' },
+  { id: '3', name: 'Linus' }
+]);
+console.log(result.inserted);
 ```
 
 Store or replace any image, GIF, audio, or video bytes under a stable ID:

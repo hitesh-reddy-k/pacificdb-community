@@ -23,8 +23,8 @@ done
 "$BUILD_DIR/db_engine_community_query_test"
 "$BUILD_DIR/db_engine_native_shell_parser_test"
 "$BUILD_DIR/db_engine_socket_runtime_test"
-test "$("$BUILD_DIR/pacificdb" --version)" = "PacificDB 0.1.0-beta.13"
-test "$("$BUILD_DIR/pacificdb" -V)" = "PacificDB 0.1.0-beta.13"
+test "$("$BUILD_DIR/pacificdb" --version)" = "PacificDB 0.1.0-beta.14"
+test "$("$BUILD_DIR/pacificdb" -V)" = "PacificDB 0.1.0-beta.14"
 node intelligence/test.js
 python3 scripts/test-release-consistency.py
 python3 scripts/test-workflow-contract.py

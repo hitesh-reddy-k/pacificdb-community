@@ -11,7 +11,7 @@ npm install --global @pacificdb/cli@beta
 pacificdb
 ```
 
-This package is PacificDB CLI `0.1.0-beta.13`.
+This package is PacificDB CLI `0.1.0-beta.14`.
 
 Plain `pacificdb` opens the shell. For a loopback connection, it starts
 `db_engine` automatically when the executable is available on `PATH`.

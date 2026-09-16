@@ -12,7 +12,7 @@ on:
       version:
         description: Version to build without publishing
         required: true
-        default: 0.1.0-beta.13
+        default: 0.1.0-beta.14
   push:
     tags: ["v*"]
 
@@ -411,8 +411,14 @@ jobs:
             --dist . --version "${GITHUB_REF_NAME#v}" --revision "$GITHUB_SHA" \
             --output RELEASE-MANIFEST.json
           sha256sum pacificdb-community-* p0-evidence-*.json RELEASE-MANIFEST.json > SHA256SUMS
-          gh release create "$GITHUB_REF_NAME" * --repo "$GITHUB_REPOSITORY" \
-            --draft --prerelease --generate-notes
+          notes="../docs/releases/$GITHUB_REF_NAME.md"
+          if test -f "$notes"; then
+            gh release create "$GITHUB_REF_NAME" * --repo "$GITHUB_REPOSITORY" \
+              --draft --prerelease --notes-file "$notes"
+          else
+            gh release create "$GITHUB_REF_NAME" * --repo "$GITHUB_REPOSITORY" \
+              --draft --prerelease --generate-notes
+          fi
           verify_dir="$RUNNER_TEMP/published-release"
           mkdir -p "$verify_dir"
           gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --dir "$verify_dir"
