@@ -22,6 +22,23 @@ attached to the release commit. Production Helm values must render the exact
 candidate image digest; a tag such as `latest` or `beta` is not release
 evidence.
 
+After producing the exact candidate artifacts, generate the machine-readable
+report described in [RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md):
+
+```sh
+python3 scripts/release_qualification.py \
+  --version "$PACIFICDB_RELEASE_VERSION" \
+  --output build/release-evidence.json \
+  --artifact build/db_engine \
+  --run
+```
+
+Do not use `--allow-dirty-development` for release evidence. Verify that
+`revision` is the reviewed commit, `dirty` is false, `release_eligible` is true,
+and every artifact digest matches the object submitted for publication. A
+required `FAIL` or `BLOCKED` result stops publication. `EXCLUDED` is a visible
+scope decision, not a passing test.
+
 ## Tag publication
 
 Create an annotated release tag only from a clean, reviewed commit. The tag
