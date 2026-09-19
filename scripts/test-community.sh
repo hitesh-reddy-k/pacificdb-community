@@ -33,8 +33,8 @@ for checkpoint_failpoint in \
   FP_LSM_CHECKPOINT_AFTER_WAL_RECLAIM; do
   "$BUILD_DIR/db_engine_lsm_checkpoint_crash_driver" --run-one "$checkpoint_failpoint"
 done
-test "$("$BUILD_DIR/pacificdb" --version)" = "PacificDB 0.1.0-beta.14"
-test "$("$BUILD_DIR/pacificdb" -V)" = "PacificDB 0.1.0-beta.14"
+test "$("$BUILD_DIR/pacificdb" --version)" = "PacificDB 1.0.0"
+test "$("$BUILD_DIR/pacificdb" -V)" = "PacificDB 1.0.0"
 node intelligence/test.js
 python3 scripts/test-release-consistency.py
 python3 scripts/test-workflow-contract.py

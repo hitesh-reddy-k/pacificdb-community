@@ -2,7 +2,7 @@
 set -euo pipefail
 
 package=${1:?usage: test-native-package.sh PACKAGE.deb}
-expected_version=${2:-0.1.0-beta.14}
+expected_version=${2:-1.0.0}
 root=$(mktemp -d /tmp/pacificdb-package-root-XXXXXX)
 home=$(mktemp -d /tmp/pacificdb-package-home-XXXXXX)
 port=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1]); s.close()')
@@ -40,7 +40,8 @@ for _ in {1..60}; do
 done
 server_pid=$(cat "$home/engine.pid")
 printf 'help\nquit\n' | "$root/usr/bin/pacificdb" --port "$port" >"$home/shell.out"
-grep -q 'COMMUNITY BETA' "$home/shell.out"
+grep -q 'PacificDB' "$home/shell.out"
+grep -q "v$expected_version" "$home/shell.out"
 
 for _ in {1..60}; do
   if "$root/usr/bin/pacificdb" --port "$port" ping >/dev/null 2>&1; then break; fi

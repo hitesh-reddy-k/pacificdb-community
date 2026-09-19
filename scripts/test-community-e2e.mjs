@@ -340,7 +340,7 @@ try {
   const shellOutput = await runShell(shellCommands);
   console.log('E2E: advertised shell command matrix complete');
   assertPublicOutput(shellOutput);
-  assert.match(shellOutput, /PACIFICDB[\s\S]*COMMUNITY BETA/i);
+  assert.match(shellOutput, /PacificDB[\s\S]*v1\.0\.0/);
   assert.match(shellOutput, /Grace Hopper/);
   assert.match(shellOutput, /"status": "pong"/);
   assert.match(shellOutput, /"chunk_count": 6/);

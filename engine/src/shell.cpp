@@ -951,10 +951,15 @@ int main(int argc, char** argv) {
             auto context = loadContext(home);
             if (!database.empty()) context.database = database;
             std::cout << "\n"
-                         "  ╭────────────────────────────────────╮\n"
-                         "  │  ≋  PACIFICDB  ·  COMMUNITY BETA  │\n"
-                         "  │     Documents · Vectors · Media    │\n"
-                         "  ╰────────────────────────────────────╯\n"
+                         "             .--------.\n"
+                         "          .-'          '-.\n"
+                         "         /                \\\n"
+                         "         \\____        ____/\n"
+                         "       ~~~~~~~~\\______/~~~~~~~~\n"
+                         "         ~~~~~~~~~~~~~~~~~~~~\n"
+                         "             PacificDB\n"
+                         "               v1.0.0\n"
+                         "       Documents · Vectors · Media\n"
                          "  Type help to see commands.\n";
             for (std::string line;
                  std::cout << (context.database.empty() ? "pacificdb> " :

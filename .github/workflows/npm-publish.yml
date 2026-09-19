@@ -1,9 +1,8 @@
-name: Publish npm beta
+name: Publish npm release
 
 on:
-  workflow_dispatch:
   push:
-    tags: ["v*-beta.*"]
+    tags: ["v*.*.*"]
 
 permissions:
   contents: read
@@ -20,9 +19,20 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm run test:npm
-      - name: Publish client then CLI under the beta tag
+      - name: Verify tag and package versions
+        shell: bash
+        run: |
+          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          version="${GITHUB_REF_NAME#v}"
+          client_version="$(node -p "require('./sdk/node/package.json').version")"
+          cli_version="$(node -p "require('./cli/package.json').version")"
+          cli_client_version="$(node -p "require('./cli/package.json').dependencies['@pacificdb/client']")"
+          test "$client_version" = "$version"
+          test "$cli_version" = "$version"
+          test "$cli_client_version" = "$version"
+      - name: Publish client then CLI under the latest tag
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          npm publish --workspace @pacificdb/client --tag beta
-          npm publish --workspace @pacificdb/cli --tag beta
+          npm publish --workspace @pacificdb/client --tag latest
+          npm publish --workspace @pacificdb/cli --tag latest

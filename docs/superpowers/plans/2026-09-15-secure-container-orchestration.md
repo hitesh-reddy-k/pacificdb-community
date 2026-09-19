@@ -1,6 +1,6 @@
 # Secure Container and Orchestrator Deployment Implementation Plan
 
-> Execute this plan in the existing `codex/production-readiness` worktree. Do not push images, tags, releases, secrets, or cluster resources without an exact preview and explicit approval.
+> Execute this plan in the dedicated release-preparation worktree. Do not push images, tags, releases, secrets, or cluster resources without an exact preview and explicit approval.
 
 **Goal:** Produce a non-root, immutable PacificDB OCI image contract and a fail-closed RF3 Helm production profile that satisfies the engine's production preflight without committing secrets.
 

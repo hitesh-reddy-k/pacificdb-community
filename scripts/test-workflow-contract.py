@@ -90,13 +90,23 @@ require(
 require(
     ".github/workflows/ci.yml",
     "pull_request:",
-    "branches: [main]",
+    "branches: [pacificdb-v1.0]",
     "source-linux:",
     "packages:",
     "uses: ./.github/workflows/release.yml",
     "version: 0.1.0-ci.${{ github.run_number }}",
 )
 forbid(".github/workflows/ci.yml", "secrets: inherit")
+require(
+    ".github/workflows/npm-publish.yml",
+    'tags: ["v*.*.*"]',
+    "Verify tag and package versions",
+    '[[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\\.[0-9]+\\.[0-9]+$ ]]',
+    'test "$client_version" = "$version"',
+    'test "$cli_version" = "$version"',
+    'test "$cli_client_version" = "$version"',
+)
+forbid(".github/workflows/npm-publish.yml", "workflow_dispatch:")
 require_flat_release_uploads()
 require(
     ".github/workflows/release.yml",

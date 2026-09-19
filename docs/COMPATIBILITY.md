@@ -8,7 +8,7 @@ SHA-256 hashes. Matching version strings are not sufficient.
 
 | From | To | Topology | Rollback boundary |
 |---|---|---|---|
-| `0.1.0-beta.14` | the release candidate built from the qualified revision | RF3, one node at a time | Binary rollback is permitted only before any declared storage-format transition. |
+| `0.1.0-beta.14` | `1.0.0` built from the qualified revision | RF3, one node at a time | Binary rollback is permitted only before any declared storage-format transition. |
 
 Upgrade followers first, waiting for replication convergence after each node.
 Transfer or re-elect leadership before upgrading the final node. Preserve and

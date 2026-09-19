@@ -1,6 +1,6 @@
 {
   "name": "pacificdb-community",
-  "version-string": "0.1.0-beta.14",
+  "version-string": "1.0.0",
   "builtin-baseline": "120deac3062162151622ca4860575a33844ba10b",
   "dependencies": [
     "lz4",

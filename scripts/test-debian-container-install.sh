@@ -22,7 +22,8 @@ docker run --rm --network bridge \
     export PACIFICDB_HOME="$root"
     export ENGINE_PORT=19000 RAFT_LISTEN_PORT=19001
     printf "quit\n" | pacificdb --port 19000 >"$root/shell.out"
-    grep -q "COMMUNITY BETA" "$root/shell.out"
+    grep -q "PacificDB" "$root/shell.out"
+    grep -q "v1.0.0" "$root/shell.out"
     server_pid=$(cat "$root/engine.pid")
     trap "kill $server_pid 2>/dev/null || true" EXIT
     pacificdb --port 19000 ping | grep -q pong

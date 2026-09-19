@@ -103,7 +103,7 @@ The repaired defects are:
 
 ### Beta.11 installation and CLI experience
 
-The native and npm CLIs display the Community beta banner and open the shell
+The native and npm CLIs display the PacificDB version banner and open the shell
 when invoked as plain `pacificdb`. For loopback connections, the command starts
 one background engine if needed, even when two clients make the first request
 at the same time. The engine uses the documented platform data directory and

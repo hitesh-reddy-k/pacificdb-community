@@ -2,7 +2,7 @@
 set -euo pipefail
 repo=${GITHUB_REPOSITORY:-hitesh-reddy-k/pacificdb-community}
 
-gh api "repos/$repo/branches/main/protection" >/dev/null
+gh api "repos/$repo/branches/pacificdb-v1.0/protection" >/dev/null
 test "$(gh api "repos/$repo/rulesets" --jq 'length')" -gt 0
 gh api "repos/$repo/code-scanning/analyses?per_page=1" --jq 'length > 0' | grep -qx true
 gh api "repos/$repo" --jq '.security_and_analysis.secret_scanning.status' | grep -qx enabled

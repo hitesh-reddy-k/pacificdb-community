@@ -1,6 +1,6 @@
 # Native Signing and Platform Distribution Implementation Plan
 
-> Execute in `codex/production-readiness`. Never create, upload, print, or configure signing credentials. Hosted signing/notarization remains BLOCKED until the release owner supplies repository secrets and authorizes workflow execution.
+> Execute from the dedicated release-preparation worktree. Never create, upload, print, or configure signing credentials. Hosted signing/notarization remains BLOCKED until the release owner supplies repository secrets and authorizes workflow execution.
 
 **Goal:** Make release-tag publication fail closed unless Windows binaries/installer have valid Authenticode signatures and both macOS packages are Developer ID signed, notarized, stapled, and Gatekeeper accepted.
 

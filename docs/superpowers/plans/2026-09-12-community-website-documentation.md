@@ -282,7 +282,7 @@ Run:
 ```bash
 ! rg -i 'enterprise|billing|autoscal|saml|oidc|kms|hsm' site
 git status --short
-git log --oneline origin/main..HEAD
+git log --oneline origin/pacificdb-v1.0..HEAD
 ```
 
 Expected: no forbidden product claims and only planned files/commits.
@@ -303,7 +303,8 @@ disclosure.
 
 - [x] **Step 5: Clean generated files and report evidence**
 
-Remove generated `build/` and `node_modules/` directories, fetch `origin/main`,
-and require `HEAD == origin/main` with an empty `git status --short` result.
+Remove generated `build/` and `node_modules/` directories, fetch
+`origin/pacificdb-v1.0`, and require `HEAD == origin/pacificdb-v1.0` with an
+empty `git status --short` result.
 Report the documentation URL, commit, Pages workflow, test results, and the
 remaining unsigned-installer/npm publication limitations.

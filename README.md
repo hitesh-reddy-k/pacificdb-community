@@ -8,7 +8,7 @@
   Self-hosted documents, vectors, media, backups, and RF3 replication.
 </p>
 
-> **Beta:** `0.1.0-beta.14` is a Community prerelease candidate for evaluation,
+> **Release candidate:** `1.0.0` is being qualified for evaluation,
 > development, staging, and controlled early-adopter deployments. Read
 > [the certification report](docs/COMMUNITY_P0_CERTIFICATION.md) before storing
 > critical data.
@@ -27,7 +27,7 @@
 
 See [COMMUNITY_SCOPE.md](COMMUNITY_SCOPE.md) for the exact boundary.
 
-## Beta.14 transport and ingestion
+## v1.0 transport and ingestion
 
 - The Node.js SDK reuses a persistent connection pool (16 sockets by default,
   configurable from 1 through 32) and provides explicit `connect()` and `close()`
@@ -41,7 +41,7 @@ See [COMMUNITY_SCOPE.md](COMMUNITY_SCOPE.md) for the exact boundary.
 
 ### Native package
 
-Download the beta package for your platform from
+Download the package for your platform from
 [GitHub Releases](https://github.com/hitesh-reddy-k/pacificdb-community/releases).
 The native package contains the database engine and CLI.
 
@@ -70,7 +70,7 @@ reused by later CLI and application connections. Use `--no-start` when the CLI
 must only connect to an already-running engine. Check the installed release
 without starting the engine with `pacificdb --version`.
 
-Windows and macOS beta installers are currently unsigned. Verify downloads
+Windows and macOS installers are currently unsigned. Verify downloads
 against `SHA256SUMS` and review the
 [certification status](docs/COMMUNITY_P0_CERTIFICATION.md) before installation.
 
@@ -79,12 +79,13 @@ against `SHA256SUMS` and review the
 Node.js 18 or newer:
 
 ```sh
-npm install --global @pacificdb/cli@beta
-npm install @pacificdb/client@beta
+npm install --global @pacificdb/cli@latest
+npm install @pacificdb/client@latest
 ```
 
-The npm `beta` tag installs `0.1.0-beta.14` for both the CLI and Node.js
-client.
+The v1.0 release workflow publishes both packages as `1.0.0` under npm's
+`latest` tag. Until that release workflow completes, install the currently
+published prerelease with its explicit version.
 
 The npm CLI is a client. It can automatically start `db_engine` when a native
 PacificDB server package is installed and available on `PATH`. Installing only
@@ -312,7 +313,7 @@ PYTHONPATH=sdk/python python -m pytest sdk/python/tests
 mvn -f sdk/java/pom.xml test
 ```
 
-## Beta status and support
+## v1.0 status and support
 
 The Linux candidate passed 57 retained test units, genuine ENOSPC coverage across
 21 write categories, six 10-minute RF3 load rounds, partition/election checks,

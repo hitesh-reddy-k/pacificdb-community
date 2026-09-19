@@ -31,7 +31,7 @@ on:
       version:
         description: Version to build without publishing
         required: true
-        default: 0.1.0-beta.14
+        default: 1.0.0
   push:
     tags: ["v*"]
 

@@ -193,7 +193,7 @@ test('plain pacificdb opens the branded shell', async () => {
   input.write('help\n');
   input.end('quit\n');
   await running;
-  assert.match(text, /PACIFICDB[\s\S]*COMMUNITY BETA/);
+  assert.match(text, /PacificDB[\s\S]*v1\.0\.0/);
   assert.match(text, /Documents · Vectors · Media/);
 });
 

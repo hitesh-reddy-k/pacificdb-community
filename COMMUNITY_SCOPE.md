@@ -1,4 +1,4 @@
-# Community beta scope
+# PacificDB Community v1.0 scope
 
 ## Implemented in this repository
 
@@ -18,7 +18,7 @@
 | Clients | JSON-over-TCP, native CLI/shell, Node.js, Java and Python |
 | Deployment | Docker, Docker Compose, Kubernetes, Helm, and native release packaging |
 
-## Not implemented in this beta
+## Not implemented in v1.0
 
 - REST gateway
 - Go client
@@ -32,9 +32,9 @@
 These items are omitted rather than represented by placeholders. Add them only
 with executable behavior, documentation, and a focused correctness test.
 
-## Beta certification status
+## v1.0 certification status
 
-The Linux beta passed three sustained RF3 runs at both 64 and 128 clients,
+The qualified Linux baseline passed three sustained RF3 runs at both 64 and 128 clients,
 acknowledged-write verification, replica convergence, failover, manual
 backup/restore, genuine disk-full injection, and Debian package installation.
 See [docs/COMMUNITY_P0_CERTIFICATION.md](docs/COMMUNITY_P0_CERTIFICATION.md) for

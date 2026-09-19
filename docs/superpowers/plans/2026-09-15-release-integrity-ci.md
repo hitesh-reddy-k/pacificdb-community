@@ -69,7 +69,7 @@ def main() -> None:
 
     raw_logo = (
         "https://raw.githubusercontent.com/hitesh-reddy-k/"
-        "pacificdb-community/main/" + CANONICAL_LOGO
+        "pacificdb-community/pacificdb-v1.0/" + CANONICAL_LOGO
     )
     for readme in (
         "cli/README.md",
@@ -315,7 +315,7 @@ require(
 require(
     ".github/workflows/ci.yml",
     "pull_request:",
-    "branches: [main]",
+    "branches: [pacificdb-v1.0]",
     "source-linux:",
     "packages:",
     "uses: ./.github/workflows/release.yml",
@@ -360,7 +360,7 @@ name: Required production checks
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [pacificdb-v1.0]
 
 permissions:
   contents: read
@@ -635,7 +635,7 @@ Create `scripts/check-repository-controls.sh`:
 set -euo pipefail
 repo=${GITHUB_REPOSITORY:-hitesh-reddy-k/pacificdb-community}
 
-gh api "repos/$repo/branches/main/protection" >/dev/null
+gh api "repos/$repo/branches/pacificdb-v1.0/protection" >/dev/null
 test "$(gh api "repos/$repo/rulesets" --jq 'length')" -gt 0
 gh api "repos/$repo/code-scanning/analyses?per_page=1" --jq 'length > 0' | grep -qx true
 gh api "repos/$repo" --jq '.security_and_analysis.secret_scanning.status' | grep -qx enabled

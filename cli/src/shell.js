@@ -73,11 +73,19 @@ System
   exit | quit                         Exit shell
 `;
 
+// A terminal-safe interpretation of the PacificDB ring-and-waves mark. Keeping
+// this in text makes the identity work over SSH, redirected output, and shells
+// that do not support terminal image protocols.
 export const SHELL_BANNER = `
-  ╭────────────────────────────────────╮
-  │  ≋  PACIFICDB  ·  COMMUNITY BETA  │
-  │     Documents · Vectors · Media    │
-  ╰────────────────────────────────────╯
+             .--------.
+          .-'          '-.
+         /                \\
+         \\____        ____/
+       ~~~~~~~~\\______/~~~~~~~~
+         ~~~~~~~~~~~~~~~~~~~~
+             PacificDB
+               v1.0.0
+       Documents · Vectors · Media
   Type help to see commands.\n`;
 
 export function sanitizeResponse(value, action = '') {

@@ -33,7 +33,7 @@ def main() -> None:
 
     raw_logo = (
         "https://raw.githubusercontent.com/hitesh-reddy-k/"
-        "pacificdb-community/main/" + CANONICAL_LOGO
+        "pacificdb-community/pacificdb-v1.0/" + CANONICAL_LOGO
     )
     for readme in (
         "cli/README.md",

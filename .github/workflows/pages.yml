@@ -1,7 +1,7 @@
 name: Deploy PacificDB website
 on:
   push:
-    branches: [main]
+    branches: [pacificdb-v1.0]
     paths: ["site/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 permissions:
