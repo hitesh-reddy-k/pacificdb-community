@@ -23,6 +23,15 @@ done
 "$BUILD_DIR/db_engine_community_query_test"
 "$BUILD_DIR/db_engine_native_shell_parser_test"
 "$BUILD_DIR/db_engine_socket_runtime_test"
+for checkpoint_failpoint in \
+  FP_LSM_CHECKPOINT_AFTER_SST_SYNC \
+  FP_LSM_CHECKPOINT_AFTER_ARTIFACT_RENAME \
+  FP_LSM_CHECKPOINT_AFTER_MANIFEST_SYNC \
+  FP_LSM_CHECKPOINT_AFTER_MANIFEST_RENAME \
+  FP_LSM_CHECKPOINT_BEFORE_WAL_RECLAIM \
+  FP_LSM_CHECKPOINT_AFTER_WAL_RECLAIM; do
+  "$BUILD_DIR/db_engine_lsm_checkpoint_crash_driver" --run-one "$checkpoint_failpoint"
+done
 test "$("$BUILD_DIR/pacificdb" --version)" = "PacificDB 0.1.0-beta.14"
 test "$("$BUILD_DIR/pacificdb" -V)" = "PacificDB 0.1.0-beta.14"
 node intelligence/test.js

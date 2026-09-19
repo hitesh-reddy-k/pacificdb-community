@@ -1,6 +1,7 @@
 #include "data_durability.hpp"
 #include "lsm.hpp"
 #include "owned_test_root.hpp"
+#include "wal.hpp"
 
 #include <algorithm>
 #include <cstdlib>
@@ -18,10 +19,13 @@ namespace fs = std::filesystem;
 using json = nlohmann::json;
 
 static constexpr int kHalf = 10000;
-static constexpr uint64_t kCrashLsn = 20000;
 static const std::string kUser = "checkpoint_user";
 static const std::string kDatabase = "checkpoint_db";
 static const std::string kCollection = "documents";
+
+static fs::path walPath(const fs::path& root) {
+    return root / kUser / kDatabase / "wal" / (kCollection + ".wal");
+}
 
 static std::string payloadFor(int index) {
     std::string payload(128, static_cast<char>('a' + index % 26));
@@ -63,13 +67,30 @@ static int initialize(const fs::path& root) {
     return 0;
 }
 
-static int crashAtCheckpoint(const fs::path& root) {
+static int stageSecondGeneration(const fs::path& root) {
     setenv("WAL_GROUP_COMMIT", "false", 1);
     setenv("WAL_FSYNC_ENABLED", "true", 1);
     setenv("WAL_SEGMENT_MAX_BYTES", "524288", 1);
     LSM::init(root.string());
     LSM::restoreFromWal();
     appendRange(kHalf, kHalf * 2);
+    const auto scan = WAL::scan(walPath(root).string(), {});
+    if (scan.status != WalScanStatus::OK || scan.lastLsn == 0) {
+        throw std::runtime_error("cannot derive crash LSN from staged WAL");
+    }
+    std::ofstream out(root / "crash-lsn", std::ios::trunc);
+    out << scan.lastLsn << '\n';
+    out.flush();
+    if (!out) throw std::runtime_error("cannot persist derived crash LSN");
+    return 0;
+}
+
+static int crashAtCheckpoint(const fs::path& root) {
+    setenv("WAL_GROUP_COMMIT", "false", 1);
+    setenv("WAL_FSYNC_ENABLED", "true", 1);
+    setenv("WAL_SEGMENT_MAX_BYTES", "524288", 1);
+    LSM::init(root.string());
+    LSM::restoreFromWal();
     LSM::forceFlush();
     return 90;  // selected failpoint must terminate before this line
 }
@@ -138,11 +159,17 @@ static int runOne(const fs::path& executable, const std::string& failpoint) {
     if (std::system((quote(executable) + " --init " + quote(root)).c_str()) != 0) {
         throw std::runtime_error("generation-1 setup failed");
     }
+    if (std::system((quote(executable) + " --stage " + quote(root)).c_str()) != 0) {
+        throw std::runtime_error("generation-2 WAL staging failed");
+    }
+    uint64_t crashLsn = 0;
+    std::ifstream(root / "crash-lsn") >> crashLsn;
+    if (crashLsn == 0) throw std::runtime_error("staged crash LSN is missing");
     setenv("PACIFICDB_TEST_MODE", "lsm_checkpoint_crash", 1);
     setenv("PACIFICDB_TEST_FAILPOINT_CONFIRM",
            "I_UNDERSTAND_THIS_PROCESS_WILL_TERMINATE", 1);
     setenv("PACIFICDB_TEST_FAILPOINT", failpoint.c_str(), 1);
-    setenv("PACIFICDB_TEST_FAILPOINT_INDEX", std::to_string(kCrashLsn).c_str(), 1);
+    setenv("PACIFICDB_TEST_FAILPOINT_INDEX", std::to_string(crashLsn).c_str(), 1);
     setenv("PACIFICDB_TEST_FAILPOINT_ACTION", "crash", 1);
     const int crashed = exitStatus(std::system(
         (quote(executable) + " --crash " + quote(root)).c_str()));
@@ -175,6 +202,7 @@ static int runOne(const fs::path& executable, const std::string& failpoint) {
 int main(int argc, char** argv) {
     try {
         if (argc == 3 && std::string(argv[1]) == "--init") return initialize(argv[2]);
+        if (argc == 3 && std::string(argv[1]) == "--stage") return stageSecondGeneration(argv[2]);
         if (argc == 3 && std::string(argv[1]) == "--crash") return crashAtCheckpoint(argv[2]);
         if (argc == 4 && std::string(argv[1]) == "--verify") return verify(argv[2], argv[3]);
         if (argc == 3 && std::string(argv[1]) == "--run-one") {

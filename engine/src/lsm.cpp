@@ -1532,11 +1532,17 @@ replayCollectionWal(const fs::path& walPath) {
                 expectedUser, expectedDatabase, expectedCollection, ".lsm"));
             if (manifest.status == LsmManifestLoadStatus::OK) {
                 std::string reclaimError;
+                pacificdb::test::hitFailpoint(
+                    "FP_LSM_CHECKPOINT_BEFORE_WAL_RECLAIM",
+                    manifest.manifest.coveredWalLsn);
                 if (!WAL::reclaimThrough(walPath.string(), manifest.manifest.coveredWalLsn,
                                          &reclaimError)) {
                     std::cerr << "[LSM][RESTORE] WAL reclaim deferred: "
                               << reclaimError << std::endl;
                 }
+                pacificdb::test::hitFailpoint(
+                    "FP_LSM_CHECKPOINT_AFTER_WAL_RECLAIM",
+                    manifest.manifest.coveredWalLsn);
             }
         }
     }

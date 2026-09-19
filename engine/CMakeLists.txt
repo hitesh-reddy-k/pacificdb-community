@@ -125,7 +125,6 @@ set(ENGINE_CORE
     src/wal_integrity.cpp
     src/recovery_manager.cpp
     src/storage_root_guard.cpp
-    src/test_failpoint.cpp
     src/snapshot_manager.cpp
     src/snapshot_bundle.cpp
     src/garbage_collector.cpp
@@ -214,6 +213,22 @@ add_library(pacificdb_engine_core STATIC
     ${ENGINE_CORE}
     ${COMMUNITY_FEATURES}
 )
+
+# Keep destructive failpoints out of production binaries while allowing the
+# crash-consistency driver to exercise the real LSM implementation.  The
+# engine core references this interface but each final executable selects
+# exactly one runtime below.
+add_library(pacificdb_test_failpoints_disabled STATIC src/test_failpoint.cpp)
+target_include_directories(pacificdb_test_failpoints_disabled PUBLIC
+    ${CMAKE_SOURCE_DIR}/include
+)
+add_library(pacificdb_test_failpoints_enabled STATIC src/test_failpoint.cpp)
+target_include_directories(pacificdb_test_failpoints_enabled PUBLIC
+    ${CMAKE_SOURCE_DIR}/include
+)
+target_compile_definitions(pacificdb_test_failpoints_enabled PRIVATE
+    PACIFICDB_TEST_FAILPOINTS
+)
 target_link_libraries(pacificdb_engine_core PUBLIC
     pacificdb_media_upload_state pacificdb_structured_event)
 target_include_directories(pacificdb_engine_core PUBLIC
@@ -236,7 +251,7 @@ endif()
 add_executable(db_engine src/main.cpp src/server.cpp)
 target_link_libraries(db_engine PRIVATE
     pacificdb_engine_core pacificdb_socket_runtime pacificdb_local_engine
-    pacificdb_structured_event)
+    pacificdb_structured_event pacificdb_test_failpoints_disabled)
 target_include_directories(db_engine PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/generated
 )
@@ -254,9 +269,17 @@ if(WIN32)
 endif()
 
 # ------------------ TEST EXECUTABLES ------------------
+enable_testing()
+
 function(add_pacificdb_engine_test target source)
     add_executable(${target} ${source})
-    target_link_libraries(${target} PRIVATE pacificdb_engine_core)
+    if(${target} STREQUAL "db_engine_lsm_checkpoint_crash_driver")
+        target_link_libraries(${target} PRIVATE
+            pacificdb_engine_core pacificdb_test_failpoints_enabled)
+    else()
+        target_link_libraries(${target} PRIVATE
+            pacificdb_engine_core pacificdb_test_failpoints_disabled)
+    endif()
     if(MSVC)
         target_compile_options(${target} PRIVATE /UNDEBUG)
     else()
@@ -280,6 +303,19 @@ add_pacificdb_engine_test(db_engine_lsm_checkpoint_test test/lsm_checkpoint_test
 add_pacificdb_engine_test(db_engine_lsm_bounded_recovery_test test/lsm_bounded_recovery_test.cpp)
 add_pacificdb_engine_test(db_engine_index_bounded_recovery_test test/index_bounded_recovery_test.cpp)
 add_pacificdb_engine_test(db_engine_lsm_checkpoint_crash_driver test/lsm_checkpoint_crash_driver.cpp)
+foreach(checkpoint_failpoint IN ITEMS
+    FP_LSM_CHECKPOINT_AFTER_SST_SYNC
+    FP_LSM_CHECKPOINT_AFTER_ARTIFACT_RENAME
+    FP_LSM_CHECKPOINT_AFTER_MANIFEST_SYNC
+    FP_LSM_CHECKPOINT_AFTER_MANIFEST_RENAME
+    FP_LSM_CHECKPOINT_BEFORE_WAL_RECLAIM
+    FP_LSM_CHECKPOINT_AFTER_WAL_RECLAIM)
+    string(TOLOWER "${checkpoint_failpoint}" checkpoint_test_name)
+    add_test(
+        NAME ${checkpoint_test_name}
+        COMMAND db_engine_lsm_checkpoint_crash_driver --run-one ${checkpoint_failpoint}
+    )
+endforeach()
 add_pacificdb_engine_test(db_engine_raft_binary_log_test test/raft_binary_log_test.cpp)
 add_pacificdb_engine_test(db_engine_raft_health_recovery_test test/raft_health_recovery_test.cpp)
 add_pacificdb_engine_test(db_engine_raft_snapshot_metadata_test test/raft_snapshot_metadata_test.cpp)
