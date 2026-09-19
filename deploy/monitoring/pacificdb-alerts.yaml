@@ -1,0 +1,78 @@
+groups:
+  - name: pacificdb-production
+    rules:
+      - alert: PacificDBWalLatencyHigh
+        expr: pacificdb_wal_fsync_p99_ms > 25
+        for: 10m
+        annotations:
+          runbook_url: docs/OPERATIONS.md#alert-response
+      - alert: PacificDBWalErrors
+        expr: increase(pacificdb_errors_total[5m]) > 0
+        for: 1m
+        annotations:
+          runbook_url: docs/OPERATIONS.md#emergency-recovery
+      - alert: PacificDBWriteStalls
+        expr: pacificdb_memory_backpressure_active == 1
+        for: 5m
+        annotations:
+          runbook_url: docs/OPERATIONS.md#resource-sizing
+      - alert: PacificDBFlushCompactionBacklog
+        expr: pacificdb_lsm_memtable_bytes > 0 and rate(pacificdb_lsm_flush_total[10m]) == 0
+        for: 10m
+        annotations:
+          runbook_url: docs/OPERATIONS.md#resource-sizing
+      - alert: PacificDBDiskPressure
+        expr: pacificdb_disk_available_bytes < 10737418240
+        for: 5m
+        annotations:
+          runbook_url: docs/OPERATIONS.md#resource-sizing
+      - alert: PacificDBMemoryPressure
+        expr: pacificdb_memory_usage_ratio > 0.9
+        for: 5m
+        annotations:
+          runbook_url: docs/OPERATIONS.md#resource-sizing
+      - alert: PacificDBFileDescriptorPressure
+        expr: absent(pacificdb_file_descriptors_open) or pacificdb_file_descriptors_open / pacificdb_file_descriptors_limit > 0.8
+        for: 10m
+        annotations:
+          runbook_url: docs/OPERATIONS.md#resource-sizing
+      - alert: PacificDBConnectionSaturation
+        expr: pacificdb_connection_pool_utilization > 0.9
+        for: 5m
+        annotations:
+          runbook_url: docs/OPERATIONS.md#resource-sizing
+      - alert: PacificDBRaftLag
+        expr: pacificdb_raft_apply_lag > 1000
+        for: 5m
+        annotations:
+          runbook_url: docs/runbooks/LOSS_OF_QUORUM.md#triage
+      - alert: PacificDBRaftQuorumUnavailable
+        expr: sum(pacificdb_raft_leader) < 1
+        for: 1m
+        annotations:
+          runbook_url: docs/runbooks/LOSS_OF_QUORUM.md#triage
+      - alert: PacificDBIntegrityCheckStale
+        expr: absent(pacificdb_replica_integrity_last_success_timestamp_seconds) or time() - pacificdb_replica_integrity_last_success_timestamp_seconds > 900
+        for: 5m
+        annotations:
+          runbook_url: docs/runbooks/NODE_REPLACEMENT.md#replica-integrity-response
+      - alert: PacificDBIntegrityCheckFailed
+        expr: pacificdb_replica_integrity_failures_total > 0
+        for: 1m
+        annotations:
+          runbook_url: docs/runbooks/NODE_REPLACEMENT.md#replica-integrity-response
+      - alert: PacificDBBackupTooOld
+        expr: absent(pacificdb_backup_last_success_timestamp_seconds) or time() - pacificdb_backup_last_success_timestamp_seconds > 86400
+        for: 15m
+        annotations:
+          runbook_url: docs/runbooks/BACKUP_RESTORE.md#alert-response
+      - alert: PacificDBBackupFailed
+        expr: increase(pacificdb_backup_failures_total[1h]) > 0
+        for: 1m
+        annotations:
+          runbook_url: docs/runbooks/BACKUP_RESTORE.md#alert-response
+      - alert: PacificDBCertificateExpiringSoon
+        expr: pacificdb_tls_certificate_expiry_timestamp_seconds - time() < 1209600
+        for: 1h
+        annotations:
+          runbook_url: docs/runbooks/CERTIFICATE_ROTATION.md#alert-response
