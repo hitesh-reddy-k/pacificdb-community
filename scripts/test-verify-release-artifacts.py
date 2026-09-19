@@ -44,6 +44,33 @@ class VerifyReleaseArtifactsTests(unittest.TestCase):
                     "registry_digest": "sha256:" + "b" * 64,
                     "image": "ghcr.io/hitesh-reddy-k/pacificdb-community@sha256:" + "b" * 64,
                 })
+            elif name == "p0-evidence-windows-x64.json":
+                content = json.dumps({
+                    "status": "PASS",
+                    "version": "PacificDB 1.0.0",
+                    "revision": "a" * 40,
+                    "windows_signing": {
+                        "status": "PASS",
+                        "installer": "PASS",
+                        "installed_pacificdb": "PASS",
+                        "installed_db_engine": "PASS",
+                    },
+                })
+            elif name.startswith("p0-evidence-macos-"):
+                architecture = "arm64" if "arm64" in name else "x86_64"
+                content = json.dumps({
+                    "status": "PASS",
+                    "version": "PacificDB 1.0.0",
+                    "revision": "a" * 40,
+                    "release_architecture": architecture,
+                    "macos_signing": {
+                        "status": "PASS",
+                        "signature": "PASS",
+                        "notarization": "PASS",
+                        "stapling": "PASS",
+                        "gatekeeper": "PASS",
+                    },
+                })
             else:
                 content = name
             (self.root / name).write_text(content, encoding="utf-8")
@@ -68,6 +95,9 @@ class VerifyReleaseArtifactsTests(unittest.TestCase):
             sorted(INSTALLERS + EVIDENCE),
         )
         self.assertTrue(all(len(item["sha256"]) == 64 for item in manifest["artifacts"]))
+        self.assertEqual(manifest["native_signing"]["windows"]["status"], "PASS")
+        self.assertEqual(manifest["native_signing"]["macos-arm64"]["status"], "PASS")
+        self.assertEqual(manifest["native_signing"]["macos-x86_64"]["status"], "PASS")
 
     def test_container_evidence_must_match_release_identity(self):
         self.populate(INSTALLERS + EVIDENCE)
@@ -80,6 +110,33 @@ class VerifyReleaseArtifactsTests(unittest.TestCase):
         }), encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "container evidence"):
             verifier.build_manifest(self.root, "1.0.0", "a" * 40)
+
+    def test_missing_windows_signing_evidence_fails(self):
+        self.populate(INSTALLERS + EVIDENCE)
+        path = self.root / "p0-evidence-windows-x64.json"
+        evidence = json.loads(path.read_text(encoding="utf-8"))
+        del evidence["windows_signing"]
+        path.write_text(json.dumps(evidence), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "Windows signing evidence"):
+            verifier.build_manifest(self.root, "1.0.0", "a" * 40)
+
+    def test_non_passing_macos_notarization_fails(self):
+        self.populate(INSTALLERS + EVIDENCE)
+        path = self.root / "p0-evidence-macos-arm64.json"
+        evidence = json.loads(path.read_text(encoding="utf-8"))
+        evidence["macos_signing"]["notarization"] = "NOT_APPLICABLE"
+        path.write_text(json.dumps(evidence), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "macOS signing evidence"):
+            verifier.build_manifest(self.root, "1.0.0", "a" * 40)
+
+    def test_native_signing_revision_must_match_release(self):
+        self.populate(INSTALLERS + EVIDENCE)
+        path = self.root / "p0-evidence-windows-x64.json"
+        evidence = json.loads(path.read_text(encoding="utf-8"))
+        evidence["revision"] = "c" * 40
+        path.write_text(json.dumps(evidence), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "Windows signing evidence"):
+            verifier.build_manifest(self.root, "1.0.0")
 
 
 if __name__ == "__main__":

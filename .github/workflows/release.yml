@@ -7,6 +7,25 @@ on:
         description: Version embedded in non-publishing validation artifacts
         required: true
         type: string
+    secrets:
+      WINDOWS_CERTIFICATE_BASE64:
+        required: false
+      WINDOWS_CERTIFICATE_PASSWORD:
+        required: false
+      MACOS_INSTALLER_CERTIFICATE_BASE64:
+        required: false
+      MACOS_INSTALLER_CERTIFICATE_PASSWORD:
+        required: false
+      MACOS_INSTALLER_IDENTITY:
+        required: false
+      MACOS_KEYCHAIN_PASSWORD:
+        required: false
+      APPLE_NOTARY_ID:
+        required: false
+      APPLE_TEAM_ID:
+        required: false
+      APPLE_APP_SPECIFIC_PASSWORD:
+        required: false
   workflow_dispatch:
     inputs:
       version:
@@ -84,13 +103,8 @@ jobs:
           if ($env:GITHUB_REF.StartsWith('refs/tags/v') -and -not $hasCertificate) {
             throw "Windows signing secrets are required for release tags"
           }
-          if ($hasCertificate) {
-            $certPath = "$env:RUNNER_TEMP\signing_cert.pfx"
-            [IO.File]::WriteAllBytes($certPath, [Convert]::FromBase64String($env:CERT_BASE64))
-            $signtool = (Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" |
-              Sort-Object FullName -Descending | Select-Object -First 1).FullName
-            if (-not $signtool) { throw "SignTool was not found" }
-          }
+          $certPath = $null
+          $signtool = $null
           function Invoke-CodeSigning([string[]] $files) {
             foreach ($file in $files) {
               & $signtool sign /f $certPath /p $env:CERT_PASS /tr https://timestamp.digicert.com /td sha256 /fd sha256 $file
@@ -130,6 +144,12 @@ jobs:
           }
           try {
             if ($hasCertificate) {
+              $certPath = "$env:RUNNER_TEMP\signing_cert.pfx"
+              [IO.File]::WriteAllBytes(
+                $certPath, [Convert]::FromBase64String($env:CERT_BASE64))
+              $signtool = (Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" |
+                Sort-Object FullName -Descending | Select-Object -First 1).FullName
+              if (-not $signtool) { throw "SignTool was not found" }
               Invoke-CodeSigning @('build/Release/db_engine.exe', 'build/Release/pacificdb.exe')
             }
             cpack --config build/CPackConfig.cmake -C Release -G NSIS -B dist
@@ -161,6 +181,17 @@ jobs:
           if ((Get-Command pacificdb).Source -ne "$bin\pacificdb.exe") {
             throw "unqualified pacificdb does not resolve to the Community executable"
           }
+          $windowsSigningStatus = if ($hasCertificate) { 'PASS' } else { 'NOT_APPLICABLE' }
+          if ($hasCertificate) {
+            $pacificdbSignature = Get-AuthenticodeSignature "$bin\pacificdb.exe"
+            $engineSignature = Get-AuthenticodeSignature "$bin\db_engine.exe"
+            if ($pacificdbSignature.Status -ne 'Valid') {
+              throw "Installed pacificdb.exe Authenticode signature is not valid"
+            }
+            if ($engineSignature.Status -ne 'Valid') {
+              throw "Installed db_engine.exe Authenticode signature is not valid"
+            }
+          }
           $env:PACIFICDB_HOME = "$env:RUNNER_TEMP\pacificdb-installed-test"
           Remove-Item Env:DATA_ROOT,Env:BACKUP_ROOT,Env:RESTORE_DIR -ErrorAction SilentlyContinue
           $env:ENGINE_PORT = "19100"
@@ -184,9 +215,21 @@ jobs:
           $env:PACIFICDB_P0_SOAK = '1'
           $env:PACIFICDB_P0_SOAK_WRITES = '25000'
           $env:PACIFICDB_P0_EXPECTED_VERSION = $version
+          $evidencePath = "$env:RUNNER_TEMP\p0-evidence-windows-x64.json"
           & scripts/test-p0-windows.ps1 -PackageRoot $installRoot `
-            -EvidencePath "$env:RUNNER_TEMP\p0-evidence-windows-x64.json"
+            -EvidencePath $evidencePath
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $evidence = Get-Content $evidencePath -Raw | ConvertFrom-Json
+          $evidence | Add-Member -NotePropertyName revision `
+            -NotePropertyValue $env:GITHUB_SHA -Force
+          $evidence | Add-Member -NotePropertyName windows_signing `
+            -NotePropertyValue ([ordered]@{
+              status = $windowsSigningStatus
+              installer = $windowsSigningStatus
+              installed_pacificdb = $windowsSigningStatus
+              installed_db_engine = $windowsSigningStatus
+            }) -Force
+          $evidence | ConvertTo-Json -Depth 10 | Set-Content $evidencePath -Encoding utf8
           $uninstall = Start-Process -FilePath "$installRoot\Uninstall.exe" `
             -ArgumentList '/S', "_?=$installRoot" -PassThru
           if (-not $uninstall.WaitForExit(60000)) {
@@ -199,7 +242,7 @@ jobs:
             throw "Windows uninstaller did not remove PacificDB from PATH"
           }
           Rename-Item $installer.FullName "pacificdb-community-$version-windows-x64.exe"
-          Move-Item "$env:RUNNER_TEMP\p0-evidence-windows-x64.json" "dist\p0-evidence-windows-x64.json"
+          Move-Item $evidencePath "dist\p0-evidence-windows-x64.json"
       - uses: actions/upload-artifact@v4
         with:
           name: windows-x64
@@ -222,9 +265,69 @@ jobs:
       - run: brew install cmake lz4 openssl@3
       - name: Build macOS installer
         shell: bash
+        env:
+          MACOS_INSTALLER_CERTIFICATE_BASE64: ${{ secrets.MACOS_INSTALLER_CERTIFICATE_BASE64 }}
+          MACOS_INSTALLER_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_INSTALLER_CERTIFICATE_PASSWORD }}
+          MACOS_INSTALLER_IDENTITY: ${{ secrets.MACOS_INSTALLER_IDENTITY }}
+          MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+          APPLE_NOTARY_ID: ${{ secrets.APPLE_NOTARY_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
         run: |
+          set -euo pipefail
+          signing_p12="$RUNNER_TEMP/pacificdb-installer.p12"
+          signing_keychain="$RUNNER_TEMP/pacificdb-signing.keychain-db"
+          cleanup_macos_signing() {
+            rm -f "$signing_p12" "$RUNNER_TEMP/notary-result.json"
+            security delete-keychain "$signing_keychain" >/dev/null 2>&1 || true
+          }
+          trap cleanup_macos_signing EXIT
+
           version="${GITHUB_REF_NAME#v}"
           if [[ "$GITHUB_REF" != refs/tags/v* ]]; then version="${{ inputs.version }}"; fi
+          is_release_tag=false
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then is_release_tag=true; fi
+          signing_values=(
+            "$MACOS_INSTALLER_CERTIFICATE_BASE64"
+            "$MACOS_INSTALLER_CERTIFICATE_PASSWORD"
+            "$MACOS_INSTALLER_IDENTITY"
+            "$MACOS_KEYCHAIN_PASSWORD"
+            "$APPLE_NOTARY_ID"
+            "$APPLE_TEAM_ID"
+            "$APPLE_APP_SPECIFIC_PASSWORD"
+          )
+          configured_signing_values=0
+          for value in "${signing_values[@]}"; do
+            if [[ -n "$value" ]]; then
+              configured_signing_values=$((configured_signing_values + 1))
+            fi
+          done
+          has_signing_credentials=false
+          if [[ "$configured_signing_values" -eq "${#signing_values[@]}" ]]; then
+            has_signing_credentials=true
+          elif [[ "$configured_signing_values" -ne 0 ]]; then
+            echo "macOS signing credentials must be configured as one complete set" >&2
+            exit 1
+          fi
+          if [[ "$is_release_tag" == true && "$has_signing_credentials" != true ]]; then
+            echo "macOS signing and notarization credentials are required for release tags" >&2
+            exit 1
+          fi
+
+          if [[ "$has_signing_credentials" == true ]]; then
+            printf '%s' "$MACOS_INSTALLER_CERTIFICATE_BASE64" | /usr/bin/base64 -D > "$signing_p12"
+            chmod 600 "$signing_p12"
+            security create-keychain -p "$MACOS_KEYCHAIN_PASSWORD" "$signing_keychain"
+            security set-keychain-settings -lut 21600 "$signing_keychain"
+            security unlock-keychain -p "$MACOS_KEYCHAIN_PASSWORD" "$signing_keychain"
+            security import "$signing_p12" -k "$signing_keychain" \
+              -P "$MACOS_INSTALLER_CERTIFICATE_PASSWORD" -T /usr/bin/productsign
+            security set-key-partition-list -S apple-tool:,apple: -s \
+              -k "$MACOS_KEYCHAIN_PASSWORD" "$signing_keychain"
+            security list-keychains -d user -s "$signing_keychain" \
+              "$HOME/Library/Keychains/login.keychain-db"
+          fi
+
           cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release \
             -DOPENSSL_ROOT_DIR="$(brew --prefix openssl@3)" \
             -DLZ4_LIBRARY="$(brew --prefix lz4)/lib/liblz4.dylib" \
@@ -254,9 +357,35 @@ jobs:
           package_root="$RUNNER_TEMP/package-root"
           cmake --install build --prefix "$package_root/usr/local"
           mkdir -p dist
+          unsigned_package="$RUNNER_TEMP/pacificdb-community-$version-macos-${{ matrix.arch }}-unsigned.pkg"
           package="dist/pacificdb-community-$version-macos-${{ matrix.arch }}.pkg"
           pkgbuild --root "$package_root" --install-location / \
-            --identifier com.pacificdb.community --version "${version%%-*}" "$package"
+            --identifier com.pacificdb.community --version "${version%%-*}" "$unsigned_package"
+          signing_status="NOT_APPLICABLE"
+          if [[ "$has_signing_credentials" == true ]]; then
+            productsign --sign "$MACOS_INSTALLER_IDENTITY" \
+              --keychain "$signing_keychain" "$unsigned_package" "$package"
+            rm -f "$unsigned_package"
+            pkgutil --check-signature "$package"
+            xcrun notarytool submit "$package" \
+              --apple-id "$APPLE_NOTARY_ID" \
+              --team-id "$APPLE_TEAM_ID" \
+              --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+              --wait --output-format json > "$RUNNER_TEMP/notary-result.json"
+            notary_status=$(python3 -c \
+              'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["status"])' \
+              "$RUNNER_TEMP/notary-result.json")
+            if [[ "$notary_status" != Accepted ]]; then
+              echo "Apple notarization did not return Accepted" >&2
+              exit 1
+            fi
+            xcrun stapler staple "$package"
+            xcrun stapler validate "$package"
+            spctl --assess --type install --verbose=2 "$package"
+            signing_status="PASS"
+          else
+            mv "$unsigned_package" "$package"
+          fi
           pkgutil --payload-files "$package" | grep -q 'usr/local/bin/db_engine$'
           pkgutil --payload-files "$package" | grep -q 'usr/local/bin/pacificdb$'
           pkgutil --payload-files "$package" | grep -q 'usr/local/share/pacificdb/pacificdb-logo.png$'
@@ -275,6 +404,25 @@ jobs:
             PACIFICDB_P0_MEDIA_100MB=1 PACIFICDB_P0_SOAK=1 \
             node scripts/test-p0-installed.mjs /usr/local \
             "$RUNNER_TEMP/p0-evidence-macos-${{ matrix.arch }}.json"
+          evidence_path="$RUNNER_TEMP/p0-evidence-macos-${{ matrix.arch }}.json"
+          python3 - "$evidence_path" "$GITHUB_SHA" "${{ matrix.arch }}" "$signing_status" <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          path = pathlib.Path(sys.argv[1])
+          evidence = json.loads(path.read_text(encoding="utf-8"))
+          evidence["revision"] = sys.argv[2]
+          evidence["release_architecture"] = sys.argv[3]
+          evidence["macos_signing"] = {
+              "status": sys.argv[4],
+              "signature": sys.argv[4],
+              "notarization": sys.argv[4],
+              "stapling": sys.argv[4],
+              "gatekeeper": sys.argv[4],
+          }
+          path.write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
+          PY
           mv "$RUNNER_TEMP/p0-evidence-macos-${{ matrix.arch }}.json" \
             "dist/p0-evidence-macos-${{ matrix.arch }}.json"
       - uses: actions/upload-artifact@v4

@@ -51,6 +51,44 @@ its version and source revision. The final release job checks that evidence
 alongside every native package before creating the version alias in GHCR and
 undrafting the GitHub release.
 
+## Native signing prerequisites
+
+Release tags are fail-closed unless all platform signing evidence is `PASS` and
+is bound to the release version and commit. Non-tag package validation remains
+unsigned and records `NOT_APPLICABLE`; that evidence cannot authorize release
+publication.
+
+Windows requires these GitHub Actions secrets:
+
+- `WINDOWS_CERTIFICATE_BASE64`: base64-encoded Authenticode PFX containing the
+  code-signing certificate and private key.
+- `WINDOWS_CERTIFICATE_PASSWORD`: PFX password.
+
+The workflow signs and timestamps `db_engine.exe`, `pacificdb.exe`, and the
+NSIS installer. It verifies each signature with SignTool and verifies both
+installed executables with `Get-AuthenticodeSignature`. The temporary PFX is
+deleted in a `finally` block.
+
+macOS requires these GitHub Actions secrets:
+
+- `MACOS_INSTALLER_CERTIFICATE_BASE64`: base64-encoded Developer ID Installer
+  PKCS#12 certificate and private key.
+- `MACOS_INSTALLER_CERTIFICATE_PASSWORD`: PKCS#12 password.
+- `MACOS_INSTALLER_IDENTITY`: the exact Developer ID Installer identity.
+- `MACOS_KEYCHAIN_PASSWORD`: password for the temporary CI keychain.
+- `APPLE_NOTARY_ID`, `APPLE_TEAM_ID`, and `APPLE_APP_SPECIFIC_PASSWORD`:
+  notarization credentials.
+
+The workflow imports the certificate into an ephemeral keychain, signs each
+package with `productsign`, waits for Apple notarization, staples and validates
+the ticket, and requires Gatekeeper acceptance. An `EXIT` trap deletes the
+temporary certificate and keychain. Never store credential values in the
+repository or release evidence.
+
+Successful static workflow checks do not prove that hosted signing works. The
+release owner must configure the secrets, authorize the tag workflow, and
+retain its exact-commit evidence before the signing gate can be marked `PASS`.
+
 ## External writes
 
 Repository controls, credentials, public tags, packages, images, and releases

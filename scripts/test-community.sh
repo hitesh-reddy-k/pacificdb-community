@@ -39,6 +39,7 @@ node intelligence/test.js
 python3 scripts/test-release-consistency.py
 python3 scripts/test-workflow-contract.py
 python3 scripts/test-deployment-contract.py
+python3 scripts/test-native-signing-contract.py
 test -s site/assets/pacificdb-logo-symbol.png
 node scripts/test-site-docs.mjs
 if command -v rg >/dev/null 2>&1; then
