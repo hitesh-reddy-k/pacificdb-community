@@ -1939,6 +1939,32 @@ static std::string getOpStatus(unsigned long long id) {
     return it->second;
 }
 
+static std::vector<std::array<std::string, 3>> discoverIndexValidationTargets(
+    const std::string& userId,
+    const std::string& database,
+    const std::string& collection) {
+    std::vector<std::array<std::string, 3>> targets;
+    if (!userId.empty() && !database.empty() && !collection.empty()) {
+        targets.push_back({userId, database, collection});
+        return targets;
+    }
+
+    const std::filesystem::path root(DatabaseEngine::getDataRoot());
+    if (!std::filesystem::exists(root)) return targets;
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
+        if (!entry.is_directory()) continue;
+        const auto& path = entry.path();
+        if (path.extension() != ".idx") continue;
+        const auto databaseDirectory = path.parent_path();
+        const auto userDirectory = databaseDirectory.parent_path();
+        if (databaseDirectory.empty() || userDirectory.empty()) continue;
+        targets.push_back({userDirectory.filename().string(),
+                           databaseDirectory.filename().string(),
+                           path.stem().string()});
+    }
+    return targets;
+}
+
 void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
     SOCKET sock = (SOCKET)clientSocket;
     unsigned long long reqId = ++g_reqIdCounter;
@@ -6112,25 +6138,8 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
 
                     // Each verified collection is identified by its <collection>.idx
                     // directory under the LSM root, which LSM::init sets to the data root.
-                    std::vector<std::array<std::string, 3>> targets;
-                    if (!vUser.empty() && !vDb.empty() && !vColl.empty()) {
-                        targets.push_back({vUser, vDb, vColl});
-                    } else {
-                        std::filesystem::path root(DatabaseEngine::getDataRoot());
-                        if (std::filesystem::exists(root)) {
-                            for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
-                                if (!entry.is_directory()) continue;
-                                const auto& p = entry.path();
-                                if (p.extension() != ".idx") continue;
-                                const auto dbDir = p.parent_path();
-                                const auto userDir = dbDir.parent_path();
-                                if (dbDir.empty() || userDir.empty()) continue;
-                                targets.push_back({userDir.filename().string(),
-                                                   dbDir.filename().string(),
-                                                   p.stem().string()});
-                            }
-                        }
-                    }
+                    const auto targets = discoverIndexValidationTargets(
+                        vUser, vDb, vColl);
 
                     json collections = json::array();
                     size_t missingTotal = 0;
