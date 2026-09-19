@@ -1036,13 +1036,16 @@ static std::optional<pacificdb::security::Permission> permissionForAction(const 
         action == "api_key_get") {
         return Permission::READ;
     }
-    if (action == "insert" || action == "updateOne" || action == "bulk" ||
+    if (action == "insert" || action == "insertMany" ||
+        action == "updateOne" || action == "updateMany" ||
+        action == "bulk" || action == "bulkWrite" ||
         action == "community_project_create" || action == "community_database_map" ||
         action == "community_media_begin" || action == "community_media_put_chunk" ||
         action == "community_media_finalize") {
         return Permission::WRITE;
     }
-    if (action == "deleteOne" || action == "community_project_delete" ||
+    if (action == "deleteOne" || action == "deleteMany" ||
+        action == "community_project_delete" ||
         action == "community_media_delete" || action == "community_media_cleanup") {
         return Permission::DELETE;
     }
@@ -5983,6 +5986,14 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                     {"bytes_written", walStats.bytesWritten.load()},
                     {"pending_entries", WAL::getPendingCount()},
                     {"avg_flush_latency_ms", walStats.avgFlushLatencyMs.load()},
+                    {"queue_wait_us_total", walStats.queueWaitUs.load()},
+                    {"encode_crc_us_total", walStats.encodeCrcUs.load()},
+                    {"write_us_total", walStats.writeUs.load()},
+                    {"fdatasync_us_total", walStats.fdatasyncUs.load()},
+                    {"physical_records_written", walStats.physicalRecordsWritten.load()},
+                    {"physical_syncs", walStats.physicalSyncs.load()},
+                    {"coalesced_requests", walStats.coalescedRequests.load()},
+                    {"active_appends", walStats.activeAppends.load()},
                     {"bytes_before_compression", walStats.bytesBeforeCompression.load()},
                     {"bytes_after_compression", walStats.bytesAfterCompression.load()},
                     {"compressed_batches", walStats.compressedBatches.load()},
@@ -6396,8 +6407,12 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                 {"queue_wait", pacificdb::timing::contextTotalUs(requestTiming, pacificdb::timing::Stage::QueueWait)},
                 {"parse", pacificdb::timing::contextTotalUs(requestTiming, pacificdb::timing::Stage::Parse)},
                 {"auth", pacificdb::timing::contextTotalUs(requestTiming, pacificdb::timing::Stage::Auth)},
+                {"wal_queue_wait", pacificdb::timing::contextTotalUs(requestTiming, pacificdb::timing::Stage::WalQueueWait)},
+                {"wal_encode_crc", pacificdb::timing::contextTotalUs(requestTiming, pacificdb::timing::Stage::WalEncodeCrc)},
+                {"wal_write", pacificdb::timing::contextTotalUs(requestTiming, pacificdb::timing::Stage::WalWrite)},
                 {"wal_append", pacificdb::timing::contextTotalUs(requestTiming, pacificdb::timing::Stage::WalAppend)},
                 {"wal_fsync", pacificdb::timing::contextTotalUs(requestTiming, pacificdb::timing::Stage::WalFsync)},
+                {"wal_fdatasync", pacificdb::timing::contextTotalUs(requestTiming, pacificdb::timing::Stage::WalFsync)},
                 {"lock_wait", pacificdb::timing::contextTotalUs(requestTiming, pacificdb::timing::Stage::LockWait)},
                 {"memtable_insert", pacificdb::timing::contextTotalUs(requestTiming, pacificdb::timing::Stage::MemtableInsert)},
                 {"replication", pacificdb::timing::contextTotalUs(requestTiming, pacificdb::timing::Stage::Replication)},

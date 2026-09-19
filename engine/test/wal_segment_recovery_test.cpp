@@ -116,9 +116,11 @@ int main() {
 
     const fs::path tailWal = root / "tail.wal";
     const fs::path corruptWal = root / "corrupt.wal";
+    const fs::path corruptCrcFlagWal = root / "corrupt_crc_flag.wal";
     const fs::path reclaimWal = root / "reclaim.wal";
     copyWal(logicalWal, tailWal);
     copyWal(logicalWal, corruptWal);
+    copyWal(logicalWal, corruptCrcFlagWal);
     copyWal(logicalWal, reclaimWal);
 
     auto tailSegments = segmentFiles(tailWal);
@@ -166,6 +168,28 @@ int main() {
     auto corrupt = WAL::scan(corruptWal.string(), [](const WalReplayRecord&) { return true; });
     expect(corrupt.status == WalScanStatus::CORRUPT,
            "interior segment corruption fails closed");
+
+    auto corruptFlagSegments = segmentFiles(corruptCrcFlagWal);
+    expect(!corruptFlagSegments.empty(), "checksum-flag fixture has segments");
+    {
+        constexpr std::streamoff kSegmentHeaderBytes = 32;
+        constexpr std::streamoff kPreparedCrcFlagOffset =
+            kSegmentHeaderBytes + sizeof(WalOp) + sizeof(std::uint32_t) + 5;
+        std::fstream file(corruptFlagSegments.front(),
+                          std::ios::binary | std::ios::in | std::ios::out);
+        file.seekg(kPreparedCrcFlagOffset);
+        char flag = 0;
+        file.read(&flag, 1);
+        expect(flag == 1, "prepared WAL fixture has checksum enabled");
+        flag = 0;
+        file.seekp(kPreparedCrcFlagOffset);
+        file.write(&flag, 1);
+    }
+    auto corruptFlag = WAL::scan(
+        corruptCrcFlagWal.string(), [](const WalReplayRecord&) { return true; });
+    expect(corruptFlag.status == WalScanStatus::CORRUPT,
+           "corrupted checksum-present flag cannot disable validation");
+
     std::string reclaimError;
     expect(!WAL::reclaimThrough(corruptWal.string(), 505, &reclaimError),
            "corrupt WAL cannot be reclaimed");

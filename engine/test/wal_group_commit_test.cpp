@@ -158,6 +158,109 @@ int main() {
            "binary JSON strings survive WAL checksum and replay");
 
     WAL::clear(walFile);
+    std::vector<json> batchDocuments;
+    batchDocuments.reserve(500);
+    for (int i = 0; i < 500; ++i) {
+        batchDocuments.push_back({{"id", "batch_" + std::to_string(i)}, {"v", i}});
+    }
+    const auto logicalBefore = WAL::getStats().entriesWritten.load();
+    const auto physicalBefore = WAL::getStats().physicalRecordsWritten.load();
+    const auto compactBatch = WAL::logPutBatch(
+        walFile, "wal_tester", "testdb", "events", batchDocuments);
+    bool compactBatchDecoded = false;
+    const auto compactScan = WAL::scan(walFile, [&](const WalReplayRecord& record) {
+        compactBatchDecoded = record.op == WalOp::BATCH_COMPRESSED &&
+            record.entry.value("op", std::string()) == "PUT_BATCH" &&
+            record.entry.contains("data") && record.entry["data"].size() == 500;
+        return true;
+    });
+    expect(compactBatch.entries == 500 && compactBatch.physicalRecords == 1 &&
+               WAL::getStats().entriesWritten.load() - logicalBefore == 500 &&
+               WAL::getStats().physicalRecordsWritten.load() - physicalBefore == 1,
+           "insertMany is encoded as one physical record with logical-entry accounting");
+    expect(compactScan.status == WalScanStatus::OK && compactScan.records == 1 &&
+               compactBatchDecoded,
+           "contiguous binary insertMany record survives checksum and scan");
+
+    WAL::clear(walFile);
+    setEnvKV("WAL_GROUP_COMMIT", "true");
+    setEnvKV("WAL_GROUP_COMMIT_MAX_MS", "200");
+    setEnvKV("WAL_GROUP_COMMIT_MAX_BATCH", "2");
+    WAL::init();
+    const auto batchSyncsBefore = WAL::getStats().physicalSyncs.load();
+    const auto batchRecordsBefore = WAL::getStats().physicalRecordsWritten.load();
+    const auto commitGroupsBefore = WAL::getStats().batchesCommitted.load();
+    std::atomic<int> batchReady{0};
+    std::atomic<bool> batchStart{false};
+    std::vector<std::thread> batchWriters;
+    for (int writer = 0; writer < 2; ++writer) {
+        batchWriters.emplace_back([&, writer] {
+            std::vector<json> documents;
+            for (int i = 0; i < 50; ++i) {
+                documents.push_back({
+                    {"id", "coalesced_" + std::to_string(writer) + "_" + std::to_string(i)},
+                    {"v", i}
+                });
+            }
+            batchReady.fetch_add(1, std::memory_order_release);
+            while (!batchStart.load(std::memory_order_acquire)) std::this_thread::yield();
+            WAL::logPutBatch(walFile, "wal_tester", "testdb", "events", documents);
+        });
+    }
+    while (batchReady.load(std::memory_order_acquire) != 2) std::this_thread::yield();
+    batchStart.store(true, std::memory_order_release);
+    for (auto& writer : batchWriters) writer.join();
+    expect(WAL::getStats().physicalRecordsWritten.load() - batchRecordsBefore == 2 &&
+               WAL::getStats().physicalSyncs.load() - batchSyncsBefore == 1 &&
+               WAL::getStats().batchesCommitted.load() - commitGroupsBefore == 1,
+           "concurrent insertMany requests share one append group and one fdatasync");
+    WAL::shutdown();
+    setEnvKV("WAL_GROUP_COMMIT", "false");
+
+    // The canonical enable switch must override both the legacy alias and a
+    // configured interval. Operators need a reliable off switch for incident
+    // diagnosis and latency comparisons.
+    WAL::clear(walFile);
+    setEnvKV("WAL_GROUP_COMMIT_ENABLED", "false");
+    setEnvKV("WAL_GROUP_COMMIT", "true");
+    setEnvKV("WAL_GROUP_COMMIT_INTERVAL_MS", "200");
+    unsetEnvKV("WAL_BATCH_INTERVAL_MS");
+    WAL::init();
+    const auto disabledSyncsBefore = WAL::getStats().physicalSyncs.load();
+    const auto disabledGroupsBefore = WAL::getStats().batchesCommitted.load();
+    const auto disabledCoalescedBefore = WAL::getStats().coalescedRequests.load();
+    std::atomic<int> disabledReady{0};
+    std::atomic<bool> disabledStart{false};
+    std::vector<std::thread> disabledWriters;
+    for (int writer = 0; writer < 2; ++writer) {
+        disabledWriters.emplace_back([&, writer] {
+            disabledReady.fetch_add(1, std::memory_order_release);
+            while (!disabledStart.load(std::memory_order_acquire)) {
+                std::this_thread::yield();
+            }
+            WAL::log(walFile, {
+                {"userId", "wal_tester"},
+                {"db", "testdb"},
+                {"collection", "events"},
+                {"data", {{"id", "disabled_" + std::to_string(writer)}}}
+            });
+        });
+    }
+    while (disabledReady.load(std::memory_order_acquire) != 2) {
+        std::this_thread::yield();
+    }
+    disabledStart.store(true, std::memory_order_release);
+    for (auto& writer : disabledWriters) writer.join();
+    expect(WAL::getStats().physicalSyncs.load() - disabledSyncsBefore == 2 &&
+               WAL::getStats().batchesCommitted.load() - disabledGroupsBefore == 2 &&
+               WAL::getStats().coalescedRequests.load() - disabledCoalescedBefore == 0,
+           "WAL_GROUP_COMMIT_ENABLED=false disables coalescing despite an interval");
+    WAL::shutdown();
+    unsetEnvKV("WAL_GROUP_COMMIT_ENABLED");
+    unsetEnvKV("WAL_GROUP_COMMIT_INTERVAL_MS");
+    setEnvKV("WAL_GROUP_COMMIT", "false");
+
+    WAL::clear(walFile);
     WAL::log(walFile, {{"userId", "wal_tester"}, {"data", {{"id", "after-clear"}}}});
     expect(WAL::readAll(walFile).size() == 1,
            "clear closes the persistent WAL handle before recreating the file");

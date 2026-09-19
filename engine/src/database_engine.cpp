@@ -1483,11 +1483,7 @@ void DatabaseEngine::insert(const std::string& userId,
             {"collection", collection},
             {"data", doc}
         };
-        auto walStart = std::chrono::steady_clock::now();
         WAL::log(walFile.string(), walEntry);
-        auto walEnd = std::chrono::steady_clock::now();
-        pacificdb::timing::recordStage(pacificdb::timing::Stage::WalAppend,
-            static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(walEnd - walStart).count()));
 
         ELOG("[ENGINE] Inserted into .bin storage for system users\n");
         return;
@@ -1759,7 +1755,11 @@ json DatabaseEngine::insertMany(const std::string& userId,
     result["timings_ms"] = {
         {"raftBypassMs", result["timings_us"].value("raft_bypass", 0ULL) / 1000.0},
         {"walAppendMs", result.contains("lsm") ? result["lsm"].value("timings_us", json::object()).value("wal_append", 0ULL) / 1000.0 : 0.0},
-        {"walFsyncMs", 0.0},
+        {"walQueueWaitMs", result.contains("lsm") ? result["lsm"].value("timings_us", json::object()).value("wal_queue_wait", 0ULL) / 1000.0 : 0.0},
+        {"walEncodeCrcMs", result.contains("lsm") ? result["lsm"].value("timings_us", json::object()).value("wal_encode_crc", 0ULL) / 1000.0 : 0.0},
+        {"walWriteMs", result.contains("lsm") ? result["lsm"].value("timings_us", json::object()).value("wal_write", 0ULL) / 1000.0 : 0.0},
+        {"walFsyncMs", result.contains("lsm") ? result["lsm"].value("timings_us", json::object()).value("wal_fdatasync", 0ULL) / 1000.0 : 0.0},
+        {"walFdatasyncMs", result.contains("lsm") ? result["lsm"].value("timings_us", json::object()).value("wal_fdatasync", 0ULL) / 1000.0 : 0.0},
         {"memtableWriteMs", result.contains("lsm") ? result["lsm"].value("timings_us", json::object()).value("memtable_write", 0ULL) / 1000.0 : 0.0},
         {"indexUpdateMs", result.contains("lsm") ? result["lsm"].value("timings_us", json::object()).value("index_update", 0ULL) / 1000.0 : 0.0},
         {"flushWaitMs", result.contains("lsm") ? result["lsm"].value("timings_us", json::object()).value("flush_wait", 0ULL) / 1000.0 : 0.0},

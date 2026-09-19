@@ -192,8 +192,12 @@ std::string MetricsExporter::getMetrics() {
     stageGauge("pacificdb_request_queue_wait", "Queue wait before worker start", pacificdb::timing::Stage::QueueWait);
     stageGauge("pacificdb_request_parse", "Request parse time", pacificdb::timing::Stage::Parse);
     stageGauge("pacificdb_request_auth", "Auth/RBAC time", pacificdb::timing::Stage::Auth);
+    stageGauge("pacificdb_request_wal_queue_wait", "WAL group-commit and lock queue wait", pacificdb::timing::Stage::WalQueueWait);
+    stageGauge("pacificdb_request_wal_encode_crc", "WAL encoding and checksum time", pacificdb::timing::Stage::WalEncodeCrc);
+    stageGauge("pacificdb_request_wal_write", "WAL write syscall time", pacificdb::timing::Stage::WalWrite);
     stageGauge("pacificdb_request_wal_append", "WAL append time", pacificdb::timing::Stage::WalAppend);
     stageGauge("pacificdb_request_wal_fsync", "WAL fsync time", pacificdb::timing::Stage::WalFsync);
+    stageGauge("pacificdb_request_wal_fdatasync", "WAL fdatasync time", pacificdb::timing::Stage::WalFsync);
     stageGauge("pacificdb_request_lock_wait", "Lock wait time", pacificdb::timing::Stage::LockWait);
     stageGauge("pacificdb_request_memtable_insert", "Memtable insert time", pacificdb::timing::Stage::MemtableInsert);
     stageGauge("pacificdb_request_replication", "Replication time", pacificdb::timing::Stage::Replication);
@@ -258,6 +262,14 @@ std::string MetricsExporter::getMetrics() {
     ss << formatCounter("wal_bytes_written_total", "Total bytes appended to the WAL", walStats.bytesWritten.load());
     ss << formatCounter("wal_entries_written_total", "Total entries appended to the WAL", walStats.entriesWritten.load());
     ss << formatCounter("wal_fsyncs_total", "Total WAL fsync operations", walStats.entriesFsynced.load());
+    ss << formatCounter("wal_queue_wait_us_total", "Cumulative WAL queue wait microseconds", walStats.queueWaitUs.load());
+    ss << formatCounter("wal_encode_crc_us_total", "Cumulative WAL encoding and checksum microseconds", walStats.encodeCrcUs.load());
+    ss << formatCounter("wal_write_us_total", "Cumulative WAL write syscall microseconds", walStats.writeUs.load());
+    ss << formatCounter("wal_fdatasync_us_total", "Cumulative WAL fdatasync microseconds", walStats.fdatasyncUs.load());
+    ss << formatCounter("wal_physical_records_written_total", "Physical WAL records written", walStats.physicalRecordsWritten.load());
+    ss << formatCounter("wal_physical_syncs_total", "Physical WAL sync calls", walStats.physicalSyncs.load());
+    ss << formatCounter("wal_coalesced_requests_total", "WAL requests sharing a group commit", walStats.coalescedRequests.load());
+    ss << formatGauge("wal_active_appends", "WAL appends currently writing or syncing", walStats.activeAppends.load());
 
     double completedOperations = 0.0;
     double lsmFlushes = 0.0;

@@ -51,7 +51,8 @@ bool writeSst(const std::filesystem::path& path,
               const std::vector<std::reference_wrapper<const nlohmann::json>>& rows,
               std::size_t targetBlockBytes,
               SstWriteStats* stats = nullptr,
-              std::string* error = nullptr);
+              std::string* error = nullptr,
+              const std::function<void()>& beforeIo = {});
 
 bool scanSst(const std::filesystem::path& path,
              const std::function<bool(nlohmann::json&&)>& visitor,

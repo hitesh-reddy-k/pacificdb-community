@@ -825,7 +825,8 @@ bool isBinarySst(const fs::path& path) {
 
 bool writeSst(const fs::path& path,
               const std::vector<std::reference_wrapper<const json>>& rows,
-              std::size_t targetBlockBytes, SstWriteStats* stats, std::string* error) {
+              std::size_t targetBlockBytes, SstWriteStats* stats, std::string* error,
+              const std::function<void()>& beforeIo) {
     try {
         targetBlockBytes = std::clamp<std::size_t>(targetBlockBytes, 4096, 16384);
         const fs::path temporary = path.string() + ".writing";
@@ -837,6 +838,7 @@ bool writeSst(const fs::path& path,
             return false;
         }
         std::array<char, kSstHeaderBytes> emptyHeader{};
+        if (beforeIo) beforeIo();
         out.write(emptyHeader.data(), static_cast<std::streamsize>(emptyHeader.size()));
         std::vector<BlockIndexEntry> index;
         std::string block;
@@ -869,6 +871,7 @@ bool writeSst(const fs::path& path,
             appendU32(blockHeader, entry.originalBytes);
             appendU32(blockHeader, entry.rows);
             appendU32(blockHeader, crc32c(block.data(), block.size()));
+            if (beforeIo) beforeIo();
             out.write(blockHeader.data(), static_cast<std::streamsize>(blockHeader.size()));
             out.write(storedData.data(), static_cast<std::streamsize>(entry.storedBytes));
             if (!out) return false;
@@ -921,6 +924,7 @@ bool writeSst(const fs::path& path,
             indexBytes.append(entry.lastKey);
         }
         appendU32(indexBytes, crc32c(indexBytes.data(), indexBytes.size()));
+        if (beforeIo) beforeIo();
         out.write(indexBytes.data(), static_cast<std::streamsize>(indexBytes.size()));
         if (!out) {
             setError(error, "cannot write SST block index");
@@ -942,6 +946,7 @@ bool writeSst(const fs::path& path,
         const std::uint32_t headerCrc = crc32c(header.data(), header.size());
         for (int i = 0; i < 4; ++i) header[48 + i] = static_cast<char>((headerCrc >> (i * 8)) & 0xffU);
         out.seekp(0, std::ios::beg);
+        if (beforeIo) beforeIo();
         out.write(header.data(), static_cast<std::streamsize>(header.size()));
         out.flush();
         if (!out) {
@@ -949,6 +954,7 @@ bool writeSst(const fs::path& path,
             return false;
         }
         out.close();
+        if (beforeIo) beforeIo();
         if (!syncFile(temporary)) {
             setError(error, "cannot fdatasync SST");
             return false;

@@ -13,7 +13,7 @@ enum class WalOp : uint8_t {
     INSERT = 1,
     UPDATE = 2,
     DELETE = 3,
-    BATCH_COMPRESSED = 4,   // Phase 1: compressed batch entry
+    BATCH_COMPRESSED = 4,   // Versioned contiguous binary batch (legacy name)
     COMPRESSED_ZLIB = 5,    // Phase B: zlib-compressed single batch
     SEGMENT_HEADER  = 6,    // Phase B: segment boundary marker
 };
@@ -28,6 +28,16 @@ struct WalStats {
     std::atomic<uint64_t> entriesAcknowledged{0};
     std::atomic<uint64_t> entriesFailed{0};
     std::atomic<double>   avgFlushLatencyMs{0.0};
+
+    // Hot-path timing and batching metrics. Times are cumulative microseconds.
+    std::atomic<uint64_t> queueWaitUs{0};
+    std::atomic<uint64_t> encodeCrcUs{0};
+    std::atomic<uint64_t> writeUs{0};
+    std::atomic<uint64_t> fdatasyncUs{0};
+    std::atomic<uint64_t> physicalRecordsWritten{0};
+    std::atomic<uint64_t> physicalSyncs{0};
+    std::atomic<uint64_t> coalescedRequests{0};
+    std::atomic<uint64_t> activeAppends{0};
 
     // Phase B: Compression metrics
     std::atomic<uint64_t> bytesBeforeCompression{0};
@@ -45,6 +55,14 @@ struct WalAppendResult {
     uint64_t firstLsn{0};
     uint64_t lastLsn{0};
     size_t entries{0};
+    uint64_t queueWaitUs{0};
+    uint64_t encodeCrcUs{0};
+    uint64_t writeUs{0};
+    uint64_t fdatasyncUs{0};
+    uint64_t totalUs{0};
+    uint64_t encodedBytes{0};
+    size_t physicalRecords{0};
+    size_t physicalSyncs{0};
 };
 
 enum class WalScanStatus { OK, PARTIAL_TAIL, CORRUPT, IO_ERROR };
@@ -86,6 +104,14 @@ public:
     // reopening the same WAL for every document when group commit is disabled.
     static WalAppendResult logBatch(const std::string& file,
                                     const std::vector<nlohmann::json>& entries);
+
+    // Encode an insert batch as one contiguous binary WAL record. Namespace
+    // metadata is stored once rather than rebuilt for every document.
+    static WalAppendResult logPutBatch(const std::string& file,
+                                       const std::string& userId,
+                                       const std::string& database,
+                                       const std::string& collection,
+                                       const std::vector<nlohmann::json>& documents);
 
     // Initialize the WAL subsystem (starts background flusher)
     static void init();

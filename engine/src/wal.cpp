@@ -92,7 +92,7 @@ static bool walBinaryEncodingEnabled() {
 }
 
 static bool walCrcEnabled() {
-    const char* v = std::getenv("WAL_CRC_ENABLED");
+    const char* v = firstEnv("WAL_CRC_ENABLED", "WAL_CHECKSUM_ENABLED");
     if (!v) return true;
     std::string s(v);
     return !(s == "0" || s == "false" || s == "FALSE" || s == "off");
@@ -189,11 +189,17 @@ namespace {
         bool success{false};
         std::string error;
         WalAppendResult result;
+        std::chrono::steady_clock::time_point startedAt{std::chrono::steady_clock::now()};
+        std::chrono::steady_clock::time_point submittedAt{std::chrono::steady_clock::now()};
     };
 
     struct PendingWalEntry {
         WalOp op;
         nlohmann::json entry;
+        std::string preparedPayload;
+        uint32_t preparedCrc{0};
+        bool preparedHasCrc{true};
+        size_t logicalEntries{1};
         std::shared_ptr<WalCompletion> completion;
     };
 
@@ -385,6 +391,12 @@ namespace {
         }
     }
 
+    void appendU32(std::string& bytes, uint32_t value) {
+        for (unsigned shift = 0; shift < 32; shift += 8) {
+            bytes.push_back(static_cast<char>((value >> shift) & 0xff));
+        }
+    }
+
     uint16_t readU16(const char* bytes) {
         return static_cast<uint16_t>(static_cast<unsigned char>(bytes[0])) |
                static_cast<uint16_t>(static_cast<unsigned char>(bytes[1]) << 8);
@@ -396,6 +408,89 @@ namespace {
             value |= static_cast<uint64_t>(static_cast<unsigned char>(bytes[shift / 8])) << shift;
         }
         return value;
+    }
+
+    uint32_t readU32(const char* bytes) {
+        uint32_t value = 0;
+        for (unsigned shift = 0; shift < 32; shift += 8) {
+            value |= static_cast<uint32_t>(static_cast<unsigned char>(bytes[shift / 8])) << shift;
+        }
+        return value;
+    }
+
+    constexpr size_t kPreparedPayloadHeaderBytes = 26;
+
+    std::string framePreparedRecord(const PendingWalEntry& pending, uint64_t lsn) {
+        const uint64_t payloadSize64 = kPreparedPayloadHeaderBytes + pending.preparedPayload.size();
+        if (payloadSize64 > maxRecordBytes() ||
+            payloadSize64 > std::numeric_limits<uint32_t>::max()) {
+            throw std::runtime_error("collection WAL record exceeds WAL_MAX_RECORD_BYTES");
+        }
+        const uint32_t payloadSize = static_cast<uint32_t>(payloadSize64);
+        std::string frame;
+        frame.reserve(sizeof(WalOp) + sizeof(payloadSize) + payloadSize);
+        frame.append(reinterpret_cast<const char*>(&pending.op), sizeof(pending.op));
+        frame.append(reinterpret_cast<const char*>(&payloadSize), sizeof(payloadSize));
+        frame.append("PDBB1", 5);
+        frame.push_back(static_cast<char>(pending.preparedHasCrc ? 1 : 0));
+        appendU64(frame, lsn);
+        appendU64(frame, static_cast<uint64_t>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::system_clock::now().time_since_epoch()).count()));
+        appendU32(frame, pending.preparedCrc);
+        frame.append(pending.preparedPayload);
+        return frame;
+    }
+
+    bool decodePreparedPayload(const std::string& payload, nlohmann::json& entry) {
+        if (payload.size() < kPreparedPayloadHeaderBytes ||
+            std::memcmp(payload.data(), "PDBB1", 5) != 0) {
+            return false;
+        }
+        const bool hasCrc = (static_cast<unsigned char>(payload[5]) & 1U) != 0;
+        const uint64_t lsn = readU64(payload.data() + 6);
+        const uint64_t timestampMs = readU64(payload.data() + 14);
+        const uint32_t expectedCrc = readU32(payload.data() + 22);
+        const std::string encoded = payload.substr(kPreparedPayloadHeaderBytes);
+        if (encoded.empty() || (!hasCrc && expectedCrc != 0) || (hasCrc &&
+            pacificdb::durability::ChecksumCalculator::crc32(encoded) != expectedCrc)) {
+            return false;
+        }
+        if (!decodeWalPayload(encoded, entry) || !entry.is_object()) return false;
+        entry["_wal_lsn"] = lsn;
+        entry["_wal_seq"] = lsn;
+        entry["_wal_ts_ms"] = timestampMs;
+        return true;
+    }
+
+    PendingWalEntry preparePendingEntry(WalOp op,
+                                        nlohmann::json entry,
+                                        size_t logicalEntries,
+                                        const std::shared_ptr<WalCompletion>& completion) {
+        const auto started = std::chrono::steady_clock::now();
+        PendingWalEntry pending;
+        pending.op = op;
+        pending.entry = std::move(entry);
+        pending.preparedPayload = encodeWalPayload(pending.entry);
+        completion->result.encodedBytes += pending.preparedPayload.size();
+        pending.preparedHasCrc = walCrcEnabled();
+        pending.preparedCrc = pending.preparedHasCrc
+            ? pacificdb::durability::ChecksumCalculator::crc32(pending.preparedPayload)
+            : 0;
+        pending.logicalEntries = logicalEntries;
+        pending.completion = completion;
+        const auto elapsed = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - started).count());
+        completion->result.encodeCrcUs += elapsed;
+        completion->submittedAt = std::chrono::steady_clock::now();
+        g_walStats.encodeCrcUs.fetch_add(elapsed, std::memory_order_relaxed);
+        return pending;
+    }
+
+    uint64_t logicalEntryCount(const std::vector<PendingWalEntry>& entries) {
+        uint64_t count = 0;
+        for (const auto& entry : entries) count += entry.logicalEntries;
+        return count;
     }
 
     uint64_t walIdentityHash(const nlohmann::json& entry) {
@@ -696,7 +791,11 @@ namespace {
                     return scan;
                 }
                 nlohmann::json entry;
-                if (!decodeWalPayload(payload, entry) || !verifyWalPayloadCrc(entry)) {
+                const bool prepared = payload.size() >= 5 &&
+                                      std::memcmp(payload.data(), "PDBB1", 5) == 0;
+                if ((prepared && !decodePreparedPayload(payload, entry)) ||
+                    (!prepared && (!decodeWalPayload(payload, entry) ||
+                                   !verifyWalPayloadCrc(entry)))) {
                     setScanFailure(scan, WalScanStatus::CORRUPT,
                                    "invalid or checksummed WAL payload");
                     return scan;
@@ -784,10 +883,6 @@ namespace {
         try { return static_cast<size_t>(std::max(1024, std::stoi(v))); } catch(...) { return 4 * 1024 * 1024; }
     }
 
-    int batchIntervalMs() {
-        return std::max(0, intEnvAny("WAL_BATCH_INTERVAL_MS", "WAL_GROUP_COMMIT_INTERVAL_MS", nullptr, 0));
-    }
-
     struct AppendOutcome {
         bool success{false};
         std::string error;
@@ -797,22 +892,27 @@ namespace {
                          bool success,
                          const std::string& error) {
         std::unordered_set<WalCompletion*> completed;
+        const auto completedAt = std::chrono::steady_clock::now();
         for (const auto& entry : entries) {
             if (!entry.completion || !completed.insert(entry.completion.get()).second) continue;
             {
                 std::lock_guard<std::mutex> lock(entry.completion->mutex);
+                entry.completion->result.totalUs = static_cast<uint64_t>(
+                    std::chrono::duration_cast<std::chrono::microseconds>(
+                        completedAt - entry.completion->startedAt).count());
                 entry.completion->success = success;
                 entry.completion->error = error;
                 entry.completion->done = true;
             }
             entry.completion->cv.notify_all();
         }
+        const uint64_t logicalEntries = logicalEntryCount(entries);
         if (success) {
             g_walStats.entriesAcknowledged.fetch_add(
-                static_cast<uint64_t>(entries.size()), std::memory_order_relaxed);
+                logicalEntries, std::memory_order_relaxed);
         } else {
             g_walStats.entriesFailed.fetch_add(
-                static_cast<uint64_t>(entries.size()), std::memory_order_relaxed);
+                logicalEntries, std::memory_order_relaxed);
         }
     }
 
@@ -824,7 +924,19 @@ namespace {
                 ? "collection WAL append failed"
                 : completion->error);
         }
-        return completion->result;
+        const WalAppendResult result = completion->result;
+        lock.unlock();
+        pacificdb::timing::recordStage(pacificdb::timing::Stage::WalQueueWait,
+                                       result.queueWaitUs);
+        pacificdb::timing::recordStage(pacificdb::timing::Stage::WalEncodeCrc,
+                                       result.encodeCrcUs);
+        pacificdb::timing::recordStage(pacificdb::timing::Stage::WalWrite,
+                                       result.writeUs);
+        pacificdb::timing::recordStage(pacificdb::timing::Stage::WalFsync,
+                                       result.fdatasyncUs);
+        pacificdb::timing::recordStage(pacificdb::timing::Stage::WalAppend,
+                                       result.totalUs);
+        return result;
     }
 
     void initializeLogicalWal(const std::string& logicalWal, LogicalWalState& state) {
@@ -872,7 +984,30 @@ namespace {
         if (entries.empty()) return {true, {}};
         auto appendStart = std::chrono::steady_clock::now();
         auto logicalState = logicalWalState(file);
-        std::lock_guard<std::mutex> appendOrder(logicalState->mutex);
+        g_walStats.activeAppends.fetch_add(1, std::memory_order_relaxed);
+        struct ActiveAppendGuard {
+            ~ActiveAppendGuard() {
+                g_walStats.activeAppends.fetch_sub(1, std::memory_order_relaxed);
+            }
+        } activeAppendGuard;
+        std::unique_lock<std::mutex> appendOrder(logicalState->mutex);
+
+        std::unordered_set<WalCompletion*> requests;
+        uint64_t totalQueueWaitUs = 0;
+        const auto lockAcquiredAt = std::chrono::steady_clock::now();
+        for (const auto& entry : entries) {
+            if (!entry.completion || !requests.insert(entry.completion.get()).second) continue;
+            const uint64_t waitUs = static_cast<uint64_t>(
+                std::chrono::duration_cast<std::chrono::microseconds>(
+                    lockAcquiredAt - entry.completion->submittedAt).count());
+            entry.completion->result.queueWaitUs = waitUs;
+            totalQueueWaitUs += waitUs;
+        }
+        g_walStats.queueWaitUs.fetch_add(totalQueueWaitUs, std::memory_order_relaxed);
+        if (requests.size() > 1) {
+            g_walStats.coalescedRequests.fetch_add(requests.size() - 1,
+                                                   std::memory_order_relaxed);
+        }
         try {
             if (logicalState->clearing) {
                 const std::string error = "collection WAL is being cleared: " + file;
@@ -898,24 +1033,13 @@ namespace {
             uint64_t identityHash = logicalState->identityHash;
             std::vector<std::pair<std::string, std::string>> chunks;
             for (const auto& entry : entries) {
-                nlohmann::json stamped = entry.entry;
-                const uint64_t entryIdentity = walIdentityHash(stamped);
+                const uint64_t entryIdentity = walIdentityHash(entry.entry);
                 if (identityHash == 0) identityHash = entryIdentity;
                 if (entryIdentity != 0 && identityHash != 0 && entryIdentity != identityHash) {
                     throw std::runtime_error("collection WAL namespace identity changed");
                 }
                 const uint64_t lsn = nextLsn++;
-                stampWalIntegrityFields(stamped, lsn);
-                const std::string payload = encodeWalPayload(stamped);
-                if (payload.size() > maxRecordBytes()) {
-                    throw std::runtime_error("collection WAL record exceeds WAL_MAX_RECORD_BYTES");
-                }
-                uint32_t size = static_cast<uint32_t>(payload.size());
-                WalOp op = entry.op;
-                std::string frame;
-                frame.append(reinterpret_cast<const char*>(&op), sizeof(op));
-                frame.append(reinterpret_cast<const char*>(&size), sizeof(size));
-                frame.append(payload);
+                const std::string frame = framePreparedRecord(entry, lsn);
                 if (activeSegment == 0 ||
                     (activeBytes > kSegmentHeaderBytes &&
                      activeBytes + frame.size() > segmentMaxBytes())) {
@@ -939,8 +1063,10 @@ namespace {
                         entry.completion->result.firstLsn = lsn;
                     }
                     entry.completion->result.lastLsn = lsn;
+                    ++entry.completion->result.physicalRecords;
                 }
             }
+            const auto writeStart = std::chrono::steady_clock::now();
             for (const auto& [physical, bytes] : chunks) {
                 if (!appendWalBytes(physical, bytes)) {
                     logicalState->poisoned = true;
@@ -951,15 +1077,16 @@ namespace {
                     return {false, error};
                 }
             }
+            const uint64_t writeUs = static_cast<uint64_t>(
+                std::chrono::duration_cast<std::chrono::microseconds>(
+                    std::chrono::steady_clock::now() - writeStart).count());
+            for (auto* request : requests) request->result.writeUs += writeUs;
+            g_walStats.writeUs.fetch_add(writeUs, std::memory_order_relaxed);
             g_walStats.entriesWritten.fetch_add(
+                logicalEntryCount(entries), std::memory_order_relaxed);
+            g_walStats.physicalRecordsWritten.fetch_add(
                 static_cast<uint64_t>(entries.size()), std::memory_order_relaxed);
             g_walStats.bytesWritten.fetch_add(bytesWritten, std::memory_order_relaxed);
-
-            auto appendEnd = std::chrono::steady_clock::now();
-            const uint64_t appendUs = static_cast<uint64_t>(
-                std::chrono::duration_cast<std::chrono::microseconds>(
-                    appendEnd - appendStart).count());
-            pacificdb::timing::recordStage(pacificdb::timing::Stage::WalAppend, appendUs);
 
             if (forceFsync || walFsyncEnabled()) {
                 auto fsyncStart = std::chrono::steady_clock::now();
@@ -975,12 +1102,19 @@ namespace {
                         return {false, error};
                     }
                 }
-                g_walStats.entriesFsynced.fetch_add(1, std::memory_order_relaxed);
+                g_walStats.entriesFsynced.fetch_add(
+                    static_cast<uint64_t>(chunks.size()), std::memory_order_relaxed);
                 auto fsyncEnd = std::chrono::steady_clock::now();
                 const uint64_t fsyncUs = static_cast<uint64_t>(
                     std::chrono::duration_cast<std::chrono::microseconds>(
                         fsyncEnd - fsyncStart).count());
-                pacificdb::timing::recordStage(pacificdb::timing::Stage::WalFsync, fsyncUs);
+                for (auto* request : requests) {
+                    request->result.fdatasyncUs += fsyncUs;
+                    request->result.physicalSyncs += chunks.size();
+                }
+                g_walStats.fdatasyncUs.fetch_add(fsyncUs, std::memory_order_relaxed);
+                g_walStats.physicalSyncs.fetch_add(
+                    static_cast<uint64_t>(chunks.size()), std::memory_order_relaxed);
             }
 
             logicalState->nextLsn = nextLsn;
@@ -1016,10 +1150,14 @@ namespace {
         const size_t maxBatch = groupCommitMaxBatch();
         const size_t maxBytes = groupCommitMaxBytes();
         for (const auto &kv : buffers) {
+            // This threshold is physical requests/records, not logical documents.
+            // A 500-row insertMany must not force the next request to flush early;
+            // the byte cap and interval still provide hard latency/memory bounds.
             if (kv.second.size() >= maxBatch) return true;
             size_t bytes = 0;
             for (const auto &e : kv.second) {
-                bytes += sizeof(WalOp) + sizeof(uint32_t) + encodeWalPayload(e.entry).size();
+                bytes += sizeof(WalOp) + sizeof(uint32_t) +
+                         kPreparedPayloadHeaderBytes + e.preparedPayload.size();
                 if (bytes >= maxBytes) return true;
             }
         }
@@ -1037,13 +1175,13 @@ namespace {
             const std::string &file = kv.first;
             auto &vec = kv.second;
             g_walStats.pendingEntries.fetch_sub(
-                static_cast<uint64_t>(vec.size()), std::memory_order_relaxed);
+                logicalEntryCount(vec), std::memory_order_relaxed);
             appendEntries(file, vec, false);
         }
     }
 
     void flusherLoop() {
-        const int interval = std::max(batchIntervalMs(), groupCommitMaxMs());
+        const int interval = groupCommitMaxMs();
         while (flusherRunning) {
             std::unique_lock<std::mutex> lk(bufMutex);
             bufCv.wait_for(lk, std::chrono::milliseconds(interval), []() {
@@ -1055,18 +1193,44 @@ namespace {
         // final flush
         flushOnce();
     }
+
+    WalAppendResult submitPrepared(const std::string& file, PendingWalEntry pending) {
+        auto completion = pending.completion;
+        const uint64_t logicalEntries = pending.logicalEntries;
+        const bool useGroupCommit = groupCommitEnabled();
+        if (!useGroupCommit) {
+            appendEntries(file, std::vector<PendingWalEntry>{std::move(pending)}, false);
+            return waitForCompletion(completion);
+        }
+
+        bool queued = false;
+        {
+            std::lock_guard<std::mutex> lock(bufMutex);
+            if (flusherRunning) {
+                buffers[file].push_back(std::move(pending));
+                g_walStats.pendingEntries.fetch_add(logicalEntries, std::memory_order_relaxed);
+                queued = true;
+            }
+        }
+        if (queued) {
+            bufCv.notify_all();
+        } else {
+            appendEntries(file, std::vector<PendingWalEntry>{std::move(pending)}, false);
+        }
+        return waitForCompletion(completion);
+    }
 }
 
 void WAL::init() {
     std::lock_guard<std::mutex> lk(bufMutex);
     if (flusherRunning) return;
-    int interval = std::max(batchIntervalMs(), groupCommitMaxMs());
+    const int interval = groupCommitMaxMs();
     const bool groupCommit = groupCommitEnabled();
     std::cout << "[WAL] group_commit=" << (groupCommit ? "enabled" : "disabled") << std::endl;
     std::cout << "[WAL] group_commit_interval_ms=" << interval << std::endl;
     std::cout << "[WAL] group_commit_batch_size=" << groupCommitMaxBatch() << std::endl;
     std::cout << "[WAL] group_commit_max_bytes=" << groupCommitMaxBytes() << std::endl;
-    if (!groupCommit && interval <= 0) return;
+    if (!groupCommit) return;
     flusherRunning = true;
     flusherThread = std::thread(flusherLoop);
     std::cout << "[WAL] Background flusher started, interval=" << interval << "ms"
@@ -1106,7 +1270,7 @@ void WAL::flush(const std::string& file, bool forceFsync) {
 
     if (!entries.empty()) {
         g_walStats.pendingEntries.fetch_sub(
-            static_cast<uint64_t>(entries.size()), std::memory_order_relaxed);
+            logicalEntryCount(entries), std::memory_order_relaxed);
         const auto outcome = appendEntries(file, entries, forceFsync);
         if (!outcome.success) throw std::runtime_error(outcome.error);
         return;
@@ -1122,39 +1286,22 @@ void WAL::flush(const std::string& file, bool forceFsync) {
     initializeLogicalWal(file, *state);
     const std::string physical = state->activeSegment == 0
         ? file : segmentPath(file, state->activeSegment).string();
+    const auto fsyncStarted = std::chrono::steady_clock::now();
     if (!syncWalFile(physical)) {
         throw std::runtime_error("failed to synchronize collection WAL file: " + file);
     }
+    const uint64_t fsyncUs = static_cast<uint64_t>(
+        std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - fsyncStarted).count());
     g_walStats.entriesFsynced.fetch_add(1, std::memory_order_relaxed);
+    g_walStats.fdatasyncUs.fetch_add(fsyncUs, std::memory_order_relaxed);
+    g_walStats.physicalSyncs.fetch_add(1, std::memory_order_relaxed);
 }
 
 WalAppendResult WAL::log(const std::string& file, const nlohmann::json& entry) {
     auto completion = std::make_shared<WalCompletion>();
     completion->result.entries = 1;
-    PendingWalEntry pending{WalOp::INSERT, entry, completion};
-    const bool useGroupCommit = groupCommitEnabled();
-    int interval = batchIntervalMs();
-
-    if (!useGroupCommit && interval <= 0) {
-        appendEntries(file, std::vector<PendingWalEntry>{std::move(pending)}, false);
-        return waitForCompletion(completion);
-    }
-
-    bool queued = false;
-    {
-        std::lock_guard<std::mutex> lk(bufMutex);
-        if (flusherRunning) {
-            buffers[file].push_back(std::move(pending));
-            g_walStats.pendingEntries.fetch_add(1, std::memory_order_relaxed);
-            queued = true;
-        }
-    }
-    if (!queued) {
-        appendEntries(file, std::vector<PendingWalEntry>{std::move(pending)}, false);
-    } else {
-        bufCv.notify_all();
-    }
-    return waitForCompletion(completion);
+    return submitPrepared(file, preparePendingEntry(WalOp::INSERT, entry, 1, completion));
 }
 
 WalAppendResult WAL::logBatch(const std::string& file,
@@ -1162,41 +1309,39 @@ WalAppendResult WAL::logBatch(const std::string& file,
     if (entries.empty()) return {};
 
     auto completion = std::make_shared<WalCompletion>();
-    std::vector<PendingWalEntry> pending;
-    pending.reserve(entries.size());
-    for (const auto& entry : entries) {
-        pending.push_back(PendingWalEntry{WalOp::INSERT, entry, completion});
-    }
     completion->result.entries = entries.size();
 
-    const bool useGroupCommit = groupCommitEnabled();
-    int interval = batchIntervalMs();
+    const auto& first = entries.front();
+    nlohmann::json batch = {
+        {"_wal_batch_format", 1},
+        {"op", "WAL_BATCH"},
+        {"userId", first.value("userId", std::string())},
+        {"db", first.value("db", std::string())},
+        {"collection", first.value("collection", std::string())},
+        {"mutations", entries}
+    };
+    return submitPrepared(file, preparePendingEntry(
+        WalOp::BATCH_COMPRESSED, std::move(batch), entries.size(), completion));
+}
 
-    if (!useGroupCommit && interval <= 0) {
-        appendEntries(file, pending, false);
-        return waitForCompletion(completion);
-    }
-
-    bool queued = false;
-    {
-        std::lock_guard<std::mutex> lk(bufMutex);
-        if (flusherRunning) {
-            auto& buffer = buffers[file];
-            buffer.reserve(buffer.size() + pending.size());
-            buffer.insert(buffer.end(),
-                          std::make_move_iterator(pending.begin()),
-                          std::make_move_iterator(pending.end()));
-            g_walStats.pendingEntries.fetch_add(
-                static_cast<uint64_t>(pending.size()), std::memory_order_relaxed);
-            queued = true;
-        }
-    }
-    if (!queued) {
-        appendEntries(file, pending, false);
-    } else {
-        bufCv.notify_all();
-    }
-    return waitForCompletion(completion);
+WalAppendResult WAL::logPutBatch(const std::string& file,
+                                 const std::string& userId,
+                                 const std::string& database,
+                                 const std::string& collection,
+                                 const std::vector<nlohmann::json>& documents) {
+    if (documents.empty()) return {};
+    auto completion = std::make_shared<WalCompletion>();
+    completion->result.entries = documents.size();
+    nlohmann::json batch = {
+        {"_wal_batch_format", 1},
+        {"op", "PUT_BATCH"},
+        {"userId", userId},
+        {"db", database},
+        {"collection", collection},
+        {"data", documents}
+    };
+    return submitPrepared(file, preparePendingEntry(
+        WalOp::BATCH_COMPRESSED, std::move(batch), documents.size(), completion));
 }
 
 void WAL::replay(const std::string& file) {
@@ -1329,7 +1474,7 @@ void WAL::clear(const std::string& file) {
             rejected.swap(found->second);
             buffers.erase(found);
             g_walStats.pendingEntries.fetch_sub(
-                static_cast<uint64_t>(rejected.size()), std::memory_order_relaxed);
+                logicalEntryCount(rejected), std::memory_order_relaxed);
         }
     }
     if (!rejected.empty()) {
@@ -1370,7 +1515,8 @@ size_t WAL::getPendingCount() {
     std::lock_guard<std::mutex> lock(bufMutex);
     size_t count = 0;
     for (const auto& [key, entries] : buffers) {
-        count += entries.size();
+        (void)key;
+        count += logicalEntryCount(entries);
     }
     g_walStats.pendingEntries.store(static_cast<uint64_t>(count), std::memory_order_relaxed);
     return count;

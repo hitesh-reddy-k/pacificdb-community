@@ -27,6 +27,10 @@
 #include <fcntl.h>
 #include <unistd.h>
 #endif
+#ifdef __linux__
+#include <sys/resource.h>
+#include <sys/syscall.h>
+#endif
 #include <set>
 #include <array>
 #include <atomic>
@@ -226,6 +230,8 @@ static std::atomic<uint64_t> g_flushQueuedTotal{0};
 static std::atomic<uint64_t> g_flushCompletedTotal{0};
 static std::atomic<uint64_t> g_flushSkippedTotal{0};
 static std::atomic<uint64_t> g_lastFlushWaitUs{0};
+static std::atomic<uint64_t> g_flushWalPriorityWaitUs{0};
+static std::atomic<uint64_t> g_flushWalPriorityDeferrals{0};
 static std::atomic<bool> bgRunning(false);
 static std::atomic<uint64_t> g_columnIndexHits{0};
 static std::atomic<uint64_t> g_columnIndexAuthoritativeEmpty{0};
@@ -588,7 +594,42 @@ static size_t flushQueueDepth() {
     return g_flushQueue.size();
 }
 
+static void yieldBackgroundIoToWal() {
+    if (WAL::getStats().activeAppends.load(std::memory_order_relaxed) == 0 &&
+        WAL::getStats().pendingEntries.load(std::memory_order_relaxed) == 0) {
+        return;
+    }
+    const auto started = std::chrono::steady_clock::now();
+    const auto maxWait = std::chrono::milliseconds(
+        envSizeT("LSM_FLUSH_WAL_PRIORITY_WAIT_MS", 25));
+    while (bgRunning.load(std::memory_order_relaxed) &&
+           (WAL::getStats().activeAppends.load(std::memory_order_relaxed) > 0 ||
+            WAL::getStats().pendingEntries.load(std::memory_order_relaxed) > 0) &&
+           std::chrono::steady_clock::now() - started < maxWait) {
+        std::this_thread::sleep_for(std::chrono::microseconds(250));
+    }
+    const uint64_t waitedUs = static_cast<uint64_t>(
+        std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - started).count());
+    if (waitedUs > 0) {
+        g_flushWalPriorityWaitUs.fetch_add(waitedUs, std::memory_order_relaxed);
+        g_flushWalPriorityDeferrals.fetch_add(1, std::memory_order_relaxed);
+    }
+}
+
 static void flushWorkerLoop(size_t workerId) {
+#ifdef __linux__
+    // SST writes are throughput work; journal writes are latency/durability work.
+    // Best-effort priority changes are deliberately non-fatal on restricted hosts.
+    (void)setpriority(PRIO_PROCESS, 0, 10);
+#ifdef SYS_ioprio_set
+    constexpr int kIoPrioWhoProcess = 1;
+    constexpr int kIoPrioClassBestEffort = 2;
+    constexpr int kIoPrioClassShift = 13;
+    (void)syscall(SYS_ioprio_set, kIoPrioWhoProcess, 0,
+                  (kIoPrioClassBestEffort << kIoPrioClassShift) | 7);
+#endif
+#endif
     while (bgRunning.load()) {
         FlushTask task;
         {
@@ -601,6 +642,8 @@ static void flushWorkerLoop(size_t workerId) {
             g_flushQueue.pop_front();
             g_flushQueuedKeys.erase(task.key);
         }
+
+        yieldBackgroundIoToWal();
 
         auto started = std::chrono::steady_clock::now();
         try {
@@ -1471,40 +1514,77 @@ replayCollectionWal(const fs::path& walPath) {
             }
             if (record.lsn <= coveredLsn) return true;
 
-            json document;
+            std::vector<json> mutations;
             const std::string operation = entry.value("op", std::string("PUT"));
-            if (operation == "DELETE") {
-                const std::string id = entry.value("id", std::string());
-                if (id.empty()) throw std::runtime_error("DELETE WAL entry has no id");
-                document = entry.contains("data") && entry["data"].is_object()
-                    ? entry["data"] : json{{"id", id}, {"_deleted", true}};
-            } else {
-                if (!entry.contains("data") || !entry["data"].is_object()) {
-                    throw std::runtime_error("mutation WAL entry has no object data");
+            if (operation == "PUT_BATCH") {
+                if (!entry.contains("data") || !entry["data"].is_array() ||
+                    entry["data"].empty()) {
+                    throw std::runtime_error("PUT_BATCH WAL entry has no documents");
                 }
-                document = entry["data"];
+                mutations.reserve(entry["data"].size());
+                for (const auto& document : entry["data"]) {
+                    mutations.push_back(json{{"op", "PUT"}, {"data", document}});
+                }
+            } else if (operation == "WAL_BATCH") {
+                if (!entry.contains("mutations") || !entry["mutations"].is_array() ||
+                    entry["mutations"].empty()) {
+                    throw std::runtime_error("WAL_BATCH entry has no mutations");
+                }
+                mutations.assign(entry["mutations"].begin(), entry["mutations"].end());
+            } else {
+                mutations.push_back(entry);
             }
-            std::string id;
-            if (document.contains("id")) {
-                id = document["id"].is_string()
+
+            // Validate and normalize the entire physical record before applying any
+            // of it. A malformed batch can therefore never be half replayed.
+            std::vector<std::pair<std::string, json>> documents;
+            documents.reserve(mutations.size());
+            for (const auto& mutation : mutations) {
+                if (!mutation.is_object()) {
+                    throw std::runtime_error("WAL batch mutation is not an object");
+                }
+                const std::string mutationUser = mutation.value("userId", userId);
+                const std::string mutationDb = mutation.value("db", database);
+                const std::string mutationCollection = mutation.value("collection", collection);
+                if (mutationUser != userId || mutationDb != database ||
+                    mutationCollection != collection) {
+                    throw std::runtime_error("WAL batch namespace identity changed");
+                }
+                json document;
+                if (mutation.value("op", std::string("PUT")) == "DELETE") {
+                    const std::string id = mutation.value("id", std::string());
+                    if (id.empty()) throw std::runtime_error("DELETE WAL entry has no id");
+                    document = mutation.contains("data") && mutation["data"].is_object()
+                        ? mutation["data"] : json{{"id", id}, {"_deleted", true}};
+                } else {
+                    if (!mutation.contains("data") || !mutation["data"].is_object()) {
+                        throw std::runtime_error("mutation WAL entry has no object data");
+                    }
+                    document = mutation["data"];
+                }
+                if (!document.contains("id")) {
+                    throw std::runtime_error("mutation WAL document has no id");
+                }
+                std::string id = document["id"].is_string()
                     ? document["id"].get<std::string>() : document["id"].dump();
                 document["id"] = id;
-            } else {
-                throw std::runtime_error("mutation WAL document has no id");
+                documents.emplace_back(std::move(id), std::move(document));
             }
 
             bool shouldFlush = false;
             {
                 auto lock = pacificdb::timing::makeTimedUniqueLock(
                     getCollectionMutex(expectedKey));
-                memtables[expectedKey][id] = document;
+                for (auto& [id, document] : documents) {
+                    memtables[expectedKey][id] = std::move(document);
+                }
                 // The ID index is a cache, not recovery state. Rebuilding it with full
                 // documents makes startup memory proportional to total WAL history;
                 // targeted ID reads already fall back to the manifest SSTs.
                 markWalApplied(expectedKey, record.lsn, record.lsn);
                 shouldFlush = memtables[expectedKey].size() >= MEMTABLE_LIMIT;
             }
-            ++applied;
+            applied += documents.size();
             if (shouldFlush) LSM::flush(userId, database, collection);
             return true;
         } catch (const std::exception& error) {
@@ -1643,11 +1723,7 @@ void LSM::put(const std::string& userId,
         std::string walFile = LSM::requireContained(
             walDir / (validateStorageIdentifier(collection, "collectionName") + ".wal")).string();
         if (writeWal) {
-            auto walStart = std::chrono::steady_clock::now();
             walAppend = WAL::log(walFile, walEntry);
-            auto walEnd = std::chrono::steady_clock::now();
-            pacificdb::timing::recordStage(pacificdb::timing::Stage::WalAppend,
-                static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(walEnd - walStart).count()));
         }
 
         // memtable insert
@@ -1723,6 +1799,11 @@ nlohmann::json LSM::putMany(const std::string& userId,
         {"memtable_size", 0},
         {"timings_us", {
             {"wal_append", 0},
+            {"wal_queue_wait", 0},
+            {"wal_encode_crc", 0},
+            {"wal_write", 0},
+            {"wal_fsync", 0},
+            {"wal_fdatasync", 0},
             {"memtable_write", 0},
             {"index_update", 0},
             {"flush_wait", 0},
@@ -1741,7 +1822,6 @@ nlohmann::json LSM::putMany(const std::string& userId,
     for (auto storedDoc : docs) {
         if (storedDoc.is_object()) {
             stampVisibilityMetadata(storedDoc, committedIndex);
-            logicalBytes += json::to_msgpack(storedDoc).size();
         } else {
             allStoredDocsApplied = false;
         }
@@ -1753,26 +1833,25 @@ nlohmann::json LSM::putMany(const std::string& userId,
     createContainedStorageDirectories(fs::path(LSM::rootOrThrow()), dir);
     createContainedStorageDirectories(fs::path(LSM::rootOrThrow()), walDir);
 
-    std::vector<json> walEntries;
-    walEntries.reserve(storedDocs.size());
-    for (const auto& storedDoc : storedDocs) {
-        walEntries.push_back({
-            {"op", "PUT"},
-            {"userId", userId},
-            {"db", dbName},
-            {"collection", collection},
-            {"data", storedDoc}
-        });
-    }
-
     std::string walFile = (walDir / (collection + ".wal")).string();
     WalAppendResult walAppend;
     if (writeWal) {
-        auto walStart = std::chrono::steady_clock::now();
-        walAppend = WAL::logBatch(walFile, walEntries);
-        auto walEnd = std::chrono::steady_clock::now();
-        const uint64_t walUs = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(walEnd - walStart).count());
-        result["timings_us"]["wal_append"] = walUs;
+        walAppend = WAL::logPutBatch(
+            walFile, userId, dbName, collection, storedDocs);
+        result["timings_us"]["wal_append"] = walAppend.totalUs;
+        result["timings_us"]["wal_queue_wait"] = walAppend.queueWaitUs;
+        result["timings_us"]["wal_encode_crc"] = walAppend.encodeCrcUs;
+        result["timings_us"]["wal_write"] = walAppend.writeUs;
+        result["timings_us"]["wal_fsync"] = walAppend.fdatasyncUs;
+        result["timings_us"]["wal_fdatasync"] = walAppend.fdatasyncUs;
+        result["wal_physical_records"] = walAppend.physicalRecords;
+        result["wal_physical_syncs"] = walAppend.physicalSyncs;
+        result["wal_encoded_bytes"] = walAppend.encodedBytes;
+        logicalBytes = walAppend.encodedBytes;
+    } else {
+        // Replicated/recovery callers that intentionally skip this WAL still use
+        // one contiguous serialization for accounting, never one per document.
+        logicalBytes = json::to_msgpack(storedDocs).size();
     }
 
     bool shouldFlush = false;
@@ -1910,7 +1989,8 @@ void LSM::flush(const std::string& userId, const std::string& dbName, const std:
     pacificdb::storage_v2::SstWriteStats sstStats;
     std::string sstError;
     if (!pacificdb::storage_v2::writeSst(
-            writingPath, rows, sstBlockBytes(), &sstStats, &sstError)) {
+            writingPath, rows, sstBlockBytes(), &sstStats, &sstError,
+            yieldBackgroundIoToWal)) {
         std::cerr << "[LSM][FLUSH] cannot write sst file " << writingPath
                   << ": " << sstError << std::endl;
         return;
@@ -2182,7 +2262,8 @@ void LSM::compact(const std::string& userId, const std::string& dbName, const st
         pacificdb::storage_v2::SstWriteStats sstStats;
         std::string writeError;
         if (!pacificdb::storage_v2::writeSst(
-                tmpPath, rows, sstBlockBytes(), &sstStats, &writeError)) {
+                tmpPath, rows, sstBlockBytes(), &sstStats, &writeError,
+                yieldBackgroundIoToWal)) {
             throw std::runtime_error("cannot write compacted SST: " + writeError);
         }
         g_compactionBytesWritten.fetch_add(sstStats.storedBytes, std::memory_order_relaxed);
@@ -3353,11 +3434,7 @@ void LSM::del(const std::string& userId, const std::string& dbName, const std::s
             {"id", id},
             {"data", tomb}
         };
-        auto walStart = std::chrono::steady_clock::now();
         walAppend = WAL::log(walFile, walEntry);
-        auto walEnd = std::chrono::steady_clock::now();
-        pacificdb::timing::recordStage(pacificdb::timing::Stage::WalAppend,
-            static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(walEnd - walStart).count()));
 
         // insert tombstone into memtable
         auto memtableStart = std::chrono::steady_clock::now();
@@ -3759,6 +3836,8 @@ nlohmann::json LSM::getRuntimeStats() {
         {"flush_queued_total", g_flushQueuedTotal.load(std::memory_order_relaxed)},
         {"flush_completed_total", g_flushCompletedTotal.load(std::memory_order_relaxed)},
         {"flush_skipped_total", g_flushSkippedTotal.load(std::memory_order_relaxed)},
+        {"flush_wal_priority_wait_us_total", g_flushWalPriorityWaitUs.load(std::memory_order_relaxed)},
+        {"flush_wal_priority_deferrals_total", g_flushWalPriorityDeferrals.load(std::memory_order_relaxed)},
         {"write_stalls_total", g_writeStallsTotal.load(std::memory_order_relaxed)},
         {"write_stall_wait_ms", g_writeStallWaitUs.load(std::memory_order_relaxed) / 1000.0},
         {"compaction_queue_depth", 0},
@@ -3886,6 +3965,8 @@ nlohmann::json LSM::getLsmMetrics() {
         {"flush_queue_depth", flushQueueDepth()},
         {"flush_queued_total", g_flushQueuedTotal.load(std::memory_order_relaxed)},
         {"flush_completed_total", g_flushCompletedTotal.load(std::memory_order_relaxed)},
+        {"flush_wal_priority_wait_us_total", g_flushWalPriorityWaitUs.load(std::memory_order_relaxed)},
+        {"flush_wal_priority_deferrals_total", g_flushWalPriorityDeferrals.load(std::memory_order_relaxed)},
         {"flush_bytes_pending", 0},  // tracked via memtable size
         {"flush_bytes_written", g_flushBytesWritten.load(std::memory_order_relaxed)},
         {"flush_wait_ms", g_lastFlushWaitUs.load(std::memory_order_relaxed) / 1000.0},
