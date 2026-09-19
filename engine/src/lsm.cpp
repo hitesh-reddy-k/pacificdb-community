@@ -5053,6 +5053,181 @@ std::vector<json> LSM::getAll(const std::string& userId, const std::string& dbNa
     return outDocs;
 }
 
+nlohmann::json LSM::logicalDigest(const std::string& userId,
+                                  const std::string& dbName,
+                                  const std::string& collection,
+                                  uint64_t fence,
+                                  size_t maxDocs) {
+    constexpr const char* kSchema = "pacificdb-logical-v1";
+    nlohmann::json result = {
+        {"status", "OK"},
+        {"schema", kSchema},
+        {"fence", fence},
+        {"count", 0ULL},
+        {"bounded", true},
+        {"truncated", false},
+        {"max_docs", maxDocs},
+    };
+    if (maxDocs == 0) {
+        result["status"] = "INVALID_LIMIT";
+        result["truncated"] = true;
+        return result;
+    }
+
+    auto visibleAtFence = [fence](const json& doc) {
+        if (!doc.is_object() || !hasVisibleCommitState(doc)) return false;
+        uint64_t commit = 0;
+        if (!extractRowCommitIndex(doc, commit)) return true;
+        if (commit > fence) return false;
+        uint64_t floor = commit;
+        try {
+            if (doc.contains("_visibility_floor") &&
+                (doc["_visibility_floor"].is_number_integer() ||
+                 doc["_visibility_floor"].is_number_unsigned())) {
+                floor = doc["_visibility_floor"].get<uint64_t>();
+            }
+        } catch (...) {
+            return false;
+        }
+        return floor <= fence;
+    };
+
+    const std::string key = colKey(userId, dbName, collection);
+    std::vector<std::shared_ptr<Memtable>> immutable;
+    std::vector<json> active;
+    {
+        auto lock = stableCollectionReadLock(key);
+        immutable = immutableSnapshotForKey(key);
+        auto table = memtables.find(key);
+        if (table != memtables.end()) {
+            active.reserve(table->second.size());
+            for (const auto& [id, doc] : table->second) {
+                (void)id;
+                active.push_back(doc);
+            }
+        }
+    }
+
+    std::unordered_map<std::string, json> latestById;
+    std::vector<json> invalidRows;
+    bool truncated = false;
+    auto consider = [&](const json& doc) {
+        if (!visibleAtFence(doc)) return true;
+        mergeLatestById(latestById, invalidRows, doc);
+        if (!invalidRows.empty()) return false;
+        if (latestById.size() > maxDocs) {
+            truncated = true;
+            return false;
+        }
+        return true;
+    };
+
+    const fs::path dir = LSM::collectionArtifactPath(
+        userId, dbName, collection, ".lsm");
+    if (fs::exists(dir)) {
+        auto fileSetLock = stableCollectionReadLock(key);
+        for (const auto& sstPath : publishedSstsForCollection(dir)) {
+            std::string error;
+            if (!scanSstRows(sstPath, [&](json&& doc) {
+                    return consider(doc);
+                }, &error)) {
+                throw std::runtime_error(
+                    "cannot scan SST for logical digest " + sstPath.string() +
+                    ": " + error);
+            }
+            if (truncated || !invalidRows.empty()) break;
+        }
+    }
+    if (!truncated && invalidRows.empty()) {
+        for (auto it = immutable.rbegin(); it != immutable.rend(); ++it) {
+            if (!*it) continue;
+            for (const auto& [id, doc] : **it) {
+                (void)id;
+                if (!consider(doc)) break;
+            }
+            if (truncated || !invalidRows.empty()) break;
+        }
+    }
+    if (!truncated && invalidRows.empty()) {
+        for (const auto& doc : active) {
+            if (!consider(doc)) break;
+        }
+    }
+
+    if (!invalidRows.empty()) {
+        result["status"] = "INVALID_ROW";
+        result["invalid_rows"] = invalidRows.size();
+        return result;
+    }
+    if (truncated) {
+        result["status"] = "TRUNCATED";
+        result["truncated"] = true;
+        result["count"] = latestById.size();
+        return result;
+    }
+
+    std::vector<std::pair<std::string, json>> rows;
+    rows.reserve(latestById.size());
+    for (auto& [id, doc] : latestById) {
+        if (!isDeletedDoc(doc)) rows.emplace_back(id, std::move(doc));
+    }
+    std::sort(rows.begin(), rows.end(), [](const auto& left, const auto& right) {
+        return left.first < right.first;
+    });
+    if (rows.size() > maxDocs) {
+        result["status"] = "TRUNCATED";
+        result["truncated"] = true;
+        result["count"] = rows.size();
+        return result;
+    }
+
+    std::unique_ptr<EVP_MD_CTX, decltype(&EVP_MD_CTX_free)> digest(
+        EVP_MD_CTX_new(), EVP_MD_CTX_free);
+    if (!digest || EVP_DigestInit_ex(digest.get(), EVP_sha256(), nullptr) != 1) {
+        throw std::runtime_error("cannot initialize logical digest");
+    }
+    auto update = [&](const void* data, size_t size) {
+        if (size != 0 && EVP_DigestUpdate(digest.get(), data, size) != 1) {
+            throw std::runtime_error("cannot update logical digest");
+        }
+    };
+    auto updateLength = [&](uint64_t value) {
+        std::array<unsigned char, 8> encoded{};
+        for (size_t index = 0; index < encoded.size(); ++index) {
+            encoded[encoded.size() - 1 - index] =
+                static_cast<unsigned char>((value >> (index * 8)) & 0xffU);
+        }
+        update(encoded.data(), encoded.size());
+    };
+
+    update(kSchema, std::strlen(kSchema));
+    const unsigned char separator = 0;
+    update(&separator, 1);
+    updateLength(fence);
+    updateLength(rows.size());
+    for (const auto& [id, doc] : rows) {
+        const std::vector<uint8_t> encoded = json::to_msgpack(doc);
+        updateLength(id.size());
+        update(id.data(), id.size());
+        updateLength(encoded.size());
+        update(encoded.data(), encoded.size());
+    }
+    std::array<unsigned char, EVP_MAX_MD_SIZE> raw{};
+    unsigned int rawSize = 0;
+    if (EVP_DigestFinal_ex(digest.get(), raw.data(), &rawSize) != 1 || rawSize != 32) {
+        throw std::runtime_error("cannot finalize logical digest");
+    }
+    static constexpr char kHex[] = "0123456789abcdef";
+    std::string hex(rawSize * 2, '0');
+    for (size_t index = 0; index < rawSize; ++index) {
+        hex[index * 2] = kHex[raw[index] >> 4];
+        hex[index * 2 + 1] = kHex[raw[index] & 0x0f];
+    }
+    result["count"] = rows.size();
+    result["digest"] = std::move(hex);
+    return result;
+}
+
 std::optional<json> LSM::LatestRowView::field(std::string_view name) const {
     if (msgpack_) return msgpack_->field(name);
     if (!json_ || !json_->is_object()) return std::nullopt;

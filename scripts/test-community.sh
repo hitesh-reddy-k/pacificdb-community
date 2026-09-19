@@ -11,6 +11,7 @@ for test in \
   db_engine_snapshot_e2e db_engine_snapshot_bundle_test \
   db_engine_wal_group_commit_test db_engine_wal_segment_recovery_test \
   db_engine_lsm_manifest_test db_engine_lsm_checkpoint_test \
+  db_engine_replica_digest_test \
   db_engine_lsm_bounded_recovery_test db_engine_index_bounded_recovery_test \
   db_engine_raft_binary_log_test db_engine_raft_health_recovery_test \
   db_engine_raft_snapshot_metadata_test db_engine_storage_format_v2_test \

@@ -76,6 +76,14 @@ public:
                                     const std::string& dbName,
                                     const std::string& collection);
 
+    // Compute a bounded, canonical logical digest at an explicit applied-index
+    // fence. A truncated scan never returns a comparable digest.
+    static nlohmann::json logicalDigest(const std::string& userId,
+                                        const std::string& dbName,
+                                        const std::string& collection,
+                                        std::uint64_t fence,
+                                        std::size_t maxDocs);
+
     // Visit the newest visible version of each live document without building
     // a collection-sized map of nlohmann::json rows.
     static bool visitLatest(const std::string& userId,

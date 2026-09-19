@@ -931,6 +931,21 @@ static int configuredMaxRequestBytes() {
     return bytes;
 }
 
+static size_t configuredReplicaDigestMaxDocs() {
+    static const size_t limit = [] {
+        if (const char* value = std::getenv("REPLICA_DIGEST_MAX_DOCS")) {
+            try {
+                const auto parsed = std::stoull(value);
+                if (parsed >= 1 && parsed <= 5000000ULL) {
+                    return static_cast<size_t>(parsed);
+                }
+            } catch (...) {}
+        }
+        return static_cast<size_t>(100000);
+    }();
+    return limit;
+}
+
 constexpr int kMediaChunkSourceMaxBytes = 1024 * 1024;
 
 static std::string base64Encode(const std::vector<unsigned char>& bytes) {
@@ -1006,7 +1021,7 @@ static std::optional<pacificdb::security::Permission> permissionForAction(const 
         action == "listCollections" || action == "listIndexes" ||
         action == "validateIndex" || action == "indexValidate" ||
         action == "admin_stable_payload_dump" || action == "admin_complete_payload_hash" ||
-        action == "admin_raft_status" ||
+        action == "admin_raft_status" || action == "admin_replica_digest" ||
         action == "admin_apply_status" || action == "admin_logical_write_status" ||
         action == "getWriteStatus" ||
         action == "admin_storage_visibility_check" || action == "admin_replication_status" ||
@@ -5087,6 +5102,104 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                 if (getrlimit(RLIMIT_NOFILE, &rl) == 0) fdLimit = (long)rl.rlim_cur;
                 res["processFdLimit"] = fdLimit;
 #endif
+            }
+        }
+        else if (action == "admin_replica_digest") {
+            res = json::object();
+            res["ok"] = false;
+            res["action"] = action;
+            const std::string userId = req.value("userId", std::string());
+            const std::string dbName = req.value(
+                "dbName", req.value("db", std::string()));
+            const std::string collection = req.value("collection", std::string());
+            const bool hasFence = req.contains("fence") &&
+                (req["fence"].is_number_unsigned() ||
+                 (req["fence"].is_number_integer() &&
+                  req["fence"].get<int64_t>() >= 0));
+            const bool hasMaxDocs = req.contains("maxDocs") &&
+                (req["maxDocs"].is_number_unsigned() ||
+                 (req["maxDocs"].is_number_integer() &&
+                  req["maxDocs"].get<int64_t>() > 0));
+            uint64_t fence = 0;
+            uint64_t requestedMaxDocs = 0;
+            try {
+                if (hasFence) fence = req["fence"].get<uint64_t>();
+                if (hasMaxDocs) requestedMaxDocs = req["maxDocs"].get<uint64_t>();
+            } catch (...) {
+                fence = 0;
+                requestedMaxDocs = 0;
+            }
+            const uint64_t lastApplied = RaftCore::instance().getLastApplied();
+            const size_t cap = configuredReplicaDigestMaxDocs();
+            if (userId.empty() || dbName.empty() || collection.empty() ||
+                !req.contains("fence") || !req.contains("maxDocs")) {
+                res["error"] = "missing_user_database_collection_fence_or_maxDocs";
+            } else if (!hasFence) {
+                res["error"] = "invalid_fence";
+            } else if (requestedMaxDocs == 0 || requestedMaxDocs > cap) {
+                res["error"] = "invalid_maxDocs";
+                res["maxDocsCap"] = cap;
+            } else if (fence > lastApplied) {
+                res["error"] = "fence_above_last_applied";
+                res["fence"] = fence;
+                res["lastApplied"] = lastApplied;
+            } else if ((RaftCore::instance().isEnabled() &&
+                        !RaftCore::instance().isRecoveryComplete()) ||
+                       !LSM::indexRecoverySettled()) {
+                res["error"] = "recovery_incomplete";
+                res["applyBlockedState"] = RaftCore::instance().applyBlockedStatus();
+                res["indexRecovery"] = LSM::indexRecoveryStatus();
+            } else {
+                try {
+                    validateStorageIdentifier(userId, "userId");
+                    validateStorageIdentifier(dbName, "databaseName");
+                    validateStorageIdentifier(collection, "collectionName");
+                    json digest = LSM::logicalDigest(
+                        userId, dbName, collection, fence,
+                        static_cast<size_t>(requestedMaxDocs));
+                    if (digest.value("status", std::string()) != "OK" ||
+                        digest.value("truncated", false) || !digest.contains("digest")) {
+                        res["error"] = digest.value(
+                            "status", std::string("digest_failed"));
+                        res["digestResult"] = digest;
+                        MetricsExporter::incrementCounter(
+                            "pacificdb_replica_digest_failures_total", 1.0);
+                    } else {
+                        const json indexIntegrity = LSM::validateColumnIndexes(
+                            userId, dbName, collection);
+                        res = {
+                            {"ok", true},
+                            {"action", action},
+                            {"clusterId", std::getenv("RAFT_CLUSTER_ID")
+                                ? std::getenv("RAFT_CLUSTER_ID") : ""},
+                            {"nodeId", RaftCore::instance().getNodeId()},
+                            {"term", RaftCore::instance().getCurrentTerm()},
+                            {"commitIndex", RaftCore::instance().getCommitIndex()},
+                            {"lastApplied", lastApplied},
+                            {"fence", fence},
+                            {"digestSchema", digest["schema"]},
+                            {"digest", digest["digest"]},
+                            {"documentCount", digest["count"]},
+                            {"bounded", digest["bounded"]},
+                            {"truncated", false},
+                            {"baseIntegrity", {
+                                {"status", "ok"},
+                                {"logicalDigestVerified", true},
+                            }},
+                            {"indexIntegrity", indexIntegrity},
+                        };
+                        MetricsExporter::incrementCounter(
+                            "pacificdb_replica_digest_requests_total", 1.0);
+                        MetricsExporter::recordCustomMetric(
+                            "pacificdb_replica_digest_documents_last",
+                            static_cast<double>(digest.value("count", 0ULL)));
+                    }
+                } catch (const std::exception& error) {
+                    res["error"] = "replica_digest_failed";
+                    res["message"] = error.what();
+                    MetricsExporter::incrementCounter(
+                        "pacificdb_replica_digest_failures_total", 1.0);
+                }
             }
         }
         else if (action == "admin_apply_status") {
