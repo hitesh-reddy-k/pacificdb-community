@@ -1,0 +1,12 @@
+[Unit]
+Description=Schedule PacificDB replica logical-integrity checks
+
+[Timer]
+# Disabled by default: enable explicitly after provisioning the read-only token.
+OnBootSec=5min
+OnUnitActiveSec=5min
+Persistent=true
+Unit=pacificdb-integrity.service
+
+[Install]
+WantedBy=timers.target

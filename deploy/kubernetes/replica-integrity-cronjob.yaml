@@ -1,0 +1,62 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pacificdb-replica-integrity
+  namespace: pacificdb
+spec:
+  # Enable only after the config Secret and script ConfigMap are installed.
+  suspend: true
+  schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            fsGroup: 10001
+          containers:
+            - name: monitor
+              image: node:20.20.2-alpine
+              command:
+                - /usr/local/bin/node
+                - /opt/pacificdb/replica-integrity-monitor.mjs
+                - --config
+                - /run/pacificdb-integrity/config.json
+                - --output
+                - /var/lib/pacificdb-integrity/result.json
+                - --prometheus
+                - /var/lib/pacificdb-integrity/result.prom
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+                seccompProfile: { type: RuntimeDefault }
+              resources:
+                requests: { cpu: 25m, memory: 32Mi }
+                limits: { cpu: 250m, memory: 128Mi }
+              volumeMounts:
+                - { name: script, mountPath: /opt/pacificdb, readOnly: true }
+                - { name: config, mountPath: /run/pacificdb-integrity, readOnly: true }
+                - { name: output, mountPath: /var/lib/pacificdb-integrity }
+                - { name: tmp, mountPath: /tmp }
+          volumes:
+            - name: script
+              configMap:
+                name: pacificdb-integrity-monitor-script
+                defaultMode: 0555
+            - name: config
+              secret:
+                secretName: pacificdb-integrity-monitor-config
+                defaultMode: 0400
+            - name: output
+              persistentVolumeClaim:
+                claimName: pacificdb-integrity-output
+            - name: tmp
+              emptyDir: {}

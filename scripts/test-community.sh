@@ -53,6 +53,8 @@ scripts/test-community-autostart.sh "$BUILD_DIR"
 node scripts/test-community-e2e.mjs "$BUILD_DIR"
 node scripts/test-p0-protocol-errors.mjs "$BUILD_DIR"
 node scripts/test-community-contract-matrix.mjs "$BUILD_DIR"
+node --test scripts/test-replica-integrity-monitor.mjs
+node scripts/test-replica-integrity-rf3.mjs "$BUILD_DIR"
 node scripts/test-community-restart-matrix.mjs "$BUILD_DIR"
 scripts/test-community-disk-full.sh "$BUILD_DIR"
 node scripts/test-community-rf3.mjs "$BUILD_DIR"

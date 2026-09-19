@@ -124,3 +124,21 @@ Only paths listed in `COMPATIBILITY.md` and proven by exact-artifact evidence ar
 supported. Upgrade followers before the leader, verify convergence after every
 node, and keep a verified pre-upgrade backup. See
 [Upgrade and rollback](runbooks/UPGRADE_ROLLBACK.md).
+
+## Replica-integrity monitor
+
+Run `scripts/replica-integrity-monitor.mjs` from outside the database process
+and failure domain. Its JSON config contains `userId`, `database`, `collection`,
+`maxDocs`, an optional read-only `token`, and a `nodes` array of `id`, `host`,
+and `port` objects. TLS nodes set `tls: true` and an optional `caFile`.
+
+The monitor first compares applied indexes, waits only up to `lagTimeoutMs`, and
+then requests the same bounded logical digest fence from every healthy member.
+It emits `CONSISTENT`, `DIVERGENT`, `LAGGING`, `UNAVAILABLE`, `INCOMPATIBLE`, or
+`AUTHENTICATION_FAILED` without writing tokens or documents to evidence.
+
+The systemd timer is not enabled by installation. The Kubernetes CronJob is
+shipped with `suspend: true` and additionally requires a config Secret, a script
+ConfigMap, and the `pacificdb-integrity-output` PVC. Provision credentials with
+read-only database permission, protect the config as mode `0600`/Secret data,
+verify one manual `CONSISTENT` run, and only then enable the schedule.
