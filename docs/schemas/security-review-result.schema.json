@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pacificdb.example/schemas/security-review-result.schema.json",
+  "title": "PacificDB independent security review result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "reviewer",
+    "review_date",
+    "reviewed_revision",
+    "report",
+    "artifact_digests",
+    "findings"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "reviewer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "organization", "independent"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "organization": {"type": "string", "minLength": 1},
+        "independent": {"const": true}
+      }
+    },
+    "review_date": {"type": "string", "format": "date"},
+    "reviewed_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "report": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "artifact_digests": {
+      "type": "object",
+      "additionalProperties": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "severity", "disposition"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "severity": {"enum": ["critical", "high", "medium", "low", "info"]},
+          "disposition": {"enum": ["resolved", "accepted_risk", "open"]},
+          "owner": {"type": "string"},
+          "rationale": {"type": "string"}
+        }
+      }
+    }
+  }
+}

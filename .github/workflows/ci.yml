@@ -13,6 +13,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
   source-linux:
     runs-on: ubuntu-22.04
     steps:
@@ -52,6 +63,7 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: python3 scripts/test-release-consistency.py
       - run: python3 scripts/test-workflow-contract.py
+      - run: python3 -m unittest scripts/test_security_review.py -v
       - run: scripts/test-helm-deployment.sh
       - run: scripts/test-community.sh build
 
