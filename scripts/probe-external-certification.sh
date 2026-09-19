@@ -21,7 +21,12 @@ macos_signing_configured=false
 
 physical_status=BLOCKED
 physical_reason="no dedicated physical power-cut and storage-controller harness is configured"
-if [[ -n ${PACIFICDB_PHYSICAL_POWER_HARNESS:-} && -x ${PACIFICDB_PHYSICAL_POWER_HARNESS:-} ]]; then
+if [[ -n ${PACIFICDB_PHYSICAL_POWER_EVIDENCE:-} && -f ${PACIFICDB_PHYSICAL_POWER_EVIDENCE:-} ]] &&
+   python3 scripts/power_loss_harness.py validate \
+     --evidence "$PACIFICDB_PHYSICAL_POWER_EVIDENCE" >/dev/null 2>&1; then
+  physical_status=PASS
+  physical_reason="complete physical power-loss evidence passed validation"
+elif [[ -n ${PACIFICDB_PHYSICAL_POWER_HARNESS:-} && -x ${PACIFICDB_PHYSICAL_POWER_HARNESS:-} ]]; then
   physical_status=AVAILABLE
   physical_reason="dedicated harness is configured; execution requires its hardware-specific runbook"
 fi

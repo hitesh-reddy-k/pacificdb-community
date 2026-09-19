@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pacificdb.example/schemas/physical-power-result.schema.json",
+  "title": "PacificDB physical power-loss evidence",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version",
+    "run_id",
+    "revision",
+    "dedicated_root",
+    "hardware",
+    "operator",
+    "phase",
+    "iterations_required",
+    "boot_id_before",
+    "iterations"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "dedicated_root": {"type": "string", "pattern": "^/"},
+    "operator": {"type": "string", "minLength": 1},
+    "phase": {
+      "enum": [
+        "wal_sync",
+        "sst_creation",
+        "manifest_publication",
+        "wal_reclamation",
+        "compaction",
+        "backup",
+        "restore"
+      ]
+    },
+    "iterations_required": {"type": "integer", "minimum": 1},
+    "boot_id_before": {"type": "string", "minLength": 1},
+    "hardware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "host",
+        "filesystem",
+        "device",
+        "controller",
+        "drive_model",
+        "firmware",
+        "cache_policy",
+        "cut_method"
+      ],
+      "properties": {
+        "host": {"type": "string", "minLength": 1},
+        "filesystem": {"type": "string", "minLength": 1},
+        "device": {"type": "string", "minLength": 1},
+        "controller": {"type": "string", "minLength": 1},
+        "drive_model": {"type": "string", "minLength": 1},
+        "firmware": {"type": "string", "minLength": 1},
+        "cache_policy": {"type": "string", "minLength": 1},
+        "cut_method": {
+          "enum": ["managed_pdu", "mains_disconnect", "hardware_power_switch"]
+        }
+      }
+    },
+    "iterations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "number",
+          "ledger_sha256",
+          "marker_timestamp",
+          "power_restored_timestamp",
+          "boot_id_after",
+          "recovery_result",
+          "acknowledged_digest",
+          "recovered_digest"
+        ],
+        "properties": {
+          "number": {"type": "integer", "minimum": 1},
+          "ledger_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "marker_timestamp": {"type": "string", "format": "date-time"},
+          "power_restored_timestamp": {"type": "string", "format": "date-time"},
+          "boot_id_after": {"type": "string", "minLength": 1},
+          "recovery_result": {"const": "PASS"},
+          "acknowledged_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "recovered_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        }
+      }
+    }
+  }
+}
