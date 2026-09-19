@@ -140,6 +140,22 @@ function abruptlyDisconnect(command) {
   });
 }
 
+function rawRequest(command) {
+  return new Promise((resolve, reject) => {
+    const socket = net.createConnection({ host: '127.0.0.1', port });
+    let wire = '';
+    socket.on('error', reject);
+    socket.on('data', (chunk) => {
+      wire += chunk;
+      const newline = wire.indexOf('\n');
+      if (newline < 0) return;
+      socket.destroy();
+      resolve(JSON.parse(wire.slice(0, newline)));
+    });
+    socket.once('connect', () => socket.write(JSON.stringify(command) + '\n'));
+  });
+}
+
 function processLive(pid) {
   try { process.kill(pid, 0); return true; }
   catch (error) { return error.code === 'EPERM'; }
@@ -178,6 +194,9 @@ async function stopEngine() {
 
 try {
   await waitReady();
+  const finalResponse = await rawRequest({ action: 'ping', userId: 'system' });
+  assert.equal(finalResponse._pacificdb_connection_close, true,
+    'final keep-alive response must tell pooled clients to retire the socket');
   const setup = new PacificDBClient({ port, timeoutMs: 120000 });
   await setup.createDatabase('lifecycle');
   setup.database = 'lifecycle';

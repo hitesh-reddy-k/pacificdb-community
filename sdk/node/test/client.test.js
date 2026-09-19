@@ -105,6 +105,38 @@ test('returns a completed connection to the pool before resolving sequential req
   }
 });
 
+test('retires a pooled connection when the server marks its response as final', async () => {
+  let connections = 0;
+  const sockets = new Set();
+  const server = net.createServer((socket) => {
+    connections += 1;
+    sockets.add(socket);
+    socket.on('close', () => sockets.delete(socket));
+    socket.once('data', (data) => {
+      const request = JSON.parse(data);
+      socket.write(JSON.stringify({
+        status: 'ok', sequence: request.sequence,
+        _pacificdb_connection_close: true,
+      }) + '\n');
+      setTimeout(() => socket.end(), 25);
+    });
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const client = new PacificDBClient({ host: '127.0.0.1',
+    port: server.address().port, poolSize: 1, timeoutMs: 500 });
+  try {
+    assert.deepEqual(await client.request({ action: 'ping', sequence: 1 }),
+      { status: 'ok', sequence: 1 });
+    assert.deepEqual(await client.request({ action: 'ping', sequence: 2 }),
+      { status: 'ok', sequence: 2 });
+    assert.equal(connections, 2);
+  } finally {
+    client.close();
+    for (const socket of sockets) socket.destroy();
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
 test('prewarms the configured pool and sends insertMany data in one request', async () => {
   let connections = 0;
   let received;

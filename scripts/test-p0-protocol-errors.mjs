@@ -313,10 +313,12 @@ try {
   });
   trace('invalid-json');
   assert.deepEqual(await lineExchange('{not-json}\n'), {
+    _pacificdb_connection_close: true,
     error: 'invalid_json',
   });
   trace('unknown-action');
   assert.deepEqual(await lineExchange('{"action":"not_a_real_action"}\n'), {
+    _pacificdb_connection_close: true,
     action: 'not_a_real_action',
     error: 'unknown_action',
     message: 'Unknown action',

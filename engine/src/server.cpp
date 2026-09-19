@@ -6487,6 +6487,12 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
         appendDeterministicLog(logEntry);
     }
 
+    if (res.is_object() && (_kaI + 1) >= _kaMX) {
+        // Tell persistent clients not to race the FIN by assigning another
+        // request to a socket whose configured request budget is exhausted.
+        res["_pacificdb_connection_close"] = true;
+    }
+
     responseSerializedUs = steadyNowUs();
     recordLifecycleCounter("response_serialized");
     std::string out;

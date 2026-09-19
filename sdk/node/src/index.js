@@ -98,8 +98,10 @@ class PooledConnection {
       return;
     }
     this.responsesOnSocket += 1;
-    if (value?.error) this.finish(responseError(value));
-    else this.finish(null, false, value);
+    const serverWillClose = value?._pacificdb_connection_close === true;
+    if (serverWillClose) delete value._pacificdb_connection_close;
+    if (value?.error) this.finish(responseError(value), serverWillClose);
+    else this.finish(null, serverWillClose, value);
   }
 
   onFailure(socket, error) {
