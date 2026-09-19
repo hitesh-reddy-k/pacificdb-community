@@ -59,6 +59,14 @@ node scripts/test-community-restart-matrix.mjs "$BUILD_DIR"
 scripts/test-community-disk-full.sh "$BUILD_DIR"
 node scripts/test-community-rf3.mjs "$BUILD_DIR"
 node scripts/test-community-rf3-partition.mjs "$BUILD_DIR"
+node --test scripts/test-rf3-upgrade-contract.mjs
+if test -n "${PACIFICDB_OLD_BUILD:-}"; then
+  node scripts/test-community-rf3-upgrade.mjs \
+    --old-build "$PACIFICDB_OLD_BUILD" --candidate-build "$BUILD_DIR" \
+    --evidence "${PACIFICDB_UPGRADE_EVIDENCE:-/tmp/pacificdb-rf3-upgrade-evidence.json}"
+else
+  echo 'Mixed-version RF3 test skipped: set PACIFICDB_OLD_BUILD to an exact prior artifact' >&2
+fi
 PACIFICDB_RF3_DURATION_SECONDS="${PACIFICDB_RF3_SMOKE_SECONDS:-10}" \
 PACIFICDB_RF3_REPEATS=1 PACIFICDB_RF3_CLIENTS=64,128 \
   node scripts/test-community-rf3-sustained.mjs "$BUILD_DIR"

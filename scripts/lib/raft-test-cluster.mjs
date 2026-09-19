@@ -83,8 +83,16 @@ export class RaftTestCluster {
   }
 
   constructor(options) {
-    this.build = path.resolve(options.build);
-    this.binary = path.join(this.build, 'db_engine');
+    this.build = options.build ? path.resolve(options.build) : null;
+    this.binary = this.build ? path.join(this.build, 'db_engine') : null;
+    if (options.binaries !== undefined) {
+      assert.ok(Array.isArray(options.binaries) && options.binaries.length === 3,
+        'binaries must contain exactly three executable paths');
+      this.binaries = options.binaries.map((binary) => path.resolve(binary));
+    } else {
+      assert.ok(this.binary, 'build or binaries is required');
+      this.binaries = [this.binary, this.binary, this.binary];
+    }
     this.clusterId = options.clusterId || `community-rf3-${process.pid}-${Date.now()}`;
     this.rootPrefix = options.rootPrefix || 'pacificdb-rf3-';
     this.authRequired = Boolean(options.authRequired);
@@ -160,7 +168,7 @@ export class RaftTestCluster {
   async startNode(index) {
     const environment = this.nodeEnvironment(index);
     await mkdir(environment.DATA_ROOT, { recursive: true });
-    const child = spawn(this.binary, [], {
+    const child = spawn(this.binaries[index], [], {
       cwd: path.resolve(import.meta.dirname, '../..'), env: environment,
       stdio: ['ignore', 'ignore', 'ignore']
     });
@@ -184,6 +192,14 @@ export class RaftTestCluster {
     const timer = setTimeout(() => node.child.kill('SIGKILL'), 10_000);
     await once(node.child, 'exit');
     clearTimeout(timer);
+  }
+
+  async restartNode(index, binary = this.binaries[index]) {
+    const selected = path.resolve(binary);
+    await this.stopNode(index);
+    this.binaries[index] = selected;
+    await this.startNode(index);
+    return this.nodes[index];
   }
 
   setLink(source, destination, enabled) {
