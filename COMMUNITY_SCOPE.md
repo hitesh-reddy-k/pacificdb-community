@@ -46,6 +46,12 @@ remain open before a broader production-readiness claim.
 
 ## Community operational boundary
 
+Community capabilities are not reduced by edition-specific document, vector,
+media, database-size, or request-count paywalls. Resource safeguards such as
+request size, result size, query time, connection admission, and memory-pressure
+backoff remain enabled so an oversized operation cannot destabilize the engine;
+operators can tune those safeguards through the documented environment settings.
+
 Local projects organize database names and do not grant access or represent
 SaaS organizations. Database authorization remains the security boundary.
 `pacificdb_meta` and the bootstrap `system` database are reserved by the engine

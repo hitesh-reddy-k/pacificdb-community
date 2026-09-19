@@ -1129,7 +1129,10 @@ LocalEngineResult ensureLocalEngine(
     setDefaultEnvironment("RAFT_IS_LEADER", "1");
     setDefaultEnvironment("MIN_QUORUM_SIZE", "1");
     setDefaultEnvironment("ENGINE_CPU_CORES", "2");
-    setDefaultEnvironment("ENGINE_KEEPALIVE_MAX_REQUESTS", "1");
+    // Match the server and pooled SDK defaults. One-request connections defeat
+    // the Node client's persistent pool and recreate Windows TIME_WAIT churn
+    // whenever the CLI starts a managed local engine.
+    setDefaultEnvironment("ENGINE_KEEPALIVE_MAX_REQUESTS", "10000");
     setEnvironment("PACIFICDB_INSTANCE_ID", instanceId);
     setEnvironment("PACIFICDB_DISCOVERY_NONCE", nonce);
     setEnvironment("PACIFICDB_DATA_ROOT_FINGERPRINT", fingerprint);

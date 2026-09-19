@@ -234,6 +234,12 @@ try {
   assert.equal((await readClient.find('docs', {})).status, 'ok');
   await assert.rejects(readClient.insert('docs', { id: 'read-mutation' }),
     /forbidden|permission_denied/);
+  await assert.rejects(readClient.insertMany('docs', [{ id: 'read-batch-mutation' }]),
+    /forbidden|permission_denied/);
+  await rejects(readClient, { action: 'updateMany', collection: 'docs', filter: {},
+    update: { denied: true } }, /forbidden|permission_denied/);
+  await rejects(readClient, { action: 'deleteMany', collection: 'docs', filter: {} },
+    /forbidden|permission_denied/);
   assert.equal((await writeClient.insert('docs', { id: 'writer-mutation' })).status, 'ok');
   await rejects(writeClient, { action: 'api_key_create', name: 'denied', role: 'read' },
     /forbidden|permission_denied/);

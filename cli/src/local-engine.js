@@ -139,7 +139,9 @@ function localEnvironment(home, port, identity) {
     RAFT_IS_LEADER: process.env.RAFT_IS_LEADER || '1',
     MIN_QUORUM_SIZE: process.env.MIN_QUORUM_SIZE || '1',
     ENGINE_CPU_CORES: process.env.ENGINE_CPU_CORES || '2',
-    ENGINE_KEEPALIVE_MAX_REQUESTS: process.env.ENGINE_KEEPALIVE_MAX_REQUESTS || '1',
+    // Keep the managed engine aligned with the persistent Node SDK pool while
+    // preserving an explicit operator override.
+    ENGINE_KEEPALIVE_MAX_REQUESTS: process.env.ENGINE_KEEPALIVE_MAX_REQUESTS || '10000',
     PACIFICDB_INSTANCE_ID: identity.instanceId,
     PACIFICDB_DISCOVERY_NONCE: identity.discoveryNonce,
     PACIFICDB_DATA_ROOT_FINGERPRINT: identity.dataRootFingerprint,

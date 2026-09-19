@@ -17,7 +17,10 @@ db.close();
 The client reuses up to 16 persistent TCP/TLS connections by default. Set
 `poolSize` from 1 through 32 to tune concurrency, call `await db.connect()` to
 prewarm the full pool before latency-sensitive work, and call `db.close()`
-when the client is no longer needed.
+when the client is no longer needed. Standalone and locally managed Community
+engines serve up to 10,000 sequential requests per connection by default; tune
+that lifecycle with `ENGINE_KEEPALIVE_MAX_REQUESTS` and
+`ENGINE_KEEPALIVE_IDLE_MS` when required.
 
 Insert a batch in one engine request and one WAL batch:
 
