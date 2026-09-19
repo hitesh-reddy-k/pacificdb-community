@@ -72,6 +72,39 @@ test('reuses a bounded persistent connection pool under concurrent load', async 
   }
 });
 
+test('returns a completed connection to the pool before resolving sequential requests', async () => {
+  let connections = 0;
+  const sockets = new Set();
+  const server = net.createServer((socket) => {
+    connections += 1;
+    sockets.add(socket);
+    socket.on('close', () => sockets.delete(socket));
+    let wire = '';
+    socket.on('data', (chunk) => {
+      wire += chunk;
+      while (wire.includes('\n')) {
+        const newline = wire.indexOf('\n');
+        const request = JSON.parse(wire.slice(0, newline));
+        wire = wire.slice(newline + 1);
+        socket.write(JSON.stringify({ sequence: request.sequence }) + '\n');
+      }
+    });
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const client = new PacificDBClient({ host: '127.0.0.1',
+    port: server.address().port, poolSize: 16 });
+  try {
+    for (let sequence = 0; sequence < 32; sequence += 1) {
+      assert.equal((await client.request({ action: 'ping', sequence })).sequence, sequence);
+    }
+    assert.equal(connections, 1);
+  } finally {
+    client.close();
+    for (const socket of sockets) socket.destroy();
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
 test('prewarms the configured pool and sends insertMany data in one request', async () => {
   let connections = 0;
   let received;

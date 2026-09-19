@@ -149,7 +149,10 @@ export class RaftTestCluster {
       RAFT_REPLICATOR_RPC_TIMEOUT_MS: '400', RAFT_QUORUM_WAIT_TIMEOUT_MS: '3000',
       RAFT_SCHEMA_OP_TIMEOUT_MS: '4000', RAFT_LEADER_NOOP_TIMEOUT_MS: '3000',
       RAFT_MIN_WORKERS: '4', RAFT_MAX_WORKERS: '16', ENGINE_CPU_CORES: '4',
-      CONN_MIN_THREADS: '4', CONN_MAX_THREADS: '32', DBQ_SHARDS: '4',
+      // A worker owns a keepalive socket for its lifetime. The RF3 capacity fixture
+      // drives up to 128 persistent clients plus health probes, so a 32-worker cap
+      // starves newly accepted sockets even though production defaults to 512.
+      CONN_MIN_THREADS: '8', CONN_MAX_THREADS: '256', DBQ_SHARDS: '4',
       DBQ_WORKERS_PER_SHARD: '2', ADAPTIVE_ADMISSION: '0', ENGINE_AUTH_REQUIRED: this.authRequired ? '1' : '0'
     };
   }

@@ -26,6 +26,7 @@ class PooledConnection {
     this.connected = false;
     this.current = null;
     this.response = '';
+    this.responsesOnSocket = 0;
   }
 
   async connect() {
@@ -37,6 +38,7 @@ class PooledConnection {
     const socket = this.pool.useTls ? tls.connect(options) : net.createConnection(options);
     this.socket = socket;
     this.response = '';
+    this.responsesOnSocket = 0;
     const connectedEvent = this.pool.useTls ? 'secureConnect' : 'connect';
     this.connecting = new Promise((resolve, reject) => {
       const onConnect = () => {
@@ -95,6 +97,7 @@ class PooledConnection {
         'a non-JSON response; verify the host and port'), true);
       return;
     }
+    this.responsesOnSocket += 1;
     if (value?.error) this.finish(responseError(value));
     else this.finish(null, false, value);
   }
@@ -148,6 +151,7 @@ class ConnectionPool {
     this.connections = [];
     this.idle = [];
     this.queue = [];
+    this.pendingRelease = 0;
     this.closed = false;
   }
 
@@ -158,16 +162,33 @@ class ConnectionPool {
   }
 
   dispatch(connection, job) {
-    connection.request(job.wire).then(job.resolve, job.reject).finally(() => {
+    connection.request(job.wire).then((value) => {
       // Give an older one-request-per-connection server a chance to deliver
       // its FIN before assigning more work to this slot. Keep-alive engines
       // retain the same socket; closed peers reconnect on the next request.
-      setImmediate(() => {
-        if (this.closed) return;
-        const next = this.queue.shift();
-        if (next) this.dispatch(connection, next);
-        else this.idle.push(connection);
-      });
+      this.pendingRelease += 1;
+      job.resolve(value);
+      const releaseDelayMs = connection.responsesOnSocket < 2 ? 5 : 0;
+      setTimeout(() => {
+        this.pendingRelease -= 1;
+        if (!this.closed) {
+          const next = this.queue.shift();
+          if (next) this.dispatch(connection, next);
+          else this.idle.push(connection);
+        }
+      }, releaseDelayMs);
+    }, (error) => {
+      this.pendingRelease += 1;
+      job.reject(error);
+      const releaseDelayMs = connection.responsesOnSocket < 2 ? 5 : 0;
+      setTimeout(() => {
+        this.pendingRelease -= 1;
+        if (!this.closed) {
+          const next = this.queue.shift();
+          if (next) this.dispatch(connection, next);
+          else this.idle.push(connection);
+        }
+      }, releaseDelayMs);
     });
   }
 
@@ -177,6 +198,7 @@ class ConnectionPool {
       const job = { wire, resolve, reject };
       const connection = this.idle.pop();
       if (connection) this.dispatch(connection, job);
+      else if (this.pendingRelease > 0) this.queue.push(job);
       else if (this.connections.length < this.poolSize) {
         this.dispatch(this.newConnection(), job);
       } else this.queue.push(job);

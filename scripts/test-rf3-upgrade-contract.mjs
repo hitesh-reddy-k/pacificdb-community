@@ -64,3 +64,19 @@ test('upgrade rollback decisions fail closed at format boundaries', () => {
   assert.equal(rollbackDecision({ formatTransition: false,
     oldArtifactAvailable: false }), 'BLOCKED');
 });
+
+test('RF3 fixture can service its persistent-client capacity without socket starvation', async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'pacificdb-rf3-capacity-contract-'));
+  const binary = await fakeEngine(directory, 'capacity-engine');
+  const cluster = await RaftTestCluster.create({
+    binaries: [binary, binary, binary], useProxies: false,
+    rootPrefix: 'pacificdb-rf3-capacity-contract-cluster-'
+  });
+  t.after(async () => {
+    await cluster.close();
+    await rm(directory, { recursive: true, force: true });
+  });
+  const environment = cluster.nodeEnvironment(0);
+  assert.ok(Number(environment.CONN_MAX_THREADS) >= 130);
+  assert.ok(Number(environment.CONN_MIN_THREADS) >= 8);
+});
