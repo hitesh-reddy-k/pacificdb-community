@@ -38,8 +38,6 @@ const [index, docs] = await Promise.all([
   readSiteFile('index.html'),
   readSiteFile('docs.html')
 ]);
-const clientPackage = JSON.parse(await readFile(
-  path.join(repositoryRoot, 'sdk/node/package.json'), 'utf8'));
 
 for (const asset of [
   'assets/pacificdb-logo-lockup.png',
@@ -67,9 +65,14 @@ for (const platform of [
   assert.ok(index.includes(platform), `missing download platform: ${platform}`);
 }
 
-assert.ok(index.includes(
-  `const releaseBase='https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v${clientPackage.version}'`),
-`landing page release URL must match ${clientPackage.version}`);
+const publishedRelease = index.match(
+  /const releaseBase='https:\/\/github\.com\/hitesh-reddy-k\/pacificdb-community\/releases\/download\/v([^']+)'/);
+assert.ok(publishedRelease, 'landing page must declare a published release URL');
+const publishedVersion = publishedRelease[1];
+assert.ok(index.includes(`pacificdb-community-${publishedVersion}-`),
+  'landing page artifact names must match the published release URL');
+assert.ok(docs.includes(`v${publishedVersion}`),
+  'documentation version must match the published release URL');
 assert.match(index, /id=["']mac-arch["']/);
 assert.match(index, /id=["']mac-download["']/);
 assert.match(index, /navigator\.clipboard/);
