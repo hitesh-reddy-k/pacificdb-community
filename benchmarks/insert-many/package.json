@@ -1,9 +1,0 @@
-{
-  "name": "pacificdb-insert-many-benchmark",
-  "private": true,
-  "type": "module",
-  "engines": { "node": ">=20" },
-  "dependencies": {
-    "mongodb": "7.6.0"
-  }
-}

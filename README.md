@@ -36,9 +36,6 @@ See [COMMUNITY_SCOPE.md](COMMUNITY_SCOPE.md) for the exact boundary.
   grouped WAL and LSM path.
 - The retained end-to-end suite verifies a 500-document batch before and after
   graceful and abrupt engine restarts.
-- The published durability-matched benchmark measured 3,135 records/sec for
-  PacificDB and 7,298 records/sec for MongoDB 8.3.8 on the test host. See the
-  [methodology and raw samples](docs/benchmarks/2026-09-16-insert-many.md).
 
 ## Install
 
@@ -331,7 +328,7 @@ Windows signing, and macOS signing and notarization remain open.
 
 ## Licensing
 
-- Engine, query intelligence, deployments, and benchmarks: AGPL-3.0
+- Engine, query intelligence, and deployments: AGPL-3.0
 - Node.js, Python, Java clients and CLI: Apache-2.0
 - Bundled dependencies: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
 

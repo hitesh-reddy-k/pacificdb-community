@@ -257,11 +257,10 @@ without printing credential values.
 | RF3 64/128-client smoke | 1 | 1 | 0 | 0 |
 | Python SDK tests | 1 | 1 | 0 | 0 |
 | Java SDK tests | 1 | 1 | 0 | 0 |
-| YCSB binding | 1 | 1 | 0 | 0 |
-| **Retained suite total** | **57** | **57** | **0** | **0** |
+| **Retained suite total** | **56** | **56** | **0** | **0** |
 | Extracted Debian package smoke | 1 | 1 | 0 | 0 |
 | Ubuntu `apt` lifecycle | 1 | 1 | 0 | 0 |
-| **Linux total** | **59** | **59** | **0** | **0** |
+| **Linux total** | **58** | **58** | **0** | **0** |
 
 The C++ comprehensive executable separately reported 58/58 internal
 assertions. The E2E executed 87 shell commands and checked 24 concurrent

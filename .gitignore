@@ -18,6 +18,4 @@
 *.log
 *.pid
 *.bin
-benchmarks/results/
-benchmarks/reports/
 .DS_Store

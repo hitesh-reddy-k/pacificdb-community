@@ -8,8 +8,6 @@ build*
 **/node_modules
 **/__pycache__
 **/.pytest_cache
-benchmarks/results
-benchmarks/reports
 docs
 site
 *.log

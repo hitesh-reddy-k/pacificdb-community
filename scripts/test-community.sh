@@ -72,7 +72,6 @@ PACIFICDB_RF3_REPEATS=1 PACIFICDB_RF3_CLIENTS=64,128 \
   node scripts/test-community-rf3-sustained.mjs "$BUILD_DIR"
 PYTHONPATH=sdk/python python3 -m pytest -q sdk/python/tests
 mvn -q -f sdk/java/pom.xml test
-benchmarks/ycsb/test_binding.sh
 legacy_product=basta
 legacy_product+=base
 paid_tier=enter
