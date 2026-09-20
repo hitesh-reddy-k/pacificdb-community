@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://pacificdb.in/docs.html
+    about: Read installation, command, SDK, and operations documentation.
+  - name: PacificDB Discord
+    url: https://discord.gg/67w8ET9Sf2
+    about: Ask usage questions and talk with the community.
+  - name: Private security report
+    url: https://github.com/hitesh-reddy-k/pacificdb-community/security/advisories/new
+    about: Report a suspected vulnerability privately. Do not open a public issue.
