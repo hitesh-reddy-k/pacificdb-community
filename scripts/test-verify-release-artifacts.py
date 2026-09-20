@@ -129,6 +129,32 @@ class VerifyReleaseArtifactsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "macOS signing evidence"):
             verifier.build_manifest(self.root, "1.0.0", "a" * 40)
 
+    def test_explicit_unsigned_release_accepts_consistent_evidence(self):
+        self.populate(INSTALLERS + EVIDENCE)
+        windows_path = self.root / "p0-evidence-windows-x64.json"
+        windows = json.loads(windows_path.read_text(encoding="utf-8"))
+        for field in windows["windows_signing"]:
+            windows["windows_signing"][field] = "NOT_APPLICABLE"
+        windows_path.write_text(json.dumps(windows), encoding="utf-8")
+        for architecture in ("arm64", "x86_64"):
+            path = self.root / f"p0-evidence-macos-{architecture}.json"
+            evidence = json.loads(path.read_text(encoding="utf-8"))
+            for field in evidence["macos_signing"]:
+                evidence["macos_signing"][field] = "NOT_APPLICABLE"
+            path.write_text(json.dumps(evidence), encoding="utf-8")
+
+        manifest = verifier.build_manifest(
+            self.root, "1.0.0", "a" * 40, allow_unsigned=True
+        )
+        self.assertEqual(
+            manifest["native_signing"]["windows"]["status"],
+            "NOT_APPLICABLE",
+        )
+        self.assertEqual(
+            manifest["native_signing"]["macos-arm64"]["status"],
+            "NOT_APPLICABLE",
+        )
+
     def test_native_signing_revision_must_match_release(self):
         self.populate(INSTALLERS + EVIDENCE)
         path = self.root / "p0-evidence-windows-x64.json"

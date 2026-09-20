@@ -53,10 +53,11 @@ undrafting the GitHub release.
 
 ## Native signing prerequisites
 
-Release tags are fail-closed unless all platform signing evidence is `PASS` and
-is bound to the release version and commit. Non-tag package validation remains
-unsigned and records `NOT_APPLICABLE`; that evidence cannot authorize release
-publication.
+Release tags after `v1.0.0` are fail-closed unless all platform signing evidence
+is `PASS` and is bound to the release version and commit. The explicitly
+authorized `v1.0.0` release may publish unsigned Windows and macOS installers;
+its evidence records `NOT_APPLICABLE`, and its release notes and checksums must
+make that exception visible. Non-tag package validation also remains unsigned.
 
 Windows requires these GitHub Actions secrets:
 

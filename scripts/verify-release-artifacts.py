@@ -70,7 +70,10 @@ def native_identity_matches(evidence: dict, version: str, revision: str | None) 
 
 
 def validate_native_signing_evidence(
-    dist: Path, version: str, revision: str | None
+    dist: Path,
+    version: str,
+    revision: str | None,
+    allow_unsigned: bool = False,
 ) -> dict:
     windows = load_evidence(
         dist / "p0-evidence-windows-x64.json", "Windows signing"
@@ -82,10 +85,15 @@ def validate_native_signing_evidence(
         "installed_pacificdb",
         "installed_db_engine",
     )
+    allowed_statuses = {"PASS", "NOT_APPLICABLE"} if allow_unsigned else {"PASS"}
+    windows_status = (
+        windows_signing.get("status") if isinstance(windows_signing, dict) else None
+    )
     if (
         not native_identity_matches(windows, version, revision)
         or not isinstance(windows_signing, dict)
-        or any(windows_signing.get(field) != "PASS" for field in windows_fields)
+        or windows_status not in allowed_statuses
+        or any(windows_signing.get(field) != windows_status for field in windows_fields)
     ):
         raise ValueError("Windows signing evidence does not match the release identity")
 
@@ -104,11 +112,15 @@ def validate_native_signing_evidence(
             "stapling",
             "gatekeeper",
         )
+        macos_status = (
+            macos_signing.get("status") if isinstance(macos_signing, dict) else None
+        )
         if (
             not native_identity_matches(macos, version, revision)
             or macos.get("release_architecture") != architecture
             or not isinstance(macos_signing, dict)
-            or any(macos_signing.get(field) != "PASS" for field in macos_fields)
+            or macos_status not in allowed_statuses
+            or any(macos_signing.get(field) != macos_status for field in macos_fields)
         ):
             raise ValueError("macOS signing evidence does not match the release identity")
         summaries[f"macos-{architecture}"] = {
@@ -117,7 +129,12 @@ def validate_native_signing_evidence(
     return summaries
 
 
-def build_manifest(dist: Path, version: str, revision: str | None = None) -> dict:
+def build_manifest(
+    dist: Path,
+    version: str,
+    revision: str | None = None,
+    allow_unsigned: bool = False,
+) -> dict:
     artifacts = []
     for name in sorted(required_names(version)):
         path = dist / name
@@ -129,7 +146,7 @@ def build_manifest(dist: Path, version: str, revision: str | None = None) -> dic
         artifacts.append({"name": name, "size": size, "sha256": sha256(path)})
     container = validate_container_evidence(dist, version, revision)
     native_signing = validate_native_signing_evidence(
-        dist, version, container["revision"]
+        dist, version, container["revision"], allow_unsigned
     )
     return {
         "version": version,
@@ -145,9 +162,12 @@ def main() -> None:
     parser.add_argument("--dist", type=Path, required=True)
     parser.add_argument("--version", required=True)
     parser.add_argument("--revision", required=True)
+    parser.add_argument("--allow-unsigned", action="store_true")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    manifest = build_manifest(args.dist, args.version, args.revision)
+    manifest = build_manifest(
+        args.dist, args.version, args.revision, args.allow_unsigned
+    )
     args.output.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
 

@@ -126,6 +126,8 @@ require(
     'test "$alias_digest" = "${image_ref#*@}"',
     "packages: write",
     '--revision "$GITHUB_SHA"',
+    "--allow-unsigned",
+    "--prerelease=false",
 )
 forbid(
     ".github/workflows/release.yml",
