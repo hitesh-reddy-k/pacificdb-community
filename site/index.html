@@ -329,14 +329,14 @@ body{background:#000311;color:var(--ink)}
 
 <section class="section download-section" id="downloads"><div class="wrap">
   <div class="section-head"><div><p class="kicker">RUN IT WHERE DATA LIVES</p><h2 class="section-title">Your infrastructure.<br><em>Your database.</em></h2></div><p class="section-lead">Start with an installer that includes the engine and native CLI. Docker, Kubernetes, and Helm deployment files are available in the repository.</p></div>
-  <p class="release-note"><span class="badge" style="color:#315d9e;border-color:#b9cbea;background:#edf4ff">COMMUNITY BETA</span> v0.1.0-beta.13 · Direct installer downloads</p>
+  <p class="release-note"><span class="badge" style="color:#315d9e;border-color:#b9cbea;background:#edf4ff">COMMUNITY v1.0.0</span> v1.0.0 · Direct installer downloads</p>
   <div class="downloads">
     <article class="download-card"><div class="platform">L_</div><h3>Linux</h3><p>Ubuntu & Debian · x86-64</p><span class="format">.deb package</span><a class="btn download-btn" data-platform="linux-amd64.deb" href="#">Download deb ↓</a><ol class="install-flow"><li><b>Download</b> the package above.</li><li><b>Install</b> <code>sudo apt install ./pacificdb-community-*-linux-amd64.deb</code></li><li><b>Open</b> <code>pacificdb</code>; the local engine starts automatically.</li></ol></article>
     <article class="download-card"><div class="platform">⊞</div><h3>Windows</h3><p>Windows · x64</p><span class="format">.exe installer</span><a class="btn download-btn" data-platform="windows-x64.exe" href="#">Download exe ↓</a><ol class="install-flow"><li><b>Download</b> the installer above.</li><li><b>Install</b> by opening the downloaded <code>.exe</code>.</li><li><b>Open</b> Command Prompt and run <code>pacificdb</code>.</li></ol></article>
     <article class="download-card"><div class="platform">⌘</div><h3>macOS</h3><label for="mac-arch">Processor</label><select id="mac-arch"><option value="macos-arm64.pkg">Apple silicon (M-series)</option><option value="macos-x86_64.pkg">Intel</option></select><span class="format">.pkg installer</span><a class="btn download-btn" id="mac-download" data-platform="macos-arm64.pkg" href="#">Download pkg ↓</a><ol class="install-flow"><li><b>Download</b> the package for your processor.</li><li><b>Install</b> by opening the downloaded <code>.pkg</code>.</li><li><b>Open</b> Terminal and run <code>pacificdb</code>.</li></ol></article>
   </div>
   <p class="download-disclosure">Windows and macOS installers are unsigned. Verify downloads against the release checksums. These builds are for evaluation. <a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/pacificdb-v1.0/COMMUNITY_SCOPE.md"><u>See release readiness.</u></a></p>
-  <p class="download-links"><a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v0.1.0-beta.13/SHA256SUMS">Download checksums ↓</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community">Build from source ↗</a></p>
+  <p class="download-links"><a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v1.0.0/SHA256SUMS">Download checksums ↓</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community">Build from source ↗</a></p>
 </div></section>
 
 <section class="section" id="start"><div class="wrap">
@@ -400,8 +400,8 @@ console.log(await db.find('ideas', { id: 'first' }));</code></pre><div class="ed
     const io=new IntersectionObserver(es=>es.forEach(e=>e.isIntersecting?start():stop()),{threshold:.18}); io.observe(stage); }
 
   // Preserve current release download behavior from the production site.
-  const releaseBase='https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v0.1.0-beta.13';
-  function updateDownloads(){ document.querySelectorAll('[data-platform]').forEach(link=>{link.href=`${releaseBase}/pacificdb-community-0.1.0-beta.13-${link.dataset.platform}`;link.textContent=`Download ${link.dataset.platform.split('.').pop()} ↓`;}); }
+  const releaseBase='https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v1.0.0';
+  function updateDownloads(){ document.querySelectorAll('[data-platform]').forEach(link=>{link.href=`${releaseBase}/pacificdb-community-1.0.0-${link.dataset.platform}`;link.textContent=`Download ${link.dataset.platform.split('.').pop()} ↓`;}); }
   const mac=document.getElementById('mac-arch'); if(mac) mac.addEventListener('change',e=>{document.getElementById('mac-download').dataset.platform=e.target.value;updateDownloads()}); updateDownloads();
 
   document.querySelectorAll('[data-copy]').forEach(button=>button.addEventListener('click',async()=>{const target=document.getElementById(button.dataset.copy);const clone=target.cloneNode(true);clone.querySelectorAll('button').forEach(b=>b.remove());const text=clone.textContent.trim();try{await navigator.clipboard.writeText(text);button.textContent='Copied';document.getElementById('copyStatus').textContent='Copied to clipboard.';setTimeout(()=>button.textContent='Copy',1500)}catch{const range=document.createRange(),selection=getSelection();range.selectNodeContents(target);selection.removeAllRanges();selection.addRange(range);document.getElementById('copyStatus').textContent='Clipboard unavailable. The command is selected for manual copying.'}}));

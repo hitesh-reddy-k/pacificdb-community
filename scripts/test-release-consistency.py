@@ -47,6 +47,23 @@ def main() -> None:
         "engine/CMakeLists.txt",
         r'set\(PACIFICDB_ENGINE_VERSION "([^"]+)"',
     )
+    release_tag = f"v{engine_version}"
+    require_text("site/index.html", f"COMMUNITY v{engine_version}")
+    require_text(
+        "site/index.html",
+        f"releases/download/{release_tag}",
+    )
+    require_text("site/index.html", f"pacificdb-community-{engine_version}-")
+    require_text(
+        "site/index.html",
+        f"releases/download/{release_tag}/SHA256SUMS",
+    )
+    require_text("site/docs.html", f"<span class=\"version-badge\">{release_tag}</span>")
+    require_text(
+        "site/docs.html",
+        f"pacificdb-community-{engine_version}-linux-amd64.deb",
+    )
+
     cli = json.loads((ROOT / "cli/package.json").read_text(encoding="utf-8"))
     node = json.loads(
         (ROOT / "sdk/node/package.json").read_text(encoding="utf-8")
