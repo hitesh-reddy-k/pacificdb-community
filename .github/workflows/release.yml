@@ -551,6 +551,7 @@ jobs:
           password: ${{ github.token }}
       - uses: actions/download-artifact@v4
         with:
+          pattern: "{linux-amd64,windows-x64,macos-*,linux-amd64-container}"
           path: dist
           merge-multiple: true
       - name: Publish checksummed GitHub release

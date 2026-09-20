@@ -122,6 +122,7 @@ require(
     "container_publish:",
     "needs: [container]",
     "needs: [linux, windows, macos, container_publish]",
+    'pattern: "{linux-amd64,windows-x64,macos-*,linux-amd64-container}"',
     "docker buildx imagetools create",
     'test "$alias_digest" = "${image_ref#*@}"',
     "packages: write",
