@@ -8,7 +8,14 @@
   Self-hosted documents, vectors, media, backups, and RF3 replication.
 </p>
 
-> **Release candidate:** `1.0.0` is being qualified for evaluation,
+<p align="center">
+  <a href="https://pacificdb.in/docs.html">Documentation</a> ·
+  <a href="#quick-start">Quick Start</a> ·
+  <a href="https://discord.gg/67w8ET9Sf2">Discord</a> ·
+  <a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/latest">Latest release</a>
+</p>
+
+> **Stable release:** `1.0.0` is available for evaluation,
 > development, staging, and controlled early-adopter deployments. Read
 > [the certification report](docs/COMMUNITY_P0_CERTIFICATION.md) before storing
 > critical data.
@@ -83,9 +90,7 @@ npm install --global @pacificdb/cli@latest
 npm install @pacificdb/client@latest
 ```
 
-The v1.0 release workflow publishes both packages as `1.0.0` under npm's
-`latest` tag. Until that release workflow completes, install the currently
-published prerelease with its explicit version.
+Both packages are published as `1.0.0` under npm's `latest` tag.
 
 The npm CLI is a client. It can automatically start `db_engine` when a native
 PacificDB server package is installed and available on `PATH`. Installing only
@@ -103,7 +108,7 @@ docker compose run --rm shell
 Data remains in the `pacificdb-data` volume. Run `docker compose down` to
 stop the containers. Add `-v` only when you intend to delete the volume.
 
-## First database
+## Quick Start
 
 Run:
 
@@ -324,8 +329,12 @@ Windows signing, and macOS signing and notarization remain open.
 - [Production release procedure](docs/PRODUCTION_RELEASE.md)
 - [Production operations contract](docs/OPERATIONS.md)
 - [Container and Kubernetes deployment](deploy/helm/pacificdb/README.md)
+- [Documentation](https://pacificdb.in/docs.html)
 - [Security policy](SECURITY.md)
+- [Contributing guide](CONTRIBUTING.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
 - [Issue tracker](https://github.com/hitesh-reddy-k/pacificdb-community/issues)
+- [Discord community](https://discord.gg/67w8ET9Sf2)
 
 ## Licensing
 
