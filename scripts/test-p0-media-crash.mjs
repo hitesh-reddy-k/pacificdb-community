@@ -80,6 +80,7 @@ async function crashCase(failpoint) {
     await writeFile(filename, source);
     await start(true);
     const client = new PacificDBClient({ port, timeoutMs: 10000 });
+    await client.createProject('media-crash');
     await client.createDatabase('media');
     client.database = 'media';
     await client.createCollection('assets');

@@ -238,11 +238,11 @@ body{background:#000311;color:var(--ink)}
 <main id="main">
 <section class="hero" id="top"><canvas class="hero-ambient" id="heroAmbient" aria-hidden="true"></canvas><div class="wrap hero-grid">
   <div class="hero-copy">
-    <p class="eyebrow"><span class="live-dot"></span> PACIFICDB COMMUNITY <span class="badge">BETA.13</span></p>
+    <p class="eyebrow"><span class="live-dot"></span> PACIFICDB COMMUNITY <span class="badge">v1.0.1</span></p>
     <h1>Built for data<br>that refuses<br><em>one shape.</em></h1>
     <p class="hero-desc">Documents, vector search, resumable media, verified backups, and RF3 replication—unified in one self-hosted database you control.</p>
     <div class="hero-actions"><a class="btn primary" href="#downloads">Download PacificDB ↓</a><a class="btn ghost" href="#how">See how it works →</a></div>
-    <p class="hero-foot">Local-first · Open source · No hosted service required</p>
+    <p class="hero-foot">Local-first · Open source · No hosted service required · <a href="release-1.0.1.html" style="color:#8fdcff;text-decoration:underline;text-underline-offset:3px">What's new in v1.0.1 →</a></p>
   </div>
   <div class="engine-visual" aria-label="Animated PacificDB multi-model database diagram">
     <div class="engine-grid"></div><div class="engine-orbit o1"></div><div class="engine-orbit o2"></div><div class="engine-orbit o3"></div>
@@ -329,7 +329,7 @@ body{background:#000311;color:var(--ink)}
 
 <section class="section download-section" id="downloads"><div class="wrap">
   <div class="section-head"><div><p class="kicker">RUN IT WHERE DATA LIVES</p><h2 class="section-title">Your infrastructure.<br><em>Your database.</em></h2></div><p class="section-lead">Start with an installer that includes the engine and native CLI. Docker, Kubernetes, and Helm deployment files are available in the repository.</p></div>
-  <p class="release-note"><span class="badge" style="color:#315d9e;border-color:#b9cbea;background:#edf4ff">COMMUNITY v1.0.0</span> v1.0.0 · Direct installer downloads</p>
+  <p class="release-note"><span class="badge" style="color:#315d9e;border-color:#b9cbea;background:#edf4ff">COMMUNITY v1.0.0</span> Published installer downloads · <a href="release-1.0.1.html">Read the v1.0.1 source update →</a></p>
   <div class="downloads">
     <article class="download-card"><div class="platform">L_</div><h3>Linux</h3><p>Ubuntu & Debian · x86-64</p><span class="format">.deb package</span><a class="btn download-btn" data-platform="linux-amd64.deb" href="#">Download deb ↓</a><ol class="install-flow"><li><b>Download</b> the package above.</li><li><b>Install</b> <code>sudo apt install ./pacificdb-community-*-linux-amd64.deb</code></li><li><b>Open</b> <code>pacificdb</code>; the local engine starts automatically.</li></ol></article>
     <article class="download-card"><div class="platform">⊞</div><h3>Windows</h3><p>Windows · x64</p><span class="format">.exe installer</span><a class="btn download-btn" data-platform="windows-x64.exe" href="#">Download exe ↓</a><ol class="install-flow"><li><b>Download</b> the installer above.</li><li><b>Install</b> by opening the downloaded <code>.exe</code>.</li><li><b>Open</b> Command Prompt and run <code>pacificdb</code>.</li></ol></article>
@@ -342,18 +342,16 @@ body{background:#000311;color:var(--ink)}
 <section class="section" id="start"><div class="wrap">
   <div class="start-grid"><div class="start-copy"><p class="kicker">FROM ZERO TO YOUR FIRST WRITE</p><h2 class="section-title">Start local.<br><em>Build outward.</em></h2><p>Install the engine, open the shell, and connect an application without handing your data to a hosted service.</p><a class="btn" style="padding-left:0;color:#315d9e" href="docs.html#quickstart">Read the documentation →</a></div>
   <div class="steps">
-    <article class="step"><span class="step-num">01</span><div><h3>Start one local engine</h3><p>Run one command to launch the loopback engine and enter the interactive shell.</p><div class="code" id="launch-command">pacificdb<button class="copy" data-copy="launch-command">Copy</button></div><p class="hint">Local mode binds to 127.0.0.1:9000. Configure TLS and authentication before any network deployment.</p></div></article>
-    <article class="step"><span class="step-num">02</span><div><h3>Shape your first data</h3><p>Create a database and collection, then write and find a JSON document:</p><div class="code" id="shell-command">create database hello\nuse hello\ncreate collection ideas\ninsert ideas {"id":"first","title":"Hello PacificDB"}\nfind ideas {"id":"first"}<button class="copy" data-copy="shell-command">Copy</button></div></div></article>
-    <article class="step"><span class="step-num">03</span><div><h3>Connect the application</h3><p>Add the PacificDB v1.0 Node.js client and use the same local engine from code.</p><div class="code" id="npm-command">npm install @pacificdb/client@latest<button class="copy" data-copy="npm-command">Copy</button></div><p class="hint">Save the example below as <code>hello.mjs</code>, then run <code>node hello.mjs</code>.</p></div></article>
+    <article class="step"><span class="step-num">01</span><div><h3>Start one local engine</h3><p>After building the 1.0.1 source checkout, launch the loopback engine and enter the interactive shell.</p><div class="code" id="launch-command">./build/pacificdb<button class="copy" data-copy="launch-command">Copy</button></div><p class="hint">Local mode binds to 127.0.0.1:9000. Configure TLS and authentication before any network deployment.</p></div></article>
+    <article class="step"><span class="step-num">02</span><div><h3>Shape your first data</h3><p>Create a project, then a database and collection. Replace <code>project_...</code> with the returned ID:</p><div class="code" id="shell-command">create project demo\nuse project project_...\ncreate database hello\nuse hello\ncreate collection ideas\ninsert ideas {"id":"first","title":"Hello PacificDB"}\nfind ideas {"id":"first"}<button class="copy" data-copy="shell-command">Copy</button></div></div></article>
+    <article class="step"><span class="step-num">03</span><div><h3>Connect the application</h3><p>Install workspace dependencies in the 1.0.1 source checkout and use its Node.js client with the same local engine.</p><div class="code" id="npm-command">npm install<button class="copy" data-copy="npm-command">Copy</button></div><p class="hint">Save the example below as <code>hello.mjs</code> in the repository root, then run <code>node hello.mjs</code>.</p></div></article>
   </div></div>
-  <div class="example" id="sdks"><div class="example-copy"><p class="kicker">ONE PROTOCOL. THREE CLIENTS.</p><h2>Meet your data<br>where your code lives.</h2><p>Connect through Node.js, Python, or Java. This first write uses the PacificDB v1.0 Node.js client and the Community JSON-over-TCP protocol.</p><div class="package-links"><a href="https://www.npmjs.com/package/@pacificdb/client">@pacificdb/client ↗</a><a href="https://www.npmjs.com/package/@pacificdb/cli">@pacificdb/cli ↗</a></div></div>
+  <div class="example" id="sdks"><div class="example-copy"><p class="kicker">ONE PROTOCOL. THREE CLIENTS.</p><h2>Meet your data<br>where your code lives.</h2><p>Connect through Node.js, Python, or Java. This first write uses the PacificDB v1.0.1 Node.js source client and the Community JSON-over-TCP protocol.</p><div class="package-links"><a href="https://www.npmjs.com/package/@pacificdb/client">@pacificdb/client ↗</a><a href="https://www.npmjs.com/package/@pacificdb/cli">@pacificdb/cli ↗</a></div></div>
   <div class="editor"><div class="editor-head"><span class="dots"><i></i><i></i><i></i></span><span>hello.mjs</span></div><pre><code>import { PacificDBClient } from '@pacificdb/client';
 
-const db = new PacificDBClient({
-  host: '127.0.0.1', port: 9000, database: 'hello'
-});
-
-await db.createDatabase();
+const db = new PacificDBClient({ host: '127.0.0.1', port: 9000 });
+await db.createProject('demo');
+await db.createDatabase('hello');
 await db.createCollection('ideas');
 await db.insert('ideas', {
   id: 'first', title: 'Something worth building'
@@ -362,9 +360,9 @@ await db.insert('ideas', {
 console.log(await db.find('ideas', { id: 'first' }));</code></pre><div class="editor-foot"><i></i> Local connection · JSON over TCP</div></div></div>
 </div></section>
 
-<section class="closing"><div class="wrap"><p class="kicker">OPEN SOURCE. SELF-HOSTED.</p><h2>Give every shape a home.</h2><p>Run PacificDB Community v1.0, inspect the engine, and help build a database that keeps more of your stack together.</p><a class="btn primary" href="https://github.com/hitesh-reddy-k/pacificdb-community">Explore PacificDB on GitHub ↗</a></div></section>
+<section class="closing"><div class="wrap"><p class="kicker">OPEN SOURCE. SELF-HOSTED.</p><h2>Give every shape a home.</h2><p>Explore the PacificDB Community v1.0.1 source update and help build a database that keeps more of your stack together.</p><a class="btn primary" href="https://github.com/hitesh-reddy-k/pacificdb-community">Explore PacificDB on GitHub ↗</a></div></section>
 </main>
-<footer class="footer"><div class="wrap footer-in"><a class="brand" href="#top" aria-label="PacificDB home"><img class="brand-lockup footer-lockup" src="assets/pacificdb-logo-lockup.png" alt="PacificDB"></a><small>Community v1.0 · Self-hosted</small><div class="footer-links"><a href="docs.html">Documentation</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/pacificdb-v1.0/LICENSE">AGPLv3 core</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community/tree/pacificdb-v1.0/sdk">Apache 2.0 SDKs</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community/issues">Feedback ↗</a></div></div></footer>
+<footer class="footer"><div class="wrap footer-in"><a class="brand" href="#top" aria-label="PacificDB home"><img class="brand-lockup footer-lockup" src="assets/pacificdb-logo-lockup.png" alt="PacificDB"></a><small>Community v1.0.1 source · Self-hosted</small><div class="footer-links"><a href="release-1.0.1.html">What's new</a><a href="docs.html">Documentation</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/pacificdb-v1.0/LICENSE">AGPLv3 core</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community/tree/pacificdb-v1.0/sdk">Apache 2.0 SDKs</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community/issues">Feedback ↗</a></div></div></footer>
 <p id="copyStatus" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)"></p>
 <script>
 (() => {

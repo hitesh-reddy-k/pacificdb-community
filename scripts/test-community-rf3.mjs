@@ -21,6 +21,7 @@ try {
   const project = (await cluster.retry(() => clients[0].request({
     action: 'community_project_create', name: 'rf3-project'
   }), 'project create')).project;
+  await cluster.retry(() => clients[0].useProject(project.id), 'select project');
   await clients[0].createDatabase('rf3db');
   clients[0].database = 'rf3db';
   await clients[0].createCollection('docs');

@@ -161,11 +161,12 @@ try {
     name: 'isolated' })).project;
   const removed = (await client.request({ action: 'community_project_create',
     name: 'delete-me' })).project;
+  await client.useProject(alpha.id);
   await client.createDatabase('app');
+  await client.useProject(isolated.id);
   await client.createDatabase('isolated-db');
-  await client.request({ action: 'community_database_map', database: 'isolated-db',
-    project_id: isolated.id });
-  client.database = 'app';
+  await client.useProject(alpha.id);
+  await client.useDatabase('app');
   await client.createCollection('users');
   await assert.rejects(client.createCollection('users'), /collection_already_exists/);
   await client.createCollection('vectors');
@@ -181,8 +182,6 @@ try {
   assert.equal(batch.failed, 0);
   assert.equal((await client.request({ action: 'count', collection: 'users',
     filter: { batch: 'insertMany-e2e' } })).count, batchDocuments.length);
-  await client.request({ action: 'community_database_map', database: 'app',
-    project_id: alpha.id });
   assert.deepEqual((await client.request({ action: 'community_database_list',
     project_id: alpha.id })).databases, ['app']);
   assert.deepEqual((await client.request({ action: 'community_database_list',
@@ -304,9 +303,11 @@ try {
 
   const exportFile = path.join(testRoot, 'backup-export.json');
   const downloadFile = path.join(testRoot, 'download.mp4');
+  await stopEngine();
+  await startEngine({ ENGINE_AUTH_REQUIRED: '0' });
+  console.log('E2E: exercise interactive shells on the disposable local engine');
   const shellCommands = [
     'help', 'help projects', 'help backups', 'help media', 'help vectors',
-    'login admin', adminPassword, 'whoami',
     'create project shell-created', 'list projects', `use project ${removed.id}`,
     'show project', `delete project ${removed.id}`, 'context show',
     `use project ${alpha.id}`, 'show project',
@@ -335,19 +336,19 @@ try {
     'put vector vectors diagonal [0.7,0.7]',
     'query vector vectors [0.9,0.1] --k 3 --metric cosine',
     'context show', 'status', 'history', 'clear',
-    'request {"action":"ping"}', 'logout', 'context clear', 'quit'
+    'request {"action":"ping"}', 'context clear', 'quit'
   ];
   const shellOutput = await runShell(shellCommands);
   console.log('E2E: advertised shell command matrix complete');
   assertPublicOutput(shellOutput);
-  assert.match(shellOutput, /PacificDB[\s\S]*v1\.0\.0/);
+  assert.match(shellOutput, /PacificDB[\s\S]*v1\.0\.1/);
   assert.match(shellOutput, /Grace Hopper/);
   assert.match(shellOutput, /"status": "pong"/);
   assert.match(shellOutput, /"chunk_count": 6/);
   assert.equal(sha256(await readFile(downloadFile)), sha256(mediaBytes));
 
   const invalidCommands = [
-    'login admin', adminPassword, `use project ${alpha.id}`,
+    `use project ${alpha.id}`,
     'use project definitely-does-not-exist', 'use database-that-does-not-exist',
     'use app', 'aggregate users [{"$group":{}}]', 'quit'
   ];
@@ -361,7 +362,7 @@ try {
   assert.equal(context.projectId, alpha.id);
 
   const isolationCommands = [
-    'login admin', adminPassword, `use project ${alpha.id}`, 'use app',
+    `use project ${alpha.id}`, 'use app',
     `use project ${isolated.id}`, 'list databases', 'use app',
     'use isolated-db', 'show database', 'quit'
   ];
@@ -457,8 +458,10 @@ try {
   assert.equal((await client.queryVector('vectors', [0.9, 0.1], { k: 1 }))
     .data[0].id, 'east');
 
+  await stopEngine();
+  await startEngine({ ENGINE_AUTH_REQUIRED: '0' });
   const freshShellCommands = [
-    'login admin', adminPassword, 'list projects', `use project ${alpha.id}`,
+    'list projects', `use project ${alpha.id}`,
     'show project', 'use app', 'find users {"id":"persistent"}', 'exit'
   ];
   const freshShell = await runShell(freshShellCommands);
@@ -495,8 +498,7 @@ try {
   await stopEngine();
 
   const shellCommandCount = shellCommands.length + invalidCommands.length +
-    isolationCommands.length + freshShellCommands.length - 4;
-    // one password response follows each login
+    isolationCommands.length + freshShellCommands.length;
   console.log(JSON.stringify({ status: 'PASS', root: testRoot,
     shell_commands_executed: shellCommandCount, media_chunks: 3,
     insert_many_documents: batchDocuments.length, concurrent_writes: 24,

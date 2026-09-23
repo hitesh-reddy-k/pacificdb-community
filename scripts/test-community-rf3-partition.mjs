@@ -80,6 +80,7 @@ try {
   await pause(10_500);
   const initial = await cluster.waitForLeader([0, 1, 2], 10_000);
   const leader = cluster.client(initial.index, { timeoutMs: 5000 });
+  await cluster.retry(() => leader.createProject('partition-project'), 'create project');
   await cluster.retry(() => leader.createDatabase('rf3db'), 'create database');
   leader.database = 'rf3db';
   await cluster.retry(() => leader.createCollection('docs'), 'create collection');

@@ -121,6 +121,7 @@ try {
   await start();
   const originalPid = engine.pid;
   const setup = new PacificDBClient({ port, timeoutMs: 30000 });
+  await setup.createProject('load-test');
   await setup.createDatabase('load');
   setup.database = 'load';
   await setup.createCollection('records');

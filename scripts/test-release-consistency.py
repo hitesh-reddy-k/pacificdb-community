@@ -48,20 +48,24 @@ def main() -> None:
         r'set\(PACIFICDB_ENGINE_VERSION "([^"]+)"',
     )
     release_tag = f"v{engine_version}"
-    require_text("site/index.html", f"COMMUNITY v{engine_version}")
+    require_text("site/index.html", f'<span class="badge">{release_tag}</span>')
+    require_text("site/index.html", f'href="release-{engine_version}.html"')
+    require_text("site/docs.html", f'<span class="version-badge">{release_tag}</span>')
     require_text(
-        "site/index.html",
-        f"releases/download/{release_tag}",
+        f"site/release-{engine_version}.html", f"PacificDB Community · {release_tag}"
     )
-    require_text("site/index.html", f"pacificdb-community-{engine_version}-")
-    require_text(
-        "site/index.html",
-        f"releases/download/{release_tag}/SHA256SUMS",
+
+    # Source metadata can lead published packages. Keep download URLs bound to
+    # the actual published artifact version until new installers exist.
+    published_version = match_version(
+        "site/index.html", r"const releaseBase='[^']+/releases/download/v([^']+)'"
     )
-    require_text("site/docs.html", f"<span class=\"version-badge\">{release_tag}</span>")
+    require_text("site/index.html", f"pacificdb-community-{published_version}-")
     require_text(
-        "site/docs.html",
-        f"pacificdb-community-{engine_version}-linux-amd64.deb",
+        "site/index.html", f"releases/download/v{published_version}/SHA256SUMS"
+    )
+    require_text(
+        "site/docs.html", f"pacificdb-community-{published_version}-linux-amd64.deb"
     )
 
     cli = json.loads((ROOT / "cli/package.json").read_text(encoding="utf-8"))

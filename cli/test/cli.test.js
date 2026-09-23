@@ -10,7 +10,7 @@ import { parseShellCommand, runShell } from '../src/shell.js';
 import { MediaUploadError } from '@pacificdb/client';
 
 test('friendly parser maps Community commands and rejects Cloud commands', () => {
-  const context = { database: 'app' };
+  const context = { projectId: 'project_1', database: 'app' };
   assert.equal(parseShellCommand('find users {"active":true}', context)
     .command.action, 'find');
   assert.equal(parseShellCommand('findOne users {}', context)
@@ -26,6 +26,15 @@ test('friendly parser maps Community commands and rejects Cloud commands', () =>
     .command.action, 'delete_backup');
   assert.throws(() => parseShellCommand('create organization demo', context),
                 /unknown command/);
+  for (const command of ['login admin', 'whoami', 'logout']) {
+    assert.throws(() => parseShellCommand(command, context), /unknown command/);
+  }
+  for (const command of ['create database app', 'list databases', 'use app',
+    'create collection users']) {
+    assert.throws(() => parseShellCommand(command, {}), /select a project/);
+  }
+  assert.throws(() => parseShellCommand('create collection users',
+    { projectId: 'project_1' }), /select a database/);
 });
 
 test('shell persists local context and dispatches project/database commands', async () => {
@@ -57,7 +66,7 @@ test('shell persists local context and dispatches project/database commands', as
   await running;
 
   assert.deepEqual(requests.map((request) => request.action), [
-    'community_project_create', 'community_project_get', 'createDatabase',
+    'community_project_create', 'community_project_get', 'community_project_get', 'createDatabase',
     'community_database_map', 'community_database_list'
   ]);
   const context = JSON.parse(await readFile(path.join(cliHome, 'context.json')));
@@ -67,9 +76,52 @@ test('shell persists local context and dispatches project/database commands', as
                false);
 });
 
+test('shell removes credentials from an older saved context', async () => {
+  const cliHome = await mkdtemp(path.join(os.tmpdir(), 'pacificdb-shell-legacy-auth-'));
+  await writeFile(path.join(cliHome, 'context.json'), JSON.stringify({
+    projectId: 'project_1', database: 'app', token: 'old-secret'
+  }));
+  const client = { database: '', token: '', async request() { return { status: 'ok' }; } };
+  const input = new PassThrough();
+  const output = new PassThrough();
+  const running = runShell(client, { input, output }, { cliHome });
+  input.end('exit\n');
+  await running;
+  assert.deepEqual(JSON.parse(await readFile(path.join(cliHome, 'context.json'))), {
+    projectId: 'project_1', database: 'app'
+  });
+  assert.equal(client.token, '');
+});
+
+test('stale project and database mappings block schema creation', async () => {
+  const cliHome = await mkdtemp(path.join(os.tmpdir(), 'pacificdb-shell-stale-mapping-'));
+  await writeFile(path.join(cliHome, 'context.json'), JSON.stringify({
+    projectId: 'project_deleted', database: 'app'
+  }));
+  const requests = [];
+  const client = { database: '', async request(command) {
+    requests.push(command.action);
+    if (command.action === 'community_project_get') return { error: 'project_not_found' };
+    if (command.action === 'community_database_list') return { databases: [] };
+    return { status: 'ok' };
+  } };
+  const input = new PassThrough();
+  const output = new PassThrough();
+  let text = '';
+  output.on('data', (chunk) => { text += chunk; });
+  const running = runShell(client, { input, output }, { cliHome });
+  input.end('create database newdb\ncreate collection users\nexit\n');
+  await running;
+  assert.deepEqual(requests, ['community_project_get', 'community_database_list']);
+  assert.match(text, /project_not_found/);
+  assert.match(text, /database_not_found/);
+});
+
 test('shell prints structured resumable media interruption details', async () => {
   const cliHome = await mkdtemp(path.join(os.tmpdir(), 'pacificdb-shell-resume-'));
-  await writeFile(path.join(cliHome, 'context.json'), JSON.stringify({ database: 'app' }));
+  await writeFile(path.join(cliHome, 'context.json'), JSON.stringify({
+    projectId: 'project_1', database: 'app'
+  }));
   const client = { database: '', token: '', async uploadMediaFile() {
     throw new MediaUploadError('media upload interrupted', { uploadId: 'media_resume',
       nextChunk: 1, receivedChunks: 1, receivedBytes: 65_536 });
@@ -176,7 +228,7 @@ test('shell help lists commands without contacting the server', async () => {
   await new Promise(setImmediate);
   input.end('quit\n');
   await running;
-  assert.match(text, /Authentication\n[\s\S]*whoami/);
+  assert.doesNotMatch(text, /Authentication|whoami|logout|login <username>/);
   assert.match(text, /Projects\n[\s\S]*create project/);
   assert.match(text, /Backups\n[\s\S]*show backup/);
   assert.match(text, /Media\n[\s\S]*download media/);
@@ -193,7 +245,7 @@ test('plain pacificdb opens the branded shell', async () => {
   input.write('help\n');
   input.end('quit\n');
   await running;
-  assert.match(text, /PacificDB[\s\S]*v1\.0\.0/);
+  assert.match(text, /PacificDB[\s\S]*v1\.0\.1/);
   assert.match(text, /Documents · Vectors · Media/);
 });
 

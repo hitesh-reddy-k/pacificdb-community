@@ -1,24 +1,35 @@
 <p align="center">
-  <img src="site/assets/pacificdb-logo-symbol.png" width="144" alt="PacificDB logo">
+  <img src="site/assets/pacificdb-logo-symbol.png" width="96" alt="PacificDB logo">
 </p>
 
-<h1 align="center">PacificDB Community</h1>
+<h1 align="center">PacificDB v1.0.1</h1>
 
 <p align="center">
-  Self-hosted documents, vectors, media, backups, and RF3 replication.
+  Open-source, self-hosted database for documents, vectors, and media.<br>
+  Looking for developers to test the v1.0.1 source update.
 </p>
 
 <p align="center">
-  <a href="https://pacificdb.in/docs.html">Documentation</a> ·
   <a href="#quick-start">Quick Start</a> ·
-  <a href="https://discord.gg/67w8ET9Sf2">Discord</a> ·
-  <a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/latest">Latest release</a>
+  <a href="https://pacificdb.in/docs.html">Documentation</a> ·
+  <a href="https://discord.gg/67w8ET9Sf2">Discord</a>
 </p>
 
-> **Stable release:** `1.0.0` is available for evaluation,
-> development, staging, and controlled early-adopter deployments. Read
-> [the certification report](docs/COMMUNITY_P0_CERTIFICATION.md) before storing
-> critical data.
+## Quick Start
+
+Build this checkout using the [source instructions](#build-and-test), then run `./build/pacificdb`. In the shell:
+
+```text
+create project demo
+use project project_...
+create database app
+use app
+create collection users
+insert users {"id":"1","name":"Ada"}
+find users {"id":"1"}
+```
+
+Replace `project_...` with the ID returned by `create project`. The project → database → collection order is required. See the [full install options](#install) and [v1.0.1 release notes](docs/releases/v1.0.1.md).
 
 ## What is included
 
@@ -90,7 +101,8 @@ npm install --global @pacificdb/cli@latest
 npm install @pacificdb/client@latest
 ```
 
-Both packages are published as `1.0.0` under npm's `latest` tag.
+This checkout contains `1.0.1` package sources. The published npm `latest`
+packages are `1.0.0` until the 1.0.1 release is published.
 
 The npm CLI is a client. It can automatically start `db_engine` when a native
 PacificDB server package is installed and available on `PATH`. Installing only
@@ -108,31 +120,6 @@ docker compose run --rm shell
 Data remains in the `pacificdb-data` volume. Run `docker compose down` to
 stop the containers. Add `-v` only when you intend to delete the volume.
 
-## Quick Start
-
-Run:
-
-```sh
-pacificdb
-```
-
-Then enter:
-
-```text
-create project demo
-list projects
-use project project_...
-
-create database app
-use app
-create collection users
-insert users {"id":"1","name":"Ada","active":true}
-find users {"active":true}
-findOne users {"id":"1"}
-update users {"id":"1"} {"name":"Ada Lovelace"}
-count users {}
-```
-
 The prompt displays the selected database:
 
 ```text
@@ -142,9 +129,8 @@ pacificdb:app>
 Run `help` for the complete categorized command list and `quit` to leave the
 shell. Leaving the shell does not stop the background engine.
 
-When a project is selected, `list databases` and `use <name>` are limited to
-databases mapped to that project. Switching or deleting the active project
-clears the selected database, preventing project contexts from being mixed.
+`create database`, `list databases`, and `use <name>` require a selected
+project. Switching or deleting the active project clears the database selection.
 
 Local mode listens only on `127.0.0.1:9000` and starts with authentication
 disabled. Configure authentication and TLS before exposing the engine to a
@@ -154,7 +140,6 @@ network.
 
 | Area | Commands |
 |---|---|
-| Authentication | `login`, `whoami`, `logout` |
 | Projects | `create project`, `list projects`, `use project`, `show project`, `delete project` |
 | Databases | `create database`, `list databases`, `use`, `show database`, `drop database` |
 | Collections | `create collection`, `list collections` |
@@ -209,12 +194,9 @@ Start the native `pacificdb` command once before running an application.
 ```js
 import { PacificDBClient } from '@pacificdb/client';
 
-const db = new PacificDBClient({
-  host: '127.0.0.1',
-  port: 9000,
-  database: 'app'
-});
-
+const db = new PacificDBClient({ host: '127.0.0.1', port: 9000 });
+await db.createProject('demo');
+await db.createDatabase('app');
 await db.createCollection('events');
 await db.insert('events', { id: 'event-1', type: 'signup' });
 console.log(await db.find('events', { type: 'signup' }));
@@ -256,21 +238,6 @@ var result = db.request(Map.of(
 ));
 ```
 
-## Authentication
-
-Authentication is disabled only for the loopback local-development launcher.
-When the engine is configured with authentication:
-
-```text
-login admin
-Password:
-whoami
-```
-
-The password is not stored in history. Session tokens and CLI context are
-written with owner-only permissions. Applications can authenticate with a
-username/password or use an API key.
-
 ## Local files
 
 | Platform | Engine data |
@@ -283,8 +250,8 @@ Each directory contains `data`, `backup`, `restore`, `engine.log`, and
 `engine.pid`. Set `PACIFICDB_HOME` before the first launch to use another
 absolute location.
 
-CLI context and history use the platform state directory and never store
-plaintext passwords or complete API keys.
+CLI context and history use the platform state directory. The CLI does not
+store credentials; complete API keys are excluded from history.
 
 ## Connect to another engine
 
@@ -303,7 +270,7 @@ Python 3.10+, Java 11+, and Maven.
 ```sh
 git clone https://github.com/hitesh-reddy-k/pacificdb-community.git
 cd pacificdb-community
-cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release
+cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.0.1
 cmake --build build -j2
 scripts/test-community.sh build
 ```
@@ -318,7 +285,7 @@ PYTHONPATH=sdk/python python -m pytest sdk/python/tests
 mvn -f sdk/java/pom.xml test
 ```
 
-## v1.0 status and support
+## Release readiness and support
 
 The Linux candidate passed 57 retained test units, genuine ENOSPC coverage across
 21 write categories, six 10-minute RF3 load rounds, partition/election checks,

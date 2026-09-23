@@ -34,7 +34,13 @@ std::string trim(std::string text) {
 
 json request(json command) { return {{"kind", "request"}, {"command", std::move(command)}}; }
 
+void requireProject(const ShellContext& context) {
+    if (context.projectId.empty())
+        throw std::invalid_argument("select a project with: use project <id>");
+}
+
 void requireDatabase(const ShellContext& context) {
+    requireProject(context);
     if (context.database.empty())
         throw std::invalid_argument("select a database with: use <name>");
 }
@@ -94,12 +100,7 @@ std::pair<json, std::string> takeJson(const std::string& input) {
 }  // namespace
 
 const char* shellHelp() {
-    return R"HELP(Authentication
-  login <username>                     Sign in
-  whoami                              Show current identity
-  logout                              Clear the current credential
-
-Projects
+    return R"HELP(Projects
   create project <name>               Create project
   list projects                       List projects
   use project <id>                    Switch project
@@ -155,7 +156,7 @@ Vectors
 System
   help [topic]                        Show help
   context show                        Show context
-  context clear                       Clear context and credentials
+  context clear                       Clear project and database context
   status                              Show connection status
   history                             Show command history
   clear                               Clear screen
@@ -176,11 +177,6 @@ json parseShellCommand(const std::string& input, const ShellContext& context) {
     if (text == "context show") return {{"kind", "context_show"}};
     if (text == "context clear") return {{"kind", "context_clear"}};
     if (text == "status") return request({{"action", "ping"}});
-    if (text == "logout") return {{"kind", "logout"}};
-    if (text.rfind("login ", 0) == 0)
-        return {{"kind", "login"}, {"username", trim(text.substr(6))}};
-    if (text == "whoami") return request({{"action", "security_whoami"}});
-
     std::smatch match;
     if (std::regex_match(text, match, std::regex(R"(^create project (.+)$)")))
         return request({{"action", "community_project_create"}, {"name", match[1].str()}});
@@ -199,20 +195,25 @@ json parseShellCommand(const std::string& input, const ShellContext& context) {
         return result;
     }
 
-    if (std::regex_match(text, match, std::regex(R"(^create database (\S+)$)")))
+    if (std::regex_match(text, match, std::regex(R"(^create database (\S+)$)"))) {
+        requireProject(context);
         return {{"kind", "create_database"}, {"name", match[1].str()}};
-    if (text == "list databases")
-        return request(context.projectId.empty()
-            ? json{{"action", "listDatabases"}}
-            : json{{"action", "community_database_list"},
-                   {"project_id", context.projectId}});
-    if (std::regex_match(text, match, std::regex(R"(^use (\S+)$)")))
+    }
+    if (text == "list databases") {
+        requireProject(context);
+        return request({{"action", "community_database_list"},
+                        {"project_id", context.projectId}});
+    }
+    if (std::regex_match(text, match, std::regex(R"(^use (\S+)$)"))) {
+        requireProject(context);
         return {{"kind", "use_database"}, {"name", match[1].str()}};
+    }
     if (text == "show database") {
         requireDatabase(context);
         return {{"kind", "show_database"}};
     }
     if (std::regex_match(text, match, std::regex(R"(^drop database (\S+)$)"))) {
+        requireProject(context);
         auto result = request({{"action", "dropDatabase"}, {"dbName", match[1].str()}});
         result["clear_database"] = match[1].str();
         return result;

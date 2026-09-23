@@ -98,6 +98,7 @@ const uploaded = [];
 try {
   await start();
   const client = new PacificDBClient({ port, timeoutMs: 120000 });
+  await client.createProject('media-test');
   await client.createDatabase('media');
   client.database = 'media';
   await client.createCollection('assets');

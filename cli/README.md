@@ -11,7 +11,7 @@ npm install --global @pacificdb/cli@latest
 pacificdb
 ```
 
-This package is PacificDB CLI `1.0.0`.
+This package source is PacificDB CLI `1.0.1`.
 
 Plain `pacificdb` opens the shell. For a loopback connection, it starts
 `db_engine` automatically when the executable is available on `PATH`.
@@ -38,12 +38,13 @@ insert users {"id":"1","name":"Ada"}
 findOne users {"id":"1"}
 ```
 
-The shell includes authentication, projects, databases, document queries,
+The shell includes projects, databases, document queries,
 manual backups, API keys, media, vectors, local context, history, and raw JSON
 requests. Run `help` for the complete command list.
 
-With a project selected, `list databases` and `use <name>` operate only on its
-mapped databases. Selecting another project clears the current database.
+Select a project before creating or using a database. Create a collection only
+after selecting a database in that project. Selecting another project clears
+the current database.
 
 Media uses bounded, sequential, checksummed chunks:
 
@@ -76,5 +77,5 @@ put vector embeddings hero [0.2,0.8]
 query vector embeddings [0.2,0.8] --k 5 --metric cosine
 ```
 
-Local context and history are stored with owner-only permissions. Passwords and
-complete API keys are excluded from history.
+Local context and history are stored with owner-only permissions. Complete API
+keys are excluded from history.

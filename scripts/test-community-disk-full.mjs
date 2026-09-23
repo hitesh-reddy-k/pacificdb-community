@@ -127,6 +127,7 @@ async function runCase(category) {
     await client.authenticate('admin', password);
     const baselineProject = (await client.request({ action: 'community_project_create',
       name: `baseline-${category}` })).project;
+    await client.useProject(baselineProject.id);
     await client.createDatabase('app');
     client.database = 'app';
     await client.createCollection('docs');

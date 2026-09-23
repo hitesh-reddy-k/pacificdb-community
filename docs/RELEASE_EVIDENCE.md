@@ -5,7 +5,7 @@ hashed from that revision. Generate a development report with:
 
 ```sh
 python3 scripts/release_qualification.py \
-  --version 1.0.0 \
+  --version 1.0.1 \
   --output build/release-evidence.json \
   --allow-dirty-development
 ```

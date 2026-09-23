@@ -1,12 +1,12 @@
 {
   "name": "@pacificdb/cli",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "PacificDB Community command-line client",
   "license": "Apache-2.0",
   "type": "module",
   "bin": { "pacificdb": "bin/pacificdb.js" },
   "files": ["bin", "src", "README.md", "LICENSE"],
-  "dependencies": { "@pacificdb/client": "1.0.0" },
+  "dependencies": { "@pacificdb/client": "1.0.1" },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/hitesh-reddy-k/pacificdb-community.git",

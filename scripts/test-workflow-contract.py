@@ -97,7 +97,7 @@ require(
     "contents: read",
     "packages:",
     "uses: ./.github/workflows/release.yml",
-    "version: 1.0.0",
+    "version: 1.0.1",
 )
 forbid(".github/workflows/ci.yml", "secrets: inherit")
 require(

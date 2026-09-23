@@ -75,6 +75,7 @@ async function runRound(clientCount, repeat) {
     await cluster.start();
     const leaderState = await cluster.waitForLeader([0], 10_000);
     const setup = cluster.client(0, { timeoutMs: 10_000 });
+    await cluster.retry(() => setup.createProject('sustained-load'), 'create load project');
     await cluster.retry(() => setup.createDatabase('load'), 'create load database');
     setup.database = 'load';
     await cluster.retry(() => setup.createCollection('docs'), 'create docs collection');

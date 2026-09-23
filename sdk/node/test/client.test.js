@@ -24,6 +24,46 @@ test('sends one JSON command and parses one response', async (t) => {
                    { ok: true, action: 'ping', database: 'app' });
 });
 
+test('requires project then database when creating data structures', async (t) => {
+  const requests = [];
+  let mapped = false;
+  const server = net.createServer((socket) => socket.once('data', (data) => {
+    const request = JSON.parse(data);
+    requests.push(request);
+    let response = { status: 'ok' };
+    if (request.action === 'community_project_create') {
+      response = { status: 'ok', project: { id: 'project_1', name: request.name } };
+    } else if (request.action === 'community_project_get') {
+      response = { status: 'ok', project: { id: 'project_1' } };
+    } else if (request.action === 'community_database_map') {
+      mapped = true;
+    } else if (request.action === 'community_database_list') {
+      response = { status: 'ok', databases: mapped ? ['app'] : [] };
+    }
+    socket.end(JSON.stringify(response) + '\n');
+  }));
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => server.close());
+  const db = new PacificDBClient({ host: '127.0.0.1', port: server.address().port });
+  t.after(() => db.close());
+
+  await assert.rejects(db.createDatabase('app'), /select a project/);
+  await assert.rejects(db.createCollection('users'), /select a project/);
+  assert.equal(requests.length, 0);
+  await db.createProject('demo');
+  await assert.rejects(db.createCollection('users'), /select a database/);
+  await assert.rejects(db.createDatabase('a'.repeat(129)), /1-128 bytes/);
+  assert.deepEqual(requests.map(({ action }) => action), ['community_project_create']);
+  await db.createDatabase('app');
+  await db.createCollection('users');
+  assert.deepEqual(requests.map(({ action }) => action), [
+    'community_project_create', 'community_project_get', 'createDatabase',
+    'community_database_map', 'community_database_list', 'createCollection'
+  ]);
+  assert.equal(requests.at(-1).dbName, 'app');
+  assert.equal(requests[3].project_id, 'project_1');
+});
+
 test('preserves the public engine detail in request errors', async (t) => {
   const server = net.createServer((socket) => socket.once('data', () =>
     socket.end(JSON.stringify({ error: 'execution_exception',

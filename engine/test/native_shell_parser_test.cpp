@@ -5,6 +5,7 @@
 
 int main() {
     pacificdb::cli::ShellContext context;
+    context.projectId = "project_1";
     context.database = "app";
     assert(pacificdb::cli::parseShellCommand(
                "find users {\"active\":true}", context)
@@ -26,11 +27,40 @@ int main() {
     assert(pacificdb::cli::parseShellCommand("delete backup backup-1", context)
                .at("command")
                .at("action") == "delete_backup");
-    context.projectId = "project_1";
     const auto projectDatabases =
         pacificdb::cli::parseShellCommand("list databases", context).at("command");
     assert(projectDatabases.at("action") == "community_database_list");
     assert(projectDatabases.at("project_id") == "project_1");
+    context.projectId.clear();
+    for (const auto* command : {"create database app", "list databases", "use app",
+                                "create collection users"}) {
+        bool needsProject = false;
+        try {
+            pacificdb::cli::parseShellCommand(command, context);
+        } catch (const std::invalid_argument& error) {
+            needsProject = std::string(error.what()).find("select a project") != std::string::npos;
+        }
+        assert(needsProject);
+    }
+    context.projectId = "project_1";
+    context.database.clear();
+    bool needsDatabase = false;
+    try {
+        pacificdb::cli::parseShellCommand("create collection users", context);
+    } catch (const std::invalid_argument& error) {
+        needsDatabase = std::string(error.what()).find("select a database") != std::string::npos;
+    }
+    assert(needsDatabase);
+    for (const auto* command : {"login admin", "whoami", "logout"}) {
+        bool unknown = false;
+        try {
+            pacificdb::cli::parseShellCommand(command, context);
+        } catch (const std::invalid_argument&) {
+            unknown = true;
+        }
+        assert(unknown);
+    }
+    assert(std::string(pacificdb::cli::shellHelp()).find("Authentication") == std::string::npos);
     bool rejected = false;
     try {
         pacificdb::cli::parseShellCommand("create organization demo", context);

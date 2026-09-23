@@ -10,7 +10,6 @@ namespace pacificdb::cli {
 struct ShellContext {
     std::string database;
     std::string projectId;
-    std::string token;
 };
 
 class MediaUploadInterrupted final : public std::runtime_error {
