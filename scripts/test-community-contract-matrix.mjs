@@ -137,16 +137,21 @@ try {
   for (const reserved of ['system', 'pacificdb_meta']) {
     await rejects(client, { action: 'createDatabase', dbName: reserved }, /reserved_namespace/);
   }
-  const validNames = ['app', '第二数据库', 'a'.repeat(255), 'second'];
+  const validNames = ['app', '第二数据库', 'a'.repeat(128), 'second'];
   const databaseIds = new Map();
+  await client.createProject('contract-matrix');
   for (const name of validNames) {
     const created = await client.createDatabase(name);
     assert.equal(created.status, 'ok');
     databaseIds.set(name, created.dbId);
   }
   assert.equal((await client.createDatabase('app')).dbId, databaseIds.get('app'));
+  const engineMaximumName = 'z'.repeat(255);
+  assert.equal((await client.request({ action: 'createDatabase', dbName: engineMaximumName }))
+    .status, 'ok');
   const listed = await client.request({ action: 'listDatabases' });
   for (const name of validNames) assert.ok(listed.includes(name), `missing database ${name}`);
+  assert.ok(listed.includes(engineMaximumName));
   await rejects(client, { action: 'dropDatabase', dbName: 'missing-db' }, /database_not_found/);
 
   // Document types, ID behavior, filters, limits and request boundary.

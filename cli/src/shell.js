@@ -4,12 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { MediaUploadError } from '@pacificdb/client';
 
-export const SHELL_HELP = `Authentication
-  login <username>                     Sign in
-  whoami                              Show current identity
-  logout                              Clear the current credential
-
-Projects
+export const SHELL_HELP = `Projects
   create project <name>               Create project
   list projects                       List projects
   use project <id>                    Switch project
@@ -65,7 +60,7 @@ Vectors
 System
   help [topic]                        Show help
   context show                        Show context
-  context clear                       Clear context and credentials
+  context clear                       Clear project and database context
   status                              Show connection status
   history                             Show command history
   clear                               Clear screen
@@ -84,7 +79,7 @@ export const SHELL_BANNER = `
        ~~~~~~~~\\______/~~~~~~~~
          ~~~~~~~~~~~~~~~~~~~~
              PacificDB
-               v1.0.0
+               v1.0.1
        Documents · Vectors · Media
   Type help to see commands.\n`;
 
@@ -161,7 +156,12 @@ function jsonValues(text, count) {
   return { values, rest };
 }
 
+function requireProject(context) {
+  if (!context.projectId) throw new Error('select a project with: use project <id>');
+}
+
 function requireDatabase(context) {
+  requireProject(context);
   if (!context.database) throw new Error('select a database with: use <name>');
 }
 
@@ -186,10 +186,6 @@ export function parseShellCommand(line, context = {}) {
   if (text === 'context show') return { kind: 'contextShow' };
   if (text === 'context clear') return { kind: 'contextClear' };
   if (text === 'status') return { kind: 'request', command: { action: 'ping' } };
-  if (text === 'logout') return { kind: 'logout' };
-  if (text.startsWith('login ')) return { kind: 'login', username: text.slice(6).trim() };
-  if (text === 'whoami') return { kind: 'request', command: { action: 'security_whoami' } };
-
   let match;
   if ((match = text.match(/^create project (.+)$/)))
     return { kind: 'request', command: { action: 'community_project_create', name: match[1] } };
@@ -207,19 +203,26 @@ export function parseShellCommand(line, context = {}) {
     return { kind: 'request', command: { action: 'community_project_delete', id }, clearProject: id };
   }
 
-  if ((match = text.match(/^create database (\S+)$/)))
+  if ((match = text.match(/^create database (\S+)$/))) {
+    requireProject(context);
     return { kind: 'createDatabase', name: match[1] };
-  if (text === 'list databases')
-    return { kind: 'request', command: context.projectId
-      ? { action: 'community_database_list', project_id: context.projectId }
-      : { action: 'listDatabases' } };
-  if ((match = text.match(/^use (\S+)$/))) return { kind: 'useDatabase', name: match[1] };
+  }
+  if (text === 'list databases') {
+    requireProject(context);
+    return { kind: 'request', command: { action: 'community_database_list', project_id: context.projectId } };
+  }
+  if ((match = text.match(/^use (\S+)$/))) {
+    requireProject(context);
+    return { kind: 'useDatabase', name: match[1] };
+  }
   if (text === 'show database') {
     requireDatabase(context);
     return { kind: 'showDatabase' };
   }
-  if ((match = text.match(/^drop database (\S+)$/)))
+  if ((match = text.match(/^drop database (\S+)$/))) {
+    requireProject(context);
     return { kind: 'request', command: { action: 'dropDatabase', dbName: match[1] }, clearDatabase: match[1] };
+  }
   if ((match = text.match(/^create collection (\S+)$/))) {
     requireDatabase(context);
     return { kind: 'request', command: { action: 'createCollection', collection: match[1] } };
@@ -327,8 +330,16 @@ function defaultCliHome() {
 }
 
 async function loadContext(home) {
-  try { return JSON.parse(await readFile(path.join(home, 'context.json'), 'utf8')); }
+  let context;
+  try {
+    context = JSON.parse(await readFile(path.join(home, 'context.json'), 'utf8'));
+  }
   catch { return {}; }
+  if (!context || Array.isArray(context) || typeof context !== 'object') return {};
+  const hadLegacyToken = Object.hasOwn(context, 'token');
+  delete context.token;
+  if (hadLegacyToken) await saveContext(home, context);
+  return context;
 }
 
 async function saveContext(home, context) {
@@ -346,8 +357,8 @@ function safeHistory(line) {
 export async function runShell(client, streams, options = {}) {
   const home = options.cliHome || defaultCliHome();
   const context = await loadContext(home);
+  if (!context.projectId) delete context.database;
   if (!client.database && context.database) client.database = context.database;
-  if (!client.token && context.token) client.token = context.token;
   const prompt = readline.createInterface(streams);
   const lines = prompt[Symbol.asyncIterator]();
   streams.output.write(SHELL_BANNER);
@@ -365,37 +376,20 @@ export async function runShell(client, streams, options = {}) {
         await appendFile(path.join(home, 'history'), line + '\n', { mode: 0o600 });
       }
       if (options.ensureConnection && !['help', 'clear', 'history', 'contextShow',
-        'contextClear', 'logout'].includes(parsed.kind)) await options.ensureConnection();
+        'contextClear'].includes(parsed.kind)) await options.ensureConnection();
       if (parsed.kind === 'help') streams.output.write(SHELL_HELP);
       else if (parsed.kind === 'clear') streams.output.write('\x1b[2J\x1b[H');
       else if (parsed.kind === 'history') {
         streams.output.write(await readFile(path.join(home, 'history'), 'utf8').catch(() => ''));
       } else if (parsed.kind === 'contextShow') {
         printResponse(streams.output, { database: context.database || null,
-          projectId: context.projectId || null, authenticated: Boolean(client.token) });
-      } else if (parsed.kind === 'contextClear' || parsed.kind === 'logout') {
+          projectId: context.projectId || null });
+      } else if (parsed.kind === 'contextClear') {
         delete context.database;
         delete context.projectId;
-        delete context.token;
         client.database = '';
-        client.token = '';
         await saveContext(home, context);
         printResponse(streams.output, { status: 'ok' });
-      } else if (parsed.kind === 'login') {
-        if (!parsed.username) throw new Error('username required');
-        streams.output.write('Password: \x1b[8m');
-        let password = '';
-        try {
-          const answer = await lines.next();
-          if (answer.done) throw new Error('password required');
-          password = answer.value;
-        }
-        finally { streams.output.write('\x1b[0m\n'); }
-        const response = await client.authenticate(parsed.username, password);
-        context.token = client.token;
-        await saveContext(home, context);
-        printResponse(streams.output, { status: 'ok', username: response.username,
-          role: response.role }, 'security_authenticate');
       } else if (parsed.kind === 'useProject') {
         const response = await client.request({ action: 'community_project_get', id: parsed.id });
         const projectId = response?.project?.id;
@@ -406,9 +400,8 @@ export async function runShell(client, streams, options = {}) {
         await saveContext(home, context);
         printResponse(streams.output, { status: 'ok', projectId });
       } else if (parsed.kind === 'useDatabase') {
-        const response = await client.request(context.projectId
-          ? { action: 'community_database_list', project_id: context.projectId }
-          : { action: 'listDatabases' });
+        const response = await client.request({ action: 'community_database_list',
+          project_id: context.projectId });
         const databases = Array.isArray(response) ? response : response?.databases;
         if (!Array.isArray(databases) || !databases.includes(parsed.name)) {
           throw new Error('database_not_found');
@@ -418,8 +411,13 @@ export async function runShell(client, streams, options = {}) {
         await saveContext(home, context);
         printResponse(streams.output, { status: 'ok', database: parsed.name });
       } else if (parsed.kind === 'createDatabase') {
+        if (Buffer.byteLength(parsed.name, 'utf8') > 128)
+          throw new Error('database name must be 1-128 bytes when mapped to a project');
+        const project = await client.request({ action: 'community_project_get',
+          id: context.projectId });
+        if (project?.project?.id !== context.projectId) throw new Error('project_not_found');
         const response = await client.request({ action: 'createDatabase', dbName: parsed.name });
-        if (context.projectId) await client.request({ action: 'community_database_map',
+        await client.request({ action: 'community_database_map',
           database: parsed.name, project_id: context.projectId });
         printResponse(streams.output, response, 'createDatabase');
       } else if (parsed.kind === 'showDatabase') {
@@ -461,6 +459,11 @@ export async function runShell(client, streams, options = {}) {
           parsed.command.vector, { k: parsed.command.k, metric: parsed.command.metric }),
         'queryVector');
       } else if (parsed.kind === 'request') {
+        if (parsed.command.action === 'createCollection') {
+          const mapped = await client.request({ action: 'community_database_list',
+            project_id: context.projectId });
+          if (!mapped?.databases?.includes(context.database)) throw new Error('database_not_found');
+        }
         const response = await client.request(parsed.command);
         if (parsed.clearProject && context.projectId === parsed.clearProject) {
           delete context.projectId;

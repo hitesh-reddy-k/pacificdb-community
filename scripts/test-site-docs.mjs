@@ -34,9 +34,10 @@ async function assertLocalReferences(filename, html) {
   }
 }
 
-const [index, docs] = await Promise.all([
+const [index, docs, releaseNotes] = await Promise.all([
   readSiteFile('index.html'),
-  readSiteFile('docs.html')
+  readSiteFile('docs.html'),
+  readSiteFile('release-1.0.1.html')
 ]);
 
 for (const asset of [
@@ -51,6 +52,11 @@ assert.match(index, /href=["']docs\.html["'][^>]*>Documentation</);
 assert.match(index, /href=["']docs\.html#quickstart["']/);
 assert.doesNotMatch(index, /hitesh-reddy-k\.github\.io\/pacificdb-community\/docs\.html/);
 assert.match(index, /id=["']sdks["']/);
+assert.match(index, /href=["']release-1\.0\.1\.html["']/);
+assert.match(docs, /href=["']release-1\.0\.1\.html["']/);
+for (const heading of ['Added', 'Removed', 'Improved']) {
+  assert.match(releaseNotes, new RegExp(`<h3>${heading}</h3>`));
+}
 
 for (const landingSection of ['top', 'why', 'how', 'features', 'downloads', 'start', 'sdks']) {
   assert.ok(elementIds(index).has(landingSection), `missing landing section: ${landingSection}`);
@@ -90,10 +96,10 @@ assert.doesNotMatch(index, /--scroll-scale/);
 assert.doesNotMatch(index, /\['\.(?:hero-copy|proof-inner|why-grid|features|downloads|closing \.wrap)'/);
 
 const requiredSections = [
-  'install', 'quickstart', 'authentication', 'projects', 'databases',
+  'install', 'quickstart', 'projects', 'databases',
   'documents', 'shell-reference', 'nodejs', 'python', 'java', 'backups',
   'api-keys', 'media', 'vectors', 'configuration', 'security',
-  'troubleshooting', 'beta-status'
+  'troubleshooting', 'v1-status'
 ];
 const docsIds = elementIds(docs);
 for (const section of requiredSections) {
@@ -110,7 +116,8 @@ assert.doesNotMatch(docs, /motion-reveal|flushScrollMotion|--scroll-shift/);
 
 await Promise.all([
   assertLocalReferences('index.html', index),
-  assertLocalReferences('docs.html', docs)
+  assertLocalReferences('docs.html', docs),
+  assertLocalReferences('release-1.0.1.html', releaseNotes)
 ]);
 
 for (const obsolete of ['style.css', 'docs.css', 'app.js', 'docs.js', 'pacificdb-logo.png']) {

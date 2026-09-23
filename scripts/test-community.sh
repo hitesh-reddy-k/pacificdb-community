@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 BUILD_DIR="${1:-build}"
-cmake -S engine -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release
+cmake -S engine -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.0.1
 cmake --build "$BUILD_DIR" -j"${BUILD_JOBS:-2}"
 for test in \
   v11_4_apply_exact_boundary_failpoints_test storage_path_security_test \
@@ -33,8 +33,8 @@ for checkpoint_failpoint in \
   FP_LSM_CHECKPOINT_AFTER_WAL_RECLAIM; do
   "$BUILD_DIR/db_engine_lsm_checkpoint_crash_driver" --run-one "$checkpoint_failpoint"
 done
-test "$("$BUILD_DIR/pacificdb" --version)" = "PacificDB 1.0.0"
-test "$("$BUILD_DIR/pacificdb" -V)" = "PacificDB 1.0.0"
+test "$("$BUILD_DIR/pacificdb" --version)" = "PacificDB 1.0.1"
+test "$("$BUILD_DIR/pacificdb" -V)" = "PacificDB 1.0.1"
 node intelligence/test.js
 python3 scripts/test-release-consistency.py
 python3 scripts/test-workflow-contract.py

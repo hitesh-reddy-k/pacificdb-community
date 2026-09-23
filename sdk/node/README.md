@@ -8,11 +8,18 @@ Apache-2.0 client for the Community engine JSON protocol.
 
 ```js
 import { PacificDBClient } from '@pacificdb/client';
-const db = new PacificDBClient({ host: '127.0.0.1', port: 9000, database: 'app' });
+const db = new PacificDBClient({ host: '127.0.0.1', port: 9000 });
+await db.createProject('demo');
+await db.createDatabase('app');
+await db.createCollection('users');
 await db.insert('users', { id: '1', name: 'Ada' });
 console.log(await db.find('users', { name: 'Ada' }));
 db.close();
 ```
+
+Database creation requires a selected project, and collection creation requires
+a database mapped to it. For existing data, call `await db.useProject(projectId)`
+and `await db.useDatabase('app')` first.
 
 The client reuses up to 16 persistent TCP/TLS connections by default. Set
 `poolSize` from 1 through 32 to tune concurrency, call `await db.connect()` to

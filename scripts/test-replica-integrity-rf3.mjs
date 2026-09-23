@@ -39,6 +39,7 @@ try {
   await cluster.retry(async () => {
     assert.equal((await clients[0].request({ action: 'ping' })).isLeader, true);
   }, 'leader readiness');
+  await cluster.retry(() => clients[0].createProject('integrity-monitor'), 'create project');
   await clients[0].createDatabase('integrity_db');
   await clients[0].createCollection('docs');
   await clients[0].insertMany('docs', [

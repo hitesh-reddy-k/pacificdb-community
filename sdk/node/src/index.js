@@ -250,7 +250,7 @@ function mediaType(filename) {
 
 export class PacificDBClient {
   constructor({ host = '127.0.0.1', port = 9000, userId = 'system',
-                database = '', tls: useTls = false, ca, timeoutMs = 30000,
+                database = '', projectId = '', tls: useTls = false, ca, timeoutMs = 30000,
                 poolSize = DEFAULT_POOL_SIZE, token = '' } = {}) {
     if (!Number.isSafeInteger(poolSize) || poolSize < 1 || poolSize > MAX_POOL_SIZE) {
       throw new RangeError(`poolSize must be an integer between 1 and ${MAX_POOL_SIZE}`);
@@ -259,6 +259,7 @@ export class PacificDBClient {
     this.port = port;
     this.userId = userId;
     this.database = database;
+    this.projectId = projectId;
     this.useTls = useTls;
     this.ca = ca;
     this.timeoutMs = timeoutMs;
@@ -297,10 +298,46 @@ export class PacificDBClient {
     return result;
   }
 
-  createDatabase(name = this.database, dbType = 'binary') {
-    return this.request({ action: 'createDatabase', dbName: name, dbType });
+  async createProject(name) {
+    const response = await this.request({ action: 'community_project_create', name });
+    this.projectId = response.project.id;
+    this.database = '';
+    return response;
   }
-  createCollection(name) {
+  async useProject(id) {
+    const response = await this.request({ action: 'community_project_get', id });
+    if (!response.project?.id) throw new Error('project_not_found');
+    this.projectId = response.project.id;
+    this.database = '';
+    return response;
+  }
+  async createDatabase(name = this.database, dbType = 'binary') {
+    if (!this.projectId) throw new Error('select a project before creating a database');
+    if (!name) throw new Error('database name is required');
+    if (Buffer.byteLength(name, 'utf8') > 128)
+      throw new Error('database name must be 1-128 bytes when mapped to a project');
+    const project = await this.request({ action: 'community_project_get', id: this.projectId });
+    if (!project.project?.id) throw new Error('project_not_found');
+    const response = await this.request({ action: 'createDatabase', dbName: name, dbType });
+    await this.request({ action: 'community_database_map', database: name,
+      project_id: this.projectId });
+    this.database = name;
+    return response;
+  }
+  async useDatabase(name) {
+    if (!this.projectId) throw new Error('select a project before selecting a database');
+    const response = await this.request({ action: 'community_database_list',
+      project_id: this.projectId });
+    if (!response.databases?.includes(name)) throw new Error('database_not_found');
+    this.database = name;
+    return response;
+  }
+  async createCollection(name) {
+    if (!this.projectId) throw new Error('select a project before creating a collection');
+    if (!this.database) throw new Error('select a database before creating a collection');
+    const response = await this.request({ action: 'community_database_list',
+      project_id: this.projectId });
+    if (!response.databases?.includes(this.database)) throw new Error('database_not_found');
     return this.request({ action: 'createCollection', collection: name });
   }
   insert(collection, data) {

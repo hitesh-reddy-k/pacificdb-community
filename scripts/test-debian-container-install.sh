@@ -3,7 +3,7 @@ set -euo pipefail
 
 package=${1:?usage: test-debian-container-install.sh PACKAGE.deb}
 package=$(realpath "$package")
-expected_version=${2:-0.1.0~beta.12}
+expected_version=${2:-1.0.1}
 image=${PACIFICDB_DEBIAN_TEST_IMAGE:-ubuntu:24.04}
 
 docker run --rm --network bridge \
@@ -23,7 +23,7 @@ docker run --rm --network bridge \
     export ENGINE_PORT=19000 RAFT_LISTEN_PORT=19001
     printf "quit\n" | pacificdb --port 19000 >"$root/shell.out"
     grep -q "PacificDB" "$root/shell.out"
-    grep -q "v1.0.0" "$root/shell.out"
+    grep -q "v1.0.1" "$root/shell.out"
     server_pid=$(cat "$root/engine.pid")
     trap "kill $server_pid 2>/dev/null || true" EXIT
     pacificdb --port 19000 ping | grep -q pong

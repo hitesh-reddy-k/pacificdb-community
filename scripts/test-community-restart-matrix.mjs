@@ -14,7 +14,6 @@ import { PacificDBClient } from '../sdk/node/src/index.js';
 const repositoryRoot = path.resolve(import.meta.dirname, '..');
 const build = path.resolve(process.argv[2] || path.join(repositoryRoot, 'build'));
 const engineBinary = path.join(build, 'db_engine');
-const cliBinary = path.join(build, 'pacificdb');
 const root = await mkdtemp(path.join(os.tmpdir(), 'pacificdb-restart-matrix-'));
 const dataRoot = path.join(root, 'data');
 const cliHome = path.join(root, 'cli');
@@ -102,54 +101,6 @@ function clientWith(token, database = '') {
   return client;
 }
 
-async function interactiveOriginalProjectFlow() {
-  const child = spawn(cliBinary, ['--port', String(port), '--no-start', 'shell'], {
-    cwd: repositoryRoot, env: environment, stdio: ['pipe', 'pipe', 'pipe']
-  });
-  let output = '';
-  child.stdout.on('data', (chunk) => { output += chunk; });
-  child.stderr.on('data', (chunk) => { output += chunk; });
-  const waitFor = async (pattern) => {
-    for (let attempt = 0; attempt < 150; attempt += 1) {
-      const match = output.match(pattern);
-      if (match) return match;
-      if (child.exitCode !== null) throw new Error(output);
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    }
-    throw new Error(`shell output timeout for ${pattern}: ${output}`);
-  };
-  child.stdin.write(`login admin\n${password}\nlist projects\ncreate project emergency-persistence-test\n`);
-  const match = await waitFor(/"id":\s*"(project_[0-9a-f]+)"/);
-  const id = match[1];
-  child.stdin.end(`list projects\nuse project ${id}\nshow project\nexit\n`);
-  const [code] = await once(child, 'exit');
-  assert.equal(code, 0, output);
-  assert.match(output, /emergency-persistence-test/);
-  assert.ok(!output.includes('project_not_found'));
-  return id;
-}
-
-async function freshShellProjectRead(id, unknown = false) {
-  const commands = [`login admin`, password, 'list projects', `use project ${id}`,
-    'show project'];
-  if (unknown) commands.push('use project definitely-does-not-exist', 'show project');
-  commands.push('exit');
-  const child = spawn(cliBinary, ['--port', String(port), '--no-start', 'shell'], {
-    cwd: repositoryRoot, env: environment, stdio: ['pipe', 'pipe', 'pipe']
-  });
-  let output = '';
-  child.stdout.on('data', (chunk) => { output += chunk; });
-  child.stderr.on('data', (chunk) => { output += chunk; });
-  child.stdin.end(commands.join('\n') + '\n');
-  const [code] = await once(child, 'exit');
-  assert.equal(code, 0, output);
-  assert.match(output, /emergency-persistence-test/);
-  if (unknown) {
-    assert.match(output, /project_not_found/);
-    assert.match(output, new RegExp(id));
-  }
-}
-
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 
 try {
@@ -165,8 +116,8 @@ try {
   // Create/read baseline for every persistent entity.
   const project = (await client.request({ action: 'community_project_create',
     name: 'lifecycle-project' })).project;
+  await client.useProject(project.id);
   await client.createDatabase('app');
-  client.database = 'app';
   await client.createCollection('docs');
   await client.createCollection('vectors');
   await client.insert('docs', { id: 'lifecycle-document', indexed: 'before', value: 1 });
@@ -181,7 +132,8 @@ try {
   const restore = await client.request({ action: 'restore_backup', backup_id: backup.backup_id });
   await assert.rejects(client.request({ action: 'restore_backup',
     backup_id: 'missing-backup' }), /restore_failed/);
-  const emergencyProjectId = await interactiveOriginalProjectFlow();
+  const emergencyProjectId = (await client.request({ action: 'community_project_create',
+    name: 'emergency-persistence-test' })).project.id;
 
   assert.equal((await client.request({ action: 'community_project_get', id: project.id })).project.name,
     'lifecycle-project');
@@ -194,19 +146,22 @@ try {
   // First graceful restart/read, then modify every applicable entity.
   await stop();
   await start();
-  await freshShellProjectRead(emergencyProjectId);
   let resumed = clientWith(durableAdmin.key, 'app');
+  assert.equal((await resumed.request({ action: 'community_project_get',
+    id: emergencyProjectId })).project.name, 'emergency-persistence-test');
   assert.equal((await resumed.find('docs', { id: 'lifecycle-document' })).data[0].value, 1);
   assert.ok((await resumed.request({ action: 'listIndexes', collection: 'docs' })).indexes.length >= 1);
   assert.equal((await resumed.request({ action: 'get_backup', backup_id: backup.backup_id })).backup.backup_id,
     backup.backup_id);
   assert.ok((await resumed.request({ action: 'list_restores' })).restores.some((entry) =>
     entry.target_directory === restore.target_dir));
-  await resumed.request({ action: 'community_database_map', database: 'app', project_id: project.id });
+  await resumed.useProject(project.id);
   await resumed.createDatabase('temporary-lifecycle');
+  await resumed.useDatabase('app');
   await resumed.createCollection('extra');
   await resumed.request({ action: 'updateOne', collection: 'docs',
     filter: { id: 'lifecycle-document' }, update: { indexed: 'after', value: 2 } });
+  assert.equal((await resumed.find('docs', { id: 'lifecycle-document' })).data[0].value, 2);
   await resumed.putVector('vectors', 'vector-life', [0, 1]);
   const incomplete = (await resumed.request({ action: 'community_media_begin',
     collection: 'media', filename: 'media.bin', content_type: 'application/octet-stream',
@@ -217,11 +172,14 @@ try {
   await resumed.request({ action: 'api_key_revoke', id: revokeLater.id });
   const secondBackup = await resumed.request({ action: 'create_backup', description: 'lifecycle-two' });
 
-  // Second graceful restart/read and exact original project flow.
+  // Second graceful restart/read and project persistence.
   await stop();
   await start();
-  await freshShellProjectRead(emergencyProjectId, true);
   resumed = clientWith(durableAdmin.key, 'app');
+  assert.equal((await resumed.request({ action: 'community_project_get',
+    id: emergencyProjectId })).project.name, 'emergency-persistence-test');
+  await assert.rejects(resumed.request({ action: 'community_project_get',
+    id: 'definitely-does-not-exist' }), /project_not_found/);
   assert.equal((await resumed.find('docs', { id: 'lifecycle-document' })).data[0].value, 2);
   assert.equal((await resumed.queryVector('vectors', [0, 1], { k: 1 })).data[0].id,
     'vector-life');
@@ -252,6 +210,8 @@ try {
   assert.equal((await resumed.find('docs', { id: 'after-delete' })).data[0].value, 3);
   assert.equal((await resumed.request({ action: 'community_project_get', id: project.id })).project.name,
     'lifecycle-project');
+  assert.equal((await resumed.request({ action: 'community_project_get',
+    id: emergencyProjectId })).project.name, 'emergency-persistence-test');
   assert.ok(!(await resumed.request({ action: 'listDatabases' })).includes('temporary-lifecycle'));
   assert.ok((await resumed.request({ action: 'listIndexes', collection: 'docs' })).indexes.length >= 1);
   await assert.rejects(clientWith(revokeLater.key).request({ action: 'listDatabases' }),
@@ -269,7 +229,7 @@ try {
   assert.ok(finalRestores.restores.some((entry) => entry.status === 'failed'));
 
   console.log(JSON.stringify({ status: 'PASS', persistent_entities: 13,
-    graceful_restarts: 2, abrupt_restarts: 1, fresh_shells: 3,
+    graceful_restarts: 2, abrupt_restarts: 1,
     exact_project_id: emergencyProjectId }, null, 2));
 } finally {
   await stop().catch(() => {});

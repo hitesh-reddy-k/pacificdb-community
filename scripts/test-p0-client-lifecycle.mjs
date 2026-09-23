@@ -198,6 +198,7 @@ try {
   assert.equal(finalResponse._pacificdb_connection_close, true,
     'final keep-alive response must tell pooled clients to retire the socket');
   const setup = new PacificDBClient({ port, timeoutMs: 120000 });
+  await setup.createProject('client-lifecycle');
   await setup.createDatabase('lifecycle');
   setup.database = 'lifecycle';
   await setup.createCollection('events');

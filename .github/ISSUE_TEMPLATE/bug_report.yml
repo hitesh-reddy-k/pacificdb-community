@@ -15,7 +15,7 @@ body:
     attributes:
       label: PacificDB version
       description: Run `pacificdb --version` or provide the commit SHA.
-      placeholder: PacificDB 1.0.0
+      placeholder: PacificDB 1.0.1
     validations:
       required: true
   - type: dropdown

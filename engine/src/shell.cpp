@@ -324,8 +324,6 @@ nlohmann::json sendJson(const std::string& host, const std::string& port,
     if (context) {
         if (!command.contains("dbName") && !context->database.empty())
             command["dbName"] = context->database;
-        if (!command.contains("token") && !context->token.empty())
-            command["token"] = context->token;
     }
     auto response = parseServerResponse(request(host, port, command), host, port);
     if (response.contains("error")) {
@@ -378,15 +376,17 @@ void ownerOnly(const std::filesystem::path& path) {
 #endif
 }
 
-pacificdb::cli::ShellContext loadContext(const std::filesystem::path& home) {
+pacificdb::cli::ShellContext loadContext(const std::filesystem::path& home,
+                                         bool* hadLegacyToken = nullptr) {
     pacificdb::cli::ShellContext context;
     std::ifstream input(home / "context.json");
     if (!input) return context;
     auto value = nlohmann::json::parse(input, nullptr, false);
     if (!value.is_object()) return context;
+    if (hadLegacyToken) *hadLegacyToken = value.contains("token");
     context.database = value.value("database", "");
     context.projectId = value.value("projectId", "");
-    context.token = value.value("token", "");
+    if (context.projectId.empty()) context.database.clear();
     return context;
 }
 
@@ -398,8 +398,7 @@ void saveContext(const std::filesystem::path& home,
     std::ofstream output(temporary, std::ios::trunc);
     if (!output) throw std::runtime_error("could not save CLI context");
     output << nlohmann::json{{"database", context.database},
-                             {"projectId", context.projectId},
-                             {"token", context.token}}.dump(2);
+                             {"projectId", context.projectId}}.dump(2);
     output.flush();
     if (!output) throw std::runtime_error("could not save CLI context");
     output.close();
@@ -434,30 +433,6 @@ void appendHistory(const std::filesystem::path& home, const std::string& line) {
     output.close();
     if (!output) throw std::runtime_error("could not save CLI history");
     ownerOnly(path);
-}
-
-std::string readPassword() {
-    std::string password;
-#ifdef _WIN32
-    HANDLE input = GetStdHandle(STD_INPUT_HANDLE);
-    DWORD mode = 0;
-    const bool console = input != INVALID_HANDLE_VALUE && GetConsoleMode(input, &mode);
-    if (console) SetConsoleMode(input, mode & ~ENABLE_ECHO_INPUT);
-    std::getline(std::cin, password);
-    if (console) SetConsoleMode(input, mode);
-#else
-    termios original{};
-    const bool terminal = tcgetattr(STDIN_FILENO, &original) == 0;
-    if (terminal) {
-        termios hidden = original;
-        hidden.c_lflag &= static_cast<tcflag_t>(~ECHO);
-        tcsetattr(STDIN_FILENO, TCSAFLUSH, &hidden);
-    }
-    std::getline(std::cin, password);
-    if (terminal) tcsetattr(STDIN_FILENO, TCSAFLUSH, &original);
-#endif
-    std::cout << '\n';
-    return password;
 }
 
 std::string sha256Hex(const unsigned char* bytes, std::size_t count) {
@@ -518,8 +493,6 @@ nlohmann::json withContext(nlohmann::json command,
     if (!command.contains("userId")) command["userId"] = "system";
     if (!command.contains("dbName") && !context.database.empty())
         command["dbName"] = context.database;
-    if (!command.contains("token") && !context.token.empty())
-        command["token"] = context.token;
     return command;
 }
 
@@ -948,7 +921,9 @@ int main(int argc, char** argv) {
         }
         if (positional[0] == "shell" && positional.size() == 1) {
             const auto home = cliHome();
-            auto context = loadContext(home);
+            bool hadLegacyToken = false;
+            auto context = loadContext(home, &hadLegacyToken);
+            if (hadLegacyToken) saveContext(home, context);
             if (!database.empty()) context.database = database;
             std::cout << "\n"
                          "             .--------.\n"
@@ -958,7 +933,7 @@ int main(int argc, char** argv) {
                          "       ~~~~~~~~\\______/~~~~~~~~\n"
                          "         ~~~~~~~~~~~~~~~~~~~~\n"
                          "             PacificDB\n"
-                         "               v1.0.0\n"
+                         "               v1.0.1\n"
                          "       Documents · Vectors · Media\n"
                          "  Type help to see commands.\n";
             for (std::string line;
@@ -979,22 +954,11 @@ int main(int argc, char** argv) {
                         std::cout << nlohmann::json{{"database", context.database.empty()
                             ? nlohmann::json(nullptr) : nlohmann::json(context.database)},
                             {"projectId", context.projectId.empty()
-                            ? nlohmann::json(nullptr) : nlohmann::json(context.projectId)},
-                            {"authenticated", !context.token.empty()}}.dump(2) << '\n';
-                    } else if (kind == "context_clear" || kind == "logout") {
+                            ? nlohmann::json(nullptr) : nlohmann::json(context.projectId)}}.dump(2) << '\n';
+                    } else if (kind == "context_clear") {
                         context = {};
                         saveContext(home, context);
                         std::cout << nlohmann::json{{"status", "ok"}}.dump(2) << '\n';
-                    } else if (kind == "login") {
-                        std::cout << "Password: " << std::flush;
-                        const auto result = sendJson(host, port, {{"action", "security_authenticate"},
-                            {"username", parsed.value("username", "")},
-                            {"password", readPassword()}});
-                        context.token = result.at("token");
-                        saveContext(home, context);
-                        std::cout << nlohmann::json{{"status", "ok"},
-                            {"username", result.value("username", "")},
-                            {"role", result.value("role", "")}}.dump(2) << '\n';
                     } else if (kind == "use_project") {
                         const auto response = sendJson(host, port, withContext({
                             {"action", "community_project_get"},
@@ -1011,11 +975,8 @@ int main(int argc, char** argv) {
                             {"projectId", context.projectId}}.dump(2) << '\n';
                     } else if (kind == "use_database") {
                         const auto response = sendJson(host, port, withContext(
-                            context.projectId.empty()
-                                ? nlohmann::json{{"action", "listDatabases"}}
-                                : nlohmann::json{{"action", "community_database_list"},
-                                                 {"project_id", context.projectId}},
-                            context));
+                            {{"action", "community_database_list"},
+                             {"project_id", context.projectId}}, context));
                         const auto databases = response.is_array()
                             ? response
                             : response.value("databases", nlohmann::json::array());
@@ -1030,13 +991,24 @@ int main(int argc, char** argv) {
                             {"database", context.database}}.dump(2) << '\n';
                     } else if (kind == "create_database") {
                         const std::string name = parsed.at("name");
-                        sendContextAndPrint(host, port,
-                            {{"action", "createDatabase"}, {"dbName", name}}, context);
-                        if (!context.projectId.empty()) {
-                            sendJson(host, port, withContext({
-                                {"action", "community_database_map"},
-                                {"database", name}, {"project_id", context.projectId}}, context));
+                        if (name.size() > 128) {
+                            throw std::runtime_error(
+                                "database name must be 1-128 bytes when mapped to a project");
                         }
+                        const auto project = sendJson(host, port, withContext({
+                            {"action", "community_project_get"},
+                            {"id", context.projectId}}, context));
+                        if (!project.contains("project") ||
+                            !project.at("project").is_object() ||
+                            project.at("project").value("id", "") != context.projectId) {
+                            throw std::runtime_error("project_not_found");
+                        }
+                        const auto created = sendJson(host, port, withContext(
+                            {{"action", "createDatabase"}, {"dbName", name}}, context));
+                        sendJson(host, port, withContext({
+                            {"action", "community_database_map"},
+                            {"database", name}, {"project_id", context.projectId}}, context));
+                        std::cout << created.dump(2) << '\n';
                     } else if (kind == "show_database") {
                         const auto collections = sendJson(host, port, withContext(
                             {{"action", "listCollections"}}, context));
@@ -1086,6 +1058,17 @@ int main(int argc, char** argv) {
                                 {"vector", parsed.at("vector")}}}}, context);
                     } else if (kind == "request") {
                         const auto command = parsed.at("command");
+                        if (command.value("action", "") == "createCollection") {
+                            const auto mapped = sendJson(host, port, withContext({
+                                {"action", "community_database_list"},
+                                {"project_id", context.projectId}}, context));
+                            const auto databases = mapped.value("databases", nlohmann::json::array());
+                            if (!databases.is_array() ||
+                                std::find(databases.begin(), databases.end(), context.database) ==
+                                    databases.end()) {
+                                throw std::runtime_error("database_not_found");
+                            }
+                        }
                         const int status = sendContextAndPrint(host, port, command, context);
                         if (status == 0 && parsed.contains("clear_project") &&
                             context.projectId == parsed.at("clear_project")) {

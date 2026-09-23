@@ -147,6 +147,7 @@ async function main() {
     };
 
     const bootstrap = cluster.client(initial.index, { timeoutMs: 8000 });
+    await cluster.retry(() => bootstrap.createProject('upgrade-test'), 'create upgrade project');
     await cluster.retry(() => bootstrap.createDatabase(database), 'create upgrade database');
     bootstrap.database = database;
     await cluster.retry(() => bootstrap.createCollection(collection), 'create upgrade collection');
