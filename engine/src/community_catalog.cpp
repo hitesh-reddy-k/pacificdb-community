@@ -3,6 +3,7 @@
 #include "database_engine.hpp"
 #include "id_generator.hpp"
 #include "media_upload_state.hpp"
+#include "query_limiter.hpp"
 #include "structured_event.hpp"
 #include "test_failpoint.hpp"
 
@@ -118,12 +119,66 @@ json rawMedia(const std::string& userId, const std::string& mediaId) {
 std::vector<json> rawMediaChunks(
     const std::string& userId,
     const std::string& mediaId) {
-    auto rows = DatabaseEngine::find(
-        userId, kDatabase, kMediaChunks, {{"media_id", mediaId}});
+    const auto manifest = rawMedia(userId, mediaId);
+    if (manifest.is_null()) return {};
+    const long long expectedCount = manifest.value("chunk_count", 0LL);
+    // A media_id query materializes every base64 payload before the caller can
+    // use its metadata. Fetch each deterministic chunk ID separately instead;
+    // this keeps every query below the normal result-size cap, even for files
+    // far larger than that cap.
     std::vector<json> chunks;
-    chunks.reserve(rows.size());
-    for (auto& row : rows) chunks.push_back(publicDocument(std::move(row)));
+    const auto durableCount = DatabaseEngine::count(
+        userId, kDatabase, kMediaChunks, {{"media_id", mediaId}});
+    chunks.reserve(durableCount);
+    for (long long index = 0;
+         index < expectedCount && chunks.size() < durableCount; ++index) {
+        auto rows = DatabaseEngine::find(userId, kDatabase, kMediaChunks,
+                                         {{"id", chunkId(mediaId, index)}}, 1);
+        if (rows.empty()) continue;
+        auto chunk = publicDocument(std::move(rows.front()));
+        chunk.erase("data");
+        chunks.push_back(std::move(chunk));
+    }
     return chunks;
+}
+
+json advanceMediaProgress(const json& manifest, long long index,
+                          long long sizeBytes, long long timestamp) {
+    // The committed chunk ID was checked before this call. Keep compact
+    // progress in the manifest, so each new chunk does not reread all prior
+    // base64 payloads. Reconciliation repairs this state after a crash.
+    if (!manifest.contains("received_indices") ||
+        !manifest.at("received_indices").is_array()) {
+        throw std::invalid_argument("media progress requires reconciliation");
+    }
+    auto indices = manifest.at("received_indices").get<std::vector<long long>>();
+    const auto at = std::lower_bound(indices.begin(), indices.end(), index);
+    if (at != indices.end() && *at == index) {
+        throw std::invalid_argument("media progress requires reconciliation");
+    }
+    indices.insert(at, index);
+    const long long previousBytes = manifest.value("received_bytes", 0LL);
+    if (previousBytes < 0 || sizeBytes >
+        std::numeric_limits<long long>::max() - previousBytes ||
+        previousBytes + sizeBytes > manifest.value("size_bytes", -1LL)) {
+        throw std::invalid_argument("media progress exceeds manifest size");
+    }
+    long long next = std::max(0LL, manifest.value("next_chunk", 0LL));
+    const long long expected = manifest.value("chunk_count", 0LL);
+    while (next < expected &&
+           std::binary_search(indices.begin(), indices.end(), next)) ++next;
+    json fields{{"state_version", 2},
+                {"received_chunks", static_cast<long long>(indices.size())},
+                {"received_bytes", previousBytes + sizeBytes},
+                {"next_chunk", next},
+                {"received_indices", indices},
+                {"resumable", true}};
+    const auto lease = mediaLeaseDurationMs();
+    if (lease > std::numeric_limits<long long>::max() - timestamp) {
+        throw std::invalid_argument("media upload lease is too large");
+    }
+    fields["lease_expires_at_ms"] = timestamp + lease;
+    return fields;
 }
 
 json progressFields(
@@ -169,12 +224,33 @@ void updateManifest(
 long long deleteOwnedChunks(
     const std::string& userId,
     const std::string& mediaId) {
-    const auto chunks = rawMediaChunks(userId, mediaId);
     long long deleted = 0;
-    for (const auto& chunk : chunks) {
-        if (DatabaseEngine::deleteOne(
-                userId, kDatabase, kMediaChunks, {{"id", chunk.at("id")}})) {
-            ++deleted;
+    const auto manifest = rawMedia(userId, mediaId);
+    if (!manifest.is_null()) {
+        for (long long index = 0;
+             index < manifest.value("chunk_count", 0LL); ++index) {
+            if (DatabaseEngine::deleteOne(userId, kDatabase, kMediaChunks,
+                                          {{"id", chunkId(mediaId, index)}})) {
+                ++deleted;
+            }
+        }
+    } else {
+        // Reconciliation also removes chunks whose manifest was lost. Delete
+        // a small page at a time so one orphaned upload cannot exceed the
+        // normal result-size or result-count limits.
+        while (true) {
+            const auto rows = DatabaseEngine::find(
+                userId, kDatabase, kMediaChunks, {{"media_id", mediaId}}, 16);
+            if (rows.empty()) break;
+            long long pageDeleted = 0;
+            for (const auto& chunk : rows) {
+                if (DatabaseEngine::deleteOne(userId, kDatabase, kMediaChunks,
+                                              {{"id", chunk.at("id")}})) {
+                    ++deleted;
+                    ++pageDeleted;
+                }
+            }
+            if (pageDeleted == 0) break;
         }
     }
     return deleted;
@@ -244,9 +320,14 @@ json CommunityCatalog::createProject(const std::string& userId,
     return project;
 }
 
-json CommunityCatalog::listProjects(const std::string& userId) {
+json CommunityCatalog::listProjects(const std::string& userId,
+                                    long long limit, long long offset) {
     initialize(userId);
-    auto rows = DatabaseEngine::find(userId, kDatabase, kProjects, json::object());
+    if (limit <= 0 || limit > 1001 || offset < 0) {
+        throw std::invalid_argument("invalid project page");
+    }
+    auto rows = DatabaseEngine::find(userId, kDatabase, kProjects,
+                                     json::object(), limit, offset);
     json result = json::array();
     for (auto& row : rows) result.push_back(publicDocument(std::move(row)));
     return result;
@@ -262,11 +343,10 @@ json CommunityCatalog::getProject(const std::string& userId,
 bool CommunityCatalog::deleteProject(const std::string& userId,
                                      const std::string& id) {
     initialize(userId);
-    auto mappings = DatabaseEngine::find(userId, kDatabase, kDatabaseProjects,
-                                         {{"project_id", id}});
-    for (const auto& mapping : mappings) {
-        DatabaseEngine::deleteOne(userId, kDatabase, kDatabaseProjects,
-                                  {{"id", mapping.at("id")}});
+    std::lock_guard<std::mutex> lock(mappingMutex_);
+    if (DatabaseEngine::count(userId, kDatabase, kDatabaseProjects,
+                              {{"project_id", id}}) != 0) {
+        throw std::invalid_argument("project contains databases");
     }
     return DatabaseEngine::deleteOne(userId, kDatabase, kProjects, {{"id", id}});
 }
@@ -275,13 +355,22 @@ bool CommunityCatalog::mapDatabase(const std::string& userId,
                                    const std::string& projectId,
                                    const std::string& databaseName) {
     requireText(databaseName, "database name");
+    if (isReservedDatabase(databaseName)) {
+        throw std::invalid_argument("reserved database cannot belong to a project");
+    }
+    std::lock_guard<std::mutex> lock(mappingMutex_);
     if (getProject(userId, projectId).is_null()) {
         throw std::invalid_argument("project not found");
     }
+    if (!DatabaseEngine::databaseExists(userId, databaseName)) {
+        throw std::invalid_argument("database not found");
+    }
     const std::string id = "database:" + databaseName;
-    if (DatabaseEngine::deleteOne(userId, kDatabase, kDatabaseProjects,
-                                  {{"id", id}})) {
-        // The replacement below is the single current mapping.
+    auto previous = DatabaseEngine::find(userId, kDatabase, kDatabaseProjects,
+                                          {{"id", id}}, 1);
+    if (!previous.empty()) {
+        if (previous.front().value("project_id", "") == projectId) return true;
+        throw std::invalid_argument("database already belongs to another project");
     }
     DatabaseEngine::insert(userId, kDatabase, kDatabaseProjects,
                            {{"id", id},
@@ -289,6 +378,22 @@ bool CommunityCatalog::mapDatabase(const std::string& userId,
                             {"database", databaseName},
                             {"created_at_ms", nowMs()}});
     return true;
+}
+
+bool CommunityCatalog::unmapDatabase(const std::string& userId,
+                                     const std::string& databaseName,
+                                     const std::string& projectId) {
+    initialize(userId);
+    std::lock_guard<std::mutex> lock(mappingMutex_);
+    const std::string id = "database:" + databaseName;
+    const auto mapping = DatabaseEngine::find(userId, kDatabase,
+        kDatabaseProjects, {{"id", id}}, 1);
+    if (mapping.empty()) return false;
+    if (mapping.front().value("project_id", "") != projectId) {
+        throw std::invalid_argument("database belongs to another project");
+    }
+    return DatabaseEngine::deleteOne(userId, kDatabase, kDatabaseProjects,
+                                     {{"id", id}});
 }
 
 json CommunityCatalog::databaseProject(const std::string& userId,
@@ -468,11 +573,7 @@ json CommunityCatalog::putMediaChunk(const std::string& userId,
                             {"data", dataBase64}});
     pacificdb::test::hitFailpoint("FP_MEDIA_AFTER_CHUNK", 1);
     const long long timestamp = nowMs();
-    const long long lease = mediaLeaseDurationMs();
-    manifest["lease_expires_at_ms"] = timestamp + lease;
-    auto fields = progressFields(
-        manifest, rawMediaChunks(userId, mediaId), timestamp);
-    fields["lease_expires_at_ms"] = timestamp + lease;
+    auto fields = advanceMediaProgress(manifest, index, sizeBytes, timestamp);
     updateManifest(userId, mediaId, fields);
     emitMediaEvent("info", "media_chunk_committed", mediaId,
                    "Media chunk committed", {{"index", index}});
@@ -530,17 +631,17 @@ json CommunityCatalog::finalizeMedia(const std::string& userId,
     }
     try {
         for (long long index = 0; index < expectedCount; ++index) {
-            const auto entry = std::find_if(
-                chunks.begin(), chunks.end(), [index](const json& chunk) {
-                    return chunk.value("index", -1LL) == index;
-                });
-            if (entry == chunks.end()) {
+            if (static_cast<std::size_t>(index) >= chunks.size() ||
+                chunks[static_cast<std::size_t>(index)].value("index", -1LL) != index) {
                 throw std::runtime_error("media upload has missing chunks");
             }
-            const auto bytes = decodeBase64(entry->at("data"));
-            if (sha256Hex(bytes) != entry->value("sha256", "") ||
+            auto rows = DatabaseEngine::find(userId, kDatabase, kMediaChunks,
+                                             {{"id", chunkId(mediaId, index)}}, 1);
+            if (rows.empty()) throw std::runtime_error("media upload has missing chunks");
+            const auto bytes = decodeBase64(rows.front().at("data"));
+            if (sha256Hex(bytes) != rows.front().value("sha256", "") ||
                 static_cast<long long>(bytes.size()) !=
-                    entry->value("size_bytes", -1LL)) {
+                    rows.front().value("size_bytes", -1LL)) {
                 throw std::runtime_error("media chunk checksum mismatch");
             }
             if (static_cast<long long>(bytes.size()) >
@@ -596,13 +697,18 @@ json CommunityCatalog::finalizeMedia(const std::string& userId,
 json CommunityCatalog::listMedia(const std::string& userId,
                                  bool includeIncomplete,
                                  const std::string& databaseName,
-                                 const std::string& collection) {
+                                 const std::string& collection,
+                                 long long limit, long long offset) {
     initialize(userId);
+    if (limit <= 0 || limit > 1001 || offset < 0) {
+        throw std::invalid_argument("invalid media page");
+    }
     json filter = json::object();
     if (!includeIncomplete) filter["status"] = "ready";
     if (!databaseName.empty()) filter["database"] = databaseName;
     if (!collection.empty()) filter["collection"] = collection;
-    auto rows = DatabaseEngine::find(userId, kDatabase, kMediaManifests, filter);
+    auto rows = DatabaseEngine::find(userId, kDatabase, kMediaManifests,
+                                     filter, limit, offset);
     json result = json::array();
     for (auto& row : rows) {
         auto manifest = publicDocument(std::move(row));
@@ -683,17 +789,30 @@ json CommunityCatalog::reconcileMedia(
         {"repaired_progress", 0}, {"reset_verifying", 0},
         {"removed_orphans", 0}, {"expired_uploads", 0},
     };
-    auto manifests = mediaId.empty()
-        ? DatabaseEngine::find(
-              userId, kDatabase, kMediaManifests, json::object())
-        : DatabaseEngine::find(
-              userId, kDatabase, kMediaManifests, {{"id", mediaId}}, 1);
+    std::vector<std::string> manifestIds;
+    if (mediaId.empty()) {
+        const long long pageSize = static_cast<long long>(std::max<std::size_t>(
+            1, std::min<std::size_t>(100, QueryLimiter::getMaxResultDocs())));
+        long long offset = 0;
+        while (true) {
+            const auto page = DatabaseEngine::find(
+                userId, kDatabase, kMediaManifests, json::object(),
+                pageSize, offset);
+            if (page.empty()) break;
+            for (const auto& manifest : page) {
+                const auto id = manifest.value("id", std::string());
+                if (!id.empty()) manifestIds.push_back(id);
+            }
+            offset += static_cast<long long>(page.size());
+        }
+    } else if (!rawMedia(userId, mediaId).is_null()) {
+        manifestIds.push_back(mediaId);
+    }
     std::unordered_set<std::string> knownMedia;
     const long long timestamp = nowMs();
-    for (auto& stored : manifests) {
-        auto manifest = publicDocument(std::move(stored));
-        const std::string id = manifest.value("id", std::string());
-        if (id.empty()) continue;
+    for (const auto& id : manifestIds) {
+        auto manifest = rawMedia(userId, id);
+        if (manifest.is_null()) continue;
         knownMedia.insert(id);
         std::lock_guard<std::mutex> lock(mediaMutex(userId, id));
         auto state = parseMediaState(manifest.value("status", std::string()));
@@ -744,20 +863,38 @@ json CommunityCatalog::reconcileMedia(
     }
 
     if (mediaId.empty()) {
-        const auto chunks = DatabaseEngine::find(
-            userId, kDatabase, kMediaChunks, json::object());
-        for (const auto& chunk : chunks) {
-            const std::string owner = chunk.value("media_id", std::string());
-            if (!owner.empty() && knownMedia.find(owner) != knownMedia.end()) {
-                continue;
+        // Gather only orphan IDs before deleting. Deleting while advancing an
+        // offset would shift later rows and skip some orphans. A small page
+        // keeps base64 payloads below the read result ceiling.
+        const auto byDocs = std::max<std::size_t>(1,
+            std::min<std::size_t>(16, QueryLimiter::getMaxResultDocs()));
+        const auto byBytes = std::max<std::size_t>(1,
+            QueryLimiter::getMaxResultSize() / (2 * 1024 * 1024));
+        const long long pageSize = static_cast<long long>(
+            std::min(byDocs, byBytes));
+        std::vector<std::string> orphanIds;
+        long long offset = 0;
+        while (true) {
+            const auto page = DatabaseEngine::find(
+                userId, kDatabase, kMediaChunks, json::object(),
+                pageSize, offset);
+            if (page.empty()) break;
+            for (const auto& chunk : page) {
+                const auto owner = chunk.value("media_id", std::string());
+                if (owner.empty() || knownMedia.find(owner) == knownMedia.end()) {
+                    orphanIds.push_back(chunk.at("id").get<std::string>());
+                }
             }
-            if (DatabaseEngine::deleteOne(
-                    userId, kDatabase, kMediaChunks, {{"id", chunk.at("id")}})) {
+            offset += static_cast<long long>(page.size());
+        }
+        for (const auto& id : orphanIds) {
+            if (DatabaseEngine::deleteOne(userId, kDatabase, kMediaChunks,
+                                          {{"id", id}})) {
                 result["removed_orphans"] =
                     result.at("removed_orphans").get<long long>() + 1;
             }
         }
-    } else if (manifests.empty()) {
+    } else if (manifestIds.empty()) {
         result["removed_orphans"] = deleteOwnedChunks(userId, mediaId);
     }
     emitMediaEvent("info", "media_reconciled", mediaId,

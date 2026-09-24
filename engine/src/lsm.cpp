@@ -1828,6 +1828,10 @@ nlohmann::json LSM::putMany(const std::string& userId,
         storedDocs.push_back(std::move(storedDoc));
     }
 
+    bool shouldFlush = false;
+    // Serialize WAL append and memtable application with single-document puts.
+    // Keeping the WAL outside this lock lets replay reverse acknowledged writes.
+    auto lk = pacificdb::timing::makeTimedUniqueLock(getCollectionMutex(key));
     fs::path dir = LSM::collectionArtifactPath(userId, dbName, collection, ".lsm");
     fs::path walDir = LSM::requireContained(LSM::databasePath(userId, dbName) / "wal");
     createContainedStorageDirectories(fs::path(LSM::rootOrThrow()), dir);
@@ -1854,31 +1858,26 @@ nlohmann::json LSM::putMany(const std::string& userId,
         logicalBytes = json::to_msgpack(storedDocs).size();
     }
 
-    bool shouldFlush = false;
-    {
-        // ── Critical section: hold lock only for memtable + id-index update ──
-        // Column index file I/O is done OUTSIDE the lock to avoid serializing
-        // concurrent bulk insertMany calls on the same collection.
-        auto lk = pacificdb::timing::makeTimedUniqueLock(getCollectionMutex(key));
-        auto memtableStart = std::chrono::steady_clock::now();
-        for (const auto& storedDoc : storedDocs) {
-            if (!storedDoc.is_object()) continue;
-            std::string id = storedDoc.contains("id")
-                ? (storedDoc["id"].is_string() ? storedDoc["id"].get<std::string>() : storedDoc["id"].dump())
-                : std::to_string(std::time(nullptr));
-            memtables[key][id] = storedDoc;
-            upsertIdIndex(key, id, storedDoc);
-        }
-        if (allStoredDocsApplied) {
-            markWalApplied(key, walAppend.firstLsn, walAppend.lastLsn);
-        }
-        auto memtableEnd = std::chrono::steady_clock::now();
-        const uint64_t memtableUs = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(memtableEnd - memtableStart).count());
-        pacificdb::timing::recordStage(pacificdb::timing::Stage::MemtableInsert, memtableUs);
-        result["timings_us"]["memtable_write"] = memtableUs;
-        result["memtable_size"] = memtables[key].size();
-        shouldFlush = memtables[key].size() >= MEMTABLE_LIMIT;
+    // Column index file I/O remains outside the lock.
+    auto memtableStart = std::chrono::steady_clock::now();
+    for (const auto& storedDoc : storedDocs) {
+        if (!storedDoc.is_object()) continue;
+        std::string id = storedDoc.contains("id")
+            ? (storedDoc["id"].is_string() ? storedDoc["id"].get<std::string>() : storedDoc["id"].dump())
+            : std::to_string(std::time(nullptr));
+        memtables[key][id] = storedDoc;
+        upsertIdIndex(key, id, storedDoc);
     }
+    if (allStoredDocsApplied) {
+        markWalApplied(key, walAppend.firstLsn, walAppend.lastLsn);
+    }
+    auto memtableEnd = std::chrono::steady_clock::now();
+    const uint64_t memtableUs = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(memtableEnd - memtableStart).count());
+    pacificdb::timing::recordStage(pacificdb::timing::Stage::MemtableInsert, memtableUs);
+    result["timings_us"]["memtable_write"] = memtableUs;
+    result["memtable_size"] = memtables[key].size();
+    shouldFlush = memtables[key].size() >= MEMTABLE_LIMIT;
+    lk.unlock();
     g_bytesIngested.fetch_add(logicalBytes, std::memory_order_relaxed);
     if (requireIndexCompletion) {
         pacificdb::test::hitFailpoint(
@@ -3396,7 +3395,9 @@ nlohmann::json LSM::validateColumnIndexes(const std::string& userId, const std::
     return result;
 }
 
-void LSM::del(const std::string& userId, const std::string& dbName, const std::string& collection, const std::string& id) {
+void LSM::del(const std::string& userId, const std::string& dbName,
+              const std::string& collection, const std::string& id,
+              std::uint64_t previousVersion) {
     std::string key = colKey(userId, dbName, collection);
 
     bool shouldFlush = false;
@@ -3415,12 +3416,36 @@ void LSM::del(const std::string& userId, const std::string& dbName, const std::s
             walDir / (validateStorageIdentifier(collection, "collectionName") + ".wal")).string();
         auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch()).count();
+        const auto nowNs = std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
+        if (previousVersion == std::numeric_limits<std::uint64_t>::max()) {
+            throw std::runtime_error("mvcc_version_exhausted");
+        }
+        std::uint64_t tombVersion = std::max(
+            static_cast<std::uint64_t>(std::max<std::int64_t>(1, nowNs)),
+            previousVersion + 1);
+        if (const auto memtable = memtables.find(key); memtable != memtables.end()) {
+            if (const auto current = memtable->second.find(id);
+                current != memtable->second.end()) {
+                long long currentVersion = 0;
+                if (extractDocVersionScore(current->second, currentVersion) &&
+                    currentVersion >= 0) {
+                    const auto currentUnsigned = static_cast<std::uint64_t>(currentVersion);
+                    if (currentUnsigned >= tombVersion) {
+                        if (currentUnsigned == std::numeric_limits<std::uint64_t>::max()) {
+                            throw std::runtime_error("mvcc_version_exhausted");
+                        }
+                        tombVersion = currentUnsigned + 1;
+                    }
+                }
+            }
+        }
         json tomb = {
             {"id", id},
             {"_deleted", true},
-            {"version", nowMs},
-            {"_mvcc_version", nowMs},
-            {"deleted_txn", nowMs},
+            {"version", tombVersion},
+            {"_mvcc_version", tombVersion},
+            {"deleted_txn", tombVersion},
             {"deleted_at_ms", nowMs}
         };
         uint64_t committedIndex = 0;

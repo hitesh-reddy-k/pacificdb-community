@@ -331,19 +331,21 @@ std::unordered_map<std::string, std::string> EnvConfig::getAll() {
 
 bool EnvConfig::isSensitive(const std::string& key) {
     static const std::vector<std::string> sensitivePatterns = {
-        "SECRET", "PASSWORD", "PASSWD", "TOKEN", "PRIVATE_KEY",
-        "ACCESS_KEY", "API_KEY",
+        "SECRET", "PASSWORD", "PASSWD", "TOKEN", "KEY", "CREDENTIAL",
+        "PRIVATE",
     };
+    std::string normalized = key;
+    std::transform(normalized.begin(), normalized.end(), normalized.begin(),
+                   [](unsigned char ch) { return std::toupper(ch); });
     for (const auto& pattern : sensitivePatterns) {
-        if (key.find(pattern) != std::string::npos) return true;
+        if (normalized.find(pattern) != std::string::npos) return true;
     }
     return false;
 }
 
 std::string EnvConfig::maskSensitive(const std::string& key, const std::string& value) {
     if (!isSensitive(key) || value.empty()) return value;
-    if (value.size() <= 4) return "****";
-    return value.substr(0, 2) + std::string(value.size() - 4, '*') + value.substr(value.size() - 2);
+    return "[redacted]";
 }
 
 void EnvConfig::dump() {

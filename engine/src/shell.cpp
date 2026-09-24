@@ -493,6 +493,8 @@ nlohmann::json withContext(nlohmann::json command,
     if (!command.contains("userId")) command["userId"] = "system";
     if (!command.contains("dbName") && !context.database.empty())
         command["dbName"] = context.database;
+    if (!command.contains("project_id") && !context.projectId.empty())
+        command["project_id"] = context.projectId;
     return command;
 }
 
@@ -1034,20 +1036,32 @@ int main(int argc, char** argv) {
                         std::cout << downloadMedia(host, port, parsed.at("id"),
                             parsed.at("filename"), context).dump(2) << '\n';
                     } else if (kind == "media_find") {
-                        auto response = sendJson(host, port, withContext({
-                            {"action", "community_media_list"}, {"all", true}}, context));
                         std::string query = parsed.at("query");
                         std::transform(query.begin(), query.end(), query.begin(),
                             [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
                         nlohmann::json matches = nlohmann::json::array();
-                        for (const auto& media : response.value("media", nlohmann::json::array())) {
-                            std::string haystack = media.value("id", "") + " " +
-                                media.value("filename", "") + " " +
-                                media.value("content_type", "") + " " +
-                                media.value("collection", "");
-                            std::transform(haystack.begin(), haystack.end(), haystack.begin(),
-                                [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-                            if (haystack.find(query) != std::string::npos) matches.push_back(media);
+                        long long offset = 0;
+                        while (true) {
+                            auto response = sendJson(host, port, withContext({
+                                {"action", "community_media_list"}, {"all", true},
+                                {"limit", 100}, {"offset", offset}}, context));
+                            for (const auto& media : response.value(
+                                     "media", nlohmann::json::array())) {
+                                std::string haystack = media.value("id", "") + " " +
+                                    media.value("filename", "") + " " +
+                                    media.value("content_type", "") + " " +
+                                    media.value("collection", "");
+                                std::transform(haystack.begin(), haystack.end(),
+                                    haystack.begin(), [](unsigned char c) {
+                                        return static_cast<char>(std::tolower(c));
+                                    });
+                                if (haystack.find(query) != std::string::npos)
+                                    matches.push_back(media);
+                            }
+                            if (!response.value("has_more", false)) break;
+                            const long long next = response.value("next_offset", -1LL);
+                            if (next <= offset) throw std::runtime_error("invalid media page");
+                            offset = next;
                         }
                         std::cout << nlohmann::json{{"status", "ok"},
                             {"count", matches.size()}, {"media", matches}}.dump(2) << '\n';

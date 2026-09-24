@@ -31,6 +31,9 @@ require(
     "production:",
     "enabled: false",
     "ghcr.io/hitesh-reddy-k/pacificdb-community",
+    "digest: sha256:4694fed9d3285e25b2f532017c0992a5ca5a57def7a44dc53ec0fc27d49615b7",
+    "authRequired: true",
+    "bootstrapSecret: pacificdb-bootstrap",
 )
 require(
     "deploy/helm/pacificdb/values-production.yaml",
@@ -82,9 +85,12 @@ require(
 require(
     "deploy/kubernetes/engine-statefulset.yaml",
     "pacificdb.io/profile: development",
-    "ghcr.io/hitesh-reddy-k/pacificdb-community:beta",
+    "ghcr.io/hitesh-reddy-k/pacificdb-community@sha256:4694fed9d3285e25b2f532017c0992a5ca5a57def7a44dc53ec0fc27d49615b7",
+    'ENGINE_AUTH_REQUIRED, value: "true"',
+    "name: pacificdb-bootstrap",
 )
-forbid("deploy/kubernetes/engine-statefulset.yaml", "pacificdb/community:beta")
+forbid("deploy/kubernetes/engine-statefulset.yaml", "pacificdb/community:beta",
+       "ghcr.io/hitesh-reddy-k/pacificdb-community:beta")
 require(
     "deploy/kubernetes/README.md",
     "development-only",

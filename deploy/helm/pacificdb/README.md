@@ -1,7 +1,9 @@
 # PacificDB Helm deployment
 
-The default values are for isolated development only. They use a convenience
-image tag and do not enable authentication or TLS.
+The default values are for isolated development only. They pin the published
+`1.0.0` image digest and require authentication. Create a `pacificdb-bootstrap`
+Secret with `username` and `password` keys in the release namespace before
+installing. The default profile does not enable TLS.
 
 Production rendering is fail-closed. Supply `values-production.yaml` together
 with a private operator values file containing:

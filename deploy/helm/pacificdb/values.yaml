@@ -7,8 +7,8 @@ replicaCount: 1
 
 image:
   repository: ghcr.io/hitesh-reddy-k/pacificdb-community
-  tag: beta
-  digest: ""
+  tag: ""
+  digest: sha256:4694fed9d3285e25b2f532017c0992a5ca5a57def7a44dc53ec0fc27d49615b7
   pullPolicy: IfNotPresent
 
 storage:
@@ -24,8 +24,8 @@ resources:
   limits: { cpu: "2", memory: 4Gi }
 
 security:
-  authRequired: false
+  authRequired: true
   clientTlsSecret: ""
   raftTlsSecret: ""
-  bootstrapSecret: ""
+  bootstrapSecret: pacificdb-bootstrap
   encryptionEvidenceConfigMap: ""

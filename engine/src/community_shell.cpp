@@ -214,7 +214,9 @@ json parseShellCommand(const std::string& input, const ShellContext& context) {
     }
     if (std::regex_match(text, match, std::regex(R"(^drop database (\S+)$)"))) {
         requireProject(context);
-        auto result = request({{"action", "dropDatabase"}, {"dbName", match[1].str()}});
+        auto result = request({{"action", "dropDatabase"},
+                               {"dbName", match[1].str()},
+                               {"project_id", context.projectId}});
         result["clear_database"] = match[1].str();
         return result;
     }

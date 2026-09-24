@@ -6177,13 +6177,35 @@ std::vector<json> RaftCore::loadRaftLog() {
     return entries;
 }
 
-static std::vector<PersistedRaftEntry> loadBinaryRaftLogEntries(const std::string& baseRoot) {
+static std::vector<PersistedRaftEntry> loadBinaryRaftLogEntries(
+    const std::string& baseRoot, bool durableStateKnown,
+    uint64_t durableCommitIndex, uint64_t snapshotIndex) {
     std::vector<PersistedRaftEntry> entries;
     std::string base = baseRoot;
     if (!base.empty() && base.back() != '/' && base.back() != '\\') base += "/";
     const std::string logPath = base + "raft/log.bin";
     std::ifstream in(logPath, std::ios::binary);
     if (!in.is_open()) return entries;
+
+    auto discardTornTail = [&](std::streamoff start, const std::string& reason) {
+        const uint64_t completeIndex = entries.empty() ? 0 : entries.back().index;
+        if (!durableStateKnown ||
+            std::max(completeIndex, snapshotIndex) < durableCommitIndex ||
+            start < 0) {
+            throw std::runtime_error(reason);
+        }
+        // The durable commit marker (or installed snapshot) covers everything
+        // we keep. A short final write is an uncommitted tail, not a reason to
+        // abandon the acknowledged prefix. Remove it before future appends.
+        in.close();
+        resetRaftLog(logPath);
+        std::filesystem::resize_file(logPath, static_cast<uint64_t>(start));
+        if (!syncRaftLog(logPath)) {
+            throw std::runtime_error("failed to sync truncated raft/log.bin tail");
+        }
+        std::cerr << "[RAFTCORE] Discarded torn uncommitted raft/log.bin tail at "
+                  << start << " after index " << completeIndex << std::endl;
+    };
 
     while (in.peek() != std::char_traits<char>::eof()) {
         const std::streamoff entryStart = in.tellg();
@@ -6193,7 +6215,8 @@ static std::vector<PersistedRaftEntry> loadBinaryRaftLogEntries(const std::strin
         if (!in.read(reinterpret_cast<char*>(&idx), sizeof(idx)) ||
             !in.read(reinterpret_cast<char*>(&term), sizeof(term)) ||
             !in.read(reinterpret_cast<char*>(&sz), sizeof(sz))) {
-            throw std::runtime_error("truncated raft/log.bin record header");
+            discardTornTail(entryStart, "truncated raft/log.bin record header");
+            break;
         }
         if (sz == 0 || sz > kMaxRaftPayloadBytes) {
             throw std::runtime_error("invalid raft/log.bin payload size at index " +
@@ -6201,8 +6224,9 @@ static std::vector<PersistedRaftEntry> loadBinaryRaftLogEntries(const std::strin
         }
         std::string payload(sz, '\0');
         if (!in.read(payload.data(), sz)) {
-            throw std::runtime_error("truncated raft/log.bin payload at index " +
-                                     std::to_string(idx));
+            discardTornTail(entryStart, "truncated raft/log.bin payload at index " +
+                                          std::to_string(idx));
+            break;
         }
         const std::streamoff entryEnd = in.tellg();
         if (entryEnd < 0) throw std::runtime_error("invalid raft/log.bin offset");
@@ -6254,7 +6278,9 @@ void RaftCore::replayRaftLog() {
             throw;
         }
 
-        std::vector<PersistedRaftEntry> entries = loadBinaryRaftLogEntries(dataRoot());
+        std::vector<PersistedRaftEntry> entries = loadBinaryRaftLogEntries(
+            dataRoot(), consensusStateLoaded_,
+            commitIndex_.load(std::memory_order_acquire), snapshotIndex);
         bool usedBinaryLog = !entries.empty();
         if (!usedBinaryLog) {
             auto legacyEntries = loadRaftLog();

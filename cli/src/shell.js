@@ -221,7 +221,8 @@ export function parseShellCommand(line, context = {}) {
   }
   if ((match = text.match(/^drop database (\S+)$/))) {
     requireProject(context);
-    return { kind: 'request', command: { action: 'dropDatabase', dbName: match[1] }, clearDatabase: match[1] };
+    return { kind: 'request', command: { action: 'dropDatabase', dbName: match[1],
+      project_id: context.projectId }, clearDatabase: match[1] };
   }
   if ((match = text.match(/^create collection (\S+)$/))) {
     requireDatabase(context);
@@ -416,7 +417,8 @@ export async function runShell(client, streams, options = {}) {
         const project = await client.request({ action: 'community_project_get',
           id: context.projectId });
         if (project?.project?.id !== context.projectId) throw new Error('project_not_found');
-        const response = await client.request({ action: 'createDatabase', dbName: parsed.name });
+        const response = await client.request({ action: 'createDatabase', dbName: parsed.name,
+          project_id: context.projectId });
         await client.request({ action: 'community_database_map',
           database: parsed.name, project_id: context.projectId });
         printResponse(streams.output, response, 'createDatabase');
@@ -445,11 +447,20 @@ export async function runShell(client, streams, options = {}) {
         printResponse(streams.output,
           await client.downloadMediaFile(parsed.id, parsed.filename));
       } else if (parsed.kind === 'mediaFind') {
-        const response = await client.request({ action: 'community_media_list', all: true });
         const needle = parsed.query.toLowerCase();
-        const media = (response.media || []).filter((item) =>
-          [item.id, item.filename, item.content_type, item.collection]
-            .some((value) => String(value || '').toLowerCase().includes(needle)));
+        const media = [];
+        let offset = 0;
+        do {
+          const response = await client.request({ action: 'community_media_list',
+            all: true, limit: 100, offset });
+          media.push(...(response.media || []).filter((item) =>
+            [item.id, item.filename, item.content_type, item.collection]
+              .some((value) => String(value || '').toLowerCase().includes(needle))));
+          if (!response.has_more) break;
+          if (!Number.isSafeInteger(response.next_offset) ||
+              response.next_offset <= offset) throw new Error('invalid media page');
+          offset = response.next_offset;
+        } while (true);
         printResponse(streams.output, { status: 'ok', count: media.length, media });
       } else if (parsed.kind === 'vectorPut') {
         printResponse(streams.output, await client.putVector(parsed.collection,

@@ -20,7 +20,8 @@ public:
 
     void initialize(const std::string& userId);
     json createProject(const std::string& userId, const std::string& name);
-    json listProjects(const std::string& userId);
+    json listProjects(const std::string& userId, long long limit = 100,
+                      long long offset = 0);
     json getProject(const std::string& userId, const std::string& id);
     bool deleteProject(const std::string& userId, const std::string& id);
     bool mapDatabase(const std::string& userId, const std::string& projectId,
@@ -29,6 +30,9 @@ public:
                               const std::string& projectId);
     json databaseProject(const std::string& userId,
                          const std::string& databaseName);
+    bool unmapDatabase(const std::string& userId,
+                       const std::string& databaseName,
+                       const std::string& projectId);
     json beginMedia(const std::string& userId, const std::string& databaseName,
                     const std::string& collection, const std::string& filename,
                     const std::string& contentType, long long sizeBytes,
@@ -40,7 +44,8 @@ public:
     json finalizeMedia(const std::string& userId, const std::string& mediaId);
     json listMedia(const std::string& userId, bool includeIncomplete,
                    const std::string& databaseName = {},
-                   const std::string& collection = {});
+                   const std::string& collection = {},
+                   long long limit = 100, long long offset = 0);
     json getMedia(const std::string& userId, const std::string& mediaId);
     json getMediaChunk(const std::string& userId, const std::string& mediaId,
                        long long index);
@@ -57,6 +62,7 @@ public:
 
 private:
     std::mutex initializeMutex_;
+    std::mutex mappingMutex_;
     std::set<std::pair<std::string, std::string>> initializedRoots_;
     std::array<std::mutex, 64> mediaMutexes_;
 

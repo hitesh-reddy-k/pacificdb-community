@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import javax.net.SocketFactory;
+import javax.net.ssl.SSLParameters;
+import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -23,16 +25,25 @@ public final class PacificDBClient {
     private final String database;
     private final boolean tls;
     private final int timeoutMs;
+    private final SocketFactory socketFactory;
     private String token = "";
 
     public PacificDBClient(String host, int port, String userId,
                            String database, boolean tls, int timeoutMs) {
+        this(host, port, userId, database, tls, timeoutMs,
+            tls ? SSLSocketFactory.getDefault() : SocketFactory.getDefault());
+    }
+
+    PacificDBClient(String host, int port, String userId,
+                    String database, boolean tls, int timeoutMs,
+                    SocketFactory socketFactory) {
         this.host = host;
         this.port = port;
         this.userId = userId;
         this.database = database;
         this.tls = tls;
         this.timeoutMs = timeoutMs;
+        this.socketFactory = socketFactory;
     }
 
     public PacificDBClient(String host, int port, String database) {
@@ -40,10 +51,16 @@ public final class PacificDBClient {
     }
 
     public Map<String, Object> request(Map<String, Object> command) throws Exception {
-        SocketFactory factory = tls ? SSLSocketFactory.getDefault() : SocketFactory.getDefault();
-        try (Socket socket = factory.createSocket()) {
+        try (Socket socket = socketFactory.createSocket()) {
             socket.connect(new InetSocketAddress(host, port), timeoutMs);
             socket.setSoTimeout(timeoutMs);
+            if (tls) {
+                SSLSocket sslSocket = (SSLSocket) socket;
+                SSLParameters parameters = sslSocket.getSSLParameters();
+                parameters.setEndpointIdentificationAlgorithm("HTTPS");
+                sslSocket.setSSLParameters(parameters);
+                sslSocket.startHandshake();
+            }
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("userId", userId);
             payload.put("dbName", database);

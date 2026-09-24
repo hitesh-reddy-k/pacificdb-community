@@ -31,6 +31,9 @@ int main() {
         pacificdb::cli::parseShellCommand("list databases", context).at("command");
     assert(projectDatabases.at("action") == "community_database_list");
     assert(projectDatabases.at("project_id") == "project_1");
+    const auto dropDatabase =
+        pacificdb::cli::parseShellCommand("drop database app", context).at("command");
+    assert(dropDatabase.at("project_id") == "project_1");
     context.projectId.clear();
     for (const auto* command : {"create database app", "list databases", "use app",
                                 "create collection users"}) {
