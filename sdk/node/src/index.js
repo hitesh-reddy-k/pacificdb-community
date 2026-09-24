@@ -2,8 +2,10 @@ import net from 'node:net';
 import tls from 'node:tls';
 import { createHash } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
-import { rename, stat, unlink } from 'node:fs/promises';
+import { mkdtemp, rename, rmdir, stat, unlink } from 'node:fs/promises';
 import { once } from 'node:events';
+import { finished } from 'node:stream/promises';
+import { StringDecoder } from 'node:string_decoder';
 import path from 'node:path';
 
 const MAX_SOURCE_CHUNK_BYTES = 4 * 1024 * 1024;
@@ -26,6 +28,7 @@ class PooledConnection {
     this.connected = false;
     this.current = null;
     this.response = '';
+    this.decoder = new StringDecoder('utf8');
     this.responsesOnSocket = 0;
   }
 
@@ -38,6 +41,7 @@ class PooledConnection {
     const socket = this.pool.useTls ? tls.connect(options) : net.createConnection(options);
     this.socket = socket;
     this.response = '';
+    this.decoder = new StringDecoder('utf8');
     this.responsesOnSocket = 0;
     const connectedEvent = this.pool.useTls ? 'secureConnect' : 'connect';
     this.connecting = new Promise((resolve, reject) => {
@@ -78,13 +82,14 @@ class PooledConnection {
       this.connected = false;
       this.socket = null;
       this.response = '';
+      this.decoder = new StringDecoder('utf8');
     });
     return this.connecting;
   }
 
   onData(socket, chunk) {
     if (socket !== this.socket || !this.current) return;
-    this.response += chunk;
+    this.response += this.decoder.write(chunk);
     const newline = this.response.indexOf('\n');
     if (newline < 0) return;
     const wire = this.response.slice(0, newline);
@@ -98,8 +103,18 @@ class PooledConnection {
       return;
     }
     this.responsesOnSocket += 1;
-    const serverWillClose = value?._pacificdb_connection_close === true;
-    if (serverWillClose) delete value._pacificdb_connection_close;
+    // Older engines return a response before sending FIN. Treat a socket as
+    // reusable only when the server explicitly advertises keep-alive; a short
+    // timer cannot reliably distinguish a delayed FIN from a live connection.
+    const responseObject = value !== null && typeof value === 'object' &&
+      !Array.isArray(value);
+    const serverWillClose = !responseObject ||
+      value._pacificdb_connection_close === true ||
+      value._pacificdb_connection_keepalive !== true;
+    if (responseObject) {
+      delete value._pacificdb_connection_close;
+      delete value._pacificdb_connection_keepalive;
+    }
     if (value?.error) this.finish(responseError(value), serverWillClose);
     else this.finish(null, serverWillClose, value);
   }
@@ -144,6 +159,7 @@ class PooledConnection {
     this.connected = false;
     this.socket = null;
     this.response = '';
+    this.decoder = new StringDecoder('utf8');
   }
 }
 
@@ -318,7 +334,8 @@ export class PacificDBClient {
       throw new Error('database name must be 1-128 bytes when mapped to a project');
     const project = await this.request({ action: 'community_project_get', id: this.projectId });
     if (!project.project?.id) throw new Error('project_not_found');
-    const response = await this.request({ action: 'createDatabase', dbName: name, dbType });
+    const response = await this.request({ action: 'createDatabase', dbName: name,
+      dbType, project_id: this.projectId });
     await this.request({ action: 'community_database_map', database: name,
       project_id: this.projectId });
     this.database = name;
@@ -474,7 +491,13 @@ export class PacificDBClient {
     if (!manifest || manifest.status !== 'ready') {
       throw new Error(`ready media not found: ${mediaId}`);
     }
-    const output = createWriteStream(destination, { mode: 0o600 });
+    // Keep an existing destination intact until every chunk and the manifest
+    // have been verified. The temporary file shares its filesystem so the
+    // final rename replaces the destination atomically.
+    const temporaryDirectory = await mkdtemp(path.join(
+      path.dirname(path.resolve(destination)), '.pacificdb-download-'));
+    const partial = path.join(temporaryDirectory, 'media');
+    const output = createWriteStream(partial, { flags: 'wx', mode: 0o600 });
     let outputError;
     output.on('error', (error) => { outputError = error; });
     const wholeHash = createHash('sha256');
@@ -505,11 +528,15 @@ export class PacificDBClient {
       if (sizeBytes !== manifest.size_bytes || sha256 !== manifest.sha256) {
         throw new Error('downloaded media does not match its manifest');
       }
+      await rename(partial, destination);
       return { id: mediaId, destination, sizeBytes, sha256 };
     } catch (error) {
       output.destroy();
-      await unlink(destination).catch(() => {});
+      await finished(output).catch(() => {});
       throw error;
+    } finally {
+      await unlink(partial).catch(() => {});
+      await rmdir(temporaryDirectory).catch(() => {});
     }
   }
   async exportBackup(backupId, destination, { chunkBytes = 1024 * 1024 } = {}) {

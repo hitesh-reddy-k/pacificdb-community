@@ -1,6 +1,7 @@
 #include "community_catalog.hpp"
 #include "database_engine.hpp"
 #include "owned_test_root.hpp"
+#include "query_limiter.hpp"
 
 #include <openssl/evp.h>
 
@@ -11,6 +12,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <stdexcept>
 #include <vector>
 
 namespace {
@@ -30,6 +32,16 @@ std::string sha256(const std::string& value) {
     return output.str();
 }
 
+std::string base64(const std::string& value) {
+    std::string encoded(((value.size() + 2) / 3) * 4, '\0');
+    const int size = EVP_EncodeBlock(
+        reinterpret_cast<unsigned char*>(encoded.data()),
+        reinterpret_cast<const unsigned char*>(value.data()),
+        static_cast<int>(value.size()));
+    encoded.resize(static_cast<std::size_t>(size));
+    return encoded;
+}
+
 long long nowMs() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();
@@ -40,17 +52,47 @@ long long nowMs() {
 int main() {
     const OwnedTestRoot root("community-catalog");
     DatabaseEngine::init(root.dataRoot().string(), false);
+#ifdef _WIN32
+    _putenv_s("MAX_RESULT_SIZE_MB", "1");
+#else
+    setenv("MAX_RESULT_SIZE_MB", "1", 1);
+#endif
+    QueryLimiter::init();
 
     auto& catalog = pacificdb::community::CommunityCatalog::instance();
     catalog.initialize("system");
     const auto project = catalog.createProject("system", "demo");
 
     assert(project.at("name") == "demo");
+    DatabaseEngine::createDatabase("system", "app");
+    assert(catalog.mapDatabase("system", project.at("id"), "app"));
     assert(catalog.mapDatabase("system", project.at("id"), "app"));
     assert(catalog.databaseProject("system", "app").at("project_id") ==
            project.at("id"));
-    DatabaseEngine::createDatabase("system", "app");
     const auto otherProject = catalog.createProject("system", "other");
+    bool crossProjectRejected = false;
+    try {
+        catalog.mapDatabase("system", otherProject.at("id"), "app");
+    } catch (const std::invalid_argument&) {
+        crossProjectRejected = true;
+    }
+    assert(crossProjectRejected);
+    assert(catalog.databaseProject("system", "app").at("project_id") ==
+           project.at("id"));
+    bool projectDeleteRejected = false;
+    try {
+        catalog.deleteProject("system", project.at("id"));
+    } catch (const std::invalid_argument&) {
+        projectDeleteRejected = true;
+    }
+    assert(projectDeleteRejected);
+    bool missingDatabaseRejected = false;
+    try {
+        catalog.mapDatabase("system", project.at("id"), "missing-db");
+    } catch (const std::invalid_argument&) {
+        missingDatabaseRejected = true;
+    }
+    assert(missingDatabaseRejected);
     DatabaseEngine::createDatabase("system", "other-db");
     assert(catalog.mapDatabase("system", otherProject.at("id"), "other-db"));
     assert(catalog.listProjectDatabases("system", project.at("id")) ==
@@ -172,6 +214,51 @@ int main() {
     assert(catalog.cleanupMedia("system") == 1);
     assert(catalog.getMedia("system", fresh.at("id")).at("status") == "uploading");
     assert(catalog.getMedia("system", expired.at("id")).at("status") == "aborted");
+
+    // The combined base64 chunks exceed the configured 1 MiB query result
+    // ceiling. Upload, resume, listing and finalization must use bounded
+    // per-chunk reads rather than one unbounded media_id query.
+    const std::string largeChunk(600 * 1024, 'A');
+    const auto largeUpload = catalog.beginMedia(
+        "system", "app", "photos", "large.bin", "application/octet-stream",
+        static_cast<long long>(largeChunk.size() * 2), 2,
+        sha256(largeChunk + largeChunk));
+    const auto encodedChunk = base64(largeChunk);
+    assert(catalog.putMediaChunk("system", largeUpload.at("id"), 1,
+                                encodedChunk,
+                                static_cast<long long>(largeChunk.size()),
+                                sha256(largeChunk)).at("next_chunk") == 0);
+    assert(catalog.putMediaChunk("system", largeUpload.at("id"), 0,
+                                encodedChunk,
+                                static_cast<long long>(largeChunk.size()),
+                                sha256(largeChunk)).at("next_chunk") == 2);
+    assert(catalog.getMedia("system", largeUpload.at("id"))
+               .at("received_chunks") == 2);
+    assert(catalog.finalizeMedia("system", largeUpload.at("id"))
+               .at("status") == "ready");
+    assert(catalog.getMediaChunk("system", largeUpload.at("id"), 1)
+               .at("data") == encodedChunk);
+
+    // Catalog maintenance must continue past the normal per-query document
+    // limit and must not materialize all media payloads in one result.
+    DatabaseEngine::createDatabase("system", "page-a");
+    DatabaseEngine::createDatabase("system", "page-b");
+    assert(catalog.mapDatabase("system", project.at("id"), "page-a"));
+    assert(catalog.mapDatabase("system", project.at("id"), "page-b"));
+    for (int index = 0; index < 5; ++index) {
+        DatabaseEngine::insert("system", "pacificdb_meta", "media_chunks", {
+            {"id", "orphan-page-" + std::to_string(index) + ":0"},
+            {"media_id", "orphan-page-" + std::to_string(index)},
+            {"index", 0}, {"size_bytes", 3},
+            {"sha256", sha256("AAA")}, {"data", "QUFB"},
+        });
+    }
+    const auto priorMaxDocs = QueryLimiter::getMaxResultDocs();
+    QueryLimiter::setMaxResultDocs(2);
+    assert(catalog.listProjectDatabases("system", project.at("id")) ==
+           nlohmann::json::array({"app", "page-a", "page-b"}));
+    assert(catalog.reconcileMedia("system").at("removed_orphans") == 5);
+    QueryLimiter::setMaxResultDocs(priorMaxDocs);
 
     std::cout << "COMMUNITY_CATALOG_PASS\n";
     return 0;

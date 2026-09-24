@@ -200,6 +200,10 @@ public:
     };
     static SecurityConfig getSecurityConfig();
 
+    // Shared redaction policy for logs and protocol responses.
+    static std::string maskSensitive(const std::string& key, const std::string& value);
+    static bool isSensitive(const std::string& key);
+
 private:
     static std::unordered_map<std::string, std::string> values_;
     static std::mutex mutex_;
@@ -208,6 +212,4 @@ private:
     static void parseEnvFile(const std::string& filepath);
     static void loadProcessEnvironment();
     static std::string trim(const std::string& s);
-    static std::string maskSensitive(const std::string& key, const std::string& value);
-    static bool isSensitive(const std::string& key);
 };

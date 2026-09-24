@@ -130,6 +130,7 @@ private:
 volatile std::sig_atomic_t g_serverShutdownRequested = 0;
 volatile std::sig_atomic_t g_serverLifecycleStarted = 0;
 volatile std::sig_atomic_t g_serverReady = 0;
+volatile std::sig_atomic_t g_serverStartupFailed = 0;
 volatile std::sig_atomic_t g_serverListener = INVALID_SOCKET;
 std::mutex g_clientSocketMutex;
 std::set<SOCKET> g_clientSockets;
@@ -291,7 +292,7 @@ void validateCollectionStorageBeforeReplication(const std::string& userId,
                                                  const std::string& dbName,
                                                  const std::string& collection) {
     validateDatabaseStorageBeforeReplication(userId, dbName);
-    validateStorageIdentifier(collection, "collectionName");
+    validateCollectionStorageIdentifier(collection);
 
     const std::filesystem::path root(DatabaseEngine::getDataRoot());
     const std::filesystem::path database = root / userId / dbName;
@@ -399,6 +400,10 @@ bool serverShutdownRequested() noexcept {
 
 bool serverLifecycleStarted() noexcept {
     return g_serverLifecycleStarted != 0;
+}
+
+bool serverStartupFailed() noexcept {
+    return g_serverStartupFailed != 0;
 }
 
 // --- Global connection and request-rate counters ---
@@ -871,6 +876,10 @@ static std::string deterministicLogPath() {
 
 static json sanitizeDeterministicPayload(const json& payload) {
     if (!payload.is_object()) return payload;
+    const bool sensitiveConfigWrite =
+        payload.value("action", "") == "config_set" &&
+        payload.contains("key") && payload["key"].is_string() &&
+        EnvConfig::isSensitive(payload["key"].get<std::string>());
     json out = payload;
     const size_t maxArray = 4096;
     if (out.contains("binaryData") && out["binaryData"].is_array()) {
@@ -883,6 +892,9 @@ static json sanitizeDeterministicPayload(const json& payload) {
              "password", "token", "key", "local_discovery_nonce",
              "discovery_nonce"}) {
         if (out.contains(secret)) out[secret] = "[redacted]";
+    }
+    if (sensitiveConfigWrite && out.contains("value")) {
+        out["value"] = "[redacted]";
     }
     if (out.value("action", "") == "community_media_put_chunk" &&
         out.contains("data") && out["data"].is_string()) {
@@ -1005,7 +1017,6 @@ static bool mayAccessReservedNamespace(const json& req) {
 
 static bool isAuthExemptAction(const std::string& action) {
     return action == "ping" ||
-           action == "observeLeaderTerm" || action == "observe_leader_term" ||
            action == "security_authenticate" ||
            action == "security_validate_token" ||
            action == "security_refresh_token" ||
@@ -1013,7 +1024,7 @@ static bool isAuthExemptAction(const std::string& action) {
            action == "tenantValidateSession";
 }
 
-static std::optional<pacificdb::security::Permission> permissionForAction(const std::string& action) {
+static pacificdb::security::Permission permissionForAction(const std::string& action) {
     using pacificdb::security::Permission;
 
     if (action == "find" || action == "count" || action == "aggregate" ||
@@ -1033,10 +1044,16 @@ static std::optional<pacificdb::security::Permission> permissionForAction(const 
         action == "community_media_list" || action == "community_media_get" ||
         action == "community_media_get_chunk" || action == "community_capabilities" ||
         action == "security_whoami" || action == "api_key_list" ||
-        action == "api_key_get") {
+        action == "api_key_get" || action == "queryVector" ||
+        action == "opStatus" || action == "health_check" ||
+        action == "get_cluster_status" || action == "cluster_route" ||
+        action == "route_key" || action == "get_shard_details" ||
+        action == "list_shards" || action == "tenantListDatabases" ||
+        action == "tenantCheckAccess" || action == "tenantGetStats") {
         return Permission::READ;
     }
     if (action == "insert" || action == "insertMany" ||
+        action == "insertVector" || action == "update" ||
         action == "updateOne" || action == "updateMany" ||
         action == "bulk" || action == "bulkWrite" ||
         action == "community_project_create" || action == "community_database_map" ||
@@ -1083,8 +1100,21 @@ static std::optional<pacificdb::security::Permission> permissionForAction(const 
     if (action == "api_key_create" || action == "api_key_revoke") {
         return Permission::ADMIN;
     }
+    if (action == "get_metrics" || action == "security_metrics" ||
+        action == "lsm_metrics" || action == "lsmProfile" ||
+        action == "lsm_profile" || action == "memtable_status" ||
+        action == "sst_status" || action == "wal_status" ||
+        action == "storage_stats") {
+        return Permission::VIEW_METRICS;
+    }
+    if (action == "verify_integrity") {
+        return Permission::READ;
+    }
 
-    return std::nullopt;
+    // Fail closed for every dispatch action not explicitly assigned above.
+    // This includes configuration, cluster topology, Raft term changes,
+    // tenant administration, storage maintenance, and future actions.
+    return Permission::ADMIN;
 }
 
 static std::string extractTraceId(const json& req, unsigned long long reqId) {
@@ -2545,16 +2575,14 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                 };
                 authRejected = true;
             } else {
-                auto perm = permissionForAction(action);
-                if (perm.has_value()) {
-                    std::string dbForAuth = req.value("dbName", req.value("db", std::string("")));
-                    if (!pacificdb::security::SecurityManager::instance().hasPermission(token, *perm, dbForAuth)) {
-                        res = {
-                            {"error", "permission_denied"},
-                            {"action", action}
-                        };
-                        authRejected = true;
-                    }
+                const auto perm = permissionForAction(action);
+                std::string dbForAuth = req.value("dbName", req.value("db", std::string("")));
+                if (!pacificdb::security::SecurityManager::instance().hasPermission(token, perm, dbForAuth)) {
+                    res = {
+                        {"error", "permission_denied"},
+                        {"action", action}
+                    };
+                    authRejected = true;
                 }
             }
         }
@@ -2613,9 +2641,19 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
             res = {{"status", "ok"}, {"project", project}};
         }
         else if (action == "community_project_list") {
-            res = {{"status", "ok"},
-                   {"projects", pacificdb::community::CommunityCatalog::instance()
-                                    .listProjects(req.value("userId", "system"))}};
+            const auto limit = req.value("limit", 100LL);
+            const auto offset = req.value("offset", 0LL);
+            if (limit <= 0 || limit > 1000 || offset < 0) {
+                throw std::invalid_argument("invalid project page");
+            }
+            auto projects = pacificdb::community::CommunityCatalog::instance()
+                                .listProjects(req.value("userId", "system"),
+                                              limit + 1, offset);
+            const bool hasMore = projects.size() > static_cast<std::size_t>(limit);
+            if (hasMore) projects.erase(--projects.end());
+            res = {{"status", "ok"}, {"projects", std::move(projects)},
+                   {"has_more", hasMore},
+                   {"next_offset", hasMore ? json(offset + limit) : json()}};
         }
         else if (action == "community_project_get") {
             const auto project = pacificdb::community::CommunityCatalog::instance()
@@ -2674,10 +2712,20 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                                                 req.value("media_id", ""))}};
         }
         else if (action == "community_media_list") {
-            res = {{"status", "ok"},
-                   {"media", pacificdb::community::CommunityCatalog::instance().listMedia(
-                                 req.value("userId", "system"), req.value("all", false),
-                                 req.value("dbName", ""), req.value("collection", ""))}};
+            const auto limit = req.value("limit", 100LL);
+            const auto offset = req.value("offset", 0LL);
+            if (limit <= 0 || limit > 1000 || offset < 0) {
+                throw std::invalid_argument("invalid media page");
+            }
+            auto media = pacificdb::community::CommunityCatalog::instance().listMedia(
+                req.value("userId", "system"), req.value("all", false),
+                req.value("dbName", ""), req.value("collection", ""),
+                limit + 1, offset);
+            const bool hasMore = media.size() > static_cast<std::size_t>(limit);
+            if (hasMore) media.erase(--media.end());
+            res = {{"status", "ok"}, {"media", std::move(media)},
+                   {"has_more", hasMore},
+                   {"next_offset", hasMore ? json(offset + limit) : json()}};
         }
         else if (action == "community_media_get") {
             const auto media = pacificdb::community::CommunityCatalog::instance().getMedia(
@@ -2978,6 +3026,20 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                 validateStorageIdentifier(dbName, "databaseName");
                 validateDatabaseStorageBeforeReplication(userId, dbName);
 
+                const std::string projectId = req.value("project_id", "");
+                if (!projectId.empty()) {
+                    auto& catalog = pacificdb::community::CommunityCatalog::instance();
+                    if (catalog.getProject(userId, projectId).is_null()) {
+                        throw std::invalid_argument("project not found");
+                    }
+                    const auto mapping = catalog.databaseProject(userId, dbName);
+                    if (!mapping.is_null() &&
+                        mapping.value("project_id", "") != projectId) {
+                        throw std::invalid_argument(
+                            "database already belongs to another project");
+                    }
+                }
+
                 if (!dbName.empty()) {
                     std::string writeConsistency = normalizeReadConsistencyMode(req.value("consistency", std::string("eventual")));
                     if (rejectStaleLeaderTerm(req, writeConsistency, res)) {
@@ -3168,6 +3230,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                 const std::string dbName = req.value("dbName", "");
                 const std::string collection = req.value("collection", "");
                 const bool dropDb = action == "dropDatabase";
+                const std::string projectId = req.value("project_id", "");
                 validateStorageIdentifier(userId, "userId");
                 validateStorageIdentifier(dbName, "databaseName");
                 if (!dropDb) {
@@ -3175,9 +3238,24 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                 }
                 if (dropDb) {
                     validateDatabaseStorageBeforeReplication(userId, dbName);
+                    if (pacificdb::community::isReservedDatabase(dbName)) {
+                        throw std::invalid_argument("reserved database cannot be dropped");
+                    }
                 } else {
                     validateCollectionStorageBeforeReplication(
                         userId, dbName, collection);
+                }
+                const auto mapping = pacificdb::community::CommunityCatalog::instance()
+                                         .databaseProject(userId, dbName);
+                if (dropDb || !projectId.empty()) {
+                    if (!mapping.is_null() &&
+                        !projectId.empty() &&
+                        mapping.value("project_id", "") != projectId) {
+                        throw std::invalid_argument("database belongs to another project");
+                    }
+                    if (mapping.is_null() && !projectId.empty()) {
+                        throw std::invalid_argument("database is not in the selected project");
+                    }
                 }
                 const bool targetExists = dropDb
                     ? DatabaseEngine::databaseExists(userId, dbName)
@@ -3235,6 +3313,11 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                                 {"retry_after_ms", 100}
                             };
                         } else {
+                            if (dropDb && !mapping.is_null()) {
+                                pacificdb::community::CommunityCatalog::instance()
+                                    .unmapDatabase(userId, dbName,
+                                        mapping.value("project_id", ""));
+                            }
                             res = {
                                 {"status", "ok"},
                                 {"success", true},
@@ -4961,21 +5044,14 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                 // Return all config (sensitive values masked)
                 json allConfig;
                 for (const auto& [k, v] : EnvConfig::getAll()) {
-                    // Mask sensitive values
-                    bool sensitive = (k.find("SECRET") != std::string::npos ||
-                                       k.find("PASSWORD") != std::string::npos ||
-                                       k.find("KEY") != std::string::npos ||
-                                       k.find("TOKEN") != std::string::npos);
-                    if (sensitive && !v.empty()) {
-                        allConfig[k] = v.size() > 4 ? v.substr(0, 2) + std::string(v.size() - 4, '*') + v.substr(v.size() - 2) : "****";
-                    } else {
-                        allConfig[k] = v;
-                    }
+                    allConfig[k] = EnvConfig::maskSensitive(k, v);
                 }
                 res = { {"success", true}, {"config", allConfig} };
             } else {
                 std::string value = EnvConfig::getString(key, "");
-                res = { {"success", true}, {"key", key}, {"value", value}, {"exists", EnvConfig::has(key)} };
+                res = { {"success", true}, {"key", key},
+                        {"value", EnvConfig::maskSensitive(key, value)},
+                        {"exists", EnvConfig::has(key)} };
             }
         }
 
@@ -4991,7 +5067,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                 res = {
                     {"success", true},
                     {"key", key},
-                    {"value", value},
+                    {"value", EnvConfig::maskSensitive(key, value)},
                     {"note", "Some changes require restart to take effect"}
                 };
             }
@@ -6496,10 +6572,15 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
         appendDeterministicLog(logEntry);
     }
 
-    if (res.is_object() && (_kaI + 1) >= _kaMX) {
-        // Tell persistent clients not to race the FIN by assigning another
-        // request to a socket whose configured request budget is exhausted.
-        res["_pacificdb_connection_close"] = true;
+    if (res.is_object()) {
+        // Tell clients exactly when the connection may be reused. Legacy
+        // one-request servers do not send this marker, so clients retire their
+        // sockets safely even when FIN arrives after the JSON response.
+        if ((_kaI + 1) >= _kaMX || g_serverShutdownRequested) {
+            res["_pacificdb_connection_close"] = true;
+        } else {
+            res["_pacificdb_connection_keepalive"] = true;
+        }
     }
 
     responseSerializedUs = steadyNowUs();
@@ -6653,6 +6734,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
 void startServer() {
     g_serverLifecycleStarted = 1;
     g_serverReady = 0;
+    g_serverStartupFailed = 0;
 #ifdef _WIN32
     WSADATA wsa;
     WSAStartup(MAKEWORD(2, 2), &wsa);
@@ -6663,12 +6745,14 @@ void startServer() {
     } catch (const std::exception& error) {
         std::cerr << "[SERVER] FATAL: TLS configuration refused: "
                   << error.what() << std::endl;
+        g_serverStartupFailed = 1;
         return;
     }
 
     SOCKET server = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (server < 0) {
         std::cerr << "[SERVER] FATAL: Failed to create client listener socket" << std::endl;
+        g_serverStartupFailed = 1;
         return;
     }
     g_serverListener = server;
@@ -6693,13 +6777,20 @@ void startServer() {
     addr.sin_port = htons(enginePort);
     std::string engineBindHost = "0.0.0.0";
     if (const char* bindEnv = std::getenv("ENGINE_BIND_HOST")) {
-        if (*bindEnv) engineBindHost = bindEnv;
+        engineBindHost = bindEnv;
     }
     if (engineBindHost == "0.0.0.0" || engineBindHost == "*") {
         addr.sin_addr.s_addr = INADDR_ANY;
     } else if (inet_pton(AF_INET, engineBindHost.c_str(), &addr.sin_addr) != 1) {
         std::cerr << "[SERVER] FATAL: Invalid ENGINE_BIND_HOST=" << engineBindHost << std::endl;
-        addr.sin_addr.s_addr = INADDR_ANY;
+#ifdef _WIN32
+        closesocket(server);
+#else
+        close(server);
+#endif
+        g_serverListener = INVALID_SOCKET;
+        g_serverStartupFailed = 1;
+        return;
     }
 
     if (bind(server, (sockaddr*)&addr, sizeof(addr)) < 0) {
@@ -6711,6 +6802,7 @@ void startServer() {
         close(server);
 #endif
         g_serverListener = INVALID_SOCKET;
+        g_serverStartupFailed = 1;
         // The control plane routes to the assigned port. Falling back to another
         // port leaves a Raft member alive but makes its data plane unreachable.
         return;
@@ -6723,6 +6815,7 @@ void startServer() {
         close(server);
 #endif
         g_serverListener = INVALID_SOCKET;
+        g_serverStartupFailed = 1;
         return;
     }
     pacificdb::test::hitFailpoint("FP_SHUTDOWN_AFTER_BIND_BEFORE_READY", 1);

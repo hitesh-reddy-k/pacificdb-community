@@ -43,7 +43,14 @@ using json = nlohmann::json;
 using pacificdb::durability::ChecksumCalculator;
 
 static std::mutex g_findLogMutex;
-static std::atomic<uint64_t> g_mvccVersionCounter{1};
+// Version ordering must survive an engine restart: SST reconciliation chooses
+// the document with the greatest _mvcc_version. A process-local counter that
+// starts at one can make a newly acknowledged update lose to an older SST.
+static std::atomic<uint64_t> g_mvccVersionCounter{[] {
+    const auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    return static_cast<uint64_t>(std::max<int64_t>(1, nanos));
+}()};
 
 namespace {
 struct StoragePipelineScope {
@@ -814,7 +821,7 @@ static void requireStorageNamespace(const std::string& userId,
                                     const std::string& dbName,
                                     const std::string& collection) {
     requireStorageNamespace(userId, dbName);
-    validateStorageIdentifier(collection, "collectionName");
+    validateCollectionStorageIdentifier(collection);
 
     const fs::path root(DATA_ROOT);
     const fs::path database = root / userId / dbName;
@@ -880,8 +887,30 @@ static void enforceTenantOnWrite(const std::string& userId, json& doc) {
     doc["tenant_id"] = userId;
 }
 
-static uint64_t nextMvccVersion() {
-    return g_mvccVersionCounter.fetch_add(1, std::memory_order_relaxed);
+static uint64_t nextMvccVersion(uint64_t previous = 0) {
+    if (previous == std::numeric_limits<uint64_t>::max()) {
+        throw std::runtime_error("mvcc_version_exhausted");
+    }
+    uint64_t current = g_mvccVersionCounter.load(std::memory_order_relaxed);
+    for (;;) {
+        const uint64_t next = std::max(current, previous + 1);
+        if (next == std::numeric_limits<uint64_t>::max()) {
+            throw std::runtime_error("mvcc_version_exhausted");
+        }
+        if (g_mvccVersionCounter.compare_exchange_weak(current, next + 1,
+                std::memory_order_relaxed)) return next;
+    }
+}
+
+static uint64_t previousMvccVersion(const json& doc) {
+    if (!doc.is_object() || !doc.contains("_mvcc_version")) return 0;
+    const auto& value = doc["_mvcc_version"];
+    if (value.is_number_unsigned()) return value.get<uint64_t>();
+    if (value.is_number_integer()) {
+        const auto signedValue = value.get<int64_t>();
+        if (signedValue > 0) return static_cast<uint64_t>(signedValue);
+    }
+    return 0;
 }
 
 static long long nowMs() {
@@ -890,7 +919,7 @@ static long long nowMs() {
 }
 
 static void stampMvccWrite(json& doc, bool preserveCreate = false) {
-    const uint64_t mvccVersion = nextMvccVersion();
+    const uint64_t mvccVersion = nextMvccVersion(previousMvccVersion(doc));
     const long long tsMs = nowMs();
     if (!preserveCreate || !doc.contains("created_txn")) doc["created_txn"] = mvccVersion;
     if (!preserveCreate || !doc.contains("created_at_ms")) doc["created_at_ms"] = tsMs;
@@ -904,7 +933,7 @@ static void stampMvccWrite(json& doc, bool preserveCreate = false) {
 }
 
 static void stampMvccDelete(json& doc) {
-    const uint64_t version = nextMvccVersion();
+    const uint64_t version = nextMvccVersion(previousMvccVersion(doc));
     const long long tsMs = nowMs();
     if (!doc.contains("created_txn")) doc["created_txn"] = version;
     if (!doc.contains("created_at_ms")) doc["created_at_ms"] = tsMs;
@@ -3179,6 +3208,7 @@ bool DatabaseEngine::deleteOne(const std::string& userId,
     // LSM-backed collection: locate matching document, then write a tombstone
     bool found = false;
     std::string targetId;
+    uint64_t targetVersion = 0;
 
     // OPTIMIZATION: If filter contains "id", resolve via indexed lookup while enforcing tenant visibility.
     if (filter.contains("id") && filter["id"].is_string()) {
@@ -3189,6 +3219,7 @@ bool DatabaseEngine::deleteOne(const std::string& userId,
             if (!isTenantDocumentVisible(userId, d)) continue;
             if (match(d, filter) && d.contains("id") && d["id"].is_string()) {
                 targetId = d["id"].get<std::string>();
+                targetVersion = previousMvccVersion(d);
                 found = true;
                 break;
             }
@@ -3205,6 +3236,7 @@ bool DatabaseEngine::deleteOne(const std::string& userId,
             if (match(d, filter)) {
                 if (d.contains("id") && d["id"].is_string()) {
                     targetId = d["id"].get<std::string>();
+                    targetVersion = previousMvccVersion(d);
                     found = true;
                     break;
                 }
@@ -3228,6 +3260,7 @@ bool DatabaseEngine::deleteOne(const std::string& userId,
             {"id", targetId},
             {"_deleted", true},
             {"tenant_id", userId},
+            {"_mvcc_version", targetVersion},
             {"_timestamp", static_cast<long long>(std::time(nullptr))}
         };
         stampMvccDelete(tombstone);
@@ -3253,7 +3286,7 @@ bool DatabaseEngine::deleteOne(const std::string& userId,
     }
 
     // write tombstone via LSM::del (which logs a DELETE and inserts tombstone into memtable)
-    LSM::del(userId, dbName, collection, targetId);
+    LSM::del(userId, dbName, collection, targetId, targetVersion);
 
     ELOG("[ENGINE][DELETE] Tombstone written for id=" << targetId << "\n");
     return true;

@@ -153,6 +153,11 @@ try {
   for (const name of validNames) assert.ok(listed.includes(name), `missing database ${name}`);
   assert.ok(listed.includes(engineMaximumName));
   await rejects(client, { action: 'dropDatabase', dbName: 'missing-db' }, /database_not_found/);
+  await rejects(client, { action: 'dropDatabase', dbName: 'second',
+    project_id: 'project_wrong' }, /another project/);
+  assert.equal((await client.request({ action: 'dropDatabase', dbName: 'second' })).status, 'ok');
+  assert.equal((await client.request({ action: 'community_database_list',
+    project_id: client.projectId })).databases.includes('second'), false);
 
   // Document types, ID behavior, filters, limits and request boundary.
   client.database = 'app';

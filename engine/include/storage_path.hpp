@@ -34,6 +34,17 @@ inline std::string validateStorageIdentifier(std::string_view value,
     return std::string(value);
 }
 
+inline std::string validateCollectionStorageIdentifier(std::string_view value) {
+    auto collection = validateStorageIdentifier(value, "collectionName");
+    // The longest collection artifact appends a four-byte extension (.bin,
+    // .wal, .lsm or .idx). Linux filesystems commonly limit a path component
+    // to 255 bytes, so reject names that cannot be materialized durably.
+    if (collection.size() > 251) {
+        throw std::invalid_argument("collectionName exceeds the maximum byte length");
+    }
+    return collection;
+}
+
 inline bool isPathWithin(const std::filesystem::path& canonicalRoot,
                          const std::filesystem::path& candidate) {
     const auto root = canonicalRoot.lexically_normal();

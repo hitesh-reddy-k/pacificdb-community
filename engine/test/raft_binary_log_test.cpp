@@ -361,6 +361,25 @@ int main(int argc, char** argv) {
             throw std::runtime_error("unknown PDBR3 codec was accepted");
         }
         writeRecords(corruptRoot / "raft/log.bin", validRecords);
+        {
+            // A failed append after the durable commit prefix must be removed
+            // during recovery so the next append cannot inherit a broken log.
+            std::ofstream tail(corruptRoot / "raft/log.bin",
+                               std::ios::binary | std::ios::app);
+            const std::uint64_t index = validRecords.back().index + 1;
+            const std::uint64_t term = validRecords.back().term;
+            const std::uint32_t size = 256;
+            tail.write(reinterpret_cast<const char*>(&index), sizeof(index));
+            tail.write(reinterpret_cast<const char*>(&term), sizeof(term));
+            tail.write(reinterpret_cast<const char*>(&size), sizeof(size));
+            tail.write("partial", 7);
+            if (!tail) throw std::runtime_error("could not write torn Raft tail");
+        }
+        if (std::system(corruptRecoverCommand.c_str()) != 0 ||
+            readRecords(corruptRoot / "raft/log.bin").size() != validRecords.size() + 1) {
+            throw std::runtime_error("torn uncommitted Raft tail was not recovered");
+        }
+        writeRecords(corruptRoot / "raft/log.bin", validRecords);
         fs::resize_file(corruptRoot / "raft/log.bin",
                         fs::file_size(corruptRoot / "raft/log.bin") - 1);
         if (std::system(corruptRecoverCommand.c_str()) == 0) {

@@ -26,6 +26,10 @@ helm template pacificdb deploy/helm/pacificdb --namespace pacificdb \
   -f deploy/helm/pacificdb/values-production.yaml \
   -f scripts/fixtures/helm-production-values.yaml >"$temporary/production.yaml"
 
+grep -A1 'name: ENGINE_AUTH_REQUIRED' "$temporary/development.yaml" | grep -q 'value: "true"'
+grep -q 'name: pacificdb-bootstrap' "$temporary/development.yaml"
+grep -q 'ghcr.io/hitesh-reddy-k/pacificdb-community@sha256:4694fed9d3285e25b2f532017c0992a5ca5a57def7a44dc53ec0fc27d49615b7' "$temporary/development.yaml"
+! grep -q 'pacificdb-community:beta' "$temporary/development.yaml"
 ! grep -q 'value: 0.0.0.0' "$temporary/production.yaml"
 grep -q 'fieldPath: status.podIP' "$temporary/production.yaml"
 grep -q 'ghcr.io/hitesh-reddy-k/pacificdb-community@sha256:' "$temporary/production.yaml"
