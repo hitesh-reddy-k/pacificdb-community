@@ -49,6 +49,8 @@ else
 fi
 npm install --ignore-scripts --no-audit --no-fund
 npm run test:npm
+node scripts/test-engine-auth-boundaries.mjs "$BUILD_DIR"
+node scripts/test-p0-media.mjs "$BUILD_DIR"
 scripts/test-community-autostart.sh "$BUILD_DIR"
 node scripts/test-community-e2e.mjs "$BUILD_DIR"
 node scripts/test-p0-protocol-errors.mjs "$BUILD_DIR"

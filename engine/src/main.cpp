@@ -859,7 +859,7 @@ static int runEngine(int argc, char** argv) {
 
     std::cout << "[MAIN] Shutdown complete" << std::endl;
 
-    return 0;
+    return serverStartupFailed() ? 78 : 0;
 }
 
 int main(int argc, char** argv) {

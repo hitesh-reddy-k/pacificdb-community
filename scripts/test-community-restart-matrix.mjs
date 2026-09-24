@@ -200,7 +200,8 @@ try {
   await resumed.insert('docs', { id: 'after-delete', indexed: 'final', value: 3 });
   await resumed.putVector('vectors', 'vector-final', [1, 1]);
   await resumed.request({ action: 'delete_backup', backup_id: secondBackup.backup_id });
-  await resumed.request({ action: 'dropDatabase', dbName: 'temporary-lifecycle' });
+  await resumed.request({ action: 'dropDatabase', dbName: 'temporary-lifecycle',
+    project_id: project.id });
 
   // Abrupt termination/recovery/read final state.
   await stop('SIGKILL');

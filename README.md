@@ -264,8 +264,10 @@ The CLI automatically starts an engine only for loopback hosts.
 
 ## Build and test
 
-Requirements: CMake 3.20+, a C++17 compiler, OpenSSL, LZ4, Node.js 18+,
-Python 3.10+, Java 11+, and Maven.
+Requirements: CMake 3.20+, a C++17 compiler, OpenSSL development headers and
+libraries, LZ4, Node.js 18+, Python 3.10+, Java 11+, and Maven. On Debian or
+Ubuntu, install `libssl-dev` before configuring the engine; the `openssl`
+command alone does not include the files CMake needs.
 
 ```sh
 git clone https://github.com/hitesh-reddy-k/pacificdb-community.git

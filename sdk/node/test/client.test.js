@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -22,6 +22,20 @@ test('sends one JSON command and parses one response', async (t) => {
   });
   assert.deepEqual(await client.request({ action: 'ping' }),
                    { ok: true, action: 'ping', database: 'app' });
+});
+
+test('decodes a UTF-8 response split inside multibyte characters', async (t) => {
+  const server = net.createServer((socket) => socket.once('data', () => {
+    const wire = Buffer.from(JSON.stringify({ value: 'café 🐋' }) + '\n');
+    const split = wire.indexOf(Buffer.from('é')) + 1;
+    socket.write(wire.subarray(0, split));
+    setTimeout(() => socket.end(wire.subarray(split)), 10);
+  }));
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => server.close());
+  const client = new PacificDBClient({ host: '127.0.0.1', port: server.address().port });
+  t.after(() => client.close());
+  assert.equal((await client.request({ action: 'ping' })).value, 'café 🐋');
 });
 
 test('requires project then database when creating data structures', async (t) => {
@@ -61,6 +75,7 @@ test('requires project then database when creating data structures', async (t) =
     'community_database_map', 'community_database_list', 'createCollection'
   ]);
   assert.equal(requests.at(-1).dbName, 'app');
+  assert.equal(requests[2].project_id, 'project_1');
   assert.equal(requests[3].project_id, 'project_1');
 });
 
@@ -89,7 +104,8 @@ test('reuses a bounded persistent connection pool under concurrent load', async 
         const newline = wire.indexOf('\n');
         const request = JSON.parse(wire.slice(0, newline));
         wire = wire.slice(newline + 1);
-        setTimeout(() => socket.write(JSON.stringify({ sequence: request.sequence }) + '\n'), 5);
+        setTimeout(() => socket.write(JSON.stringify({ sequence: request.sequence,
+          _pacificdb_connection_keepalive: true }) + '\n'), 5);
       }
     });
   });
@@ -126,7 +142,8 @@ test('returns a completed connection to the pool before resolving sequential req
         const newline = wire.indexOf('\n');
         const request = JSON.parse(wire.slice(0, newline));
         wire = wire.slice(newline + 1);
-        socket.write(JSON.stringify({ sequence: request.sequence }) + '\n');
+        socket.write(JSON.stringify({ sequence: request.sequence,
+          _pacificdb_connection_keepalive: true }) + '\n');
       }
     });
   });
@@ -169,6 +186,33 @@ test('retires a pooled connection when the server marks its response as final', 
       { status: 'ok', sequence: 1 });
     assert.deepEqual(await client.request({ action: 'ping', sequence: 2 }),
       { status: 'ok', sequence: 2 });
+    assert.equal(connections, 2);
+  } finally {
+    client.close();
+    for (const socket of sockets) socket.destroy();
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test('does not reuse a legacy one-request socket before its delayed FIN', async () => {
+  let connections = 0;
+  const sockets = new Set();
+  const server = net.createServer((socket) => {
+    connections += 1;
+    sockets.add(socket);
+    socket.on('close', () => sockets.delete(socket));
+    socket.once('data', (data) => {
+      const request = JSON.parse(data);
+      socket.write(JSON.stringify({ sequence: request.sequence }) + '\n');
+      setTimeout(() => socket.end(), 50);
+    });
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const client = new PacificDBClient({ host: '127.0.0.1',
+    port: server.address().port, poolSize: 1, timeoutMs: 500 });
+  try {
+    assert.equal((await client.request({ action: 'ping', sequence: 1 })).sequence, 1);
+    assert.equal((await client.request({ action: 'ping', sequence: 2 })).sequence, 2);
     assert.equal(connections, 2);
   } finally {
     client.close();
@@ -324,6 +368,48 @@ test('uploads and downloads media sequentially in bounded chunks', async (t) => 
   assert.deepEqual(await readFile(output), source);
   assert.equal(downloaded.sha256,
     createHash('sha256').update(source).digest('hex'));
+});
+
+test('preserves an existing media destination until checksum verification succeeds', async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'pacificdb-node-download-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const destination = path.join(directory, 'existing.bin');
+  const original = Buffer.from('keep this file');
+  const expected = Buffer.from('verified media bytes');
+  const sha256 = createHash('sha256').update(expected).digest('hex');
+  await writeFile(destination, original);
+  let corruptChunk = true;
+  let corruptManifest = false;
+  const server = net.createServer((socket) => socket.once('data', (data) => {
+    const request = JSON.parse(data);
+    const response = request.action === 'community_media_get'
+      ? { media: { status: 'ready', chunk_count: 1, size_bytes: expected.length,
+        sha256: corruptManifest ? '0'.repeat(64) : sha256 } }
+      : { chunk: { data: expected.toString('base64'),
+        sha256: corruptChunk ? '0'.repeat(64) : sha256 } };
+    socket.end(JSON.stringify(response) + '\n');
+  }));
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => server.close());
+  const client = new PacificDBClient({ host: '127.0.0.1', port: server.address().port });
+  t.after(() => client.close());
+
+  await assert.rejects(client.downloadMediaFile('media_1', destination),
+    /media chunk checksum mismatch/);
+  assert.deepEqual(await readFile(destination), original);
+  assert.deepEqual(await readdir(directory), ['existing.bin']);
+
+  corruptChunk = false;
+  corruptManifest = true;
+  await assert.rejects(client.downloadMediaFile('media_1', destination),
+    /downloaded media does not match its manifest/);
+  assert.deepEqual(await readFile(destination), original);
+  assert.deepEqual(await readdir(directory), ['existing.bin']);
+
+  corruptManifest = false;
+  await client.downloadMediaFile('media_1', destination);
+  assert.deepEqual(await readFile(destination), expected);
+  assert.deepEqual(await readdir(directory), ['existing.bin']);
 });
 
 test('reports a stable upload id and resumes only missing media chunks', async (t) => {

@@ -249,7 +249,8 @@ public:
     static void del(const std::string& userId,
                     const std::string& dbName,
                     const std::string& collection,
-                    const std::string& id);
+                    const std::string& id,
+                    std::uint64_t previousVersion = 0);
 
     // Permanently remove one collection's in-memory state and durable LSM,
     // WAL, and index artifacts. The caller is responsible for replicating the

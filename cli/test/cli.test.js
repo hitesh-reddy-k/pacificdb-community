@@ -24,6 +24,8 @@ test('friendly parser maps Community commands and rejects Cloud commands', () =>
     .command.action, 'community_media_delete');
   assert.equal(parseShellCommand('delete backup backup-1', context)
     .command.action, 'delete_backup');
+  assert.equal(parseShellCommand('drop database app', context)
+    .command.project_id, 'project_1');
   assert.throws(() => parseShellCommand('create organization demo', context),
                 /unknown command/);
   for (const command of ['login admin', 'whoami', 'logout']) {

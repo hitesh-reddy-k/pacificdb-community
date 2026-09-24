@@ -91,7 +91,7 @@ spec:
       {{- end }}
       containers:
         - name: engine
-          image: {{ ternary (printf "%s@%s" .Values.image.repository .Values.image.digest) (printf "%s:%s" .Values.image.repository .Values.image.tag) $production | quote }}
+          image: {{ ternary (printf "%s@%s" .Values.image.repository .Values.image.digest) (printf "%s:%s" .Values.image.repository .Values.image.tag) (ne .Values.image.digest "") | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
             allowPrivilegeEscalation: false
@@ -115,6 +115,12 @@ spec:
             - { name: RAFT_REPLICATION_MODE, value: {{ ternary "sync" "async" $production | quote }} }
             - { name: MIN_QUORUM_SIZE, value: {{ ternary "2" "1" $production | quote }} }
             - { name: ENGINE_AUTH_REQUIRED, value: {{ ternary "true" (toString .Values.security.authRequired) $production | quote }} }
+            {{- if or $production .Values.security.authRequired }}
+            - name: PACIFICDB_ENGINE_ADMIN_USERNAME
+              valueFrom: { secretKeyRef: { name: {{ $bootstrapSecret }}, key: username } }
+            - name: PACIFICDB_ENGINE_ADMIN_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ $bootstrapSecret }}, key: password } }
+            {{- end }}
             {{- if $production }}
             - { name: PACIFICDB_ENVIRONMENT, value: production }
             - name: ENGINE_BIND_HOST
@@ -136,10 +142,6 @@ spec:
             - { name: WAL_FSYNC_ENABLED, value: "true" }
             - { name: WAL_FLUSH_ON_COMMIT, value: "true" }
             - { name: PACIFICDB_AT_REST_ENCRYPTION_EVIDENCE_PATH, value: /etc/pacificdb/at-rest/evidence.json }
-            - name: PACIFICDB_ENGINE_ADMIN_USERNAME
-              valueFrom: { secretKeyRef: { name: {{ $bootstrapSecret }}, key: username } }
-            - name: PACIFICDB_ENGINE_ADMIN_PASSWORD
-              valueFrom: { secretKeyRef: { name: {{ $bootstrapSecret }}, key: password } }
             {{- else }}
             - { name: PACIFICDB_ENVIRONMENT, value: development }
             - { name: ENGINE_BIND_HOST, value: 0.0.0.0 }
