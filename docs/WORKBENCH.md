@@ -5,16 +5,17 @@ launcher, and native file dialogs. The desktop installer includes the graphical
 workspace, native database engine, native CLI, and Electron runtime. End users
 do not need Node.js, npm, a browser, or a separately installed database server.
 
-## Install the desktop app on Debian 13 (x86-64)
+## Install the Linux desktop preview (x86-64)
 
-The locally built installer is:
+Download the public 1.0.1 Linux installer and its checksum:
 
-`dist/desktop/PacificDB-Workbench-1.0.1-linux-amd64.deb`
+- [Workbench Linux .deb](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-linux-v1.0.1/PacificDB-Workbench-1.0.1-linux-amd64.deb)
+- [SHA256SUMS](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-linux-v1.0.1/SHA256SUMS)
 
-Open it in your software installer, or run from the repository root:
+Open the downloaded package in your software installer, or run:
 
 ```sh
-sudo apt install ./dist/desktop/PacificDB-Workbench-1.0.1-linux-amd64.deb
+sudo apt install ./PacificDB-Workbench-1.0.1-linux-amd64.deb
 ```
 
 Then launch **PacificDB Workbench** from the Applications menu. You can also run
@@ -22,10 +23,11 @@ Then launch **PacificDB Workbench** from the Applications menu. You can also run
 closes that engine when you quit. Documents persist between launches. No
 external database account or internet connection is required for normal use.
 
-The Linux installer targets Debian 13 on x86-64 and declares the native shared
-library dependencies used by this build. Other distributions need a matching
-native engine build and compatible Electron libraries. The package is unsigned
-and has not been published to a public download server.
+The public x86-64 installer is built and tested on Ubuntu 24.04. A locally
+built Debian 13 package was tested separately; other distributions need
+compatible native libraries.
+This public download is a preview, not a production certification. The package
+is unsigned; verify its SHA-256 checksum before installation.
 
 A portable `.tar.gz` is also produced in `dist/desktop`. Extract it and run its
 `pacificdb-workbench` executable. The `.deb` is recommended on Debian because it
@@ -91,7 +93,7 @@ targets Ubuntu 24.04; the local package documented above targets Debian 13.
 Windows and macOS installers have not been built or validated in this Linux
 session.
 
-For a future public release, push a `workbench-vVERSION` tag matching the CLI
+For a future multi-platform release, push a `workbench-vVERSION` tag matching the CLI
 package version. The workflow requires Windows signing secrets
 `WINDOWS_CERTIFICATE_BASE64` and `WINDOWS_CERTIFICATE_PASSWORD`; for macOS it
 requires `MAC_CSC_LINK` (Developer ID Application certificate),

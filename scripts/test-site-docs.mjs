@@ -54,6 +54,9 @@ assert.doesNotMatch(index, /hitesh-reddy-k\.github\.io\/pacificdb-community\/doc
 assert.match(index, /id=["']sdks["']/);
 assert.match(index, /href=["']release-1\.0\.1\.html["']/);
 assert.match(docs, /href=["']release-1\.0\.1\.html["']/);
+const workbenchDownload = 'https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-linux-v1.0.1/PacificDB-Workbench-1.0.1-linux-amd64.deb';
+assert.ok(index.includes(workbenchDownload), 'landing page must link the Linux Workbench installer');
+assert.ok(docs.includes(workbenchDownload), 'documentation must link the same Workbench installer');
 for (const heading of ['Added', 'Removed', 'Improved']) {
   assert.match(releaseNotes, new RegExp(`<h3>${heading}</h3>`));
 }
