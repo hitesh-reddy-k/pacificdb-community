@@ -5,7 +5,7 @@
   "license": "Apache-2.0",
   "type": "module",
   "bin": { "pacificdb": "bin/pacificdb.js" },
-  "files": ["bin", "src", "README.md", "LICENSE"],
+  "files": ["bin", "src", "workbench", "README.md", "LICENSE"],
   "dependencies": { "@pacificdb/client": "1.0.1" },
   "repository": {
     "type": "git",

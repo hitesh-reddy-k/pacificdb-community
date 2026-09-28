@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { pathToFileURL } from 'node:url';
 import { RaftTestCluster } from './lib/raft-test-cluster.mjs';
 import { rollbackDecision } from './lib/upgrade-qualification.mjs';
 
@@ -63,6 +65,19 @@ test('upgrade rollback decisions fail closed at format boundaries', () => {
     oldArtifactAvailable: true }), 'RESTORE_REQUIRED');
   assert.equal(rollbackDecision({ formatTransition: false,
     oldArtifactAvailable: false }), 'BLOCKED');
+});
+
+test('missing upgrade arguments never overwrite the process executable', async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'pacificdb-upgrade-arguments-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const sentinel = path.join(directory, 'node-sentinel');
+  await writeFile(sentinel, 'original executable contents');
+  const script = pathToFileURL(path.join(import.meta.dirname, 'test-community-rf3-upgrade.mjs')).href;
+  const result = spawnSync(process.execPath, ['--input-type=module', '-e',
+    `process.argv[0] = ${JSON.stringify(sentinel)}; await import(${JSON.stringify(script)});`],
+  { encoding: 'utf8' });
+  assert.equal(result.status, 1);
+  assert.equal(await readFile(sentinel, 'utf8'), 'original executable contents');
 });
 
 test('RF3 fixture can service its persistent-client capacity without socket starvation', async (t) => {

@@ -2647,17 +2647,18 @@ static std::unordered_set<std::string> catalogIndexedFields(const fs::path& idxD
 
 static json buildFieldIndexUnbounded(const std::vector<json>& docs, const std::string& field) {
     json index = json::object();
+    std::unordered_map<std::string, std::unordered_set<std::string>> seen;
     for (const auto& doc : docs) {
         if (!doc.is_object() || isDeletedDoc(doc) || !doc.contains("id") || !doc.contains(field)) continue;
         if (!shouldIndexColumnField(field, doc[field])) continue;
         std::string id;
         try { id = doc["id"].is_string() ? doc["id"].get<std::string>() : doc["id"].dump(); } catch (...) { continue; }
         if (id.empty()) continue;
-        auto& ids = index[columnIndexValue(doc[field])];
+        const auto value = columnIndexValue(doc[field]);
+        if (!seen[value].insert(id).second) continue;
+        auto& ids = index[value];
         if (!ids.is_array()) ids = json::array();
-        bool exists = false;
-        for (const auto& existing : ids) if (existing.is_string() && existing.get<std::string>() == id) { exists = true; break; }
-        if (!exists) ids.push_back(id);
+        ids.push_back(id);
     }
     return index;
 }

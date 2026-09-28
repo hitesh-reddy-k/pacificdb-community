@@ -16,6 +16,13 @@ or application data from entering release evidence. Referenced artifacts must
 be regular files inside the repository and are recorded by repository-relative
 path, byte length, and SHA-256 digest.
 
+For mixed-version RF3 qualification, pass `--old-build` with the verified
+previous release's `db_engine` executable or its containing directory. The
+candidate is built in `build-release-integrity`. Without that input the upgrade
+gate remains `BLOCKED`; the runner never invokes the test with missing arguments.
+The runner checks the worktree again after all commands, so a gate that modifies
+source files cannot produce release-eligible evidence.
+
 ## Status meanings
 
 - `PASS`: the named gate ran successfully against the recorded revision.

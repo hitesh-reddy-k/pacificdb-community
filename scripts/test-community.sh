@@ -79,12 +79,16 @@ legacy_product+=base
 paid_tier=enter
 paid_tier+=prise
 if command -v rg >/dev/null 2>&1; then
+  # Synthetic customer tier labels in the Workbench fixture are not product editions.
   branding_match=$(rg -n -i "$legacy_product|$paid_tier" . --glob '!.git/**' \
-    --glob '!**/target/**' --glob '!docs/superpowers/**' || true)
+    --glob '!**/target/**' --glob '!docs/superpowers/**' \
+    --glob '!docs/WORKBENCH_500K_TEST_QUERIES.md' \
+    --glob '!docs/workbench-500k-*.json' || true)
 else
   branding_match=$(grep -RInI -E "$legacy_product|$paid_tier" . \
     --exclude-dir=.git --exclude-dir='build*' --exclude-dir=node_modules \
-    --exclude-dir=target --exclude-dir=superpowers || true)
+    --exclude-dir=target --exclude-dir=superpowers \
+    --exclude=WORKBENCH_500K_TEST_QUERIES.md --exclude='workbench-500k-*.json' || true)
 fi
 if test -n "$branding_match"; then
   printf '%s\n' "$branding_match"

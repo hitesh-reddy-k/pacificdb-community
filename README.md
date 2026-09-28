@@ -108,6 +108,26 @@ The npm CLI is a client. It can automatically start `db_engine` when a native
 PacificDB server package is installed and available on `PATH`. Installing only
 the npm package does not install the database engine.
 
+### Desktop Workbench
+
+The desktop app bundles the Workbench GUI, native database engine, CLI, and
+runtime. Users can install it and open **PacificDB Workbench** from their app
+menu. It starts and stops its own local engine and retains data between launches.
+
+The public [Workbench 1.0.1 Linux preview installer](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-linux-v1.0.1/PacificDB-Workbench-1.0.1-linux-amd64.deb)
+is built for Ubuntu 24.04 x86-64. Download it, then run
+`sudo apt install ./PacificDB-Workbench-1.0.1-linux-amd64.deb`. See the
+[checksums](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-linux-v1.0.1/SHA256SUMS)
+and [Workbench guide](docs/WORKBENCH.md).
+
+Build the engine and native CLI, then run `npm run workbench:desktop` during
+development. Run `npm run desktop:build -- --linux deb --x64` to create the
+Debian installer in `dist/desktop`. See [the Workbench guide](docs/WORKBENCH.md)
+for installation, platform requirements, data locations, and verification.
+
+The optional browser mode remains available with
+`PATH="$PWD/build:$PATH" npm run workbench`.
+
 ### Docker
 
 ```sh

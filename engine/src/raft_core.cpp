@@ -2148,6 +2148,10 @@ void RaftCore::start() {
     if (!initialized_.load()) return;
     if (running_.exchange(true)) return;
 
+    // The first health sample must measure time since startup, not since the
+    // default-constructed steady_clock epoch (which masks startup failures).
+    lastMetricsUpdate_ = std::chrono::steady_clock::now();
+
     // Read legacy replication mode for backward compatibility
     const char* mode = std::getenv("RAFT_REPLICATION_MODE");
     if (mode) {

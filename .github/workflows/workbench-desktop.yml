@@ -1,0 +1,311 @@
+name: PacificDB Workbench desktop
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/workbench-desktop.yml'
+      - 'desktop/**'
+      - 'cli/**'
+      - 'sdk/node/**'
+      - 'engine/**'
+      - 'scripts/test-workbench-*.mjs'
+      - 'scripts/test-desktop-engine.mjs'
+      - 'scripts/test-index-low-cardinality.mjs'
+      - 'scripts/prepare-workbench-desktop.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+  push:
+    branches: [pacificdb-v1.0]
+    tags: ['workbench-v*', 'workbench-linux-v*']
+    paths:
+      - '.github/workflows/workbench-desktop.yml'
+      - 'desktop/**'
+      - 'cli/**'
+      - 'sdk/node/**'
+      - 'engine/**'
+      - 'scripts/test-workbench-*.mjs'
+      - 'scripts/test-desktop-engine.mjs'
+      - 'scripts/test-index-low-cardinality.mjs'
+      - 'scripts/prepare-workbench-desktop.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workbench-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install native and GUI dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ liblz4-dev libssl-dev xvfb \
+            xauth libgtk-3-0t64 libnss3 libasound2t64 libgbm1 libxss1
+      - run: npm ci --no-audit --no-fund
+      - run: npm run test:npm
+      - name: Build native engine and CLI
+        run: |
+          cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.0.1
+          cmake --build build --target db_engine pacificdb -j2
+      - run: node scripts/test-workbench-e2e.mjs build
+      - run: node scripts/test-desktop-engine.mjs build
+      - run: node scripts/test-index-low-cardinality.mjs build
+      - name: Browser workflow
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:workbench:browser -- build
+      - name: Package Workbench for Ubuntu 24.04
+        env:
+          PACIFICDB_DESKTOP_UBUNTU_24: '1'
+          ELECTRON_BUILDER_COMPRESSION_LEVEL: '1'
+        run: npm run desktop:build -- --linux deb tar.gz --x64
+      - name: Test packaged application
+        run: |
+          PACIFICDB_TEST_DESKTOP="$PWD/dist/desktop/linux-unpacked/pacificdb-workbench" \
+            xvfb-run -a npm run test:workbench:desktop
+      - name: Install and test Linux package
+        run: |
+          sudo apt install -y ./dist/desktop/PacificDB-Workbench-1.0.1-linux-amd64.deb
+          test "$(stat -c %a /opt/PacificDB-Workbench/chrome-sandbox)" = 4755
+          test "$(readlink -f /usr/bin/pacificdb-workbench)" = /opt/PacificDB-Workbench/pacificdb-workbench
+          PACIFICDB_TEST_DESKTOP=/opt/PacificDB-Workbench/pacificdb-workbench \
+            xvfb-run -a npm run test:workbench:desktop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: workbench-linux-x64
+          if-no-files-found: error
+          path: |
+            dist/desktop/PacificDB-Workbench-*.deb
+            dist/desktop/PacificDB-Workbench-*.tar.gz
+
+  windows:
+    if: ${{ !startsWith(github.ref, 'refs/tags/workbench-linux-v') }}
+    runs-on: windows-2025
+    env:
+      CSC_LINK: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
+      CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+      PACIFICDB_DESKTOP_RELEASE: ${{ startsWith(github.ref, 'refs/tags/workbench-v') && '1' || '0' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run test:npm
+      - name: Build static native binaries
+        shell: pwsh
+        run: |
+          vcpkg install --triplet x64-windows-static
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake -S engine -B build -A x64 `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows-static `
+            -DVCPKG_INSTALLED_DIR="$pwd/vcpkg_installed" `
+            -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded `
+            -DPACIFICDB_ENGINE_VERSION=1.0.1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build build --config Release --target db_engine pacificdb
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require signing credentials for release tags
+        if: startsWith(github.ref, 'refs/tags/workbench-v')
+        shell: pwsh
+        run: |
+          if (-not $env:CSC_LINK -or -not $env:CSC_KEY_PASSWORD) {
+            throw 'Windows code signing credentials are required for a Workbench release.'
+          }
+      - name: Verify engine isolation and graceful shutdown
+        shell: pwsh
+        run: |
+          node scripts/test-desktop-engine.mjs build/Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Sign bundled native executables for release tags
+        if: startsWith(github.ref, 'refs/tags/workbench-v')
+        shell: pwsh
+        run: |
+          $certificate = "$env:RUNNER_TEMP\workbench-signing.pfx"
+          try {
+            [IO.File]::WriteAllBytes($certificate, [Convert]::FromBase64String($env:CSC_LINK))
+            $signtool = (Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe' |
+              Sort-Object FullName -Descending | Select-Object -First 1).FullName
+            if (-not $signtool) { throw 'SignTool was not found.' }
+            foreach ($file in @('build/Release/db_engine.exe', 'build/Release/pacificdb.exe')) {
+              & $signtool sign /f $certificate /p $env:CSC_KEY_PASSWORD /tr https://timestamp.digicert.com /td sha256 /fd sha256 $file
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              & $signtool verify /pa $file
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            }
+          } finally { Remove-Item $certificate -Force -ErrorAction SilentlyContinue }
+      - name: Package Workbench for Windows x64
+        shell: pwsh
+        run: |
+          $env:PACIFICDB_WORKBENCH_ENGINE = "$pwd\build\Release\db_engine.exe"
+          $env:ELECTRON_BUILDER_COMPRESSION_LEVEL = '1'
+          npm run desktop:build -- --win nsis --x64
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Test packaged application
+        shell: pwsh
+        run: |
+          $env:PACIFICDB_TEST_DESKTOP = "$pwd\dist\desktop\win-unpacked\PacificDB Workbench.exe"
+          npm run test:workbench:desktop
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: workbench-windows-x64
+          if-no-files-found: error
+          path: dist/desktop/PacificDB-Workbench-*.exe
+
+  macos:
+    if: ${{ !startsWith(github.ref, 'refs/tags/workbench-linux-v') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x64
+    runs-on: ${{ matrix.runner }}
+    env:
+      CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      PACIFICDB_DESKTOP_RELEASE: ${{ startsWith(github.ref, 'refs/tags/workbench-v') && '1' || '0' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: brew install cmake lz4 openssl@3
+      - run: npm ci --no-audit --no-fund
+      - run: npm run test:npm
+      - name: Build native engine and CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release \
+            -DOPENSSL_ROOT_DIR="$(brew --prefix openssl@3)" \
+            -DOPENSSL_USE_STATIC_LIBS=TRUE \
+            -DLZ4_LIBRARY="$(brew --prefix lz4)/lib/liblz4.a" \
+            -DPACIFICDB_ENGINE_VERSION=1.0.1
+          cmake --build build --target db_engine pacificdb -j2
+          if otool -L build/db_engine build/pacificdb | grep -E '/(opt/homebrew|usr/local)/(opt|Cellar)/'; then
+            echo 'Native binaries must not depend on Homebrew libraries at runtime.' >&2
+            exit 1
+          fi
+      - name: Require signing and notarization for release tags
+        if: startsWith(github.ref, 'refs/tags/workbench-v')
+        run: |
+          for name in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            if [[ -z "${!name}" ]]; then echo "Missing $name" >&2; exit 1; fi
+          done
+      - run: node scripts/test-desktop-engine.mjs build
+      - name: Package Workbench for macOS
+        env:
+          ELECTRON_BUILDER_COMPRESSION_LEVEL: '1'
+        run: npm run desktop:build -- --mac dmg --${{ matrix.arch }}
+      - name: Test packaged application
+        shell: bash
+        run: |
+          set -euo pipefail
+          executable=$(find dist/desktop -path '*/Contents/MacOS/PacificDB Workbench' -type f -print -quit)
+          test -n "$executable"
+          PACIFICDB_TEST_DESKTOP="$PWD/$executable" npm run test:workbench:desktop
+          if [[ "$PACIFICDB_DESKTOP_RELEASE" == 1 ]]; then
+            contents=$(dirname "$(dirname "$executable")")
+            codesign --verify --deep --strict --verbose=2 "$(dirname "$contents")"
+            codesign --verify --strict "$contents/Resources/engine/db_engine"
+            codesign --verify --strict "$contents/Resources/engine/pacificdb"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: workbench-macos-${{ matrix.arch }}
+          if-no-files-found: error
+          path: dist/desktop/PacificDB-Workbench-*.dmg
+
+  linux-release:
+    if: startsWith(github.ref, 'refs/tags/workbench-linux-v')
+    needs: linux
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: workbench-linux-x64
+          path: dist/desktop
+      - name: Check version and generate checksums
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#workbench-linux-v}"
+          test "$version" = "$(node -p "require('./cli/package.json').version")"
+          test "$version" = "$(dpkg-deb -f dist/desktop/PacificDB-Workbench-*.deb Version)"
+          cd dist/desktop
+          sha256sum PacificDB-Workbench-*.deb PacificDB-Workbench-*.tar.gz > SHA256SUMS
+          sha256sum -c SHA256SUMS
+      - name: Publish Linux preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            dist/desktop/PacificDB-Workbench-*.deb \
+            dist/desktop/PacificDB-Workbench-*.tar.gz \
+            dist/desktop/SHA256SUMS \
+            --verify-tag --prerelease \
+            --title "PacificDB Workbench ${GITHUB_REF_NAME#workbench-linux-v} for Linux" \
+            --notes-file docs/releases/workbench-linux-1.0.1.md
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/workbench-v')
+    needs: [linux, windows, macos]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Check release version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#workbench-v}"
+          test "$version" = "$(node -p "require('./cli/package.json').version")"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: workbench-*
+          path: dist/desktop
+          merge-multiple: true
+      - name: Generate checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist/desktop
+          sha256sum PacificDB-Workbench-*.deb PacificDB-Workbench-*.tar.gz \
+            PacificDB-Workbench-*.exe PacificDB-Workbench-*.dmg > SHA256SUMS
+      - name: Publish verified installers
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/desktop/PacificDB-Workbench-*.deb \
+            dist/desktop/PacificDB-Workbench-*.tar.gz \
+            dist/desktop/PacificDB-Workbench-*.exe \
+            dist/desktop/PacificDB-Workbench-*.dmg dist/desktop/SHA256SUMS \
+            --title "PacificDB Workbench ${GITHUB_REF_NAME#workbench-v}" \
+            --notes "Desktop Workbench with bundled engine and CLI for Linux, Windows, and macOS."
