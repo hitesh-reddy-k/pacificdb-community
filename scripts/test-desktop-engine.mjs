@@ -16,6 +16,9 @@ try {
     process.platform === 'win32' ? 'db_engine.exe' : 'db_engine'), directory: path.join(root, 'desktop') });
   await engine.stop();
   assert.match(await readFile(engine.logPath, 'utf8'), /Clean shutdown marker v2 written/);
+  await assert.rejects(startDesktopEngine({
+    executable: path.join(root, 'missing-engine'), directory: path.join(root, 'failed'), timeoutMs: 2_000,
+  }), /Engine log:/);
   assert.ok(!(await readdir(root)).includes('external'), 'desktop must not write inherited engine paths');
   console.log('DESKTOP_ENGINE_ISOLATION_AND_CLEAN_SHUTDOWN_PASS');
 } finally {
