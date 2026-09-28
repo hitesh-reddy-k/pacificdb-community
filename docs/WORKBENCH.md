@@ -15,6 +15,7 @@ Download the public 1.0.1 Linux installer and its checksum:
 Open the downloaded package in your software installer, or run:
 
 ```sh
+sha256sum --ignore-missing -c SHA256SUMS
 sudo apt install ./PacificDB-Workbench-1.0.1-linux-amd64.deb
 ```
 
