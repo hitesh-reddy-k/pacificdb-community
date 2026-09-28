@@ -4,6 +4,7 @@ import { stdin, stdout } from 'node:process';
 import { PacificDBClient } from '@pacificdb/client';
 import { SHELL_HELP, printResponse, runShell } from './shell.js';
 import { ensureLocalEngine } from './local-engine.js';
+import { startWorkbench } from './workbench.js';
 
 export async function main(args, streams = { input: stdin, output: stdout }) {
   const options = {};
@@ -17,6 +18,7 @@ export async function main(args, streams = { input: stdin, output: stdout }) {
     else if (args[i] === '--k') options.k = Number(args[++i]);
     else if (args[i] === '--metric') options.metric = args[++i];
     else if (args[i] === '--no-start') options.autoStart = false;
+    else if (args[i] === '--ui-port') options.uiPort = Number(args[++i]);
     else if (args[i] === '--help' || args[i] === '-h') options.help = true;
     else if (args[i] === '--version' || args[i] === '-V') options.version = true;
     else positional.push(args[i]);
@@ -28,12 +30,21 @@ export async function main(args, streams = { input: stdin, output: stdout }) {
     return;
   }
   if (options.help) {
-    streams.output.write('Usage: pacificdb [shell|ping|request|put-media|get-media|put-vector|query-vector] [options]\n\n');
-    streams.output.write('Options: --help, -h  --version, -V  --host HOST  --port PORT  --no-start\n\n');
+    streams.output.write('Usage: pacificdb [shell|workbench|ping|request|put-media|get-media|put-vector|query-vector] [options]\n\n');
+    streams.output.write('Options: --help, -h  --version, -V  --host HOST  --port PORT  --ui-port PORT  --no-start\n\n');
     streams.output.write(SHELL_HELP);
     return;
   }
   if (positional.length === 0) positional.push('shell');
+  if (positional[0] === 'workbench') {
+    if (options.uiPort !== undefined && (!Number.isSafeInteger(options.uiPort) ||
+        options.uiPort < 0 || options.uiPort > 65535)) {
+      throw new Error('--ui-port must be an integer between 0 and 65535');
+    }
+    return startWorkbench(options, streams.output,
+      (probe) => ensureLocalEngine(probe, { autoStart: options.autoStart !== false,
+        output: streams.output }));
+  }
   const client = new PacificDBClient(options);
   let ready = false;
   const ensureConnection = async () => {
@@ -86,6 +97,6 @@ export async function main(args, streams = { input: stdin, output: stdout }) {
     return;
   }
   if (positional[0] !== 'shell')
-    throw new Error('usage: pacificdb [shell|ping|request JSON|put-media|get-media|put-vector|query-vector] [options]');
+    throw new Error('usage: pacificdb [shell|workbench|ping|request JSON|put-media|get-media|put-vector|query-vector] [options]');
   await runShell(client, streams, { ensureConnection });
 }

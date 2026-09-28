@@ -220,7 +220,8 @@ async function main() {
   } finally {
     evidence.finished_at = new Date().toISOString();
     if (cluster) await cluster.close();
-    const destination = options?.evidence || process.argv[process.argv.indexOf('--evidence') + 1];
+    const evidenceArg = process.argv.indexOf('--evidence');
+    const destination = options?.evidence || (evidenceArg >= 0 ? process.argv[evidenceArg + 1] : undefined);
     if (destination) await writeEvidence(destination, evidence);
     console.log(JSON.stringify(evidence, null, 2));
   }

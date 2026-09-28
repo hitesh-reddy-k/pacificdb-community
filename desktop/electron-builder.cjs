@@ -1,0 +1,38 @@
+const path = require('node:path');
+const root = path.resolve(__dirname, '..');
+module.exports = {
+  appId: 'in.pacificdb.workbench',
+  productName: process.platform === 'linux' ? 'PacificDB-Workbench' : 'PacificDB Workbench',
+  artifactName: 'PacificDB-Workbench-${version}-${os}-${arch}.${ext}',
+  directories: { app: path.join(__dirname, 'stage'),
+    output: path.join(root, 'dist', 'desktop'), buildResources: __dirname },
+  files: ['desktop/**', 'cli/**', 'package.json', 'LICENSE', 'LICENSES/**', 'THIRD_PARTY_NOTICES.md'],
+  extraResources: [{ from: path.join(__dirname, 'resources', 'engine'), to: 'engine' }],
+  asar: true,
+  npmRebuild: false,
+  publish: null,
+  linux: { target: ['deb', 'tar.gz'], executableName: 'pacificdb-workbench',
+    syncDesktopName: true,
+    category: 'Development', icon: path.join(__dirname, 'icons'),
+    synopsis: 'Desktop workspace for PacificDB',
+    description: 'Explore documents, vectors, and media in a local PacificDB database. Includes the database engine.',
+    desktop: { entry: { Name: 'PacificDB Workbench',
+      Keywords: 'database;documents;vectors;PacificDB;', Terminal: 'false' } },
+  },
+  deb: { maintainer: 'PacificDB Community', depends: [process.env.PACIFICDB_DESKTOP_UBUNTU_24 === '1' ?
+    'libc6 (>= 2.39)' : 'libc6 (>= 2.38)', process.env.PACIFICDB_DESKTOP_UBUNTU_24 === '1' ?
+    'libstdc++6 (>= 13)' : 'libstdc++6 (>= 14)', 'libgcc-s1', 'libssl3t64',
+    'liblz4-1', 'libxxhash0', 'libzstd1', 'zlib1g', 'libgtk-3-0t64', 'libnss3',
+    'libxss1', 'libasound2t64', 'libgbm1', 'libnotify4', 'libxtst6', 'xdg-utils'],
+    afterInstall: path.join(__dirname, 'after-install.sh') },
+  win: { target: ['nsis'], icon: path.join(__dirname, 'icon.png'),
+    ...(process.env.PACIFICDB_DESKTOP_RELEASE === '1' ? { forceCodeSigning: true } : {}) },
+  nsis: { oneClick: false, perMachine: false, allowToChangeInstallationDirectory: true,
+    createDesktopShortcut: true, createStartMenuShortcut: true },
+  mac: { target: ['dmg'], category: 'public.app-category.developer-tools',
+    icon: path.join(__dirname, 'icon.png'),
+    binaries: ['Contents/Resources/engine/db_engine', 'Contents/Resources/engine/pacificdb'],
+    entitlements: path.join(__dirname, 'entitlements.mac.plist'),
+    entitlementsInherit: path.join(__dirname, 'entitlements.mac.plist'),
+    ...(process.env.PACIFICDB_DESKTOP_RELEASE === '1' ? { notarize: true } : {}) },
+};

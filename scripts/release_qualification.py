@@ -100,7 +100,7 @@ def _gate(name: str, *, required: bool, command: Sequence[str] | None = None,
     return gate
 
 
-def default_gates() -> list[dict]:
+def default_gates(old_build: Path | None = None) -> list[dict]:
     return [
         _gate("source", required=True,
               command=["scripts/test-community.sh", "build-release-integrity"]),
@@ -109,12 +109,19 @@ def default_gates() -> list[dict]:
         _gate("container", required=True, reason="docker_required"),
         _gate("helm", required=True, command=["scripts/test-helm-deployment.sh"]),
         _gate("mixed_version_upgrade", required=True,
-              command=["node", "scripts/test-community-rf3-upgrade.mjs"]),
+              command=["node", "scripts/test-community-rf3-upgrade.mjs",
+                       "--old-build", str(old_build),
+                       "--candidate-build", "build-release-integrity",
+                       "--evidence", "build-release-integrity/rf3-upgrade-evidence.json"]
+              if old_build else None,
+              reason="previous_release_artifact_required"),
         _gate("physical_power", required=True, reason="external_physical_evidence_required"),
         _gate("security_review", required=True,
               reason="independent_external_review_required"),
         _gate("operations", required=True,
-              command=["python3", "scripts/validate_operations.py"]),
+              command=["python3", "scripts/validate_operations.py",
+                       "--docs", "docs/OPERATIONS.md", "--alerts",
+                       "deploy/monitoring/pacificdb-alerts.yaml"]),
         _gate("replica_integrity", required=True,
               command=["node", "scripts/test-replica-integrity-monitor.mjs",
                        "build-release-integrity"]),
@@ -162,10 +169,18 @@ def run_command(repo: Path, gate: dict) -> dict:
 
 
 def build_evidence(repo: Path, version: str, *, run: bool,
-                   artifacts: Sequence[Path]) -> dict:
+                   artifacts: Sequence[Path], old_build: Path | None = None) -> dict:
     started_at = utc_now()
     state = collect_repository_state(repo)
-    gates = [run_command(repo, gate) for gate in default_gates()] if run else default_gates()
+    gates = default_gates(old_build)
+    if run:
+        gates = [run_command(repo, gate) for gate in gates]
+    final_state = collect_repository_state(repo)
+    changed_during_run = run and (
+        final_state["dirty"] or final_state["revision"] != state["revision"]
+    )
+    state["dirty"] = state["dirty"] or changed_during_run
+    state["release_eligible"] = not state["dirty"]
     artifact_records = [collect_artifact(repo, path) for path in artifacts]
     finished_at = utc_now()
     return {
@@ -182,7 +197,8 @@ def build_evidence(repo: Path, version: str, *, run: bool,
         },
         "gates": gates,
         "artifacts": artifact_records,
-        "decision": decide(gates, stable=state["release_eligible"]),
+        "decision": (decide(gates, stable=True) if state["release_eligible"]
+                     else "BLOCKED"),
     }
 
 
@@ -207,6 +223,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--version", required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--artifact", type=Path, action="append", default=[])
+    parser.add_argument("--old-build", type=Path,
+                        help="previous release engine executable or build directory")
     parser.add_argument("--run", action="store_true", help="run locally available gates")
     parser.add_argument(
         "--allow-dirty-development",
@@ -219,7 +237,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     repo = Path(__file__).resolve().parent.parent
-    evidence = build_evidence(repo, args.version, run=args.run, artifacts=args.artifact)
+    evidence = build_evidence(repo, args.version, run=args.run,
+                              artifacts=args.artifact, old_build=args.old_build)
     if evidence["dirty"] and not args.allow_dirty_development:
         evidence["decision"] = "BLOCKED"
         evidence["development_evidence"] = False

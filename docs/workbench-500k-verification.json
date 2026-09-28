@@ -1,0 +1,524 @@
+{
+  "counts": [
+    {
+      "name": "All customers",
+      "filter": {},
+      "expectedCount": 500000,
+      "actualCount": 500000,
+      "durationMs": 5003
+    },
+    {
+      "name": "Find one ID",
+      "filter": {
+        "id": "customer-250000"
+      },
+      "expectedCount": 1,
+      "actualCount": 1,
+      "durationMs": 4631
+    },
+    {
+      "name": "India",
+      "filter": {
+        "country": "India"
+      },
+      "expectedCount": 100000,
+      "actualCount": 100000,
+      "durationMs": 4977
+    },
+    {
+      "name": "Active customers",
+      "filter": {
+        "status": "active"
+      },
+      "expectedCount": 166667,
+      "actualCount": 166667,
+      "durationMs": 5100
+    },
+    {
+      "name": "Enterprise tier",
+      "filter": {
+        "tier": "enterprise"
+      },
+      "expectedCount": 166665,
+      "actualCount": 166665,
+      "durationMs": 5204
+    },
+    {
+      "name": "Sequence range",
+      "filter": {
+        "sequence": {
+          "$gte": 100001,
+          "$lte": 100100
+        }
+      },
+      "expectedCount": 100,
+      "actualCount": 100,
+      "durationMs": 4827
+    },
+    {
+      "name": "Two countries",
+      "filter": {
+        "country": {
+          "$in": [
+            "India",
+            "USA"
+          ]
+        }
+      },
+      "expectedCount": 200000,
+      "actualCount": 200000,
+      "durationMs": 4825
+    },
+    {
+      "name": "Active in India",
+      "filter": {
+        "country": "India",
+        "status": "active"
+      },
+      "expectedCount": 33334,
+      "actualCount": 33334,
+      "durationMs": 5068
+    },
+    {
+      "name": "High spending",
+      "filter": {
+        "spending": {
+          "$gte": 9000
+        }
+      },
+      "expectedCount": 50000,
+      "actualCount": 50000,
+      "durationMs": 4763
+    },
+    {
+      "name": "Verified customers",
+      "filter": {
+        "verified": true
+      },
+      "expectedCount": 250000,
+      "actualCount": 250000,
+      "durationMs": 4781
+    },
+    {
+      "name": "Nested field",
+      "filter": {
+        "address.city": "Hyderabad"
+      },
+      "expectedCount": 100000,
+      "actualCount": 100000,
+      "durationMs": 5515
+    },
+    {
+      "name": "Array membership",
+      "filter": {
+        "tags": {
+          "$in": [
+            "enterprise"
+          ]
+        }
+      },
+      "expectedCount": 166665,
+      "actualCount": 166665,
+      "durationMs": 5471
+    },
+    {
+      "name": "OR conditions",
+      "filter": {
+        "$or": [
+          {
+            "country": "India"
+          },
+          {
+            "spending": {
+              "$gte": 9000
+            }
+          }
+        ]
+      },
+      "expectedCount": 140000,
+      "actualCount": 140000,
+      "durationMs": 5475
+    },
+    {
+      "name": "Missing field",
+      "filter": {
+        "phone": {
+          "$exists": false
+        }
+      },
+      "expectedCount": 500000,
+      "actualCount": 500000,
+      "durationMs": 5312
+    },
+    {
+      "name": "No matches",
+      "filter": {
+        "id": "customer-does-not-exist"
+      },
+      "expectedCount": 0,
+      "actualCount": 0,
+      "durationMs": 4972
+    }
+  ],
+  "pages": [
+    {
+      "name": "All customers",
+      "returned": 5,
+      "durationMs": 7
+    },
+    {
+      "name": "Find one ID",
+      "returned": 1,
+      "durationMs": 6
+    },
+    {
+      "name": "India",
+      "returned": 5,
+      "durationMs": 4979
+    },
+    {
+      "name": "Active customers",
+      "returned": 5,
+      "durationMs": 6238
+    },
+    {
+      "name": "Enterprise tier",
+      "returned": 5,
+      "durationMs": 5977
+    },
+    {
+      "name": "Sequence range",
+      "returned": 5,
+      "durationMs": 1002
+    },
+    {
+      "name": "Two countries",
+      "returned": 5,
+      "durationMs": 5
+    },
+    {
+      "name": "Active in India",
+      "returned": 5,
+      "durationMs": 4807
+    },
+    {
+      "name": "High spending",
+      "returned": 5,
+      "durationMs": 15
+    },
+    {
+      "name": "Verified customers",
+      "returned": 5,
+      "durationMs": 7685
+    },
+    {
+      "name": "Nested field",
+      "returned": 5,
+      "durationMs": 7
+    },
+    {
+      "name": "Array membership",
+      "returned": 5,
+      "durationMs": 6
+    },
+    {
+      "name": "OR conditions",
+      "returned": 5,
+      "durationMs": 5
+    },
+    {
+      "name": "Missing field",
+      "returned": 5,
+      "durationMs": 5
+    },
+    {
+      "name": "No matches",
+      "returned": 0,
+      "durationMs": 11
+    }
+  ],
+  "afterRestart": {
+    "info": {
+      "host": "127.0.0.1",
+      "port": 34383,
+      "database": "workbench_500k_1790452653418",
+      "collection": "customers",
+      "total": 500000,
+      "confirmed": 500000,
+      "startedAt": "2026-09-26T19:57:33.418Z",
+      "projectId": "project_6ab823adb8b8b3c45dbf4809",
+      "projectName": "Workbench 500k test",
+      "verifiedCount": 500000,
+      "expected": {
+        "countries": {
+          "India": 100000,
+          "USA": 100000,
+          "UK": 100000,
+          "Germany": 100000,
+          "Japan": 100000
+        },
+        "statuses": {
+          "active": 166667,
+          "inactive": 166667,
+          "pending": 166666
+        },
+        "tiers": {
+          "free": 166670,
+          "pro": 166665,
+          "enterprise": 166665
+        }
+      },
+      "indexError": "write_not_committed: createIndex did not reach quorum commit",
+      "indexes": [
+        {
+          "complete": true,
+          "field": "id",
+          "managed": true,
+          "name": "_id_",
+          "status": "ready",
+          "type": "primary"
+        },
+        {
+          "complete": true,
+          "createdAtMs": 1790452913997,
+          "documents": 500000,
+          "field": "country",
+          "fields": [
+            {
+              "field": "country",
+              "order": 1
+            }
+          ],
+          "name": "country_idx",
+          "sparse": false,
+          "status": "ready",
+          "type": "btree",
+          "unique": false,
+          "updatedAtMs": 1790453634274
+        }
+      ],
+      "media": {
+        "chunk_count": 1,
+        "collection": "media_samples",
+        "completed": 1790453644236,
+        "content_type": "application/octet-stream",
+        "created": 1790453644208,
+        "database": "workbench_500k_1790452653418",
+        "filename": "pacificdb-workbench-test.txt",
+        "id": "media_6ab8278cb8b8b3c45dbf480f",
+        "lease_expires_at_ms": 1790540044224,
+        "next_chunk": 1,
+        "received_bytes": 74,
+        "received_chunks": 1,
+        "received_indices": [
+          0
+        ],
+        "resumable": false,
+        "sha256": "41197f4303256dfccdc5d28a9c1271571d98b818da9c83f906bb74fbda5ae8d9",
+        "size_bytes": 74,
+        "state_version": 2,
+        "status": "ready"
+      },
+      "checks": [
+        {
+          "label": "India",
+          "filter": {
+            "country": "India"
+          },
+          "count": 100000
+        },
+        {
+          "label": "Active",
+          "filter": {
+            "status": "active"
+          },
+          "count": 166667
+        },
+        {
+          "label": "First 100",
+          "filter": {
+            "sequence": {
+              "$lte": 100
+            }
+          },
+          "count": 100
+        },
+        {
+          "label": "Spending >= 9000",
+          "filter": {
+            "spending": {
+              "$gte": 9000
+            }
+          },
+          "count": 50000
+        }
+      ],
+      "completedAt": "2026-09-26T20:16:55.826Z"
+    },
+    "queries": [
+      {
+        "name": "All customers",
+        "filter": {},
+        "expectedCount": 500000,
+        "actualCount": 500000,
+        "durationMs": 2250
+      },
+      {
+        "name": "Find one ID",
+        "filter": {
+          "id": "customer-250000"
+        },
+        "expectedCount": 1,
+        "actualCount": 1,
+        "durationMs": 2284
+      },
+      {
+        "name": "India",
+        "filter": {
+          "country": "India"
+        },
+        "expectedCount": 100000,
+        "actualCount": 100000,
+        "durationMs": 2310
+      },
+      {
+        "name": "Active customers",
+        "filter": {
+          "status": "active"
+        },
+        "expectedCount": 166667,
+        "actualCount": 166667,
+        "durationMs": 2312
+      },
+      {
+        "name": "Enterprise tier",
+        "filter": {
+          "tier": "enterprise"
+        },
+        "expectedCount": 166665,
+        "actualCount": 166665,
+        "durationMs": 2329
+      },
+      {
+        "name": "Sequence range",
+        "filter": {
+          "sequence": {
+            "$gte": 100001,
+            "$lte": 100100
+          }
+        },
+        "expectedCount": 100,
+        "actualCount": 100,
+        "durationMs": 2278
+      },
+      {
+        "name": "Two countries",
+        "filter": {
+          "country": {
+            "$in": [
+              "India",
+              "USA"
+            ]
+          }
+        },
+        "expectedCount": 200000,
+        "actualCount": 200000,
+        "durationMs": 2288
+      },
+      {
+        "name": "Active in India",
+        "filter": {
+          "country": "India",
+          "status": "active"
+        },
+        "expectedCount": 33334,
+        "actualCount": 33334,
+        "durationMs": 2903
+      },
+      {
+        "name": "High spending",
+        "filter": {
+          "spending": {
+            "$gte": 9000
+          }
+        },
+        "expectedCount": 50000,
+        "actualCount": 50000,
+        "durationMs": 3788
+      },
+      {
+        "name": "Verified customers",
+        "filter": {
+          "verified": true
+        },
+        "expectedCount": 250000,
+        "actualCount": 250000,
+        "durationMs": 3201
+      },
+      {
+        "name": "Nested field",
+        "filter": {
+          "address.city": "Hyderabad"
+        },
+        "expectedCount": 100000,
+        "actualCount": 100000,
+        "durationMs": 3623
+      },
+      {
+        "name": "Array membership",
+        "filter": {
+          "tags": {
+            "$in": [
+              "enterprise"
+            ]
+          }
+        },
+        "expectedCount": 166665,
+        "actualCount": 166665,
+        "durationMs": 3645
+      },
+      {
+        "name": "OR conditions",
+        "filter": {
+          "$or": [
+            {
+              "country": "India"
+            },
+            {
+              "spending": {
+                "$gte": 9000
+              }
+            }
+          ]
+        },
+        "expectedCount": 140000,
+        "actualCount": 140000,
+        "durationMs": 3256
+      },
+      {
+        "name": "Missing field",
+        "filter": {
+          "phone": {
+            "$exists": false
+          }
+        },
+        "expectedCount": 500000,
+        "actualCount": 500000,
+        "durationMs": 2874
+      },
+      {
+        "name": "No matches",
+        "filter": {
+          "id": "customer-does-not-exist"
+        },
+        "expectedCount": 0,
+        "actualCount": 0,
+        "durationMs": 2885
+      }
+    ],
+    "crud": "pass",
+    "vectors": "pass",
+    "media": "pass",
+    "verifiedAt": "2026-09-26T20:16:55.826Z"
+  }
+}

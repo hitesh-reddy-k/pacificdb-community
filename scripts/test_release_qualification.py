@@ -3,6 +3,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from scripts import release_qualification as qualification
 
@@ -124,6 +125,41 @@ class ReleaseQualificationTests(unittest.TestCase):
             hashlib.sha256(b"candidate bytes").hexdigest(), record["sha256"]
         )
         self.assertEqual(len(b"candidate bytes"), record["size_bytes"])
+
+    def test_release_gate_commands_include_required_arguments(self):
+        gates = {gate["name"]: gate for gate in qualification.default_gates()}
+        self.assertEqual(
+            ["python3", "scripts/validate_operations.py", "--docs",
+             "docs/OPERATIONS.md", "--alerts",
+             "deploy/monitoring/pacificdb-alerts.yaml"],
+            gates["operations"]["command"],
+        )
+        self.assertNotIn("command", gates["mixed_version_upgrade"])
+        with_old = {gate["name"]: gate for gate in
+                    qualification.default_gates(Path("/tmp/old-release"))}
+        self.assertEqual(
+            ["node", "scripts/test-community-rf3-upgrade.mjs", "--old-build",
+             "/tmp/old-release", "--candidate-build", "build-release-integrity",
+             "--evidence", "build-release-integrity/rf3-upgrade-evidence.json"],
+            with_old["mixed_version_upgrade"]["command"],
+        )
+
+    def test_gate_mutation_blocks_clean_release_evidence(self):
+        temp, repo = self.make_repository()
+        self.addCleanup(temp.cleanup)
+
+        def mutate(_repo, gate):
+            (repo / "tracked.txt").write_text("changed by gate\n", encoding="utf-8")
+            return {**gate, "status": "PASS"}
+
+        with patch.object(qualification, "default_gates", return_value=[
+            {"name": "source", "status": "BLOCKED", "required": True}
+        ]), patch.object(qualification, "run_command", side_effect=mutate):
+            evidence = qualification.build_evidence(repo, "1.0.1", run=True, artifacts=[])
+
+        self.assertTrue(evidence["dirty"])
+        self.assertFalse(evidence["release_eligible"])
+        self.assertEqual("BLOCKED", evidence["decision"])
 
 
 if __name__ == "__main__":

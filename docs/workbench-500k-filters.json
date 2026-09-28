@@ -1,0 +1,131 @@
+[
+  {
+    "name": "All customers",
+    "filter": {},
+    "expectedCount": 500000
+  },
+  {
+    "name": "Find one ID",
+    "filter": {
+      "id": "customer-250000"
+    },
+    "expectedCount": 1
+  },
+  {
+    "name": "India",
+    "filter": {
+      "country": "India"
+    },
+    "expectedCount": 100000
+  },
+  {
+    "name": "Active customers",
+    "filter": {
+      "status": "active"
+    },
+    "expectedCount": 166667
+  },
+  {
+    "name": "Enterprise tier",
+    "filter": {
+      "tier": "enterprise"
+    },
+    "expectedCount": 166665
+  },
+  {
+    "name": "Sequence range",
+    "filter": {
+      "sequence": {
+        "$gte": 100001,
+        "$lte": 100100
+      }
+    },
+    "expectedCount": 100
+  },
+  {
+    "name": "Two countries",
+    "filter": {
+      "country": {
+        "$in": [
+          "India",
+          "USA"
+        ]
+      }
+    },
+    "expectedCount": 200000
+  },
+  {
+    "name": "Active in India",
+    "filter": {
+      "country": "India",
+      "status": "active"
+    },
+    "expectedCount": 33334
+  },
+  {
+    "name": "High spending",
+    "filter": {
+      "spending": {
+        "$gte": 9000
+      }
+    },
+    "expectedCount": 50000
+  },
+  {
+    "name": "Verified customers",
+    "filter": {
+      "verified": true
+    },
+    "expectedCount": 250000
+  },
+  {
+    "name": "Nested field",
+    "filter": {
+      "address.city": "Hyderabad"
+    },
+    "expectedCount": 100000
+  },
+  {
+    "name": "Array membership",
+    "filter": {
+      "tags": {
+        "$in": [
+          "enterprise"
+        ]
+      }
+    },
+    "expectedCount": 166665
+  },
+  {
+    "name": "OR conditions",
+    "filter": {
+      "$or": [
+        {
+          "country": "India"
+        },
+        {
+          "spending": {
+            "$gte": 9000
+          }
+        }
+      ]
+    },
+    "expectedCount": 140000
+  },
+  {
+    "name": "Missing field",
+    "filter": {
+      "phone": {
+        "$exists": false
+      }
+    },
+    "expectedCount": 500000
+  },
+  {
+    "name": "No matches",
+    "filter": {
+      "id": "customer-does-not-exist"
+    },
+    "expectedCount": 0
+  }
+]

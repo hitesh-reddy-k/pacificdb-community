@@ -1,0 +1,149 @@
+{
+  "artifacts": [
+    {
+      "path": "desktop/resources/engine/db_engine",
+      "sha256": "5f76778e30cb4814099a56cc95b8379209cc1952bd2653c313df5e63aeb8739b",
+      "size_bytes": 5738392
+    },
+    {
+      "path": "dist/desktop/PacificDB-Workbench-1.0.1-linux-amd64.deb",
+      "sha256": "9502c6b59bdb598154b140f474a6cd6a7468c6fbd7605d7456056f0689d3367e",
+      "size_bytes": 101312532
+    },
+    {
+      "path": "dist/desktop/PacificDB-Workbench-1.0.1-linux-x64.tar.gz",
+      "sha256": "dd5221017a192137b9a430e2a63cd74104f0cf1829a50dc30d9b0740ccd4f770",
+      "size_bytes": 128547653
+    }
+  ],
+  "decision": "BLOCKED",
+  "development_evidence": true,
+  "dirty": true,
+  "finished_at": "2026-09-28T09:17:56.022498Z",
+  "gates": [
+    {
+      "command": [
+        "scripts/test-community.sh",
+        "build-release-integrity"
+      ],
+      "duration_ms": 0,
+      "name": "source",
+      "reason": "not_run",
+      "required": true,
+      "status": "BLOCKED"
+    },
+    {
+      "command": [
+        "npm",
+        "test",
+        "--prefix",
+        "sdk/node"
+      ],
+      "duration_ms": 0,
+      "name": "sdk",
+      "reason": "not_run",
+      "required": true,
+      "status": "BLOCKED"
+    },
+    {
+      "duration_ms": 0,
+      "name": "packages",
+      "reason": "platform_matrix_required",
+      "required": true,
+      "status": "BLOCKED"
+    },
+    {
+      "duration_ms": 0,
+      "name": "container",
+      "reason": "docker_required",
+      "required": true,
+      "status": "BLOCKED"
+    },
+    {
+      "command": [
+        "scripts/test-helm-deployment.sh"
+      ],
+      "duration_ms": 0,
+      "name": "helm",
+      "reason": "not_run",
+      "required": true,
+      "status": "BLOCKED"
+    },
+    {
+      "command": [
+        "node",
+        "scripts/test-community-rf3-upgrade.mjs",
+        "--old-build",
+        "/tmp/pacificdb-prior-release-audit/root/usr/bin",
+        "--candidate-build",
+        "build-release-integrity",
+        "--evidence",
+        "build-release-integrity/rf3-upgrade-evidence.json"
+      ],
+      "duration_ms": 0,
+      "name": "mixed_version_upgrade",
+      "reason": "previous_release_artifact_required",
+      "required": true,
+      "status": "BLOCKED"
+    },
+    {
+      "duration_ms": 0,
+      "name": "physical_power",
+      "reason": "external_physical_evidence_required",
+      "required": true,
+      "status": "BLOCKED"
+    },
+    {
+      "duration_ms": 0,
+      "name": "security_review",
+      "reason": "independent_external_review_required",
+      "required": true,
+      "status": "BLOCKED"
+    },
+    {
+      "command": [
+        "python3",
+        "scripts/validate_operations.py",
+        "--docs",
+        "docs/OPERATIONS.md",
+        "--alerts",
+        "deploy/monitoring/pacificdb-alerts.yaml"
+      ],
+      "duration_ms": 0,
+      "name": "operations",
+      "reason": "not_run",
+      "required": true,
+      "status": "BLOCKED"
+    },
+    {
+      "command": [
+        "node",
+        "scripts/test-replica-integrity-monitor.mjs",
+        "build-release-integrity"
+      ],
+      "duration_ms": 0,
+      "name": "replica_integrity",
+      "reason": "not_run",
+      "required": true,
+      "status": "BLOCKED"
+    },
+    {
+      "duration_ms": 0,
+      "name": "long_duration_load",
+      "reason": "release_owner_excluded_2026-09-16",
+      "required": false,
+      "status": "EXCLUDED"
+    }
+  ],
+  "platform": {
+    "machine": "x86_64",
+    "python": "3.12.3",
+    "release": "7.0.0-31-generic",
+    "system": "Linux"
+  },
+  "release_eligible": false,
+  "revision": "6e65e550fae2709d893781a9f15ad5990d0af480",
+  "schema_version": 1,
+  "started_at": "2026-09-28T09:17:55.878230Z",
+  "version": "1.0.1"
+}

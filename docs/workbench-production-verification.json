@@ -1,0 +1,110 @@
+{
+  "verifiedAt": "2026-09-28T09:19:49.932998Z",
+  "scope": "Development verification of a dirty local Linux candidate; not a production release certificate",
+  "workspace": "/home/hitesh/pacificdb-production-recovery-20260927/workspace",
+  "baseRevision": "6e65e550fae2709d893781a9f15ad5990d0af480",
+  "dirty": true,
+  "productionReady": false,
+  "checks": [
+    {
+      "name": "community",
+      "command": "BUILD_JOBS=2 bash /tmp/pacificdb-audit-community.sh /tmp/pacificdb-audit-build",
+      "status": "PASS",
+      "log": "/tmp/pacificdb-release-candidate-community.log",
+      "logSha256": "e96c5fd9ca14ca988d7713baaf2f6768f5d0d9721aac8c65911f05a7b7000ddc"
+    },
+    {
+      "name": "mixed_version_upgrade",
+      "command": "node scripts/test-community-rf3-upgrade.mjs --old-build <verified v1.0.0> --candidate-build /tmp/pacificdb-audit-build --evidence /tmp/pacificdb-final-rf3-upgrade-evidence.json",
+      "status": "PASS",
+      "log": "/tmp/pacificdb-final-rf3-upgrade.log",
+      "logSha256": "2b4d965cc1c547dd86e6a93cd14fb976af078cec329eaee64c72bc11d76c329e"
+    },
+    {
+      "name": "index_500k",
+      "command": "node scripts/test-index-low-cardinality.mjs /tmp/pacificdb-audit-build 500000",
+      "status": "PASS",
+      "log": "/tmp/pacificdb-final-index-500k.log",
+      "logSha256": "da0ba6013960a53537936ca713d5884515f5425565199fa0bcf8fa93a305453d"
+    },
+    {
+      "name": "desktop_unpacked",
+      "command": "PACIFICDB_TEST_DESKTOP=<rebuilt linux-unpacked executable> xvfb-run -a npm run test:workbench:desktop",
+      "status": "PASS",
+      "log": "/tmp/pacificdb-final-desktop-test.log",
+      "logSha256": "694a8d760ddbe83f687b8ea6e8e38249ee24083ec694fabfb2a936b244da1c1b"
+    },
+    {
+      "name": "desktop_debian",
+      "command": "PACIFICDB_TEST_DESKTOP=<extracted Debian executable> xvfb-run -a npm run test:workbench:desktop",
+      "status": "PASS",
+      "log": "/tmp/pacificdb-final-package-test.log",
+      "logSha256": "4413e94a9a174ea71a79e0bad4e6f67a5fe7fe726de9b739e523970b8d1a3683"
+    },
+    {
+      "name": "container_local",
+      "command": "scripts/test-container-image.sh pacificdb:local-1.0.1 /tmp/pacificdb-local-oci-evidence.json",
+      "status": "PASS",
+      "log": "/tmp/pacificdb-local-oci-test.log",
+      "logSha256": "41c4d8fcba648ecd1b9e96833779af1f297e8fc5ed76c8709f415ec2f1abfbcc"
+    }
+  ],
+  "mixedVersionEvidence": {
+    "path": "/tmp/pacificdb-final-rf3-upgrade-evidence.json",
+    "sha256": "2b4d965cc1c547dd86e6a93cd14fb976af078cec329eaee64c72bc11d76c329e",
+    "status": "PASS",
+    "steps": 9,
+    "acknowledgedCount": 29
+  },
+  "containerEvidence": {
+    "status": "PASS",
+    "image": "pacificdb:local-1.0.1",
+    "image_id": "sha256:b4f682c91ece9ae46499f19a843c6670cbc4b5231ca7a72ac2d4b8b11bc790f0",
+    "version": "1.0.1",
+    "revision": "development-dirty-6e65e55",
+    "registry_digest": "",
+    "non_root": true,
+    "read_only_root": true,
+    "application_ping": true,
+    "write_read": true
+  },
+  "sourceSha256": {
+    "engine/src/lsm.cpp": "09fb1b132e6f453b36a91acad17cd5c5628df313eb7a8da7efcce30e63d98599",
+    "engine/src/raft_core.cpp": "365bed7105e7a05830412df4e5c3764f13f152ccfca7462cac17e2006d44bcbe",
+    "cli/src/workbench.js": "fc71844053e74542bb194d487bf16bd073d2cf2f0b1ec0171bfa4cae02399306",
+    "desktop/engine.mjs": "3f635482780cfca286fcd7ac8a2554de0cfa9cd2a3bf081201f551dc737628b7",
+    "desktop/main.mjs": "cd15a0b057531d9a7eebdcd05361a4f6cc743053f79a57334db17f3817152506",
+    "desktop/electron-builder.cjs": "64e04375dd045677b247ee8948084bdecabb14a0f1b9c65faebe2c392efa37a4",
+    "scripts/release_qualification.py": "bb48379e3379f0845cca54b249d69735977f5dfab4a922e9c759633d12ea684c",
+    "scripts/test-community-rf3-upgrade.mjs": "7fbd40355dacb37e5413e095a541e0b58db38bf693eb864c15431a76be6760d0"
+  },
+  "artifacts": [
+    {
+      "path": "/tmp/pacificdb-prior-release-audit/root/usr/bin/db_engine",
+      "bytes": 5597976,
+      "sha256": "9fd9d6cf9c2d39dd4a9aa850a34f84987d88726f2317fa96efeea43d88218eac"
+    },
+    {
+      "path": "/tmp/pacificdb-audit-build/db_engine",
+      "bytes": 5738392,
+      "sha256": "5f76778e30cb4814099a56cc95b8379209cc1952bd2653c313df5e63aeb8739b"
+    },
+    {
+      "path": "dist/desktop/PacificDB-Workbench-1.0.1-linux-amd64.deb",
+      "bytes": 101312532,
+      "sha256": "9502c6b59bdb598154b140f474a6cd6a7468c6fbd7605d7456056f0689d3367e"
+    },
+    {
+      "path": "dist/desktop/PacificDB-Workbench-1.0.1-linux-x64.tar.gz",
+      "bytes": 128547653,
+      "sha256": "dd5221017a192137b9a430e2a63cd74104f0cf1829a50dc30d9b0740ccd4f770"
+    }
+  ],
+  "remaining": [
+    "Clean reviewed release revision and hosted exact-revision checks",
+    "Windows and macOS native release jobs with signing and notarization credentials",
+    "External physical power interruption and independent security reports bound to the final revision",
+    "Registry-pushed OCI digest and live Helm qualification",
+    "Release policy long-duration load decision and external-gate evidence integration"
+  ]
+}

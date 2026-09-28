@@ -18,6 +18,25 @@ Plain `pacificdb` opens the shell. For a loopback connection, it starts
 Installing the npm CLI alone does not install the database engine; install a
 native PacificDB package first or connect to another host.
 
+Run `pacificdb workbench` to open the local browser Workbench. It prints a
+`http://127.0.0.1:PORT/` URL and listens only on the loopback interface.
+Use `--ui-port PORT` to select the browser port.
+This subcommand belongs to the npm `@pacificdb/cli` executable. The native
+`/usr/bin/pacificdb` command from `pacificdb-community` does not provide it.
+For the installed desktop GUI, run `pacificdb-workbench` or open PacificDB
+Workbench from the Applications menu. From a source checkout, run
+`npm run workbench:desktop` for the desktop GUI or `npm run workbench` for
+browser mode.
+
+Workbench includes a workspace overview, project/database/collection navigation,
+document filters and editing, vector search, and media upload/download. The
+settings button changes appearance and density. Documents use pages of 25, 50,
+or 100 records; Ctrl/Cmd+Enter runs the current filter. Press `/` to search the
+navigation. Media uploads through Workbench are limited to 64 MiB per file.
+
+Keep the Workbench command running while using the browser. Ctrl+C stops the
+Workbench; a locally started database engine continues running.
+
 ```sh
 pacificdb --version
 pacificdb --host 127.0.0.1 --port 9000 ping

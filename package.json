@@ -1,8 +1,23 @@
 {
   "name": "pacificdb-community",
   "private": true,
-  "workspaces": ["sdk/node", "cli"],
+  "workspaces": [
+    "sdk/node",
+    "cli"
+  ],
   "scripts": {
-    "test:npm": "npm test --workspace @pacificdb/client && npm test --workspace @pacificdb/cli"
+    "test:npm": "npm test --workspace @pacificdb/client && npm test --workspace @pacificdb/cli",
+    "workbench": "node cli/bin/pacificdb.js workbench",
+    "test:workbench:browser": "node scripts/test-workbench-browser.mjs",
+    "workbench:desktop": "electron desktop/main.mjs",
+    "desktop:prepare": "node scripts/prepare-workbench-desktop.mjs",
+    "desktop:build": "npm run desktop:prepare && electron-builder --config desktop/electron-builder.cjs",
+    "desktop:unpacked": "npm run desktop:prepare && electron-builder --config desktop/electron-builder.cjs --dir",
+    "test:workbench:desktop": "node scripts/test-workbench-desktop.mjs"
+  },
+  "devDependencies": {
+    "electron": "44.4.5",
+    "electron-builder": "26.15.3",
+    "playwright": "1.63.0"
   }
 }

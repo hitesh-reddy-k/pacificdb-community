@@ -19,3 +19,6 @@
 *.pid
 *.bin
 .DS_Store
+
+/desktop/stage/
+/desktop/resources/
