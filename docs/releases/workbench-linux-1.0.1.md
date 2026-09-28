@@ -3,7 +3,7 @@ PacificDB Workbench 1.0.1 is a public **Linux x86-64 preview**. The installer in
 Download `PacificDB-Workbench-1.0.1-linux-amd64.deb` and `SHA256SUMS`, verify the checksum, then install:
 
 ```sh
-sha256sum -c SHA256SUMS
+sha256sum --ignore-missing -c SHA256SUMS
 sudo apt install ./PacificDB-Workbench-1.0.1-linux-amd64.deb
 ```
 
