@@ -374,6 +374,8 @@ private:
     // commit/apply progress must survive a power cut as one coherent record.
     std::mutex consensusStatePersistMutex_;
     bool consensusStateLoaded_ = false;
+    // Protected by consensusStatePersistMutex_; false after any failed replacement.
+    bool consensusStateDurable_ = false;
     uint64_t persistedConsensusTerm_ = 0;
     uint64_t persistedCommitIndex_ = 0;
     uint64_t persistedLastApplied_ = 0;

@@ -187,26 +187,30 @@ class ConnectionPool {
       this.pendingRelease += 1;
       job.resolve(value);
       const releaseDelayMs = connection.responsesOnSocket < 2 ? 5 : 0;
-      setTimeout(() => {
+      const release = () => {
         this.pendingRelease -= 1;
         if (!this.closed) {
           const next = this.queue.shift();
           if (next) this.dispatch(connection, next);
           else this.idle.push(connection);
         }
-      }, releaseDelayMs);
+      };
+      if (releaseDelayMs) setTimeout(release, releaseDelayMs);
+      else queueMicrotask(release);
     }, (error) => {
       this.pendingRelease += 1;
       job.reject(error);
       const releaseDelayMs = connection.responsesOnSocket < 2 ? 5 : 0;
-      setTimeout(() => {
+      const release = () => {
         this.pendingRelease -= 1;
         if (!this.closed) {
           const next = this.queue.shift();
           if (next) this.dispatch(connection, next);
           else this.idle.push(connection);
         }
-      }, releaseDelayMs);
+      };
+      if (releaseDelayMs) setTimeout(release, releaseDelayMs);
+      else queueMicrotask(release);
     });
   }
 

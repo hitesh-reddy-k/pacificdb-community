@@ -130,6 +130,7 @@ test('reuses a bounded persistent connection pool under concurrent load', async 
 
 test('returns a completed connection to the pool before resolving sequential requests', async () => {
   let connections = 0;
+  let zeroDelayTimers = 0;
   const sockets = new Set();
   const server = net.createServer((socket) => {
     connections += 1;
@@ -142,7 +143,9 @@ test('returns a completed connection to the pool before resolving sequential req
         const newline = wire.indexOf('\n');
         const request = JSON.parse(wire.slice(0, newline));
         wire = wire.slice(newline + 1);
-        socket.write(JSON.stringify({ sequence: request.sequence,
+        socket.write(JSON.stringify({
+          ...(request.sequence === 8 ? { error: 'expected_error' } :
+            { sequence: request.sequence }),
           _pacificdb_connection_keepalive: true }) + '\n');
       }
     });
@@ -150,12 +153,23 @@ test('returns a completed connection to the pool before resolving sequential req
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const client = new PacificDBClient({ host: '127.0.0.1',
     port: server.address().port, poolSize: 16 });
+  const nativeSetTimeout = globalThis.setTimeout;
+  globalThis.setTimeout = (callback, delay, ...args) => {
+    if (delay === 0) zeroDelayTimers += 1;
+    return nativeSetTimeout(callback, delay, ...args);
+  };
   try {
     for (let sequence = 0; sequence < 32; sequence += 1) {
-      assert.equal((await client.request({ action: 'ping', sequence })).sequence, sequence);
+      if (sequence === 8) {
+        await assert.rejects(client.request({ action: 'ping', sequence }), /expected_error/);
+      } else {
+        assert.equal((await client.request({ action: 'ping', sequence })).sequence, sequence);
+      }
     }
     assert.equal(connections, 1);
+    assert.equal(zeroDelayTimers, 0);
   } finally {
+    globalThis.setTimeout = nativeSetTimeout;
     client.close();
     for (const socket of sockets) socket.destroy();
     await new Promise((resolve) => server.close(resolve));
