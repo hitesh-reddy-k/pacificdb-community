@@ -65,8 +65,9 @@ without `--run`; its policy gates are not a substitute for these development run
 
 ## Remaining release requirements
 
-1. Review and commit the source, then bind release evidence to that clean revision.
-   The current tree contains existing uncommitted work and these fixes.
+1. Review the committed source and bind release evidence to the final clean
+   revision. Two unrelated historical site plans remain untracked in this local
+   workspace; they are not part of the Workbench candidate.
 2. Run Windows/macOS native package jobs and retain signing/notarization evidence.
    They cannot be certified from this Linux host.
 3. Bind the passing mixed-version RF3 evidence to the clean release revision.
