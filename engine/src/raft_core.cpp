@@ -2936,10 +2936,11 @@ bool RaftCore::replicateAndApply(const json& inputEntry, OperationPriority prior
         uint64_t index = 0;
         uint64_t term = 0;
         std::string payload = encodeRaftLogPayload(entry);
+        std::string base = dataRoot();
+        if (base.back() != '/' && base.back() != '\\') base += "/";
+        const std::string logPath = base + "raft/log.bin";
         {
             std::lock_guard<std::mutex> lk(logMutex_);
-            std::string base = dataRoot(); if (base.back() != '/' && base.back() != '\\') base += "/";
-            std::string logPath = base + "raft/log.bin";
             index = lastIndex_ + 1;
             {
                 std::lock_guard<std::mutex> lk2(electionMutex_);
@@ -2959,6 +2960,14 @@ bool RaftCore::replicateAndApply(const json& inputEntry, OperationPriority prior
         }
 
         if (index == 0) {
+            g_writeLifecycleFailed.fetch_add(1, std::memory_order_relaxed);
+            failedRequests_++;
+            return false;
+        }
+
+        // A consensus watermark cannot make unsynced log bytes durable. The
+        // one-node quorum must contain the entry before it can be committed.
+        if (!syncRaftLog(logPath)) {
             g_writeLifecycleFailed.fetch_add(1, std::memory_order_relaxed);
             failedRequests_++;
             return false;
@@ -5914,6 +5923,7 @@ void RaftCore::loadPersistedState() {
                     persistedCommitIndex_ = commit;
                     persistedLastApplied_ = applied;
                     consensusStateLoaded_ = true;
+                    consensusStateDurable_ = true;
                 } else {
                     std::cerr << "[RAFTCORE] Ignoring invalid consensus state checksum/invariants" << std::endl;
                 }
@@ -6024,6 +6034,16 @@ void RaftCore::persistConsensusState(uint64_t term,
     }
 
     std::lock_guard<std::mutex> persistLock(consensusStatePersistMutex_);
+    // Another writer may have already checkpointed a later applied index while
+    // this writer waited for the mutex. Its durable prefix covers this write.
+    if (consensusStateDurable_ &&
+        commitIndex <= persistedCommitIndex_ &&
+        lastApplied <= persistedLastApplied_ &&
+        (!updateElectionState || term < persistedConsensusTerm_ ||
+         (term == persistedConsensusTerm_ && votedFor == persistedVotedFor_))) {
+        return;
+    }
+    consensusStateDurable_ = false;
     // Progress writers race with term/vote writers. Preserve the newest
     // election state and monotonically merge commit/apply progress so a late
     // stale snapshot can never move the durable record backwards.
@@ -6099,6 +6119,7 @@ void RaftCore::persistConsensusState(uint64_t term,
     }
 #endif
     consensusStateLoaded_ = true;
+    consensusStateDurable_ = true;
 }
 
 void RaftCore::persistProgress() {
