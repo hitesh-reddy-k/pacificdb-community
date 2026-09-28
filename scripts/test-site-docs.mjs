@@ -49,6 +49,7 @@ for (const asset of [
 }
 
 assert.match(index, /href=["']docs\.html["'][^>]*>Documentation</);
+assert.match(index, /href=["']#workbench["'][^>]*>Workbench</);
 assert.match(index, /href=["']docs\.html#quickstart["']/);
 assert.doesNotMatch(index, /hitesh-reddy-k\.github\.io\/pacificdb-community\/docs\.html/);
 assert.match(index, /id=["']sdks["']/);
@@ -61,7 +62,7 @@ for (const heading of ['Added', 'Removed', 'Improved']) {
   assert.match(releaseNotes, new RegExp(`<h3>${heading}</h3>`));
 }
 
-for (const landingSection of ['top', 'why', 'how', 'features', 'downloads', 'start', 'sdks']) {
+for (const landingSection of ['top', 'why', 'how', 'features', 'workbench', 'downloads', 'start', 'sdks']) {
   assert.ok(elementIds(index).has(landingSection), `missing landing section: ${landingSection}`);
 }
 
