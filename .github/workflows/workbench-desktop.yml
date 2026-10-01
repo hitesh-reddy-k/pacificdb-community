@@ -81,7 +81,7 @@ jobs:
           test "$(readlink -f /usr/bin/pacificdb-workbench)" = /opt/PacificDB-Workbench/pacificdb-workbench
           PACIFICDB_TEST_DESKTOP=/opt/PacificDB-Workbench/pacificdb-workbench \
             xvfb-run -a npm run test:workbench:desktop
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: workbench-linux-x64
           if-no-files-found: error
@@ -160,7 +160,7 @@ jobs:
           $env:PACIFICDB_TEST_DESKTOP = "$pwd\dist\desktop\win-unpacked\PacificDB Workbench.exe"
           npm run test:workbench:desktop
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: workbench-windows-x64
           if-no-files-found: error
@@ -231,7 +231,7 @@ jobs:
             codesign --verify --strict "$contents/Resources/engine/db_engine"
             codesign --verify --strict "$contents/Resources/engine/pacificdb"
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: workbench-macos-${{ matrix.arch }}
           if-no-files-found: error
