@@ -24,7 +24,7 @@ done
 "$BUILD_DIR/db_engine_community_query_test"
 "$BUILD_DIR/db_engine_native_shell_parser_test"
 "$BUILD_DIR/db_engine_socket_runtime_test"
-"$BUILD_DIR/db_engine_cli_connection_test"
+"$BUILD_DIR/db_engine_cli_connection_test" sdk/contracts/connection-urls.json
 for checkpoint_failpoint in \
   FP_LSM_CHECKPOINT_AFTER_SST_SYNC \
   FP_LSM_CHECKPOINT_AFTER_ARTIFACT_RENAME \
