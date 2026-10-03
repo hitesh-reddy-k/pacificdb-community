@@ -5,13 +5,15 @@ project(db_engine LANGUAGES CXX)
 set(PACIFICDB_ENGINE_VERSION "1.1.1" CACHE STRING "PacificDB engine semantic version")
 set(PACIFICDB_STORAGE_FORMAT_VERSION "2" CACHE STRING "PacificDB on-disk storage format version")
 set(PACIFICDB_RAFT_PROTOCOL_VERSION "2" CACHE STRING "PacificDB Raft wire protocol version")
-execute_process(
-    COMMAND git rev-parse HEAD
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/..
-    OUTPUT_VARIABLE PACIFICDB_GIT_COMMIT
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    ERROR_QUIET
-)
+if(NOT PACIFICDB_GIT_COMMIT)
+    execute_process(
+        COMMAND git rev-parse HEAD
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/..
+        OUTPUT_VARIABLE PACIFICDB_GIT_COMMIT
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+endif()
 if(NOT PACIFICDB_GIT_COMMIT)
     set(PACIFICDB_GIT_COMMIT "unknown")
 endif()

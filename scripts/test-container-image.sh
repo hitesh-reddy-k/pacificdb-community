@@ -14,6 +14,12 @@ test "$(docker image inspect "$image" --format '{{.Config.User}}')" = 10001:1000
 test "$(docker image inspect "$image" --format '{{index .Config.Labels "org.opencontainers.image.licenses"}}')" = AGPL-3.0-only
 test -n "$(docker image inspect "$image" --format '{{index .Config.Labels "org.opencontainers.image.version"}}')"
 test -n "$(docker image inspect "$image" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')"
+embedded=$(docker run --rm "$image" --build-info)
+test "$(jq -r '.engineVersion' <<<"$embedded")" = \
+  "$(docker image inspect "$image" --format '{{index .Config.Labels "org.opencontainers.image.version"}}')"
+test "$(jq -r '.gitCommit' <<<"$embedded")" = \
+  "$(docker image inspect "$image" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')"
+test "$(jq -r '.gitCommit' <<<"$embedded")" != unknown
 
 docker run --detach --name "$container" --read-only \
   --tmpfs /tmp:uid=10001,gid=10001,mode=0700 \
@@ -49,9 +55,9 @@ if [[ -n "$evidence" ]]; then
   if [[ "$image" == *@sha256:* ]]; then registry_digest=${image#*@}; fi
   jq -n --arg image "$image" --arg image_id "$image_id" \
     --arg version "$version" --arg revision "$revision" \
-    --arg registry_digest "$registry_digest" \
+    --arg registry_digest "$registry_digest" --argjson embedded "$embedded" \
     '{status:"PASS", image:$image, image_id:$image_id, version:$version,
-      revision:$revision, registry_digest:$registry_digest,
+      revision:$revision, registry_digest:$registry_digest, embedded_identity:$embedded,
       non_root:true, read_only_root:true,
       application_ping:true, write_read:true}' >"$evidence"
 fi

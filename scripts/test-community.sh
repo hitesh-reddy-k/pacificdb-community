@@ -38,6 +38,7 @@ test "$("$BUILD_DIR/pacificdb" --version)" = "PacificDB 1.1.1"
 test "$("$BUILD_DIR/pacificdb" -V)" = "PacificDB 1.1.1"
 node intelligence/test.js
 python3 scripts/test-release-consistency.py
+python3 scripts/test-build-identity.py
 python3 scripts/test-workflow-contract.py
 python3 scripts/test-deployment-contract.py
 python3 scripts/test-native-signing-contract.py
