@@ -49,50 +49,64 @@ try {
   browser = await chromium.launch({ headless: true, channel: 'chromium' });
   page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
   page.on('pageerror', (error) => errors.push(error.message));
+  const requests = [];
+  page.on('request', req => { if (req.url().endsWith('/api/execute')) requests.push(req.postDataJSON()); });
   await page.goto(workbench.url);
   await page.waitForFunction(() => document.querySelector('#connection').textContent.includes('Connected'));
   assert.equal(await page.locator('#overview').isVisible(), true);
   assert.equal(await page.locator('.brand img').evaluate((image) => image.complete && image.naturalWidth === 210), true);
   if (screenshots) await mkdir(screenshots, { recursive: true });
+  await page.locator('#environment-open').click();
+  await page.locator('#connection-dialog').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#copy-connection').isDisabled(), true);
+  await page.locator('#close-connection').click();
   await page.locator('#nav-explorer').click();
-  await page.locator('#welcome-title').filter({ hasText: 'No projects yet' }).waitFor();
+  await page.locator('#welcome-title').filter({ hasText: 'No databases yet' }).waitFor();
   if (screenshots) await page.screenshot({ path: path.join(screenshots, 'empty.png') });
 
   async function create(kind, name) {
-    await page.locator(kind === 'project' ? '#overview-create' : `#add-${kind}`).click();
+    await page.locator(kind === 'database' ? '#overview-create' : `#add-${kind}`).click();
     await page.locator('#create-name').fill(name);
     await page.locator('#submit-create').click();
     await page.waitForFunction(() => !document.querySelector('#create-dialog').open);
     await page.locator('#notice').filter({ hasText: `Created ${kind} ${name}.` }).waitFor();
   }
-  await create('project', 'Product studio');
   await create('database', 'commerce');
   await create('collection', 'customers');
-  const project = (await client.request({ action: 'community_project_list' })).projects[0];
-  assert.equal(await page.locator('#project-id').textContent(), project.id);
-  assert.equal(await page.locator('#projects > .tree-node > .tree-children > .tree-node > .tree-children > .tree-node .tree-item').textContent().then((value) => value.includes('customers')), true,
-    'collections must be nested under their database and project');
-  const projectDisclosure = page.locator('#projects > .tree-node').first().getByRole('button', { name: 'Collapse project' });
-  assert.equal(await projectDisclosure.count(), 1, 'selected projects must have a working collapse control');
-  await projectDisclosure.click();
-  assert.equal(await page.locator('#projects > .tree-node > .tree-children').first().isVisible(), false);
-  await page.locator('#projects > .tree-node').first().getByRole('button', { name: 'Expand project' }).click();
+  assert.equal(await page.locator('#databases > .tree-node > .tree-children .tree-item').textContent().then(value => value.includes('customers')), true,
+    'collections must be nested directly under their database');
+  const disclosure = page.locator('#databases > .tree-node').first().getByRole('button', { name: 'Collapse database' });
+  await disclosure.click();
+  assert.equal(await page.locator('#databases > .tree-node > .tree-children').first().isVisible(), false);
+  await page.locator('#databases > .tree-node').first().getByRole('button', { name: 'Expand database' }).click();
   await page.locator('#environment-open').click();
-  await page.locator('#connection-cli').click();
-  assert.match(await page.locator('#connection-example').textContent(), new RegExp(`--port ${port} --no-start`));
-  assert.match(await page.locator('#connection-example').textContent(), new RegExp(`use project ${project.id}`));
-  await page.locator('#connection-node').click();
-  assert.match(await page.locator('#connection-example').textContent(), new RegExp(`useProject\\("${project.id}"\\)`));
-  await page.locator('#connection-java').click();
-  assert.match(await page.locator('#connection-example').textContent(), new RegExp(`new PacificDBClient\\("127.0.0.1", ${port}`));
+  await page.locator('#connection-dialog').waitFor({ state: 'visible' });
+  await page.locator('#connection-url').click();
+  assert.equal(await page.locator('#connection-example').textContent(), `pacificdb://127.0.0.1:${port}/commerce`);
+  for (const [format, pattern] of [['cli', /--url .*commerce/], ['node', /PacificDB.connect/], ['python', /with PacificDB.connect/], ['java', /try \(var db = PacificDB.connect/]]) {
+    await page.locator(`#connection-${format}`).click();
+    const example = await page.locator('#connection-example').textContent();
+    assert.match(example, pattern); assert.doesNotMatch(example, /useProject|projectId|useDatabase/);
+  }
+  // An authenticated endpoint never generates inline credential examples.
+  await page.route('**/api/execute', async route => {
+    if (route.request().postDataJSON().op === 'connection.info') await route.fulfill({ json: { result: { host: '127.0.0.1', port, tls: true, userId: 'alice', authenticationRequired: true } } });
+    else await route.continue();
+  });
+  await page.locator('#close-connection').click();
+  await page.locator('#environment-open').click();
+  await page.locator('#connection-dialog').waitFor({ state: 'visible' });
+  for (const format of ['url', 'cli', 'node', 'python', 'java']) {
+    await page.locator(`#connection-${format}`).click();
+    assert.match(await page.locator('#connection-example').textContent(), /PACIFICDB_URL/);
+    assert.doesNotMatch(await page.locator('#connection-example').textContent(), /password|token=|userProject/);
+  }
+  await page.unrouteAll({ behavior: 'wait' });
   if (screenshots) await page.screenshot({ path: path.join(screenshots, 'connection.png') });
   await page.locator('#close-connection').click();
-  await create('project', 'Second project');
-  assert.notEqual(await page.locator('#project-id').textContent(), project.id);
-  await page.locator('#projects .tree-item').filter({ hasText: 'Product studio' }).click();
-  await page.locator('#project-id').filter({ hasText: project.id }).waitFor();
-  await page.locator('#projects > .tree-node > .tree-children > .tree-node > .tree-children > .tree-node .tree-item').waitFor();
-  await client.useProject(project.id);
+  await create('database', 'second');
+  await page.locator('#databases .tree-item').filter({ hasText: 'commerce' }).click();
+  await page.locator('#breadcrumb').filter({ hasText: 'commerce' }).waitFor();
   await client.useDatabase('commerce');
   // Seed through the same single-document operation offered by Workbench.
   for (let index = 0; index < 131; index++) {
@@ -106,13 +120,49 @@ try {
     await client.createCollection(name);
     for (let index = 0; index < count; index++) await client.insert(name, { id: `${name}-${index}` });
   }
+  const beforeHidden = requests.filter(req => req.op === 'collections.summary').length;
+  for (const view of ['query', 'media', 'explorer']) await page.locator(`#nav-${view}`).click();
+  await page.locator('#refresh-docs').click();
+  await page.waitForFunction(() => !document.querySelector('#refresh-docs').disabled);
+  assert.equal(requests.filter(req => req.op === 'collections.summary').length, beforeHidden, 'hidden overview must not count collections');
+  let active = 0, maxActive = 0;
+  await page.route('**/api/execute', async route => {
+    if (route.request().postDataJSON().op !== 'collections.summary') return route.continue();
+    active++; maxActive = Math.max(maxActive, active);
+    try { const response = await route.fetch(); await new Promise(resolve => setTimeout(resolve, 50)); await route.fulfill({ response }); }
+    finally { active--; }
+  });
   await page.locator('#nav-overview').click();
   await page.locator('#overview-refresh').click();
+  await page.locator('#total-documents').filter({ hasText: '141' }).waitFor();
+  await page.unrouteAll({ behavior: 'wait' });
+  assert.ok(maxActive > 0 && maxActive <= 4, `summary concurrency ${maxActive} must be bounded at four`);
+  // Hold old database summaries while navigation changes; neither stale values nor
+  // new summary jobs may leak into a hidden Overview.
+  let releaseSummaries, summariesStarted;
+  const heldSummaries = new Promise(resolve => { releaseSummaries = resolve; });
+  const startedSummaries = new Promise(resolve => { summariesStarted = resolve; });
+  await page.route('**/api/execute', async route => {
+    if (route.request().postDataJSON().op !== 'collections.summary') return route.continue();
+    summariesStarted(); await heldSummaries;
+    await route.fulfill({ json: { result: { count: 999999, indexes: 999 } } });
+  });
+  await page.locator('#overview-refresh').click();
+  await startedSummaries;
+  assert.match(await page.locator('#collection-rows').textContent(), /—/, 'unloaded counts remain unknown');
+  await page.locator('#databases .tree-item').filter({ hasText: 'second' }).click();
+  await page.locator('#welcome-title').filter({ hasText: 'No collections yet' }).waitFor();
+  releaseSummaries();
+  await page.unrouteAll({ behavior: 'wait' });
+  assert.doesNotMatch(await page.locator('#total-documents').textContent(), /999999/);
+  await page.locator('#databases .tree-item').filter({ hasText: 'commerce' }).click();
+  await page.locator('#document-list .record').first().waitFor();
+  await page.locator('#nav-overview').click();
   await page.locator('#total-documents').filter({ hasText: '141' }).waitFor();
   assert.equal(await page.locator('#collection-rows tr').count(), 6);
   assert.deepEqual(await page.locator('.collection-table th').allTextContents(), ['Name ↕', 'Type', 'Documents', 'Indexes']);
   assert.equal(await page.locator('#top-new-query').count(), 0);
-  for (const id of ['open-databases', 'open-collections', 'overview-explore']) {
+  for (const id of ['open-databases', 'open-collections']) {
     await page.locator(`#${id}`).click();
     assert.equal(await page.locator('#nav-explorer').getAttribute('aria-current'), 'page');
     await page.locator('#nav-overview').click();
@@ -129,8 +179,8 @@ try {
   await page.locator('#quick-cli').click();
   await page.locator('#connection-dialog').waitFor({ state: 'visible' });
   await page.locator('#close-connection').click();
-  await page.locator('#nav-search').fill('Product studio');
-  assert.equal(await page.locator('#projects > .tree-node').count(), 1);
+  await page.locator('#nav-search').fill('commerce');
+  assert.equal(await page.locator('#databases > .tree-node').count(), 1);
   await page.locator('#nav-search').fill('');
   assert.match(await page.locator('#collection-rows tr').filter({ hasText: 'customers' }).textContent(), /131.*1/s);
   await page.locator('#sort-collections').click();
@@ -160,7 +210,7 @@ try {
   assert.equal(await page.locator('#nav-query').getAttribute('aria-current'), 'page');
   assert.equal(await page.locator('#title').textContent(), 'Query Workbench');
   assert.equal(await page.locator('#new-document').isVisible(), false);
-  assert.equal(await page.locator('#project-identity').isVisible(), false);
+  assert.equal(await page.locator('#database-identity').isVisible(), false);
   assert.equal(await page.locator('#document-editor').isVisible(), false);
   if (screenshots) await page.screenshot({ path: path.join(screenshots, 'query.png') });
   await page.locator('#document-list button').first().click();
@@ -369,7 +419,8 @@ try {
     } else await route.continue();
   });
   await page.locator('#refresh-all').click();
-  await page.locator('#breadcrumb').filter({ hasText: 'replacement' }).waitFor();
+  await page.locator('#welcome-title').filter({hasText: 'Choose a collection'}).waitFor({timeout: 5000});
+  assert.equal(await page.locator('#collection-name').textContent(), '');
   assert.equal(await page.locator('#document-editor').evaluate((element) => element.open), false);
   assert.equal(await page.locator('#document-json').inputValue(), '{}');
   assert.equal(await page.locator('#write-filter').inputValue(), '{}');
@@ -400,7 +451,11 @@ try {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   if (screenshots) await page.screenshot({ path: path.join(screenshots, 'mobile.png') });
   await page.setViewportSize({ width: 1365, height: 900 });
-  await create('project', 'Removal test');
+  await create('collection', 'do_not_choose');
+  await page.locator('#delete-collection').click();
+  await page.locator('#confirm-submit').click();
+  await page.locator('#welcome-title').filter({hasText: 'Choose a collection'}).waitFor({timeout: 5000});
+  assert.equal(await page.locator('#collection-name').textContent(), '');
   await create('database', 'removal_test');
   await create('collection', 'temporary');
   await page.locator('#delete-collection').click();
@@ -408,11 +463,27 @@ try {
   await page.locator('#welcome-title').filter({ hasText: 'No collections yet' }).waitFor();
   await page.locator('#delete-database').click();
   await page.locator('#confirm-submit').click();
-  await page.locator('#welcome-title').filter({ hasText: 'No databases yet' }).waitFor();
-  await page.locator('#delete-project').click();
-  await page.locator('#confirm-submit').click();
-  await page.locator('#notice').filter({ hasText: 'Project deleted' }).waitFor();
-  assert.ok(!(await client.request({ action: 'community_project_list' })).projects.some((p) => p.name === 'Removal test'));
+  await page.locator('#notice').filter({ hasText: 'Database deleted' }).waitFor();
+  assert.ok(!(await client.request({ action: 'listDatabases' })).includes('removal_test'));
+  assert.equal(await page.locator('#top-database').textContent(), 'Workspace',
+    'deleting the selected database must not switch into an unrelated database');
+  await create('database', 'd'.repeat(129)); await create('collection', 'long_namespace');
+  await create('database', '数据库'); await create('collection', '文件');
+  await page.locator('#nav-media').click();
+  await page.locator('#media-file').setInputFiles({name: '文件.txt', mimeType: 'text/plain', buffer: Buffer.from('unicode scope upload')});
+  await page.locator('#upload-media').click();
+  await page.locator('#media-list .record').filter({hasText: '文件.txt'}).waitFor({timeout: 5000});
+  // A URL-selected missing database is not permission to choose a different one.
+  const beforeMissing = requests.length;
+  await page.route('**/api/execute', async route => {
+    if (route.request().postDataJSON().op === 'connection.info') await route.fulfill({json: {result: {
+      host: '127.0.0.1', port, tls: false, userId: 'system', authenticationRequired: false, database: 'requested-missing'}}});
+    else await route.continue();
+  });
+  await page.reload();
+  await page.locator('#notice').filter({hasText: 'requested-missing'}).waitFor({timeout: 5000});
+  assert.equal(await page.locator('#top-database').textContent(), 'Workspace');
+  assert.equal(requests.slice(beforeMissing).some(value => value.op === 'collections.list'), false);
   assert.deepEqual(errors, []);
   console.log('WORKBENCH_BROWSER_PASS: CRUD/deletion, indexes, query history/shortcuts, table/JSON editor, vector metrics/filters, media preview races, preferences, responsive layout');
 } catch (error) {

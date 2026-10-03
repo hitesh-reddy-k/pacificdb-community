@@ -1,0 +1,277 @@
+{
+  "valid": [
+    {
+      "url": "pacificdb://localhost/app",
+      "expected": {
+        "host": "localhost",
+        "port": 9000,
+        "database": "app",
+        "tls": false,
+        "userId": "system",
+        "timeoutMs": 30000,
+        "poolSize": 16
+      }
+    },
+    {
+      "url": "pacificdb://127.0.0.1:9010/shop",
+      "expected": {
+        "host": "127.0.0.1",
+        "port": 9010,
+        "database": "shop",
+        "tls": false,
+        "userId": "system",
+        "timeoutMs": 30000,
+        "poolSize": 16
+      }
+    },
+    {
+      "url": "pacificdb://[::1]:9000/app",
+      "expected": {
+        "host": "::1",
+        "port": 9000,
+        "database": "app",
+        "tls": false,
+        "userId": "system",
+        "timeoutMs": 30000,
+        "poolSize": 16
+      }
+    },
+    {
+      "url": "pacificdbs://localhost/app?userId=alice&timeoutMs=5000&poolSize=2&caFile=%2Ftmp%2Fca.pem",
+      "expected": {
+        "host": "localhost",
+        "port": 9000,
+        "database": "app",
+        "tls": true,
+        "userId": "alice",
+        "timeoutMs": 5000,
+        "poolSize": 2,
+        "caFile": "/tmp/ca.pem"
+      }
+    },
+    {
+      "url": "pacificdb://demo:dummy%3Ap%40ss@localhost/caf%C3%A9",
+      "expected": {
+        "host": "localhost",
+        "port": 9000,
+        "database": "café",
+        "tls": false,
+        "userId": "system",
+        "timeoutMs": 30000,
+        "poolSize": 16,
+        "username": "demo",
+        "password": "dummy:p@ss"
+      }
+    },
+    {
+      "url": "pacificdb://localhost/app",
+      "options": {
+        "timeoutMs": 1200,
+        "poolSize": 3
+      },
+      "expected": {
+        "host": "localhost",
+        "port": 9000,
+        "database": "app",
+        "tls": false,
+        "userId": "system",
+        "timeoutMs": 1200,
+        "poolSize": 3
+      }
+    },
+    {
+      "url": "pacificdb://localhost/app?poolSize=32&timeoutMs=1800000",
+      "expected": {
+        "host": "localhost",
+        "port": 9000,
+        "database": "app",
+        "tls": false,
+        "userId": "system",
+        "timeoutMs": 1800000,
+        "poolSize": 32
+      }
+    },
+    {
+      "url": "pacificdb://[0:0:0:0:0:0:0:1]:9000/app",
+      "expected": {
+        "host": "0:0:0:0:0:0:0:1",
+        "port": 9000,
+        "database": "app",
+        "tls": false,
+        "userId": "system",
+        "timeoutMs": 30000,
+        "poolSize": 16
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "url": "http://localhost/app",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb:///app",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost/",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost/a/b",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost/../app",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost/app/",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost/a%2Fb",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost/a%5Cb",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost/app#x",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost/a%00",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost/a%FF",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost/a%",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost:0/app",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost:65536/app",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost:abc/app",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost:/app",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost/app?token=x",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost/app?poolSize=0",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost/app?poolSize=33",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost/app?poolSize=2&poolSize=3",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost/app?timeoutMs=0",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost/app?timeoutMs=1.2",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost/app?timeoutMs=1800001",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost/app?userId=",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost/app?caFile=a",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://demo@localhost/app",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://demo:@localhost/app",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://:dummy@localhost/app",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://demo:bad%FF@localhost/app",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost/app",
+      "options": {
+        "database": "other"
+      },
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost/app",
+      "options": {
+        "host": "other"
+      },
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost/app",
+      "options": {
+        "port": 9010
+      },
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost/app",
+      "options": {
+        "tls": true
+      },
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://café/app",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost/app?userId=x&",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://localhost/app?userId=%C0%AF",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://[::1]junk/app",
+      "code": "invalid_connection_url"
+    },
+    {
+      "url": "pacificdb://::1/app",
+      "code": "invalid_connection_url"
+    }
+  ]
+}

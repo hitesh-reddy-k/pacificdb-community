@@ -1,0 +1,109 @@
+name: SDK package qualification
+on:
+  pull_request:
+    paths: ['sdk/**', 'scripts/*sdk*', '.github/workflows/*publish.yml', '.github/workflows/sdk-packages.yml']
+  push:
+    branches: [pacificdb-v1.0]
+    paths: ['sdk/**', 'scripts/*sdk*', '.github/workflows/*publish.yml', '.github/workflows/sdk-packages.yml']
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: false
+        default: ''
+permissions:
+  contents: read
+jobs:
+  supported-runtimes:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest]
+        python: ['3.10', '3.12']
+        java: ['11', '17', '21']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          cache: maven
+      - run: python -m pip install pytest==8.3.5
+      - name: SDK transport, path and capability contracts
+        shell: bash
+        run: |
+          PYTHONPATH=sdk/python python -m pytest -q sdk/python/tests
+          mvn -B -q -f sdk/java/pom.xml test
+          python scripts/test-sdk-capability-matrix.py
+          python scripts/test-sdk-packages.py
+          python scripts/test-sdk-workflows.py
+  inspected-artifacts:
+    needs: supported-runtimes
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ liblz4-dev libssl-dev gnupg
+          python -m pip install build==1.2.2.post1 twine==6.1.0 setuptools==80.9.0 pytest==8.3.5
+      - name: Build engine for installed-artifact qualification
+        run: |
+          cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.1.1
+          cmake --build build -j2
+          node scripts/test-cross-sdk-e2e.mjs build
+      - name: Build and test Python distributions
+        run: |
+          python -m build sdk/python
+          python -m twine check sdk/python/dist/*
+          PACIFICDB_TEST_ENGINE_BUILD="$PWD/build" scripts/test-python-installed-client.sh sdk/python/dist/*.whl
+      - name: Build and test installed Java artifacts
+        run: |
+          PACIFICDB_TEST_ENGINE_BUILD="$PWD/build" scripts/test-java-installed-client.sh
+          mvn -B -q -f sdk/java/pom.xml package
+      - name: Local test signatures and bundle (no upload)
+        run: |
+          set -euo pipefail
+          export GNUPGHOME
+          GNUPGHOME=$(mktemp -d)
+          trap 'gpgconf --kill all; python -c "import os,shutil; shutil.rmtree(os.environ[\"GNUPGHOME\"])"' EXIT
+          chmod 700 "$GNUPGHOME"
+          gpg --batch --pinentry-mode loopback --passphrase '' --quick-generate-key 'Local pipeline test ONLY <local-test@example.invalid>' rsa2048 sign 1d
+          fingerprint=$(gpg --batch --with-colons --list-secret-keys | awk -F: '$1 == "fpr" {print $10; exit}')
+          mkdir -p sdk/java/target/central-publishing
+          cp sdk/java/pom.xml sdk/java/target/pacificdb-client-1.1.1.pom
+          python scripts/pack-java-sdk.py --target sdk/java/target --output sdk/java/target/central-publishing/central-bundle.zip --fingerprint "$fingerprint" --sign
+          gpg --armor --export > sdk/java/target/local-test-public.asc
+      - name: Inspect exact distributions and stage tested bytes
+        run: |
+          mkdir -p release-sdk/python release-sdk/java/central-publishing
+          python scripts/verify-sdk-packages.py --python-dist sdk/python/dist --java-target sdk/java/target --output release-sdk/inspection.json
+          cp sdk/python/dist/* release-sdk/python/
+          cp sdk/java/target/pacificdb-client-1.1.1*.jar sdk/java/target/pacificdb-client-1.1.1.pom sdk/java/target/local-test-public.asc release-sdk/java/
+          cp sdk/java/target/central-publishing/central-bundle.zip release-sdk/java/central-publishing/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tested-sdk-packages
+          path: release-sdk/
+          if-no-files-found: error

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 BUILD_DIR="${1:-build}"
-cmake -S engine -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.0.1
+cmake -S engine -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.1.1
 cmake --build "$BUILD_DIR" -j"${BUILD_JOBS:-2}"
 for test in \
   v11_4_apply_exact_boundary_failpoints_test storage_path_security_test \
@@ -24,6 +24,7 @@ done
 "$BUILD_DIR/db_engine_community_query_test"
 "$BUILD_DIR/db_engine_native_shell_parser_test"
 "$BUILD_DIR/db_engine_socket_runtime_test"
+"$BUILD_DIR/db_engine_cli_connection_test"
 for checkpoint_failpoint in \
   FP_LSM_CHECKPOINT_AFTER_SST_SYNC \
   FP_LSM_CHECKPOINT_AFTER_ARTIFACT_RENAME \
@@ -33,8 +34,8 @@ for checkpoint_failpoint in \
   FP_LSM_CHECKPOINT_AFTER_WAL_RECLAIM; do
   "$BUILD_DIR/db_engine_lsm_checkpoint_crash_driver" --run-one "$checkpoint_failpoint"
 done
-test "$("$BUILD_DIR/pacificdb" --version)" = "PacificDB 1.0.1"
-test "$("$BUILD_DIR/pacificdb" -V)" = "PacificDB 1.0.1"
+test "$("$BUILD_DIR/pacificdb" --version)" = "PacificDB 1.1.1"
+test "$("$BUILD_DIR/pacificdb" -V)" = "PacificDB 1.1.1"
 node intelligence/test.js
 python3 scripts/test-release-consistency.py
 python3 scripts/test-workflow-contract.py
@@ -74,21 +75,24 @@ PACIFICDB_RF3_REPEATS=1 PACIFICDB_RF3_CLIENTS=64,128 \
   node scripts/test-community-rf3-sustained.mjs "$BUILD_DIR"
 PYTHONPATH=sdk/python python3 -m pytest -q sdk/python/tests
 mvn -q -f sdk/java/pom.xml test
+python3 scripts/test-sdk-capability-matrix.py
+node scripts/test-cross-sdk-e2e.mjs "$BUILD_DIR"
 legacy_product=basta
 legacy_product+=base
 paid_tier=enter
 paid_tier+=prise
 if command -v rg >/dev/null 2>&1; then
-  # Synthetic customer tier labels in the Workbench fixture are not product editions.
+  # Workbench seed-data evidence and its query recipe contain customer tier values, not product branding.
   branding_match=$(rg -n -i "$legacy_product|$paid_tier" . --glob '!.git/**' \
     --glob '!**/target/**' --glob '!docs/superpowers/**' \
+    --glob '!docs/workbench-500k-verification.json' \
     --glob '!docs/WORKBENCH_500K_TEST_QUERIES.md' \
-    --glob '!docs/workbench-500k-*.json' || true)
+    --glob '!docs/workbench-500k-filters.json' || true)
 else
   branding_match=$(grep -RInI -E "$legacy_product|$paid_tier" . \
     --exclude-dir=.git --exclude-dir='build*' --exclude-dir=node_modules \
     --exclude-dir=target --exclude-dir=superpowers \
-    --exclude=WORKBENCH_500K_TEST_QUERIES.md --exclude='workbench-500k-*.json' || true)
+    --exclude=workbench-500k-verification.json --exclude=WORKBENCH_500K_TEST_QUERIES.md --exclude=workbench-500k-filters.json || true)
 fi
 if test -n "$branding_match"; then
   printf '%s\n' "$branding_match"

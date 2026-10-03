@@ -27,25 +27,22 @@ int main() {
     assert(pacificdb::cli::parseShellCommand("delete backup backup-1", context)
                .at("command")
                .at("action") == "delete_backup");
-    const auto projectDatabases =
-        pacificdb::cli::parseShellCommand("list databases", context).at("command");
-    assert(projectDatabases.at("action") == "community_database_list");
-    assert(projectDatabases.at("project_id") == "project_1");
-    const auto dropDatabase =
-        pacificdb::cli::parseShellCommand("drop database app", context).at("command");
-    assert(dropDatabase.at("project_id") == "project_1");
+    const auto databases = pacificdb::cli::parseShellCommand("list databases", context).at("command");
+    assert(databases.at("action") == "listDatabases");
+    assert(!databases.contains("project_id"));
+    const auto drop = pacificdb::cli::parseShellCommand("drop database app", context).at("command");
+    assert(!drop.contains("project_id"));
     context.projectId.clear();
-    for (const auto* command : {"create database app", "list databases", "use app",
-                                "create collection users"}) {
-        bool needsProject = false;
-        try {
-            pacificdb::cli::parseShellCommand(command, context);
-        } catch (const std::invalid_argument& error) {
-            needsProject = std::string(error.what()).find("select a project") != std::string::npos;
-        }
-        assert(needsProject);
+    assert(pacificdb::cli::parseShellCommand("create collection users", context).at("command").at("action") == "createCollection");
+    for (const auto* command : {"create database app", "list databases", "use app"}) {
+        assert(!pacificdb::cli::parseShellCommand(command, {}).empty());
     }
-    context.projectId = "project_1";
+    for (const auto* command : {"create project p", "use project p", "show project", "list projects", "delete project p"}) {
+        bool rejected = false;
+        try { pacificdb::cli::parseShellCommand(command, context); }
+        catch (const std::invalid_argument&) { rejected = true; }
+        assert(rejected);
+    }
     context.database.clear();
     bool needsDatabase = false;
     try {

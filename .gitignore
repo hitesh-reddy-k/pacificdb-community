@@ -22,3 +22,7 @@
 
 /desktop/stage/
 /desktop/resources/
+
+.superpowers/
+**/*.egg-info/
+/release-sdk/

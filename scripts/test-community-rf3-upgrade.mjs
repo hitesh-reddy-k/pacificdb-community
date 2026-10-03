@@ -212,7 +212,7 @@ async function main() {
     evidence.node_upgrade_order = [...followers, originalLeader].map((index) => index + 1);
     evidence.acknowledged_ids = acknowledgedIds;
     evidence.acknowledged_count = acknowledgedIds.length;
-    evidence.format_transition = 'none_declared_for_beta14_to_candidate';
+    evidence.format_transition = 'none_declared; see exact old/candidate artifact versions and hashes';
     evidence.status = 'PASS';
   } catch (error) {
     evidence.error = { name: error.name, message: error.message, stack: error.stack };
@@ -220,8 +220,7 @@ async function main() {
   } finally {
     evidence.finished_at = new Date().toISOString();
     if (cluster) await cluster.close();
-    const evidenceArg = process.argv.indexOf('--evidence');
-    const destination = options?.evidence || (evidenceArg >= 0 ? process.argv[evidenceArg + 1] : undefined);
+    const destination = options?.evidence || process.argv[process.argv.indexOf('--evidence') + 1];
     if (destination) await writeEvidence(destination, evidence);
     console.log(JSON.stringify(evidence, null, 2));
   }

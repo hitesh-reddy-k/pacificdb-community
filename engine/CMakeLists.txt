@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(db_engine LANGUAGES CXX)
 
-set(PACIFICDB_ENGINE_VERSION "1.0.1" CACHE STRING "PacificDB engine semantic version")
+set(PACIFICDB_ENGINE_VERSION "1.1.1" CACHE STRING "PacificDB engine semantic version")
 set(PACIFICDB_STORAGE_FORMAT_VERSION "2" CACHE STRING "PacificDB on-disk storage format version")
 set(PACIFICDB_RAFT_PROTOCOL_VERSION "2" CACHE STRING "PacificDB Raft wire protocol version")
 execute_process(
@@ -256,16 +256,29 @@ target_include_directories(db_engine PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/generated
 )
 
+add_library(pacificdb_cli_connection STATIC src/cli_connection.cpp)
+target_include_directories(pacificdb_cli_connection PUBLIC ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(pacificdb_cli_connection PUBLIC OpenSSL::SSL pacificdb_socket_runtime)
+
 add_executable(pacificdb src/shell.cpp src/community_shell.cpp)
 target_include_directories(pacificdb PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_CURRENT_BINARY_DIR}/generated
 )
-target_link_libraries(pacificdb PRIVATE OpenSSL::Crypto)
+target_link_libraries(pacificdb PRIVATE OpenSSL::Crypto pacificdb_cli_connection)
 target_link_libraries(pacificdb PRIVATE
     pacificdb_socket_runtime pacificdb_local_engine)
 if(WIN32)
     target_link_libraries(pacificdb PRIVATE Ws2_32)
+endif()
+
+add_executable(db_engine_cli_connection_test test/cli_connection_test.cpp)
+target_link_libraries(db_engine_cli_connection_test PRIVATE pacificdb_cli_connection)
+target_include_directories(db_engine_cli_connection_test PRIVATE ${CMAKE_SOURCE_DIR}/include)
+if(MSVC)
+    target_compile_options(db_engine_cli_connection_test PRIVATE /UNDEBUG)
+else()
+    target_compile_options(db_engine_cli_connection_test PRIVATE -UNDEBUG)
 endif()
 
 # ------------------ TEST EXECUTABLES ------------------
@@ -334,6 +347,11 @@ add_pacificdb_engine_test(db_engine_community_query_test
     test/community_query_test.cpp)
 add_executable(db_engine_native_shell_parser_test
     test/native_shell_parser_test.cpp src/community_shell.cpp)
+if(MSVC)
+    target_compile_options(db_engine_native_shell_parser_test PRIVATE /UNDEBUG)
+else()
+    target_compile_options(db_engine_native_shell_parser_test PRIVATE -UNDEBUG)
+endif()
 target_include_directories(db_engine_native_shell_parser_test PRIVATE
     ${CMAKE_SOURCE_DIR}/include)
 

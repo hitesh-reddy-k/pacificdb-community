@@ -48,9 +48,13 @@ def main() -> None:
         r'set\(PACIFICDB_ENGINE_VERSION "([^"]+)"',
     )
     release_tag = f"v{engine_version}"
-    require_text("site/index.html", f'<span class="badge">{release_tag}</span>')
+    landing_tag = match_version("site/index.html", r'<span class="badge">(v[0-9.]+)(?: candidate[^<]*)?</span>')
+    if landing_tag != release_tag:
+        raise AssertionError("landing version does not match engine")
     require_text("site/index.html", f'href="release-{engine_version}.html"')
-    require_text("site/docs.html", f'<span class="version-badge">{release_tag}</span>')
+    docs_tag = match_version("site/docs.html", r'<span class="version-badge">(v[0-9.]+)(?: candidate[^<]*)?</span>')
+    if docs_tag != release_tag:
+        raise AssertionError("documentation version does not match engine")
     require_text(
         f"site/release-{engine_version}.html", f"PacificDB Community · {release_tag}"
     )

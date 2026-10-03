@@ -1,0 +1,47 @@
+# Workbench, Desktop, and Package Baseline
+
+- Source checkout: `/mnt/pacificdb-backup/home-hitesh/Downloads/pacificdb-community`
+- Source HEAD: `6e65e550fae2709d893781a9f15ad5990d0af480`
+- Destination branch: `ux/database-first-20261003`
+- Import date: 2026-10-03
+- Imported files: 33
+
+The files below were copied byte-for-byte from the pending source checkout before database-first implementation. Source and destination SHA-256 values were compared and matched.
+
+The import intentionally excludes `engine/src/lsm.cpp`, the unrelated site-migration design and plan, generated `desktop/resources/`, generated `desktop/stage/`, and all other unlisted working-tree files.
+
+```text
+1e9543a3c42a7526a79c098f7f9f1acd03ef0232d669e45802d56ce316c73a93  .github/workflows/workbench-desktop.yml
+fff8e2f155efcdb842eaf82267f21be7d8211cda1b792edf403fb4922ec34997  .gitignore
+9ab3e4c9f0dc645d90ec26372439cd7021531932d797ab4f0852aac7ccbda74e  README.md
+379aa398a89ba2822c49c297c45c839ff6081e3340f35231d326a0e7f8ddbace  cli/README.md
+600d0e27e1cd34c7e8f1d1498f24a5923c64e2f6837607eec010a8bfc8782735  cli/package.json
+b51e99c0347a5c1794c3ac15cdf425da48da6f87a8639706bdaa536a22df544b  cli/src/cli.js
+fc71844053e74542bb194d487bf16bd073d2cf2f0b1ec0171bfa4cae02399306  cli/src/workbench.js
+b45d03934635a54c487318db7ec2afa90418f06fbc9d5e48af90f1aa077ad5b5  cli/test/workbench.test.js
+d7cb24b4a63c85d8b0642414e3f2cd0ede9c91d8cb47b895c0871332d63fc2cd  cli/workbench/app.css
+fecffc79c07edde11b0685ea53bb9c7564200d4adac5b53b1b8d1aa9c8745dc4  cli/workbench/app.js
+5aca17fc94001d00e19e52e583f7399b0c46e24cd721573f8c971ccc9cf8f3f5  cli/workbench/index.html
+7005c70b6f00ff903c80763a3ccde538a0f52cad7d28403c994a36a9b8cd3b50  cli/workbench/logo.png
+f5595fac51f76f003b4d0ee5eb7ff75bfa3df9776befeb5f68cbff9083fc666c  desktop/after-install.sh
+017c948f0478747f83e5ed9b4404abbb6224b2d92cc31a1bef59d868bfda8ae3  desktop/electron-builder.cjs
+3f635482780cfca286fcd7ac8a2554de0cfa9cd2a3bf081201f551dc737628b7  desktop/engine.mjs
+c535e09ec9991c197e3438cddbe429b9c8c4d3e4d95b4a059ffcb3acb986428a  desktop/entitlements.mac.plist
+a0769e90891f33bb256f14f92a0a58ba6d5e7cde3f93eb956adaff66aca1458d  desktop/icon.png
+0fabf49419f1e1e96feb37e8b6f6b072b05d602c8c75215461208c796261948a  desktop/loading.css
+e973b1a2f16e2e2b9774c9d70b9005314a38405d830053ffcc44a37f544b592d  desktop/loading.html
+7005c70b6f00ff903c80763a3ccde538a0f52cad7d28403c994a36a9b8cd3b50  desktop/logo.png
+febca0124e1b542ab2d0dae30b714ab82111f4984f1d4983734e513f475f7839  desktop/main.mjs
+51eb9c53a347402d3f923cbb55f5a4be293f93eb4b961a76b6a43c03692475f4  docs/WORKBENCH.md
+7c34ba10fe4bc804b73445d0f1925aafbdbc85f0051b03935d740ceede50c9ff  docs/WORKBENCH_500K_TEST_QUERIES.md
+cf9cee8908316f559e7372dce75a8e1d6311fb606c2240c8e0e1f6bd3184caff  docs/workbench-500k-filters.json
+3862071f507d0b745748eb60f3893c3b4041e27ba0ad0f94e93d7243c1c36224  docs/workbench-500k-verification.json
+51a599e484257b9d41b71309b069751ce4ba341eafd36ab2dae6adfd10b61e6c  package-lock.json
+90a3f667d459321a05067538a2e4048f5e0d61aa89baecf938d690f1507f667a  package.json
+f3f19f04a3fad8d99bc618b38dc700f0e7064d242be0a0778ee11a1b43d31e35  scripts/prepare-workbench-desktop.mjs
+cc3d2ac663c45523f7245a8c240c5f036354c433ba51bafadd5412501fbb1500  scripts/test-desktop-engine.mjs
+64a855823a15a443b44bf03a75034dfb88e5ba05368197bd9afb6ff5374bdf0b  scripts/test-index-low-cardinality.mjs
+f014543ab7062d77447f4cd233e7763cd8217180ad8f0af0ab1356d801b8b49a  scripts/test-workbench-browser.mjs
+d7973ab6168b65f421bf838df6fb60b2d6b15278b8bb39c2dd9f856c2d548931  scripts/test-workbench-desktop.mjs
+cdfa598ee83b1b1a66dabcd2471ee83f940024e1743055a791acd5b44d50b297  scripts/test-workbench-e2e.mjs
+```

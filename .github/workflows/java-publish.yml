@@ -1,0 +1,55 @@
+name: Validate tested Java SDK on Central
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Exact existing vMAJOR.MINOR.PATCH release tag
+        required: true
+permissions:
+  contents: read
+jobs:
+  build:
+    uses: ./.github/workflows/sdk-packages.yml
+    with:
+      ref: ${{ inputs.release_tag || github.ref_name }}
+  validate:
+    needs: build
+    runs-on: ubuntu-22.04
+    environment: maven-central
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag || github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: tested-sdk-packages
+          path: release-sdk/
+      - name: Verify tag and exact tested artifacts
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+        run: |
+          python scripts/check-sdk-release-tag.py "$RELEASE_TAG" --require-tag --manifest release-sdk/inspection.json
+          python scripts/verify-sdk-packages.py --java-target release-sdk/java --hash-manifest release-sdk/inspection.json --output release-sdk/java-inspected.json
+      - name: Sign tested bytes with release-owner identity and upload for validation only
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          GPG_FINGERPRINT: ${{ vars.GPG_FINGERPRINT }}
+          CENTRAL_TOKEN: ${{ secrets.CENTRAL_TOKEN }}
+        run: |
+          set -euo pipefail
+          export GNUPGHOME
+          GNUPGHOME=$(mktemp -d)
+          trap 'gpgconf --kill all; python -c "import os,shutil; shutil.rmtree(os.environ[\"GNUPGHOME\"])"' EXIT
+          chmod 700 "$GNUPGHOME"
+          printf '%s' "$GPG_PRIVATE_KEY" | gpg --batch --import
+          python scripts/pack-java-sdk.py --target release-sdk/java --output release-sdk/release-central-bundle.zip --manifest release-sdk/inspection.json --fingerprint "$GPG_FINGERPRINT" --sign
+          python scripts/upload-java-validation.py release-sdk/release-central-bundle.zip --upload

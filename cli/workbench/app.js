@@ -9,20 +9,20 @@ const internalDocumentFields = new Set(['_mvcc_commit_ms', '_mvcc_version',
   '_logicalWritePayloadHash', 'created_at_ms', 'created_txn', 'deleted_at_ms',
   'deleted_txn', 'version', 'committed', 'tenant_id']);
 const state = {
-  project: null, database: null, collection: null, projects: [], databases: [],
-  collections: [], projectNextOffset: null, view: 'overview', navQuery: '',
+  database: null, collection: null, databases: [],
+  collections: [], view: 'overview', navQuery: '',
   navigation: 0, documentRequest: null, mediaRequest: null, pageSize: 50,
   documentView: 'cards', documentOffset: 0, documentHasNext: false,
   documentFilter: {}, mediaOffset: 0, mediaOffsets: [], mediaNext: null,
-  createKind: null, writePending: false,
+  createKind: null, createScope: null, writePending: false,
   connectionInfo: null, connectionFormat: 'cli',
-  collectionSummaries: new Map(), summaryGeneration: 0, summaryScope: '',
+  collectionSummaries: new Map(), summaryGeneration: 0, summaryScope: '', summaryTask: null,
   collectionSort: 'asc', collectionLayout: 'list', activity: [],
   documents: [], queryHistory: [], collapsed: new Set(), indexGeneration: 0, indexScope: null, indexes: [],
 };
 
 function scope() {
-  return { projectId: state.project?.id, database: state.database, collection: state.collection };
+  return { database: state.database, collection: state.collection };
 }
 function scopeKey(value = scope()) { return JSON.stringify(value); }
 function notice(message, error = false) {
@@ -52,47 +52,45 @@ async function copyText(value) {
     if (!copied) throw new Error('Copy failed. Select the text and copy it manually.');
   }
 }
+function connectionUrl() {
+  const info = state.connectionInfo;
+  if (!info || !state.database) return null;
+  const host = info.host.includes(':') && !info.host.startsWith('[') ? `[${info.host}]` : info.host;
+  const user = info.userId && info.userId !== 'system' ? `?userId=${encodeURIComponent(info.userId)}` : '';
+  return `${info.tls ? 'pacificdbs' : 'pacificdb'}://${host}:${info.port}/${encodeURIComponent(state.database)}${user}`;
+}
 function connectionExample() {
   const info = state.connectionInfo;
-  if (!info) return 'Connection details are unavailable. Try reopening Workbench.';
-  const host = info.host;
-  const port = info.port;
-  const id = state.project?.id;
-  const database = state.database;
-  const collection = state.collection;
-  if (state.connectionFormat === 'node') {
-    return `import { PacificDBClient } from '@pacificdb/client';\n\n` +
-      `const db = new PacificDBClient({ host: ${JSON.stringify(host)}, port: ${port}, tls: ${Boolean(info.tls)} });\n` +
-      'try {\n' +
-      (id ? `  await db.useProject(${JSON.stringify(id)}); // Project ID\n` : '  // Select a project in Workbench to include its ID here.\n') +
-      (database ? `  await db.useDatabase(${JSON.stringify(database)});\n` : '') +
-      (collection && database ? `  console.log(await db.find(${JSON.stringify(collection)}, {}));\n` : '') +
-      '} finally {\n  db.close();\n}';
-  }
-  if (state.connectionFormat === 'java') {
-    return 'import io.pacificdb.PacificDBClient;\nimport java.util.Map;\n\n' +
-      'public class Connect {\n  public static void main(String[] args) throws Exception {\n' +
-      `    var db = new PacificDBClient(${JSON.stringify(host)}, ${port}, ${JSON.stringify(database || '')});\n` +
-      (id ? `    String projectId = ${JSON.stringify(id)};\n` +
-        '    System.out.println(db.request(Map.of("action", "community_project_get", "id", projectId)));\n' :
-        '    System.out.println(db.request(Map.of("action", "ping")));\n') +
-      (collection && database ? `    // Collection: ${collection}\n` : '') +
-      '  }\n}';
-  }
+  const url = connectionUrl();
+  if (!url) return 'Select or create a database to copy a connection example.';
+  const authenticated = info.authenticationRequired;
+  const collection = JSON.stringify(state.collection || 'records');
+  if (state.connectionFormat === 'url') return authenticated ?
+    'Set PACIFICDB_URL privately with your credentials.\nDatabase endpoint (credentials omitted):\n' + url : url;
+  const value = JSON.stringify(url);
+  if (state.connectionFormat === 'node') return "import { PacificDB } from '@pacificdb/client';\n\n" +
+    `const db = await PacificDB.connect(${authenticated ? 'process.env.PACIFICDB_URL' : value});\n` +
+    `try {\n  console.log(await db.find(${collection}, {}));\n} finally {\n  db.close();\n}`;
+  if (state.connectionFormat === 'python') return 'from pacificdb import PacificDB\n' +
+    (authenticated ? 'import os\n' : '') + `\nwith PacificDB.connect(${authenticated ? 'os.environ["PACIFICDB_URL"]' : value}) as db:\n` +
+    `    print(db.find(${collection}, {}))`;
+  if (state.connectionFormat === 'java') return 'import io.pacificdb.PacificDB;\nimport java.util.Map;\n\n' +
+    'public class Connect {\n  public static void main(String[] args) throws Exception {\n' +
+    `    try (var db = PacificDB.connect(${authenticated ? 'System.getenv("PACIFICDB_URL")' : value})) {\n` +
+    `      System.out.println(db.find(${collection}, Map.of()));\n    }\n  }\n}`;
   const cli = info.cliPath ? info.platform === 'win32' ?
     `& '${info.cliPath.replaceAll("'", "''")}'` :
     `'${info.cliPath.replaceAll("'", "'\\''")}'` : 'pacificdb';
-  return `${cli} --host ${JSON.stringify(host)} --port ${port} --no-start\n` +
-    (id ? `use project ${id}\n` : '') +
-    (database ? `use ${database}\n` : '') +
-    (collection && database ? `find ${collection} {}` : '');
+  return authenticated ? `${cli} --no-start\n# Reads PACIFICDB_URL from your environment.` :
+    `${cli} --url ${value} --no-start`;
 }
 function renderConnection() {
   $('connection-endpoint').textContent = state.connectionInfo ?
     `${state.connectionInfo.host}:${state.connectionInfo.port}` : 'Unavailable';
-  $('connection-project-id').textContent = state.project?.id || 'Select a project';
+  $('connection-database').textContent = state.database || 'Select a database';
   $('connection-example').textContent = connectionExample();
-  for (const format of ['cli', 'node', 'java']) {
+  $('copy-connection').disabled = !connectionUrl();
+  for (const format of ['url', 'cli', 'node', 'python', 'java']) {
     const button = $(`connection-${format}`);
     const selected = state.connectionFormat === format;
     button.classList.toggle('active', selected);
@@ -190,6 +188,7 @@ function closeNavigation() {
   $('mobile-menu').setAttribute('aria-expanded', 'false');
 }
 function setView(view) {
+  if (state.view === 'overview' && view !== 'overview') state.summaryGeneration++;
   state.view = view;
   if (view === 'explorer') selectTab('documents');
   $('overview').hidden = view !== 'overview';
@@ -204,20 +203,21 @@ function setView(view) {
     query: 'Query Workbench', vectors: 'Vectors', media: 'Media', monitoring: 'Monitoring' })[view];
   renderPageHeader();
   closeNavigation();
+  if (view === 'overview') void loadCollectionSummaries().catch(error => notice(error.message, true));
 }
 function renderPageHeader() {
   const view = state.view;
-  const context = [state.project?.name, state.database, state.collection].filter(Boolean).join(' / ');
+  const context = [state.database, state.collection].filter(Boolean).join(' / ');
   const page = {
-    explorer: ['DATA EXPLORER', state.collection ? 'Documents' : state.database || state.project?.name || 'Data Explorer'],
+    explorer: ['DATA EXPLORER', state.collection ? 'Documents' : state.database || 'Data Explorer'],
     query: ['QUERY WORKBENCH', 'Query Workbench'],
     vectors: ['VECTOR SEARCH', 'Vector Search'],
     media: ['MEDIA LIBRARY', 'Media Library'],
   }[view] || ['DATA EXPLORER', 'Data Explorer'];
   $('page-kicker').textContent = page[0];
   $('title').textContent = page[1];
-  $('breadcrumb').textContent = context || 'Choose a project to begin';
-  $('project-identity').hidden = !state.project || view !== 'explorer';
+  $('breadcrumb').textContent = context || 'Create a database to begin';
+  $('database-identity').hidden = !state.database || view !== 'explorer';
   $('new-document').hidden = !state.collection || view !== 'explorer';
   $('delete-database').hidden = !state.database;
   $('explorer').dataset.view = view;
@@ -279,7 +279,7 @@ function treeRow(name, kind, selected, onClick, { id, addKind } = {}) {
   if (kind !== 'collection') button.setAttribute('aria-expanded', String(selected));
   const icon = document.createElement('span');
   icon.className = 'tree-icon';
-  icon.textContent = kind === 'project' ? '◈' : kind === 'database' ? '▤' : '▦';
+  icon.textContent = kind === 'database' ? '▤' : '▦';
   const label = document.createElement('span');
   label.className = 'tree-name';
   label.textContent = name;
@@ -335,167 +335,112 @@ function treeRow(name, kind, selected, onClick, { id, addKind } = {}) {
 function renderTree() {
   const fragment = document.createDocumentFragment();
   const query = state.navQuery;
-  const matches = (name) => name.toLowerCase().includes(query);
-  let shown = 0;
-  for (const project of state.projects) {
-    const activeProject = project.id === state.project?.id;
-    const projectMatch = matches(project.name) || matches(project.id);
-    const databaseMatch = activeProject && state.databases.some((name) => matches(name));
-    const collectionMatch = activeProject && state.collections.some((name) => matches(name));
-    if (query && !projectMatch && !databaseMatch && !collectionMatch) continue;
-    shown++;
-    const projectNode = treeRow(project.name, 'project', activeProject, async () => {
-      state.project = project;
-      state.database = state.collection = null;
-      state.databases = state.collections = [];
+  const matches = name => name.toLowerCase().includes(query);
+  for (const database of state.databases) {
+    const active = database === state.database;
+    const dbMatch = matches(database);
+    if (query && !dbMatch && !(active && state.collections.some(matches))) continue;
+    const node = treeRow(database, 'database', active, async () => {
+      state.database = database;
+      state.collection = null;
+      state.collections = [];
       invalidateSelection();
       setView('explorer');
-      await refreshDatabases(state.navigation);
-    }, { id: project.id, addKind: activeProject ? 'database' : undefined });
-    if (activeProject) {
-      const databases = document.createElement('div');
-      databases.className = 'tree-children';
-      databases.hidden = state.collapsed.has(`project:${project.id}`);
-      databases.setAttribute('role', 'group');
-      if (!state.databases.length) {
-        const empty = document.createElement('div');
-        empty.className = 'tree-empty';
-        empty.textContent = 'No databases yet';
-        databases.append(empty);
+      await refreshCollections(state.navigation, true);
+    }, { addKind: active ? 'collection' : undefined });
+    if (active) {
+      const children = document.createElement('div');
+      children.className = 'tree-children';
+      children.hidden = state.collapsed.has(`database:${database}`);
+      children.setAttribute('role', 'group');
+      if (!state.collections.length) {
+        const empty = document.createElement('div'); empty.className = 'tree-empty';
+        empty.textContent = 'No collections yet'; children.append(empty);
       }
-      for (const database of state.databases) {
-        const activeDatabase = database === state.database;
-        const dbMatch = matches(database);
-        const childMatch = activeDatabase && state.collections.some((name) => matches(name));
-        if (query && !projectMatch && !dbMatch && !childMatch) continue;
-        const dbNode = treeRow(database, 'database', activeDatabase, async () => {
-          state.database = database;
-          state.collection = null;
-          state.collections = [];
+      for (const collection of state.collections) {
+        if (query && !dbMatch && !matches(collection)) continue;
+        children.append(treeRow(collection, 'collection', collection === state.collection, async () => {
+          state.collection = collection;
           invalidateSelection();
           setView('explorer');
-          await refreshCollections(state.navigation);
-        }, { addKind: activeDatabase ? 'collection' : undefined });
-        if (activeDatabase) {
-          const collections = document.createElement('div');
-          collections.className = 'tree-children';
-          collections.hidden = state.collapsed.has(`database:${database}`);
-          collections.setAttribute('role', 'group');
-          if (!state.collections.length) {
-            const empty = document.createElement('div');
-            empty.className = 'tree-empty';
-            empty.textContent = 'No collections yet';
-            collections.append(empty);
-          }
-          for (const collection of state.collections) {
-            if (query && !projectMatch && !dbMatch && !matches(collection)) continue;
-            collections.append(treeRow(collection, 'collection', collection === state.collection, async () => {
-              state.collection = collection;
-              invalidateSelection();
-              setView('explorer');
-              await refreshActive();
-            }));
-          }
-          dbNode.append(collections);
-        }
-        databases.append(dbNode);
+          await refreshActive();
+        }));
       }
-      projectNode.append(databases);
+      node.append(children);
     }
-    fragment.append(projectNode);
+    fragment.append(node);
   }
-  if (!shown) {
-    const empty = document.createElement('div');
-    empty.className = 'empty-nav';
-    empty.textContent = state.projects.length ? 'No matching projects or data' : 'No projects yet';
+  if (!fragment.childElementCount) {
+    const empty = document.createElement('div'); empty.className = 'empty-nav';
+    empty.textContent = state.databases.length ? 'No matching databases or collections' : 'No databases yet';
     fragment.append(empty);
   }
-  $('projects').replaceChildren(fragment);
-  if (state.projectNextOffset !== null) {
-    const more = document.createElement('button');
-    more.textContent = 'Load more projects';
-    more.className = 'more-button';
-    more.addEventListener('click', () => run(loadMoreProjects, more));
-    $('projects').append(more);
+  $('databases').replaceChildren(fragment);
+}
+function ensureSummaryScope() {
+  const database = state.database || '';
+  if (state.summaryScope !== database) {
+    state.summaryGeneration++;
+    state.summaryScope = database;
+    state.collectionSummaries.clear();
   }
 }
+function invalidateSummary(selected = scope()) {
+  if (selected.database !== state.database) return;
+  state.summaryGeneration++;
+  state.collectionSummaries.delete(selected.collection);
+  renderCollections();
+  if (state.view === 'overview') void loadCollectionSummaries().catch(error => notice(error.message, true));
+}
 function updateView() {
+  ensureSummaryScope();
   renderTree();
   $('welcome').hidden = Boolean(state.collection);
   $('workspace').hidden = !state.collection;
-  $('project-identity-name').textContent = state.project?.name || '';
-  $('project-id').textContent = state.project?.id || '';
+  $('database-identity-name').textContent = state.database || '';
   renderPageHeader();
   renderHistory();
   if ($('connection-dialog').open) renderConnection();
   $('collection-name').textContent = state.collection || '';
-  $('welcome-title').textContent = !state.project ? state.projects.length ? 'Choose a project' : 'No projects yet' : !state.database ? 'No databases yet' : 'No collections yet';
-  $('welcome-description').textContent = !state.project ? 'Create your first PacificDB project to start working with databases, collections, and documents.' : !state.database ? 'Create a database inside this project to organize your collections.' : 'Create a collection to start storing documents, vectors, and media.';
-  $('welcome-project').textContent = state.project ? state.database ?
-    'Create a collection' : 'Create a database' : 'Create a project';
-  const projectCount = `${state.projects.length}${state.projectNextOffset === null ? '' : '+'}`;
-  $('project-count').textContent = projectCount;
+  $('welcome-title').textContent = state.database ? (state.collections.length ? 'Choose a collection' : 'No collections yet') :
+    (state.databases.length ? 'Choose a database' : 'No databases yet');
+  $('welcome-description').textContent = state.database ? 'Create a collection to store documents, vectors, and media.' :
+    (state.databases.length ? 'Select a database from the sidebar to explore its collections.' : 'Create your first database, then add a collection and your data.');
+  $('welcome-create').textContent = state.database ? 'Create a collection' : 'Create a database';
   $('database-count').textContent = String(state.databases.length);
   $('collection-count').textContent = String(state.collections.length);
-  $('database-context').textContent = state.project ? `In ${state.project.name}` : 'Choose a project';
+  $('database-context').textContent = 'Accessible databases';
   $('collection-context').textContent = state.database ? `In ${state.database}` : 'Choose a database';
-  $('top-project').textContent = state.project?.name || 'Workspace';
-  $('collections-subtitle').textContent = state.database ? `In ${state.database} · ${state.project?.name || 'Project'}` : 'Choose a database to explore.';
+  $('top-database').textContent = state.database || 'Workspace';
+  $('collections-subtitle').textContent = state.database ? `In ${state.database}` : 'Choose a database to explore.';
   renderCollections();
 }
-async function refreshProjects() {
-  const version = ++state.navigation;
-  const result = await request('projects.list', { limit: 100, offset: 0 });
-  if (version !== state.navigation) return;
-  const projects = Array.isArray(result.projects) ? result.projects : [];
-  // Preserve a selected project from a later page when refreshing the first page.
-  if (state.project && result.has_more && !projects.some((p) => p.id === state.project.id)) {
-    projects.push(state.project);
-  }
-  state.projects = projects;
-  state.projectNextOffset = result.has_more ? result.next_offset : null;
-  if (!state.projects.some((p) => p.id === state.project?.id)) {
-    state.project = state.projects[0] || null;
-    state.database = state.collection = null;
-    state.databases = state.collections = [];
-    invalidateSelection(false);
-  }
-  await refreshDatabases(version);
-}
-async function loadMoreProjects() {
-  const offset = state.projectNextOffset;
-  if (offset === null) return;
-  const version = state.navigation;
-  const result = await request('projects.list', { limit: 100, offset });
-  if (version !== state.navigation) return;
-  const projects = new Map(state.projects.map((p) => [p.id, p]));
-  for (const project of result.projects || []) projects.set(project.id, project);
-  state.projects = [...projects.values()];
-  state.projectNextOffset = result.has_more ? result.next_offset : null;
-  updateView();
-}
-async function refreshDatabases(version = state.navigation) {
-  const result = state.project ? await request('databases.list') : { databases: [] };
+async function refreshDatabases(version, selectInitial = false) {
+  if (version === undefined) version = ++state.navigation;
+  const result = await request('databases.list');
   if (version !== state.navigation) return;
   state.databases = result.databases || [];
   if (!state.databases.includes(state.database)) {
-    state.database = state.databases[0] || null;
+    const missing = Boolean(state.database);
+    if (missing) notice(`Database ${state.database} is unavailable. Choose a database.`, true);
+    state.database = selectInitial && !missing ? (state.databases[0] || null) : null;
     state.collection = null;
     state.collections = [];
     invalidateSelection(false);
   }
-  await refreshCollections(version);
+  await refreshCollections(version, selectInitial);
 }
-async function refreshCollections(version = state.navigation) {
+async function refreshCollections(version = state.navigation, selectInitial = false) {
   const result = state.database ? await request('collections.list') : { collections: [] };
   if (version !== state.navigation) return;
   state.collections = result.collections || [];
   if (!state.collections.includes(state.collection)) {
-    state.collection = state.collections[0] || null;
+    const missing = Boolean(state.collection);
+    state.collection = selectInitial && !missing ? (state.collections[0] || null) : null;
     invalidateSelection(false);
   }
   updateView();
-  void loadCollectionSummaries().catch((error) => notice(error.message, true));
+  if (state.view === 'overview') await loadCollectionSummaries();
   await refreshActive();
 }
 async function refreshActive() {
@@ -604,6 +549,7 @@ async function loadMedia(offset = 0) {
       actionButton(card.querySelector('.record-head'), 'Delete', () => confirmAction('Delete file?',
         `Permanently delete ${file.filename || file.id}? This action cannot be undone.`, async () => {
           await request('media.delete', { ...selected, mediaId: file.id });
+          invalidateSummary(selected);
           if (scopeKey(selected) === scopeKey()) await loadMedia(state.mediaOffset);
           notice('File deleted.');
         }), 'danger');
@@ -653,12 +599,13 @@ async function uploadMedia() {
   notice(`Uploading ${file.name}…`);
   const response = await fetch('/api/media/upload', {
     method: 'POST', headers: { 'Content-Type': 'application/octet-stream',
-      'X-PacificDB-Workbench-Token': token, 'X-Project-Id': selected.projectId,
-      'X-Database': selected.database, 'X-Collection': selected.collection,
+      'X-PacificDB-Workbench-Token': token,
+      'X-Database': encodeURIComponent(selected.database), 'X-Collection': encodeURIComponent(selected.collection),
       'X-Filename': encodeURIComponent(file.name) }, body: file,
   });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.error || 'Upload failed');
+  invalidateSummary(selected);
   notice(`Uploaded ${file.name} to ${selected.collection}.`);
   addActivity('write', 'Media uploaded', `${selected.collection} · ${file.name}`);
   if (scopeKey(selected) === scopeKey()) {
@@ -668,18 +615,18 @@ async function uploadMedia() {
   }
 }
 function openCreate(kind) {
-  if (kind !== 'project' && !state.project) throw new Error('Create or select a project first.');
+  if (!['database', 'collection'].includes(kind)) throw new Error('Unknown resource type.');
   if (kind === 'collection' && !state.database) throw new Error('Create or select a database first.');
   state.createKind = kind;
+  state.createScope = scope();
   $('create-title').textContent = `Create ${kind}`;
-  $('create-description').textContent = kind === 'project' ? 'Keep related databases together in a project.' :
-    `Add a ${kind} to ${kind === 'database' ? state.project.name : state.database}.`;
+  $('create-description').textContent = kind === 'database' ? 'Create a database for your application.' : `Add a collection to ${state.database}.`;
   $('create-name-label').textContent = `${kind[0].toUpperCase() + kind.slice(1)} name`;
   $('submit-create').textContent = `Create ${kind}`;
   $('create-name').placeholder = `my-${kind}`;
-  $('create-guidance').textContent = `Names must be 1–${kind === 'collection' ? 251 : 128} UTF-8 bytes.`;
+  $('create-guidance').textContent = `Names must be 1–${kind === 'collection' ? 251 : 255} UTF-8 bytes.`;
   $('create-name').value = '';
-  $('create-name').maxLength = kind === 'collection' ? 251 : 128;
+  $('create-name').maxLength = kind === 'collection' ? 251 : 255;
   $('create-error').textContent = '';
   $('create-dialog').showModal();
   $('create-name').focus();
@@ -688,28 +635,24 @@ async function createResource() {
   const kind = state.createKind;
   const name = $('create-name').value.trim();
   if (!name) throw new Error('Enter a name.');
-  if (new TextEncoder().encode(name).length > (kind === 'collection' ? 251 : 128)) throw new Error('Name exceeds the UTF-8 byte limit.');
-  const result = await request(`${kind === 'project' ? 'projects' : kind === 'database' ? 'databases' : 'collections'}.create`, { name });
+  if (new TextEncoder().encode(name).length > (kind === 'collection' ? 251 : 255)) throw new Error('Name exceeds the UTF-8 byte limit.');
+  const selected = { ...state.createScope };
+  const navigation = state.navigation;
+  await request(`${kind === 'database' ? 'databases' : 'collections'}.create`, { ...selected, name });
   $('create-dialog').close();
-  setView('explorer');
-  state.navQuery = '';
-  $('nav-search').value = '';
-  if (kind === 'project') {
-    state.project = result.project;
-    state.projects.push(result.project);
-    state.database = state.collection = null;
-    state.databases = state.collections = [];
-    invalidateSelection();
-    await refreshDatabases();
-  } else if (kind === 'database') {
-    state.database = name;
-    state.collection = null;
-    invalidateSelection();
-    await refreshDatabases();
-  } else {
-    state.collection = name;
-    invalidateSelection();
-    await refreshCollections();
+  if (navigation === state.navigation && scopeKey(selected) === scopeKey()) {
+    setView('explorer');
+    state.navQuery = ''; $('nav-search').value = '';
+    if (kind === 'database') {
+      state.database = name; state.collection = null; state.collections = [];
+      invalidateSelection();
+      await refreshDatabases(state.navigation);
+    } else {
+      state.collection = name;
+      invalidateSummary({ ...selected, collection: name });
+      invalidateSelection();
+      await refreshCollections(state.navigation);
+    }
   }
   notice(`Created ${kind} ${name}.`);
   addActivity('workspace', `${kind[0].toUpperCase()}${kind.slice(1)} created`, name);
@@ -733,8 +676,8 @@ async function writeDocument(operation) {
   try {
     await request(`documents.${operation}`, values);
     addActivity('write', `Document ${operation === 'insert' ? 'inserted' : operation === 'update' ? 'updated' : 'deleted'}`, selected.collection);
+    invalidateSummary(selected);
     if (scopeKey(selected) === scopeKey()) await loadDocuments(0);
-    if (scopeKey(selected) === scopeKey()) void loadCollectionSummaries();
     notice(`Document ${operation === 'insert' ? 'inserted' : operation === 'update' ? 'updated' : 'deleted'} in ${selected.collection}.`);
   } finally {
     state.writePending = false;
@@ -771,7 +714,7 @@ function renderStorage() {
   const known = state.collections.map((name) => ({ name, count: state.collectionSummaries.get(name)?.count }))
     .filter((item) => Number.isFinite(item.count) && item.count > 0).sort((a, b) => b.count - a.count);
   const total = known.reduce((sum, item) => sum + item.count, 0);
-  $('storage-total').firstChild.textContent = number(total);
+  $('storage-total').firstChild.textContent = state.database && state.collections.every(name => Number.isFinite(state.collectionSummaries.get(name)?.count)) ? number(total) : '—';
   const visible = known.slice(0, 5);
   if (known.length > 5) visible.push({ name: 'Other', count: known.slice(5).reduce((sum, item) => sum + item.count, 0) });
   const colors = ['#a873ef', '#49a8ff', '#31cbbd', '#58d47c', '#efbb5a', '#9ab1cf'];
@@ -809,21 +752,21 @@ function renderCollections() {
     open.textContent = `▤  ${name}`; open.addEventListener('click', () => run(() => openCollection(name)));
     nameCell.append(open);
     const type = document.createElement('td'); type.textContent = 'Collection';
-    const count = document.createElement('td'); count.textContent = summary ? number(summary.count) : '…';
-    const indexes = document.createElement('td'); indexes.textContent = summary ? number(summary.indexes) : '…';
+    const count = document.createElement('td'); count.textContent = summary ? number(summary.count) : '—';
+    const indexes = document.createElement('td'); indexes.textContent = summary ? number(summary.indexes) : '—';
     row.append(nameCell, type, count, indexes); fragment.append(row);
   }
   $('collection-rows').replaceChildren(fragment);
   $('collection-empty').hidden = rows.length > 0;
   $('collection-metadata').textContent = state.collection ? `Documents: ${number(state.collectionSummaries.get(state.collection)?.count)} · Indexes: ${number(state.collectionSummaries.get(state.collection)?.indexes)}` : '';
   $('collection-empty').textContent = state.database ? state.collections.length ? 'No collections match this filter.' :
-    'No collections yet. Create one from the object explorer.' : 'Choose a project and database to see collections.';
+    'No collections yet. Create one from the object explorer.' : 'Choose a database to see collections.';
   const summaries = state.collections.map((name) => state.collectionSummaries.get(name));
-  const complete = summaries.every((item) => item !== undefined);
+  const complete = Boolean(state.database) && summaries.every((item) => item !== undefined);
   const valid = summaries.every((item) => item && Number.isFinite(item.count));
   $('total-documents').textContent = complete && valid ? number(summaries.reduce((sum, item) => sum + item.count, 0)) : '—';
   $('document-context').textContent = !state.database ? 'Choose a database' : complete && !valid ? 'Some counts unavailable' :
-    complete ? `In ${state.database}` : 'Counting documents…';
+    complete ? `In ${state.database}` : state.summaryTask && state.view === 'overview' ? 'Counting documents…' : 'Counts not loaded';
   renderStorage();
 }
 let pendingSummaryRender = false;
@@ -833,25 +776,37 @@ function scheduleSummaryRender() {
   requestAnimationFrame(() => { pendingSummaryRender = false; renderCollections(); });
 }
 async function loadCollectionSummaries() {
+  if (state.view !== 'overview' || !state.database) return;
+  ensureSummaryScope();
+  if (state.summaryTask) {
+    await state.summaryTask;
+    return loadCollectionSummaries();
+  }
   const generation = ++state.summaryGeneration;
   const selected = scope();
-  state.summaryScope = scopeKey(selected);
-  state.collectionSummaries = new Map();
-  renderCollections();
-  const names = [...state.collections];
+  const names = state.collections.filter(name => !state.collectionSummaries.has(name));
+  if (!names.length) return;
   let cursor = 0;
-  await Promise.all(Array.from({ length: Math.min(4, names.length) }, async () => {
-    while (cursor < names.length && generation === state.summaryGeneration) {
+  const current = () => generation === state.summaryGeneration && state.view === 'overview' && selected.database === state.database;
+  // One existing four-worker loader at a time, including obsolete in-flight requests.
+  const task = Promise.all(Array.from({ length: Math.min(4, names.length) }, async () => {
+    while (cursor < names.length && current()) {
       const name = names[cursor++];
       let summary;
       try { summary = await request('collections.summary', { ...selected, collection: name }); }
       catch { summary = { count: null, indexes: null }; }
-      if (generation !== state.summaryGeneration || state.summaryScope !== scopeKey()) return;
+      if (!current()) return;
       state.collectionSummaries.set(name, summary);
       scheduleSummaryRender();
     }
   }));
-  if (generation === state.summaryGeneration) renderCollections();
+  state.summaryTask = task;
+  renderCollections();
+  try { await task; }
+  finally {
+    if (state.summaryTask === task) state.summaryTask = null;
+    if (current()) renderCollections();
+  }
 }
 async function openCollection(name, selectedTab = 'documents') {
   if (!state.database || !state.collections.includes(name)) return;
@@ -894,7 +849,7 @@ function renderCommands() {
     ['Vectors', () => openTool('vectors')],
     ['Media', () => openTool('media')],
     ['Monitoring', () => openTool('monitoring')],
-    ['New project', () => openCreate('project')],
+    ['New database', () => openCreate('database')],
     ['Connection options', openConnection],
   ];
   for (const name of state.collections) commands.push([`Collection · ${name}`, () => openCollection(name)]);
@@ -921,34 +876,30 @@ function click(id, fn, disable = false) {
 }
 for (const id of ['environment-open', 'quick-cli']) click(id, openConnection);
 click('close-connection', () => $('connection-dialog').close());
-click('copy-project-id', async () => {
-  if (!state.project) return;
-  await copyText(state.project.id);
-  notice('Project ID copied.');
-});
 click('copy-connection', async () => {
   await copyText($('connection-example').textContent);
   notice('Connection example copied.');
 });
-for (const format of ['cli', 'node', 'java']) click(`connection-${format}`, () => {
+for (const format of ['url', 'cli', 'node', 'python', 'java']) click(`connection-${format}`, () => {
   state.connectionFormat = format;
   renderConnection();
 });
-click('welcome-project', () => openCreate(state.project ? state.database ? 'collection' : 'database' : 'project'));
-click('overview-create', () => openCreate('project'));
+click('welcome-create', () => openCreate(state.database ? 'collection' : 'database'));
+click('overview-create', () => openCreate('database'));
 click('nav-overview', () => setView('overview'));
 for (const view of ['query', 'vectors', 'media', 'monitoring']) click(`nav-${view}`, () => openTool(view));
 click('quick-query', () => openTool('query'));
 click('health-open', () => openTool('monitoring'));
 for (const id of ['open-databases', 'open-collections']) click(id, () => setView('explorer'));
-for (const id of ['nav-explorer', 'overview-explore']) click(id, async () => {
+for (const id of ['nav-explorer']) click(id, async () => {
   setView('explorer');
   await refreshActive();
 });
 for (const id of ['overview-refresh', 'refresh-all']) click(id, async () => {
-  await Promise.all([refreshProjects(), refreshEngine()]);
+  if (state.view === 'overview') { state.summaryGeneration++; state.collectionSummaries.clear(); }
+  await Promise.all([refreshDatabases(), refreshEngine()]);
 }, true);
-click('refresh-collections', () => refreshCollections(), true);
+click('refresh-collections', async () => { state.summaryGeneration++; state.collectionSummaries.clear(); await refreshCollections(); }, true);
 click('monitoring-refresh', refreshMonitoring, true);
 for (const id of ['collection-search', 'collection-type']) $(id).addEventListener(id === 'collection-search' ? 'input' : 'change', renderCollections);
 click('sort-collections', () => { state.collectionSort = state.collectionSort === 'asc' ? 'desc' : 'asc'; renderCollections(); });
@@ -1014,6 +965,7 @@ for (const operation of ['put', 'query']) click(`${operation}-vector`, async () 
   const result = await request(`vectors.${operation}`, { ...selected, vector, k,
     ...(operation === 'put' ? { id: $('vector-id').value, metadata: jsonField('vector-metadata', 'Metadata') } :
       { metric: $('vector-metric').value, filter: jsonField('vector-filter', 'Vector filter') }) });
+  if (operation === 'put') invalidateSummary(selected);
   if (scopeKey(selected) === scopeKey()) $('vector-result').textContent = JSON.stringify(result, null, 2);
   addActivity(operation === 'put' ? 'write' : 'query', operation === 'put' ? 'Vector stored' : 'Vector search', selected.collection);
   notice(operation === 'put' ? 'Vector stored.' : 'Vector search complete.');
@@ -1123,7 +1075,8 @@ function renderDocuments() {
     if (idField) actionButton(head, 'Delete', () => confirmAction('Delete document?',
       `Delete ${doc[idField]} from ${selected.collection}? This action cannot be undone.`, async () => {
         await request('documents.delete', { ...selected, filter: { [idField]: doc[idField] } });
-        if (scopeKey(selected) === scopeKey()) { await loadDocuments(state.documentOffset); void loadCollectionSummaries(); }
+        invalidateSummary(selected);
+        if (scopeKey(selected) === scopeKey()) { await loadDocuments(state.documentOffset); }
         notice('Document deleted.');
       }), 'danger');
     const details = document.createElement('details'); details.className = 'document-fields';
@@ -1225,7 +1178,8 @@ async function loadIndexes() {
         actionButton(actions, 'Delete', () => confirmAction('Delete index?',
           `Permanently delete ${index.name} on ${selected.collection}? Documents are preserved.`, async () => {
             await request('indexes.delete', { ...selected, name: index.name });
-            if (scopeKey(selected) === scopeKey()) { await loadIndexes(); void loadCollectionSummaries(); }
+            invalidateSummary(selected);
+            if (scopeKey(selected) === scopeKey()) { await loadIndexes(); }
             notice('Index deleted.');
           }), 'danger');
       }
@@ -1257,22 +1211,22 @@ $('index-form').addEventListener('submit', async (event) => {
   try {
     await request('indexes.create', { ...selected, name: $('index-name').value.trim(),
       field: $('index-field').value.trim(), order: Number($('index-order').value), sparse: $('index-sparse').checked });
+    invalidateSummary(selected);
     $('index-dialog').close();
-    if (scopeKey(selected) === scopeKey()) { await loadIndexes(); void loadCollectionSummaries(); }
+    if (scopeKey(selected) === scopeKey()) { await loadIndexes(); }
     notice('Index created.');
   } catch (error) { $('index-error').textContent = error.message; }
   finally { $('submit-index').disabled = false; $('submit-index').textContent = 'Create index'; }
 });
-for (const kind of ['project', 'database', 'collection']) click(`delete-${kind}`, () => {
-  const selected = scope(); const name = kind === 'project' ? state.project.name : selected[kind];
+for (const kind of ['database', 'collection']) click(`delete-${kind}`, () => {
+  const selected = scope(); const name = selected[kind];
   const summary = state.collectionSummaries.get(selected.collection);
-  const description = kind === 'project' ? 'The engine permits deletion only after its databases have been removed.' :
-    kind === 'collection' ? `Documents: ${number(summary?.count)}. Indexes: ${number(summary?.indexes)}. All collection data will be removed.` : 'All collections and their data will be removed.';
+  const description = kind === 'collection' ? `Documents: ${number(summary?.count)}. Indexes: ${number(summary?.indexes)}. All collection data will be removed.` : 'All collections and their data will be removed.';
   confirmAction(`Delete ${kind}?`, `${name}. ${description} This action cannot be undone.`, async () => {
     await request(`${kind}s.delete`, selected);
     if (scopeKey(selected) === scopeKey()) {
-      if (kind === 'project') { state.project = null; state.database = state.collection = null; state.databases = state.collections = []; }
-      invalidateSelection(); await refreshProjects();
+      invalidateSummary(selected);
+      invalidateSelection(); await refreshDatabases(state.navigation);
     }
     notice(`${kind[0].toUpperCase() + kind.slice(1)} deleted.`);
   });
@@ -1334,11 +1288,11 @@ loadPreferences();
 selectTab('documents');
 updateView();
 renderActivity();
-void run(refreshProjects);
+void run(async () => {
+  state.connectionInfo = await request('connection.info');
+  if (state.connectionInfo?.database) state.database = state.connectionInfo.database;
+  if (state.connectionInfo) $('environment-endpoint').textContent = `${state.connectionInfo.host}:${state.connectionInfo.port}`;
+  await refreshDatabases(undefined, true);
+});
 void refreshEngine();
-void request('connection.info').then((info) => {
-  state.connectionInfo = info;
-  const endpoint = `${info.host}:${info.port}`;
-  $('environment-endpoint').textContent = endpoint;
-}).catch(() => {});
 setInterval(() => { if (document.visibilityState === 'visible') void refreshEngine(); }, 20_000);

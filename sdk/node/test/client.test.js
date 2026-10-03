@@ -38,7 +38,7 @@ test('decodes a UTF-8 response split inside multibyte characters', async (t) => 
   assert.equal((await client.request({ action: 'ping' })).value, 'café 🐋');
 });
 
-test('requires project then database when creating data structures', async (t) => {
+test('explicit legacy project flow retains mapping and membership checks', async (t) => {
   const requests = [];
   let mapped = false;
   const server = net.createServer((socket) => socket.once('data', (data) => {
@@ -61,8 +61,7 @@ test('requires project then database when creating data structures', async (t) =
   const db = new PacificDBClient({ host: '127.0.0.1', port: server.address().port });
   t.after(() => db.close());
 
-  await assert.rejects(db.createDatabase('app'), /select a project/);
-  await assert.rejects(db.createCollection('users'), /select a project/);
+  await assert.rejects(db.createCollection('users'), /select a database/);
   assert.equal(requests.length, 0);
   await db.createProject('demo');
   await assert.rejects(db.createCollection('users'), /select a database/);
