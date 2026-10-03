@@ -2,10 +2,46 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import net from 'node:net';
+import tls from 'node:tls';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { MediaUploadError, PacificDBClient } from '../src/index.js';
+
+test('a timed out TLS handshake cannot poison the queued reconnect', async (t) => {
+  const sockets = new Set();
+  const server = net.createServer(socket => {
+    sockets.add(socket); socket.on('close', () => sockets.delete(socket));
+    let buffer = '';
+    socket.on('data', bytes => {
+      buffer += bytes;
+      while (buffer.includes('\n')) {
+        const end = buffer.indexOf('\n');
+        const request = JSON.parse(buffer.slice(0, end)); buffer = buffer.slice(end + 1);
+        socket.write(JSON.stringify({ sequence: request.sequence, _pacificdb_connection_keepalive: true }) + '\n');
+      }
+    });
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  let attempts = 0;
+  // Real sockets with a controlled handshake signal isolate timeout/close order.
+  t.mock.method(tls, 'connect', options => {
+    const attempt = ++attempts;
+    const socket = net.createConnection({ ...options, port: server.address().port });
+    socket.once('connect', () => { if (attempt > 1) socket.emit('secureConnect'); });
+    return socket;
+  });
+  const client = new PacificDBClient({ host: '127.0.0.1', tls: true, poolSize: 1, timeoutMs: 100 });
+  t.after(async () => { client.close(); t.mock.restoreAll(); for (const socket of sockets) socket.destroy(); await new Promise(resolve => server.close(resolve)); });
+  const results = await Promise.allSettled([1, 2, 3].map(sequence => client.request({ action: 'ping', sequence })));
+  assert.equal(results[0].status, 'rejected');
+  assert.match(results[0].reason.message, /timed out/);
+  assert.deepEqual(results.slice(1), [
+    { status: 'fulfilled', value: { sequence: 2 } },
+    { status: 'fulfilled', value: { sequence: 3 } }
+  ]);
+  assert.equal(attempts, 2);
+});
 
 test('a refused connection cannot reject the queued request reconnecting after it', async (t) => {
   const sockets = new Set();

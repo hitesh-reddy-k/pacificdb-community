@@ -37,7 +37,7 @@ class PooledConnection {
 
   async connect() {
     if (this.connected && this.socket && !this.socket.destroyed) return;
-    if (this.connecting) return this.connecting;
+    if (this.connecting && this.socket && !this.socket.destroyed) return this.connecting;
 
     const options = { host: this.pool.host, port: this.pool.port,
       ...(this.pool.ca ? { ca: this.pool.ca } : {}) };
@@ -47,7 +47,7 @@ class PooledConnection {
     this.decoder = new StringDecoder('utf8');
     this.responsesOnSocket = 0;
     const connectedEvent = this.pool.useTls ? 'secureConnect' : 'connect';
-    this.connecting = new Promise((resolve, reject) => {
+    const connecting = new Promise((resolve, reject) => {
       const onConnect = () => {
         cleanup();
         if (socket !== this.socket || socket.destroyed) {
@@ -74,7 +74,8 @@ class PooledConnection {
       socket.once(connectedEvent, onConnect);
       socket.once('error', onError);
       socket.once('close', onClose);
-    }).finally(() => { this.connecting = null; });
+    }).finally(() => { if (this.connecting === connecting) this.connecting = null; });
+    this.connecting = connecting;
 
     socket.on('data', (chunk) => this.onData(socket, chunk));
     socket.on('error', (error) => this.onFailure(socket, error));
