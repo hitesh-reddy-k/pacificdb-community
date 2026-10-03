@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Disposable databases only. Identical client/configuration for both engine artifacts.
+// Disposable databases only. Matched release SDKs and identical workload/configuration.
 import assert from 'node:assert/strict';
 import { spawn, execFileSync } from 'node:child_process';
 import { once } from 'node:events';
@@ -15,6 +15,7 @@ import { PacificDBClient } from '../sdk/node/src/index.js';
 const [oldPath, newPath, outputPath] = process.argv.slice(2).map(p => path.resolve(p));
 assert.ok(oldPath && newPath && outputPath, 'usage: node benchmarks/release-comparison.mjs OLD_ENGINE NEW_ENGINE OUTPUT');
 await mkdir(outputPath, { recursive: true });
+assert.ok(!(await readdir(outputPath)).length, 'output directory must be unused; preserve previous raw evidence');
 const baselineSdkPath = path.resolve(process.env.BENCH_BASELINE_SDK || 'build-baseline-sdk/package/src/index.js');
 const { PacificDBClient: BaselineClient } = await import(pathToFileURL(baselineSdkPath));
 const repeats = Number(process.env.BENCH_REPEATS || 3);
@@ -27,7 +28,7 @@ const cases = [
   { name: 'delete', operation: 'delete', calls: 1000 },
   { name: 'mixed-70r-30u', operation: 'mixed', calls: 3000 },
   ...[10, 100, 1000].map(batch => ({ name: `batch-${batch}`, operation: 'batch', batch, calls: Math.max(10, 1000 / batch) })),
-  ...[1, 4, 16, 32].map(pool => ({ name: `read-pool-${pool}`, operation: 'read', pool, concurrency: pool, calls: 10000 })),
+  ...[1, 4, 8, 16, 32].map(pool => ({ name: `read-pool-${pool}`, operation: 'read', pool, concurrency: pool, calls: 10000 })),
   ...[128, 16384].map(payload => ({ name: `insert-payload-${payload}`, operation: 'insert', payload, calls: 500 })),
   { name: 'vector-insert-d32', operation: 'vectorInsert', calls: 500 },
   { name: 'vector-search-d32', operation: 'vectorSearch', calls: 1000 },
@@ -54,6 +55,8 @@ await writeFile(path.join(outputPath, 'method.json'), JSON.stringify({ config, a
   cpu: os.cpus().map(c => c.model), logical_cpus: os.cpus().length, total_memory_bytes: os.totalmem(),
   filesystem: execFileSync('findmnt', ['-T', outputPath, '-no', 'SOURCE,FSTYPE,OPTIONS'], { encoding: 'utf8' }).trim(),
   ordering: 'alternating old/new and new/old per independent round; no concurrent build/test/benchmark',
+  source_revision: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+  sdk_sources: await Promise.all([['v1.0.0', baselineSdkPath], ['v1.1.1', path.resolve('sdk/node/src/index.js')]].map(async ([label, file]) => ({ label, file, sha256: createHash('sha256').update(await readFile(file)).digest('hex') }))),
   client: 'matched published 1.0.0 Node SDK vs local candidate 1.1.1 Node SDK; same API calls/configuration; full stack comparison, not an isolated engine-change attribution',
   limitations: 'Finite in-memory dataset and short phases on a shared laptop; not a service-level or cross-product claim.' }, null, 2) + '\n');
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -117,6 +120,10 @@ async function trial(artifact, spec, round) {
       if (doc === null) assert.equal(response.data.length, 0);
       else { assert.equal(response.data.length, 1); for (const key of Object.keys(doc)) assert.deepEqual(response.data[0][key], doc[key]); }
     }
+    if (['vectorInsert', 'vectorSearch'].includes(spec.operation)) {
+      for (let i = 0; i < 100; i++) assert.deepEqual((await client.find('vectors', { id: `seed-vector-${i}` }, { limit: 1 })).data[0].vector, vector(i));
+      if (spec.operation === 'vectorInsert') for (let i = 0; i < spec.calls; i++) assert.deepEqual((await client.find('vectors', { id: `timed-vector-${i}` }, { limit: 1 })).data[0].vector, vector(i));
+    }
   }
   try {
     await start(); await client.createDatabase('bench'); await client.createCollection('records');
@@ -164,7 +171,7 @@ async function trial(artifact, spec, round) {
     }));
     const elapsedMs = performance.now() - started; clearInterval(sampling); const after = await resource(child.pid);
     latency.sort((a, b) => a - b); const percentile = p => latency[Math.min(latency.length - 1, Math.ceil(latency.length * p) - 1)];
-    const result = { name, round, artifact, workload: spec, seed_records: seedCount, calls: spec.calls, successful_calls: latency.length,
+    const result = { name, round, artifact, workload: spec, seed_records: seedCount, example_document_json_bytes: Buffer.byteLength(JSON.stringify(record('seed-0'))), calls: spec.calls, successful_calls: latency.length,
       errors, elapsed_ms: elapsedMs, attempted_calls_per_second: spec.calls * 1000 / elapsedMs,
       successful_calls_per_second: latency.length * 1000 / elapsedMs, documents_per_second: documents * 1000 / elapsedMs,
       latency_ms: { mean: latency.reduce((a,b) => a+b, 0) / latency.length, p50: percentile(.5), p95: percentile(.95), p99: percentile(.99) },
@@ -178,7 +185,7 @@ async function trial(artifact, spec, round) {
       const expectedCount = spec.operation === 'vectorInsert' ? 600 : 100;
       assert.equal((await client.request({ action: 'count', collection: 'vectors', filter: {} })).count, expectedCount);
     }
-    result.integrity = 'PASS: full expected application fields and deleted-ID absence before/after SIGKILL; vector count/search after recovery';
+    result.integrity = 'PASS: full expected application fields and deleted-ID absence before/after SIGKILL; exact vectors plus count/search after recovery';
     await writeFile(path.join(outputPath, `${name}.json`), JSON.stringify(result, null, 2) + '\n');
     console.log(JSON.stringify({ name, calls_per_second: result.attempted_calls_per_second, p95_ms: result.latency_ms.p95, errors: errors.length, integrity: 'PASS' }));
   } finally { clearInterval(sampling); await stop('SIGINT').catch(() => {}); await rm(root, { recursive: true, force: true }); }
