@@ -7,6 +7,33 @@ import path from 'node:path';
 import test from 'node:test';
 import { MediaUploadError, PacificDBClient } from '../src/index.js';
 
+test('a concurrent burst after one warm request uses the bounded pool', async (t) => {
+  const sockets = new Set(); let active = 0, peak = 0;
+  const server = net.createServer(socket => {
+    sockets.add(socket); socket.on('close', () => sockets.delete(socket));
+    let buffer = '';
+    socket.on('data', data => {
+      buffer += data;
+      while (buffer.includes('\n')) {
+        const end = buffer.indexOf('\n');
+        const request = JSON.parse(buffer.slice(0, end)); buffer = buffer.slice(end + 1);
+        if (request.action === 'warm') socket.write(JSON.stringify({ status: 'ok', _pacificdb_connection_keepalive: true }) + '\n');
+        else {
+          active++; peak = Math.max(peak, active);
+          setTimeout(() => { active--; if (!socket.destroyed) socket.write(JSON.stringify({ status: 'ok', _pacificdb_connection_keepalive: true }) + '\n'); }, 30);
+        }
+      }
+    });
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const client = new PacificDBClient({ host: '127.0.0.1', port: server.address().port, poolSize: 4 });
+  t.after(async () => { client.close(); for (const socket of sockets) socket.destroy(); await new Promise(resolve => server.close(resolve)); });
+  await client.request({ action: 'warm' });
+  await Promise.all(Array.from({ length: 8 }, () => client.request({ action: 'burst' })));
+  assert.equal(peak, 4, 'serial warmup must not trap the subsequent burst on one connection');
+  assert.ok(sockets.size <= 4);
+});
+
 test('sends one JSON command and parses one response', async (t) => {
   const server = net.createServer((socket) => {
     socket.once('data', (data) => {

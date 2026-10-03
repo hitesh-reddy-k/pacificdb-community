@@ -172,7 +172,6 @@ class ConnectionPool {
     this.connections = [];
     this.idle = [];
     this.queue = [];
-    this.pendingRelease = 0;
     this.closed = false;
   }
 
@@ -183,33 +182,22 @@ class ConnectionPool {
   }
 
   dispatch(connection, job) {
+    const release = () => {
+      if (!this.closed) {
+        const next = this.queue.shift();
+        if (next) this.dispatch(connection, next);
+        else this.idle.push(connection);
+      }
+    };
     connection.request(job.wire).then((value) => {
-      // Give an older one-request-per-connection server a chance to deliver
-      // its FIN before assigning more work to this slot. Keep-alive engines
-      // retain the same socket; closed peers reconnect on the next request.
-      this.pendingRelease += 1;
+      // Response parsing already retires peers that do not explicitly promise
+      // keep-alive. Return the slot before callers submit their next burst;
+      // delaying release can trap every queued request on one warm connection.
+      release();
       job.resolve(value);
-      const releaseDelayMs = connection.responsesOnSocket < 2 ? 5 : 0;
-      setTimeout(() => {
-        this.pendingRelease -= 1;
-        if (!this.closed) {
-          const next = this.queue.shift();
-          if (next) this.dispatch(connection, next);
-          else this.idle.push(connection);
-        }
-      }, releaseDelayMs);
     }, (error) => {
-      this.pendingRelease += 1;
+      release();
       job.reject(error);
-      const releaseDelayMs = connection.responsesOnSocket < 2 ? 5 : 0;
-      setTimeout(() => {
-        this.pendingRelease -= 1;
-        if (!this.closed) {
-          const next = this.queue.shift();
-          if (next) this.dispatch(connection, next);
-          else this.idle.push(connection);
-        }
-      }, releaseDelayMs);
     });
   }
 
@@ -219,7 +207,6 @@ class ConnectionPool {
       const job = { wire, resolve, reject };
       const connection = this.idle.pop();
       if (connection) this.dispatch(connection, job);
-      else if (this.pendingRelease > 0) this.queue.push(job);
       else if (this.connections.length < this.poolSize) {
         this.dispatch(this.newConnection(), job);
       } else this.queue.push(job);
