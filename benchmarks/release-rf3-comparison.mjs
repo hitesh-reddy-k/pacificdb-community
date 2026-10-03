@@ -17,7 +17,8 @@ const { PacificDBClient: BaselineClient } = await import(pathToFileURL(path.reso
   process.env.BENCH_BASELINE_SDK || 'build-baseline-sdk/package/src/index.js')));
 const artifacts = await Promise.all([['v1.0.0', oldBinary], ['v1.1.1', newBinary]].map(async ([label, binary]) => ({
   label, binary, sha256: createHash('sha256').update(await readFile(binary)).digest('hex'),
-  version: execFileSync(binary, ['--version'], { encoding: 'utf8' }).trim()
+  version: execFileSync(binary, ['--version'], { encoding: 'utf8' }).trim(),
+  build_info: JSON.parse(execFileSync(binary, ['--build-info'], { encoding: 'utf8' }))
 })));
 for (const artifact of artifacts) assert.ok(artifact.version.includes(artifact.label.slice(1)));
 const cases = [{ name: 'rf3-insert', operation: 'insert', calls: 500, concurrency: 8, pool: 8 }];

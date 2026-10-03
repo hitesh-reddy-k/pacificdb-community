@@ -45,7 +45,8 @@ const config = { engine_cpu_cores: 2, shards: 4, workers_per_shard: 2,
 const artifacts = [];
 for (const [label, binary] of [['v1.0.0', oldPath], ['v1.1.1', newPath]]) {
   artifacts.push({ label, binary, sha256: createHash('sha256').update(await readFile(binary)).digest('hex'),
-    version: execFileSync(binary, ['--version'], { encoding: 'utf8' }).trim() });
+    version: execFileSync(binary, ['--version'], { encoding: 'utf8' }).trim(),
+    build_info: JSON.parse(execFileSync(binary, ['--build-info'], { encoding: 'utf8' })) });
 }
 assert.ok(artifacts[0].version.includes('1.0.0'));
 assert.ok(artifacts[1].version.includes('1.1.1'));
