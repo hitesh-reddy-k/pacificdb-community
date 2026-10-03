@@ -145,14 +145,17 @@ class PooledConnection {
       const timer = setTimeout(() => this.finish(
         new Error('PacificDB request timed out'), true), this.pool.timeoutMs);
       timer.unref?.();
-      this.current = { resolve, reject, timer };
+      const current = { resolve, reject, timer };
+      this.current = current;
       this.connect().then(() => {
-        if (!this.current || !this.socket || this.socket.destroyed) return;
+        if (this.current !== current || !this.socket || this.socket.destroyed) return;
         this.socket.ref();
         this.socket.write(wire, (error) => {
-          if (error) this.finish(error, true);
+          if (error && this.current === current) this.finish(error, true);
         });
-      }).catch((error) => this.finish(error, true));
+      }).catch((error) => {
+        if (this.current === current) this.finish(error, true);
+      });
     });
   }
 

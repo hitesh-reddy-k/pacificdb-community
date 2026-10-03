@@ -20,6 +20,7 @@ Publication and release qualification are pending. Public engine/native installe
 
 - Creation selects a database only after success; switching validates the accessible database catalog.
 - Java/Python pooled connection lifecycle, request scope capture, typed errors and explicit close behavior.
+- Fixed Node.js pool scheduling after sequential warmup: completed slots return to the pool before caller promises settle, so a concurrent burst can use the configured connections instead of queuing behind one warm slot. The peer regression verifies four concurrent requests with a four-connection pool.
 - Verified media downloads replace destinations after checksum validation; interrupted writes are never automatically retried.
 - Workbench Overview count loading uses a single loader with at most four jobs in flight, cached database scope, mutation invalidation and unknown-value placeholders. Other views do not schedule full count scans.
 
