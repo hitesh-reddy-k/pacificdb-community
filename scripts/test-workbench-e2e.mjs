@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -163,7 +163,7 @@ try {
   // Execute the copyable website snippets against the same disposable engine.
   const docs = await readFile(new URL('../site/docs.html', import.meta.url), 'utf8');
   const snippet = id => docs.match(new RegExp(`<code id="${id}">([\\s\\S]*?)</code>`))[1]
-    .replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&amp;', '&');
+    .replaceAll('&#x27;', "'").replaceAll('&quot;', '"').replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&amp;', '&');
   const shell = spawnSync(path.join(build, process.platform === 'win32' ? 'pacificdb.exe' : 'pacificdb'),
     ['--port', String(port), '--no-start'], { input: snippet('quickstart-code') + '\nquit\n', encoding: 'utf8', timeout: 15_000,
       env: { ...process.env, PACIFICDB_CLI_HOME: path.join(root, 'snippet-cli') } });
@@ -171,8 +171,12 @@ try {
   assert.doesNotMatch(shell.stdout, /unknown (?:or invalid )?command|unknown_command|select a project|Error:/i);
   assert.match(shell.stdout, /Hello PacificDB/);
   frames.length = 0;
+  await writeFile(path.join(root, 'demo.mp4'), Buffer.from('website media fixture'));
   const nodeCode = snippet('node-code').replace(/import[^;]+;/, '')
-    .replace('127.0.0.1:9000', `127.0.0.1:${port}`).replace('port: 9000', `port: ${port}`);
+    .replace('127.0.0.1:9000', `127.0.0.1:${port}`).replace('port: 9000', `port: ${port}`)
+    .replace('process.env.PACIFICDB_URL', 'undefined')
+    .replace("'./demo.mp4'", JSON.stringify(path.join(root, 'demo.mp4')))
+    .replace("'./downloaded-node.mp4'", JSON.stringify(path.join(root, 'downloaded-node.mp4')));
   await new (Object.getPrototypeOf(async function(){}).constructor)('PacificDBClient', 'PacificDB', nodeCode)(PacificDBClient, PacificDBClient);
   assert.ok(frames.every(frame => !frame.action.startsWith('community_project_') && frame.action !== 'community_database_map'), 'beginner snippet must use direct engine APIs');
   console.log('WORKBENCH_DATABASE_FIRST_E2E_AND_DOC_EXAMPLES_PASS');

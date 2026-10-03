@@ -9,11 +9,14 @@ import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promis
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { PacificDBClient } from '../sdk/node/src/index.js';
 
 const [oldPath, newPath, outputPath] = process.argv.slice(2).map(p => path.resolve(p));
 assert.ok(oldPath && newPath && outputPath, 'usage: node benchmarks/release-comparison.mjs OLD_ENGINE NEW_ENGINE OUTPUT');
 await mkdir(outputPath, { recursive: true });
+const baselineSdkPath = path.resolve(process.env.BENCH_BASELINE_SDK || 'build-baseline-sdk/package/src/index.js');
+const { PacificDBClient: BaselineClient } = await import(pathToFileURL(baselineSdkPath));
 const repeats = Number(process.env.BENCH_REPEATS || 3);
 assert.ok(Number.isInteger(repeats) && repeats >= 3);
 const ticks = Number(execFileSync('getconf', ['CLK_TCK'], { encoding: 'utf8' }).trim());
@@ -51,7 +54,7 @@ await writeFile(path.join(outputPath, 'method.json'), JSON.stringify({ config, a
   cpu: os.cpus().map(c => c.model), logical_cpus: os.cpus().length, total_memory_bytes: os.totalmem(),
   filesystem: execFileSync('findmnt', ['-T', outputPath, '-no', 'SOURCE,FSTYPE,OPTIONS'], { encoding: 'utf8' }).trim(),
   ordering: 'alternating old/new and new/old per independent round; no concurrent build/test/benchmark',
-  client: 'same candidate Node SDK source for both engine artifacts; measures engine compatibility/performance, not full historical SDK stack',
+  client: 'matched published 1.0.0 Node SDK vs local candidate 1.1.1 Node SDK; same API calls/configuration; full stack comparison, not an isolated engine-change attribution',
   limitations: 'Finite in-memory dataset and short phases on a shared laptop; not a service-level or cross-product claim.' }, null, 2) + '\n');
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function freePort() {
@@ -84,11 +87,12 @@ async function trial(artifact, spec, round) {
     TLS_ENABLED: '0', WAL_FSYNC_ENABLED: '1', RAFT_ASYNC_LOG_FSYNC: '0' };
   for (const key of Object.keys(env)) if (/^(?:RAFT_STANDALONE_|RAFT_APPLY_PUBLICATION|RAFT_ORDERED_APPLY|PACIFICDB_NATIVE_PATH)/.test(key)) delete env[key];
   let child, log, sampling;
-  let client = new PacificDBClient({ host: '127.0.0.1', port, database: 'bench', poolSize: spec.pool || 8, timeoutMs: 60000 });
+  const Client = artifact.label === 'v1.0.0' ? BaselineClient : PacificDBClient;
+  let client = new Client({ host: '127.0.0.1', port, database: 'bench', poolSize: spec.pool || 8, timeoutMs: 60000 });
   const expected = new Map(), errors = [], latency = [];
   const record = (id, value = 0) => ({ id, value, payload: 'x'.repeat(spec.payload || 1024), nested: { unicode: '数据库 🌊', array: [1, null, true] } });
   async function start() {
-    if (client._pool.closed) client = new PacificDBClient({ host: '127.0.0.1', port, database: 'bench', poolSize: spec.pool || 8, timeoutMs: 60000 });
+    if (client._pool.closed) client = new Client({ host: '127.0.0.1', port, database: 'bench', poolSize: spec.pool || 8, timeoutMs: 60000 });
     log = createWriteStream(path.join(outputPath, `${name}-engine.log`), { flags: 'a' });
     child = spawn(artifact.binary, [], { env, stdio: ['ignore', 'pipe', 'pipe'] });
     child.stdout.pipe(log, { end: false }); child.stderr.pipe(log, { end: false });

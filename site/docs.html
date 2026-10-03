@@ -125,12 +125,12 @@ exit | quit</code></pre></div></div></section>
 const url = process.env.PACIFICDB_URL ?? &#x27;pacificdb://127.0.0.1:9000/node_demo&#x27;;
 const db = await PacificDB.connect(url);
 try {
-  await db.createDatabase(&#x27;node_demo&#x27;); // Omit for an existing database.
+  await db.createDatabase(); // Create the URL database; omit if it exists.
   await db.createCollection(&#x27;users&#x27;);
   await db.insert(&#x27;users&#x27;, { id: &#x27;1&#x27;, name: &#x27;Ada&#x27; });
-  console.log(await db.findOne(&#x27;users&#x27;, { id: &#x27;1&#x27; }));
+  console.log(await db.find(&#x27;users&#x27;, { id: &#x27;1&#x27; }, { limit: 1 }));
   await db.updateOne(&#x27;users&#x27;, { id: &#x27;1&#x27; }, { $set: { name: &#x27;Grace&#x27; } });
-  console.log(await db.count(&#x27;users&#x27;));
+  console.log(await db.request({ action: &#x27;count&#x27;, collection: &#x27;users&#x27;, filter: {} }));
   await db.deleteOne(&#x27;users&#x27;, { id: &#x27;1&#x27; });
 
   await db.createCollection(&#x27;embeddings&#x27;);
@@ -142,7 +142,7 @@ try {
   await db.downloadMediaFile(media.id, &#x27;./downloaded-node.mp4&#x27;);
 } finally {
   db.close();
-}</code></pre></div><p>For direct authentication use <code>await db.authenticate(username, password)</code>; a private URL authenticates on connect. <code>insertMany</code>, <code>aggregate</code>, <code>explain</code>, and raw <code>request</code> expose additional operations. Always call <code>close()</code> in a finally block.</p></section>
+}</code></pre></div><p>For direct authentication use <code>await db.authenticate(username, password)</code>; a private URL authenticates on connect. <code>insertMany</code> sends a batch. Use <code>request({ action: 'aggregate', collection, pipeline })</code> or <code>request({ action: 'explain', collection, filter })</code> for aggregation and explain. The Node.js SDK exposes these through raw protocol requests. Always call <code>close()</code> in a finally block.</p></section>
 
 <section id="python" data-doc-section><p class="kicker">CANDIDATE SOURCE SDK</p><h2>Python</h2><p>Requires Python 3.10+ and has no runtime dependencies. The candidate package name is <code>pacificdb</code>; candidate 1.1.1 registry publication is pending. Install source in a virtual environment from the prepared checkout:</p><div class="codebox"><div class="codehead"><span>Terminal</span><button class="copy" data-copy="python-install">Copy</button></div><pre><code id="python-install">python3 -m venv .venv
 . .venv/bin/activate
