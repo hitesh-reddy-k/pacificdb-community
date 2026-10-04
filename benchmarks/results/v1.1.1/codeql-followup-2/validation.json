@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-04",
+  "base_revision": "86eed83a8fbaa364a909d6a8a94d31822f182950",
+  "scope": "Owner-approved exclusive desktop log fallback and Windows lifecycle capture fix; source-only",
+  "hosted_red": {
+    "codeql_check_run": 111420982253,
+    "alert": 21,
+    "original_alerts_17_to_20": "fixed by hosted CodeQL",
+    "windows_run": 37196412663,
+    "windows_job": 111419118559,
+    "result": "FAIL",
+    "cause": "engine_shutdown_complete JSON and stdout shutdown text shared a combined capture line"
+  },
+  "local_red": [
+    {
+      "command": "node scripts/test-desktop-engine.mjs build",
+      "result": "FAIL before exclusive fallback",
+      "assertion": "an unreadable original log must use a new exclusive diagnostic log"
+    },
+    {
+      "command": "node --test scripts/test-engine-log-capture.mjs",
+      "result": "FAIL with original combined-stream capture",
+      "error": "SyntaxError: Unexpected non-whitespace character after JSON"
+    }
+  ],
+  "final_local": {
+    "command": "set -e\nnpm run test:npm\nnode scripts/test-desktop-engine.mjs build\nnode --test scripts/test-rf3-upgrade-contract.mjs scripts/test-site-docs-contract.mjs scripts/test-engine-log-capture.mjs\nPACIFICDB_P0_WRITES=1000 node scripts/test-p0-client-lifecycle.mjs build\nnode scripts/test-site-docs.mjs\npython3 scripts/test-release-consistency.py\npython3 scripts/test-workflow-contract.py\nnode --check desktop/engine.mjs\nnode --check scripts/test-p0-client-lifecycle.mjs\ngit diff --check",
+    "exit_code": 0,
+    "evidence": "local-checks.log",
+    "node": 31,
+    "cli": 27,
+    "contracts": 6,
+    "lifecycle": {
+      "writes": 1000,
+      "acknowledged": 996,
+      "cycles": 5,
+      "clients_per_cycle": 16
+    }
+  },
+  "desktop": {
+    "build": "npm run desktop:unpacked",
+    "build_exit_code": 0,
+    "command": "set -e\ntest ! -L dist/desktop/linux-unpacked/chrome-sandbox\nsudo -n chown root:root /home/hitesh/pacificdb-release-1.1.1/dist/desktop/linux-unpacked/chrome-sandbox\nsudo -n chmod 4755 /home/hitesh/pacificdb-release-1.1.1/dist/desktop/linux-unpacked/chrome-sandbox\nPACIFICDB_TEST_DESKTOP=/home/hitesh/pacificdb-release-1.1.1/dist/desktop/linux-unpacked/pacificdb-workbench xvfb-run -a node scripts/test-workbench-desktop.mjs",
+    "exit_code": 0,
+    "result": "WORKBENCH_DESKTOP_PASS: native window, sandbox, bundled engine, CRUD, media, shutdown/restart persistence"
+  },
+  "invariants": [
+    "Original descriptor used for bounded diagnostics",
+    "Fallback uses random name and exclusive ax+; original write-only file untouched",
+    "Lifecycle JSON parser unchanged and strict; malformed combined-stream control rejected",
+    "No engine source, durability, quorum, API, public tag or artifact changed"
+  ],
+  "limitations": [
+    "Local lifecycle validation is Linux; final Windows verdict requires hosted checks",
+    "Initial symlinks, in-place mutation and hostile ancestor ownership not claimed remediated",
+    "Hosted scanner verdict pending at commit; PR remains draft until final gates pass"
+  ]
+}

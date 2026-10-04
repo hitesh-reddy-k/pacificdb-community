@@ -154,6 +154,10 @@ regression-tested pathname replacement and permission compatibility, plus
 equivalent test-harness checks. It is not included in the immutable published
 Workbench artifacts. PR #31 tracks its exact-source hosted requalification; no
 public package or tag was overwritten.
+Existing unreadable logs use a new exclusively created fallback whose path is
+reported; their previous contents are preserved. Native lifecycle tests retain
+separate stdout/stderr logs so Windows stream interleaving cannot invalidate an
+otherwise complete JSON event. These are post-publication source/test changes.
 
 Storage format 2 and Raft wire protocol 2 are unchanged. This release branch does
 not contain the unreleased one-sync format-3 experiment or rejected fast paths.

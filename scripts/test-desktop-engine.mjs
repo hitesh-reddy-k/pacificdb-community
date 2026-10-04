@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, rm, readdir, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, rm, readdir, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { startDesktopEngine } from '../desktop/engine.mjs';
@@ -57,9 +57,22 @@ process.exit(1);
     if (process.getuid() !== 0) {
       const directory = path.join(root, 'write-only-log');
       await mkdir(directory);
-      await writeFile(path.join(directory, 'engine.log'), '', { mode: 0o200 });
+      const originalLog = path.join(directory, 'engine.log');
+      await writeFile(originalLog, 'existing write-only log\n', { mode: 0o200 });
       const writeOnlyEngine = await startDesktopEngine({ executable: path.join(build, 'db_engine'), directory });
-      await writeOnlyEngine.stop();
+      try {
+        assert.notEqual(writeOnlyEngine.logPath, originalLog,
+          'an unreadable original log must use a new exclusive diagnostic log');
+      } finally { await writeOnlyEngine.stop(); }
+      assert.match(await readFile(writeOnlyEngine.logPath, 'utf8'), /Clean shutdown marker v2 written/);
+      await writeFile(executable, '#!/usr/bin/env node\nprocess.stderr.write("exclusive fallback failure\\n");\nprocess.exit(1);\n', { mode: 0o700 });
+      await assert.rejects(startDesktopEngine({ executable, directory }), (error) => {
+        assert.ok(error.message.endsWith('exclusive fallback failure\n'));
+        assert.match(error.message, /Engine log: .*engine-[0-9a-f-]+\.log\n/);
+        return true;
+      });
+      await chmod(originalLog, 0o600);
+      assert.equal(await readFile(originalLog, 'utf8'), 'existing write-only log\n');
       console.log('DESKTOP_ENGINE_WRITE_ONLY_LOG_COMPATIBILITY_PASS');
     }
   }

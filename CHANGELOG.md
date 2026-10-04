@@ -2,9 +2,10 @@
 
 ## Post-release branch follow-up — not in the published v1.1.1 artifacts
 
-- Startup-failure diagnostics read a bounded Unicode tail from the engine's original log descriptor instead of reopening a replaceable pathname. Existing write-only logs remain supported.
+- Startup-failure diagnostics read a bounded Unicode tail from the engine's original log descriptor instead of reopening a replaceable pathname. Existing write-only logs leave their contents untouched and use a new, exclusive readable log whose path is reported to the caller.
 - Website and mixed-version upgrade validation remove redundant filesystem preflights while retaining missing-file, fragment, nonexecutable-artifact and traverse-only-directory checks.
 - Added deterministic file/symlink-replacement, descriptor-cleanup and permission-compatibility regression coverage. Published release tags and artifacts are unchanged; hosted requalification is tracked in PR #31.
+- Native lifecycle validation captures stdout and stderr separately and waits for pipe drain, preventing unrelated stdout from corrupting JSON event assertions on Windows. Event parsing remains strict; no engine behavior or validation gate is weakened.
 
 ## 1.1.1 — 2026-10-04
 

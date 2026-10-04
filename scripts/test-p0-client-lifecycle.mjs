@@ -10,6 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { PacificDBClient } from '../sdk/node/src/index.js';
+import { captureEngineLogs } from './lib/engine-log-capture.mjs';
 
 const repositoryRoot = path.resolve(import.meta.dirname, '..');
 const buildRoot = path.resolve(process.argv[2] || path.join(repositoryRoot, 'build'));
@@ -19,6 +20,7 @@ const cliBinary = path.join(
   buildRoot, process.platform === 'win32' ? 'pacificdb.exe' : 'pacificdb');
 const testRoot = await mkdtemp(path.join(os.tmpdir(), 'pacificdb-p0-lifecycle-'));
 const engineLog = path.join(testRoot, 'engine.log');
+const stdoutPath = path.join(testRoot, 'engine-stdout.log');
 const requestedWrites = Number(process.env.PACIFICDB_P0_WRITES || 1000);
 const abruptEvery = Number(process.env.PACIFICDB_P0_ABRUPT_EVERY ?? 250);
 assert.ok(Number.isSafeInteger(requestedWrites) && requestedWrites >= 80,
@@ -79,13 +81,13 @@ const environment = {
 };
 
 const log = createWriteStream(engineLog, { flags: 'a', mode: 0o600 });
+const stdoutLog = createWriteStream(stdoutPath, { flags: 'a', mode: 0o600 });
 const engine = spawn(engineBinary, [], {
   cwd: repositoryRoot,
   env: environment,
   stdio: ['ignore', 'pipe', 'pipe'],
 });
-engine.stdout.pipe(log, { end: false });
-engine.stderr.pipe(log, { end: false });
+const finishLogs = captureEngineLogs(engine, log, stdoutLog);
 let pipeError;
 for (const stream of [engine.stdout, engine.stderr]) {
   stream.on('error', (error) => {
@@ -95,6 +97,7 @@ for (const stream of [engine.stdout, engine.stderr]) {
   });
 }
 log.on('error', (error) => { pipeError ||= error; });
+stdoutLog.on('error', (error) => { pipeError ||= error; });
 let logClosed = false;
 
 async function waitReady() {
@@ -188,8 +191,7 @@ async function stopEngine() {
     }
   }
   logClosed = true;
-  log.end();
-  await once(log, 'finish');
+  await finishLogs();
 }
 
 try {
@@ -279,14 +281,18 @@ try {
     path.join(testRoot, 'engine.metadata.json'), 'utf8'));
   assert.equal(logText.includes(processMetadata.discovery_nonce), false,
     'discovery nonce leaked into lifecycle logs');
+  assert.equal((await readFile(stdoutPath, 'utf8')).includes(processMetadata.discovery_nonce), false,
+    'discovery nonce leaked into stdout logs');
   console.log(JSON.stringify({
     status: 'PASS', cycles: 5, clients_per_cycle: 16,
     writes: issued, acknowledged, pid: engine.pid,
   }));
 } catch (error) {
   const diagnostic = await readFile(engineLog, 'utf8').catch(() => '');
+  const stdoutDiagnostic = await readFile(stdoutPath, 'utf8').catch(() => '');
   error.message += `\nengine pid=${engine.pid} exit=${engine.exitCode}\n` +
-    `engine log:\n${diagnostic.split('\n').slice(-200).join('\n')}`;
+    `engine stderr:\n${diagnostic.split('\n').slice(-200).join('\n')}\n` +
+    `engine stdout:\n${stdoutDiagnostic.split('\n').slice(-200).join('\n')}`;
   console.error(error.message);
   console.error(error.stack || '');
   process.exitCode = 1;

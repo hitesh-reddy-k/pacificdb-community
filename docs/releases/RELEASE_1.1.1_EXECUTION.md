@@ -112,5 +112,16 @@ and regression tests verified the traverse-only-directory and write-only-log
 compatibility cases. A real mixed-version RF3 backup/restore/upgrade/restart check
 also passed. Final hosted results belong to the exact follow-up commit's PR checks.
 
+At follow-up `86eed83`, CodeQL marked all four original alerts fixed but reported
+alert 21 on the same-path write-only fallback. The owner approved a new exclusive
+fallback log: the existing unreadable log is untouched, and startup/errors expose
+the new readable path. The permission regression failed before this change and
+passed afterward. Hosted Windows installer validation also failed because stdout
+text landed between a stderr JSON event and its newline; the shutdown event was
+present in the raw output. A deterministic interleaved-pipe test reproduces that
+failure. Lifecycle validation now captures the two pipes separately and waits for
+drain before parsing; malformed JSON is still rejected. The final Windows result
+must come from hosted requalification, not Linux-only execution.
+
 These changes do not modify the immutable `v1.1.1` or `workbench-v1.1.1` tags,
 replace public artifacts, or certify a hostile-local-filesystem attacker model.

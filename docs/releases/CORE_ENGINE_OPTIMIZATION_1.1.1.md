@@ -438,6 +438,15 @@ remote exploitability, and is not present in the immutable published Workbench.
 The separate CodeQL gate failed at `40c19b0`; PR #31 tracks the follow-up's hosted
 recheck without dismissing alerts or disabling checks.
 
+The first follow-up's same-path permission fallback generated a new CodeQL alert.
+An owner-approved exclusive fallback now preserves write-only-log startup without
+retrying that pathname; its new diagnostic path is returned and the old log is
+not modified. Windows native qualification exposed a test-harness capture defect:
+stdout could interrupt a stderr JSON line. Separate stream logs and pipe-drain
+waiting fix the reproduced assertion failure without relaxing JSON parsing or
+changing engine logging. Hosted results are recorded on PR #31; these follow-ups
+are source-only and not new public release artifacts.
+
 Use stable dedicated hosts and sustained/out-of-cache workloads; profile full CPU
 and waits before changing storage/replication. Investigate prewarmed pools against
 server thread capacity, batch-size/tail-latency balance and measured vector/index

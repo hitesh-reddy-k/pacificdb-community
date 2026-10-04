@@ -1,4 +1,5 @@
 import { execFile, spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { mkdir, open } from 'node:fs/promises';
 import net from 'node:net';
 import path from 'node:path';
@@ -23,14 +24,16 @@ export async function startDesktopEngine({ executable, directory, signal, timeou
   const port = await freePort();
   let raftPort = await freePort();
   while (raftPort === port) raftPort = await freePort();
-  const logPath = path.join(directory, 'engine.log');
+  let logPath = path.join(directory, 'engine.log');
   let log;
   try {
     log = await open(logPath, 'a+', 0o600);
   } catch (error) {
     if (error.code !== 'EACCES') throw error;
-    // Existing write-only logs were supported before readable diagnostics.
-    log = await open(logPath, 'a', 0o600);
+    // Keep startup working with an existing write-only log without retrying
+    // its pathname. Exclusive creation cannot follow or overwrite a replacement.
+    logPath = path.join(directory, `engine-${randomUUID()}.log`);
+    log = await open(logPath, 'ax+', 0o600);
   }
   const inherited = { ...process.env };
   // Desktop configuration must not import a terminal's engine configuration.
