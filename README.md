@@ -161,7 +161,7 @@ network.
 | Queries | `aggregate`, `explain` |
 | Backups | `create backup`, `list backups`, `show backup`, `backup verify`, `backup export`, `restore backup`, `list restores`, `delete backup` |
 | API keys | `create api-key`, `list api-keys`, `show api-key`, `revoke api-key` |
-| Media | `upload image|video|media`, `download media`, `list media`, `find media`, `show media`, `delete media`, `media cleanup` |
+| Media | `upload image\|video\|media`, `download media`, `list media`, `find media`, `show media`, `delete media`, `media cleanup` |
 | Vectors | `put vector`, `query vector` |
 | Shell | `help`, `status`, `context show`, `context clear`, `history`, `clear`, `request`, `exit` |
 
