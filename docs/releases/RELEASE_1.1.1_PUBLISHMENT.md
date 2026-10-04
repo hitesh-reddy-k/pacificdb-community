@@ -141,8 +141,8 @@ README links point to package and Workbench guides. The homepage, documentation,
 and v1.1.1 release page now describe the stable update and link to 1.1.1 engine,
 SDK, and Workbench artifacts. The public release page contains update information,
 not benchmark comparison copy. Static asset/anchor checks and exact complete SDK
-examples pass. Final Pages run `37192873112` deployed release documentation commit
-`7dc6dc0215d717a9d52a6a977309a002d1ec921c`; the homepage,
+examples pass. Final Pages run `37193691784` deployed release documentation commit
+`05838dc73e495d170c16a1b029f2e751c4f69ceb`; the homepage,
 documentation and release notes returned HTTP 200 and contained v1.1.1 with no
 removed comparison copy.
 
