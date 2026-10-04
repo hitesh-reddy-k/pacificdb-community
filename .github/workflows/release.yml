@@ -499,7 +499,7 @@ jobs:
           printf 'IMAGE_VERSION=%s\nIMAGE_CREATED=%s\n' "${GITHUB_REF_NAME#v}" \
             "$(git show -s --format=%cI HEAD)" >> "$GITHUB_ENV"
       - name: Authenticate to GHCR for release digest
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -546,7 +546,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
