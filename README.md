@@ -231,8 +231,12 @@ Install into a virtual environment:
 ```sh
 python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install pacificdb==1.1.1
+python -m pip install --no-deps \
+  'git+https://github.com/hitesh-reddy-k/pacificdb-community.git@v1.1.1#subdirectory=sdk/python'
 ```
+
+PyPI publication is pending trusted-publisher registration. The tagged-source
+command above was verified from a clean virtual environment.
 
 ```python
 import os

@@ -448,7 +448,7 @@ publication-token and apply-run experiments are not silently layered into this r
 | Authentication/RBAC | TCP/TLS login, invalid/missing credentials, API keys and scope | PASS | engine auth boundary and cross-SDK authenticated suite |
 | SDK | Node, Python and Java tests plus named operation coverage | PASS | Node 31/31; CLI 27/27; Python-inclusive suite 133/133; 135 dispatch bindings |
 | Java dependency remediation | Jackson 2.18.10 resolution, package and installed consumer | PASS (release branch) | `security-advisories.json`; Maven 29/29; exact packaged TCP/TLS/recovery suite |
-| Workbench | Browser CRUD/UI and desktop bundled-engine lifecycle | PASS (local + hosted) | local browser/desktop checks; hosted Linux/Windows/macOS run `37176501189` |
+| Workbench | Browser CRUD/UI and desktop bundled-engine lifecycle | PASS (local + hosted + public) | local browser/desktop checks; hosted matrix `37176501189`; exact-tag publication run `37191983730`; public checksums and bundled versions verified |
 | Hosted platform build | Workbench Linux/macOS/Windows workflow after final fixes | PASS | run `37176501189`, exact source `03289fb95999462222973e04d8869827fc1a98c7` |
 | Hosted native installers | Linux/Windows/macOS installers and container P0 | PASS | run `37176502323`; downloaded evidence under `hosted-p0/` |
 | Benchmark | Matched 1.0.0 vs 1.1.1 RF1/RF3 | PASS | 108 RF1 + 6 RF3 successful measured trials |
@@ -457,7 +457,7 @@ publication-token and apply-run experiments are not silently layered into this r
 | Small-batch remediation | Verified ordered-apply optimization or explicit release-owner disposition | ACCEPTED RISK | Root cause is established; the release owner accepted the regression without an unsafe lock-scope change |
 | Physical power | Real power interruption/controller-cache test | NOT PERFORMED — OWNER OVERRIDE | Independent external evidence was not supplied; the release owner explicitly accepted this gap for v1.1.1 |
 | Independent security | External review required by release policy | NOT PERFORMED — OWNER OVERRIDE | No qualifying signed evidence was supplied; the release owner explicitly accepted this gap for v1.1.1 |
-| Registry/public verification | Install public 1.1.1 packages and verify examples | PENDING PUBLICATION | Exact outcomes are recorded after tag workflows and registry readback |
+| Registry/public verification | Install public 1.1.1 packages and verify examples | PARTIAL | Native GitHub/GHCR and both npm packages are public and verified; PyPI run `37191728049` failed on an unregistered trusted publisher and Java run `37191730662` lacked Central signing/token credentials |
 
 The raw ledger, trial JSON, method files, system inventory and artifact manifest
 are under `benchmarks/results/v1.1.1/`. `PASS` above means the named command was

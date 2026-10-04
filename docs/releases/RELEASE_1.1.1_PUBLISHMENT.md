@@ -2,7 +2,7 @@
 
 ## Release Summary
 
-**Status: release authorized; public workflow outcomes must be verified individually.**
+**Status: released with documented Python and Java registry gaps.**
 This release provides database-first CLI and Workbench flows, simpler Java/Python
 SDK entry points, safe legacy transport handling, and a corrected Node connection
 pool. On 4 October 2026 the release owner explicitly accepted the missing
@@ -18,45 +18,43 @@ See [engineering analysis](CORE_ENGINE_OPTIMIZATION_1.1.1.md),
 
 ## Published Components
 
-The table records the publication targets and the last independently verified
-state. Final registry/release identifiers are added only after public readback.
+The table records the publication targets and the independently verified public
+state on 4 October 2026.
 
 | Component | Previous public version | New version | Registry/distribution | Status |
 |---|---|---|---|---|
-| Engine and native CLI | 1.0.0 | 1.1.1 | GitHub native installers, GHCR | Qualified; publication workflow authorized, unsigned exception recorded |
-| Node SDK `@pacificdb/client` | 1.0.0 | 1.1.1 | npm | Local tarball installation verified; publication workflow authorized |
-| Node CLI `@pacificdb/cli` | 1.0.0 | 1.1.1 | npm | Local tarball installation verified; publication workflow authorized |
-| Python `pacificdb` | No public version verified | 1.1.1 | PyPI | Wheel/sdist qualified locally; publication depends on configured OIDC ownership |
-| Java `io.pacificdb:pacificdb-client` | No public version verified | 1.1.1 | Maven Central | JAR/sources/javadoc and consumer verified; publisher ownership unavailable |
-| PacificDB Workbench | Linux 1.0.1 prerelease | 1.1.1 | GitHub desktop artifacts | Qualified; publication workflow authorized, unsigned exception recorded |
+| Engine and native CLI | 1.0.0 | 1.1.1 | [GitHub release](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v1.1.1), GHCR | Published; checksums, manifest, Linux version and GHCR digest verified |
+| Node SDK `@pacificdb/client` | 1.0.0 | 1.1.1 | npm | Published as `latest`; clean install and real CRUD verified |
+| Node CLI `@pacificdb/cli` | 1.0.0 | 1.1.1 | npm | Published as `latest`; clean install and `--version` verified |
+| Python `pacificdb` | No public version verified | 1.1.1 | PyPI / tagged source | PyPI not published: run `37191728049` passed qualification but failed OIDC with `invalid-publisher`; tagged-source install verified |
+| Java `io.pacificdb:pacificdb-client` | No public version verified | 1.1.1 | Maven Central / tagged source | Central not published: run `37191730662` passed qualification but release credentials were absent |
+| PacificDB Workbench | Linux 1.0.1 prerelease | 1.1.1 | [GitHub desktop release](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/workbench-v1.1.1) | Published; all five checksums and bundled engine/CLI versions verified |
 | Helm deployment chart | Published chart version not independently verified | 1.1.1 | Repository chart | Lint, schema and fail-closed production checks pass |
-| Website | Public stable 1.0.0 links | 1.1.1 pages | GitHub Pages | Stable content prepared; deploy and public readback pending |
+| Website | Public stable 1.0.0 links | 1.1.1 pages | [pacificdb.in](https://pacificdb.in/) | Published; homepage, docs and release page return HTTP 200 |
 
-Local npm login returned E401. The existing repository `NPM_TOKEN` secret belongs
-to the configured publication workflow, not this shell. Python/Maven publisher
-credentials and platform signing secrets were not available. No credential value
-was exposed or written into an artifact. Registry discovery returned 404 for the
-Python and Maven package coordinates; that is not proof of namespace ownership.
+The configured npm workflow published both exact qualified tarballs. Their public
+integrity values and SHA-256 hashes match the local inspected bytes. Python/Maven
+publisher ownership or credentials and platform signing secrets were not
+available. No credential value was exposed or written into an artifact.
 
 ## Installation
 
-These commands use the locally verified release artifacts. Public registry
-commands are documented on the website and must be checked again after each
-publication workflow completes:
+These public installation paths were checked from clean temporary environments:
 
 ```sh
-npm install --ignore-scripts --no-audit --no-fund \
-  ./release-sdk/npm/pacificdb-client-1.1.1.tgz \
-  ./release-sdk/npm/pacificdb-cli-1.1.1.tgz
-python3 -m venv /tmp/pacificdb-release-venv
-/tmp/pacificdb-release-venv/bin/python -m pip install --no-deps \
-  ./release-sdk/python/pacificdb-1.1.1-py3-none-any.whl
+npm install @pacificdb/client@1.1.1 @pacificdb/cli@1.1.1
+
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install --no-deps \
+  'git+https://github.com/hitesh-reddy-k/pacificdb-community.git@v1.1.1#subdirectory=sdk/python'
 ```
 
-The exact website-example harness installs both npm artifacts in a fresh consumer,
-installs the Python wheel into a private venv, and compiles Java with `--release 11`
-against the exact release JAR. Installing both npm tarballs together satisfies
-CLI's exact SDK dependency without relying on network registry state.
+The published npm client completed database creation, collection creation, insert,
+find and close against the downloaded 1.1.1 release engine. The public Python tag
+install reports version 1.1.1. The exact website-example harness also installs the
+qualified Python wheel and compiles Java with `--release 11` against the release
+JAR, but those local artifacts are not represented as public registry packages.
 
 Native package extraction/install checks are performed by
 `scripts/test-native-package.sh` and `scripts/test-debian-container-install.sh`.
@@ -93,10 +91,14 @@ across SDKs and native CLI.
 
 ## Workbench v1.1.1
 
-The locally verified Linux release artifacts are under `dist/desktop/`:
+The [public Workbench release](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/workbench-v1.1.1)
+contains
 `PacificDB-Workbench-1.1.1-linux-amd64.deb` and
-`PacificDB-Workbench-1.1.1-linux-x64.tar.gz`. Public downloads are attached by
-the `workbench-v1.1.1` workflow and must match its generated checksums.
+`PacificDB-Workbench-1.1.1-linux-x64.tar.gz`, plus Windows x64 and macOS
+ARM64/x64 installers. Run `37191983730` built and exercised each platform before
+publication. A clean download of every public asset passed `SHA256SUMS`; the
+extracted Debian package reports version 1.1.1 and both bundled native binaries
+report 1.1.1.
 The included native engine starts with an isolated owned data root and shuts down
 with the application. Connections to remote engines use the actual host, port,
 TCP/TLS and authentication settings; the Workbench is not a distributed cluster
@@ -137,9 +139,9 @@ README links point to package and Workbench guides. The homepage, documentation,
 and v1.1.1 release page now describe the stable update and link to 1.1.1 engine,
 SDK, and Workbench artifacts. The public release page contains update information,
 not benchmark comparison copy. Static asset/anchor checks and exact complete SDK
-examples pass. Deployment and public URL readback are recorded after the Pages
-workflow finishes; the earlier 404 evidence remains in
-`public-website-verification.json` as a pre-release observation.
+examples pass. Pages run `37191954543` deployed the release branch; the homepage,
+documentation and release notes returned HTTP 200 and contained v1.1.1 with no
+removed comparison copy.
 
 ## Compatibility
 
@@ -175,9 +177,11 @@ this is not marketed as an entirely behavior-identical UX upgrade.
 Independent physical-power/security evidence remains unavailable. The release
 owner explicitly accepted those missing external checks and the documented
 batch-10 regression for v1.1.1. Windows/macOS engine and Workbench artifacts are
-unsigned under exact-version workflow exceptions. Maven Central publisher
-ownership remains unavailable. The default branch was not protected; secret
-scanning/push protection were reported disabled. Full npm
+unsigned under exact-version workflow exceptions. PyPI trusted-publisher
+registration is absent, and Maven Central signing/token credentials are absent.
+Consequently those two registry coordinates are not published; the website uses
+verified tagged-source installation instructions. The default branch was not
+protected; secret scanning/push protection were reported disabled. Full npm
 build-tool audit has an unpatched `http-cache-semantics` advisory propagated
 through the Electron build dependency chain; runtime-only npm audit has zero
 reported advisories. The release branch updates the Java SDK from Jackson 2.18.9
@@ -240,6 +244,11 @@ Intel at source `03289fb95999462222973e04d8869827fc1a98c7` in hosted run
 `37176501189`. Those hosted artifacts validate packaging and behavior; the
 v1.1.1 release remains explicitly unsigned.
 
+The final exact-tag Workbench run `37191983730` passed Linux, Windows, macOS
+ARM64, macOS x64 and release publication. All five downloaded installers/archive
+match the public checksum file. The Linux Debian package SHA-256 is
+`1ecb3e96b9758819082f419ff09988890b872d25577bf66f1f40acedc515e54b`.
+
 Hosted release-installer run `37176502323` also passed Linux, Windows, macOS
 ARM64, macOS x86_64 and the non-root/read-only container smoke test at that exact
 source. Downloaded P0 evidence verifies install/version, protocol failures,
@@ -247,6 +256,13 @@ discovery, lifecycle, recovery, 100 MiB media, sustained writes and uninstall
 behavior where applicable. Branch validation intentionally skipped publishing
 and treated signing/notarization as not applicable. The later release tag uses
 the recorded exact-version unsigned exception.
+
+Public native release run `37181644375` succeeded. `SHA256SUMS` verified every
+downloaded asset, the extracted Linux CLI/engine both reported 1.1.1, and GHCR
+tag `1.1.1` resolved to digest
+`sha256:769d8d493775be49da8fee1687cc4aa58e104f473f523f159f6f104f0651c909`.
+Npm run `37181644291` published both packages; their public tarballs exactly match
+the inspected local SHA-256 values, and a clean public install passed real CRUD.
 
 The raw inventory, method/configuration, per-run metrics, resource counters and
 summaries are collected in `benchmarks/results/v1.1.1/`. See the engineering
@@ -261,5 +277,15 @@ native installer, Workbench installer/archive and a local non-root OCI image.
 Hosted qualification artifact IDs, archive digests and expiry dates are recorded in
 `benchmarks/results/v1.1.1/hosted-runs.json`; downloaded P0 JSON is retained under
 `hosted-p0/`.
-Public 1.1.1 identifiers and installed-public-package verification are appended
-only from registry/release readback; they are not inferred from local files.
+Public engine/native artifacts are at the `v1.1.1` GitHub release. Public npm
+identifiers are `@pacificdb/client@1.1.1` and `@pacificdb/cli@1.1.1`; their
+SHA-256 values are respectively
+`80a1dccd8ead55bc1a192cdbabf26a254bd22dac861f7a827f02f8b7a90d5ff9` and
+`d471aaf61de5731e948a84a293fadafa3e490b8dbf60efc922d734be7e094e05`.
+The native `RELEASE-MANIFEST.json` SHA-256 is
+`7aaadf9f7feb2053fd6e29f8656c24a9a8e2c2f7227caddbb7b6f6a4afe1cef9`.
+Workbench assets and `SHA256SUMS` are at the `workbench-v1.1.1` release; the
+checksum file SHA-256 is
+`c2dc8c74b7ab06007d2e6df17b5b3a23b5c0c9f3360f802d02b780be417cd21d`.
+Python and Maven Central remain explicitly absent rather than inferred as
+published from local files.

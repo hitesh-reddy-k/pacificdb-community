@@ -1,9 +1,12 @@
 # SDK package publication
 
-This branch prepares local `pacificdb==1.1.1` and
-`io.pacificdb:pacificdb-client:1.1.1` candidates. Nothing has been uploaded or
-published. Existing registry version occupancy is unresolved; never overwrite
-or claim ownership without release-owner verification and a coordinated version.
+This branch prepares `pacificdb==1.1.1` and
+`io.pacificdb:pacificdb-client:1.1.1` artifacts. The hosted matrices and exact
+artifact inspection passed. PyPI rejected the final OIDC exchange because no
+matching trusted publisher is registered; Maven Central validation/publication
+still requires the configured owner credentials and explicit portal action.
+Neither coordinate is publicly available as 1.1.1. Never overwrite or claim
+ownership without release-owner verification and a coordinated version.
 
 Build and inspect locally:
 
@@ -79,6 +82,11 @@ signs the tested bytes with the configured release-owner key and uses the
 with explicit `USER_MANAGED`. It stops at `VALIDATED`; publication requires a
 separate owner action in the portal. The uploader contains no publish endpoint.
 
-These workflows are prepared, not executed here. The Linux local results do
-not imply Windows/macOS qualification, successful remote validation, independent
-security review or physical power-loss evidence. See [release evidence](RELEASE_EVIDENCE.md).
+The v1.1.1 Python workflow was executed across its Linux/Windows runtime matrix;
+artifact qualification passed and publication stopped at the missing PyPI
+publisher mapping. The Java workflow passed the same matrix and exact-artifact
+qualification, then stopped before bundle signing/upload because the owner GPG
+identity and Central token were absent. Neither failure is represented as a
+registry publication.
+Independent security review and physical power-loss evidence were not performed.
+See [release evidence](RELEASE_EVIDENCE.md).

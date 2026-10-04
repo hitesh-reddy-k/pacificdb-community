@@ -65,3 +65,25 @@ evidence. Unmeasured or unavailable results are labeled as such.
 
 Record fresh commands and material outcomes under `benchmarks/results/v1.1.1/`
 and the two release documents. No failed/slow completed benchmark is excluded.
+
+## Publication outcomes
+
+- [x] Created and pushed branch `v-1.1.1`; annotated `v1.1.1` and
+  `workbench-v1.1.1` both peel to release commit `9800c9abb5891f974d0d413c6be6fac92649f912`.
+- [x] Published the stable native release and GHCR image in run `37181644375`;
+  downloaded checksums, embedded versions, manifest revision and image digest pass.
+- [x] Published `@pacificdb/client@1.1.1` and `@pacificdb/cli@1.1.1` in run
+  `37181644291`; both are npm `latest`, public bytes match inspected tarballs, and
+  a clean install passed real CRUD against the downloaded engine.
+- [ ] Publish `pacificdb==1.1.1` to PyPI. Run `37191728049` passed every build,
+  matrix and exact-artifact check, then PyPI rejected OIDC with
+  `invalid-publisher`. Tagged-source installation is the verified fallback.
+- [ ] Validate/publish `io.pacificdb:pacificdb-client:1.1.1` through Central.
+  Run `37191730662` passed every build, matrix and artifact check, then stopped
+  because the owner GPG identity and Central token are not configured.
+- [x] Deployed the 1.1.1 website in Pages run `37191954543`; all three public
+  pages return HTTP 200 and the repository/site comparison-removal scan passes.
+- [x] Published Workbench in run `37191983730`; all platform jobs passed, every
+  public asset matches `SHA256SUMS`, and the extracted Debian package plus bundled
+  engine/CLI report 1.1.1.
+- [ ] Create the review PR and record its URL/CI conclusion.
