@@ -1,0 +1,73 @@
+{
+  "checked_at": "2026-10-04T15:08:15+05:30",
+  "target_version": "1.1.1",
+  "status": "PARTIALLY_PUBLISHED",
+  "local_npm_authentication": "E401 Unauthorized from npm whoami",
+  "checks": [
+    {
+      "coordinate": "npm:@pacificdb/client",
+      "latest_verified_version": "1.1.1",
+      "target_present": true,
+      "dist_integrity": "sha512-Ha8gW4EjFy2N+fqjhs83sa4inC44/7pzS5/1I9BvJ1A6LQ/+H+715dBJgqv0Wbey6Ouzlb7nTN4OtxeCRiPkyg==",
+      "sha256": "80a1dccd8ead55bc1a192cdbabf26a254bd22dac861f7a827f02f8b7a90d5ff9",
+      "qualified_bytes_match": true,
+      "clean_install_real_crud": "PASS"
+    },
+    {
+      "coordinate": "npm:@pacificdb/cli",
+      "latest_verified_version": "1.1.1",
+      "target_present": true,
+      "dist_integrity": "sha512-jirGUudAx40zaVpmAM3tpR0Pjb+7T9R3RLOZsZM/hwr76kWu97cHbQ9o4Rpb6C/+1qk2gWzMX85/vWQJVaOBgg==",
+      "sha256": "d471aaf61de5731e948a84a293fadafa3e490b8dbf60efc922d734be7e094e05",
+      "qualified_bytes_match": true,
+      "clean_install_version": "PacificDB 1.1.1"
+    },
+    {
+      "coordinate": "pypi:pacificdb/1.1.1",
+      "http_status": 404,
+      "target_present": false,
+      "workflow_run": 37191728049,
+      "qualification": "PASS",
+      "publication": "FAIL: invalid-publisher; matching trusted publisher not registered",
+      "verified_fallback": "git+https://github.com/hitesh-reddy-k/pacificdb-community.git@v1.1.1#subdirectory=sdk/python"
+    },
+    {
+      "coordinate": "maven:io.pacificdb:pacificdb-client:1.1.1",
+      "http_status": 404,
+      "search_maven_num_found": 0,
+      "target_present": false,
+      "workflow_run": 37191730662,
+      "qualification": "PASS at the immutable tag; later PR dependency review found two additional advisories in Jackson 2.18.10",
+      "publication": "NOT ATTEMPTED: owner GPG identity and Central token absent",
+      "patched_source_commit": "25fb81d413973b6779eaf71a26bedb42f6d79be3",
+      "patched_dependency": "com.fasterxml.jackson.core:jackson-databind:2.18.11",
+      "patched_source_validation": "PASS: 29 tests, dependency tree, installed consumer, TCP/TLS/SIGKILL recovery and release examples"
+    },
+    {
+      "coordinate": "github-release:v1.1.1",
+      "url": "https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v1.1.1",
+      "target_present": true,
+      "tag_commit": "9800c9abb5891f974d0d413c6be6fac92649f912",
+      "checksums": "PASS",
+      "linux_cli_version": "PacificDB 1.1.1",
+      "linux_engine_version": "PacificDB Engine 1.1.1"
+    },
+    {
+      "coordinate": "ghcr:pacificdb-community:1.1.1",
+      "target_present": true,
+      "digest": "sha256:769d8d493775be49da8fee1687cc4aa58e104f473f523f159f6f104f0651c909"
+    },
+    {
+      "coordinate": "github-release:workbench-v1.1.1",
+      "url": "https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/workbench-v1.1.1",
+      "target_present": true,
+      "tag_commit": "9800c9abb5891f974d0d413c6be6fac92649f912",
+      "workflow_run": 37191983730,
+      "checksums": "PASS (5/5)",
+      "debian_package_version": "1.1.1",
+      "bundled_cli_version": "PacificDB 1.1.1",
+      "bundled_engine_version": "PacificDB Engine 1.1.1"
+    }
+  ],
+  "disposition": "Native, GHCR, npm, Workbench and website are public and verified. PyPI and Maven Central remain unpublished and are documented without a false success claim."
+}

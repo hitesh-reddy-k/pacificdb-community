@@ -8,7 +8,6 @@ import { startDesktopEngine } from './engine.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 app.setName('PacificDB Workbench');
-if (process.platform === 'win32') app.setAppUserModelId('in.pacificdb.workbench');
 if (process.env.PACIFICDB_WORKBENCH_DATA) app.setPath('userData', path.resolve(process.env.PACIFICDB_WORKBENCH_DATA));
 protocol.registerSchemesAsPrivileged([{ scheme: 'pacificdb', privileges: {
   standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true,

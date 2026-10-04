@@ -1,4 +1,5 @@
 import { execFile, spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { mkdir, open } from 'node:fs/promises';
 import net from 'node:net';
 import path from 'node:path';
@@ -23,8 +24,17 @@ export async function startDesktopEngine({ executable, directory, signal, timeou
   const port = await freePort();
   let raftPort = await freePort();
   while (raftPort === port) raftPort = await freePort();
-  const logPath = path.join(directory, 'engine.log');
-  const log = await open(logPath, 'a+', 0o600);
+  let logPath = path.join(directory, 'engine.log');
+  let log;
+  try {
+    log = await open(logPath, 'a+', 0o600);
+  } catch (error) {
+    if (error.code !== 'EACCES') throw error;
+    // Keep startup working with an existing write-only log without retrying
+    // its pathname. Exclusive creation cannot follow or overwrite a replacement.
+    logPath = path.join(directory, `engine-${randomUUID()}.log`);
+    log = await open(logPath, 'ax+', 0o600);
+  }
   const inherited = { ...process.env };
   // Desktop configuration must not import a terminal's engine configuration.
   const configuration = /^(?:PACIFICDB_|PACIFIC_|ENGINE_|DATA_|WAL_|LSM_|SST_|SNAPSHOT_|BACKUP_|RESTORE_|TMP_|LOG_|RAFT_|TLS_|RBAC_|JWT_|API_KEYS_|AUDIT_|ENCRYPTION_|MEMTABLE_|BLOCK_CACHE_|COLUMN_|INDEX_|MAX_|LEVEL_|COMPACTION_|BLOOM_|QUERY_|SLOW_|CONN_|DBQ_|MULTI_|TENANT_|DEFAULT_TENANT_|PROMETHEUS_|TRACING_|HEALTH_|READY_|LIVE_|STRUCTURED_|REQUEST_|ADMISSION_|ANTI_|DEGRADED_|OOM_|DISK_|TXN_|ENABLE_|MIN_QUORUM_|PRESIGNED_|FAILURE_DETECTOR_|HEARTBEAT_MESH_|REGION|ZONE|NODE_NAME|CLUSTER_NAME|READ_ONLY_MODE|IN_MEMORY_OLTP|MEMORY_PRESSURE_THRESHOLD_PCT|MEMORY_BACKPRESSURE_ENABLED|METRICS_PORT|METRICS_INTERVAL_MS|NODE_ENV)/i;
@@ -92,16 +102,18 @@ export async function startDesktopEngine({ executable, directory, signal, timeou
     throw new Error('The database did not become ready within 30 seconds');
   } catch (error) {
     await stop();
+    // Read the descriptor used by the child, not a possibly replaced pathname.
+    // An explicit position also avoids the offset advanced by stdout/stderr.
     const tail = await (async () => {
       const size = (await log.stat()).size;
-      const bytes = Buffer.alloc(Math.min(size, 8192));
-      await log.read(bytes, 0, bytes.length, size - bytes.length);
-      return bytes.toString('utf8').slice(-2000);
+      const buffer = Buffer.alloc(Math.min(size, 8000));
+      const { bytesRead } = await log.read(buffer, 0, buffer.length, Math.max(0, size - buffer.length));
+      return buffer.subarray(0, bytesRead).toString('utf8').slice(-2000);
     })().catch(() => '');
     throw new Error(`${error.message}\n\nEngine log: ${logPath}${tail ? `\n${tail}` : ''}`);
   } finally {
-    await log.close();
     client.close();
     signal?.removeEventListener('abort', cancel);
+    await log.close();
   }
 }

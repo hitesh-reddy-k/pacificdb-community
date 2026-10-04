@@ -1,0 +1,54 @@
+{
+  "artifacts": [
+    {
+      "label": "v1.0.0",
+      "binary": "/home/hitesh/pacificdb-release-1.1.1/build-baseline-installed/usr/bin/db_engine",
+      "sha256": "9fd9d6cf9c2d39dd4a9aa850a34f84987d88726f2317fa96efeea43d88218eac",
+      "version": "PacificDB Engine 1.0.0",
+      "build_info": {
+        "product": "PacificDB Engine",
+        "engineVersion": "1.0.0",
+        "gitCommit": "2f14213ff46721e6219ed241e0f842edab795cd1",
+        "storageFormatVersion": "2",
+        "raftProtocolVersion": "2",
+        "buildTimestamp": "2026-09-20T12:35:15+05:30",
+        "compiler": "GNU-11.4.0"
+      }
+    },
+    {
+      "label": "v1.1.1",
+      "binary": "/home/hitesh/pacificdb-release-1.1.1/build/db_engine",
+      "sha256": "517e12b7e821a11abe000eb0b204759220634c87e2c57f12bdb574a00b24513b",
+      "version": "PacificDB Engine 1.1.1",
+      "build_info": {
+        "product": "PacificDB Engine",
+        "engineVersion": "1.1.1",
+        "gitCommit": "2d751c0d907b8479e1d58bf8d6570a475d2966a3",
+        "storageFormatVersion": "2",
+        "raftProtocolVersion": "2",
+        "buildTimestamp": "2026-10-03T21:37:57+05:30",
+        "compiler": "GNU-13.3.0"
+      }
+    }
+  ],
+  "config": {
+    "cases": [
+      {
+        "name": "rf3-insert",
+        "operation": "insert",
+        "calls": 500,
+        "concurrency": 8,
+        "pool": 8
+      }
+    ],
+    "repeats": 3,
+    "replication_factor": 3,
+    "min_quorum": 2,
+    "fsync": true,
+    "topology": "three engines on distinct loopback addresses, no proxy, fixed leader eligibility",
+    "dataset": "100 warmup plus 500 timed distinct IDs, 1024 ASCII payload characters",
+    "resource_notes": "sum of three engine /proc CPU/RSS/I/O counters; RSS high-water is process-lifetime, including setup",
+    "limitations": "Short finite shared-host test; no per-stage append/replication/quorum latency attribution. Catch-up measured separately, outside timing."
+  },
+  "date": "2026-10-03T16:40:35.689Z"
+}

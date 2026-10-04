@@ -1,0 +1,2354 @@
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/hitesh/pacificdb-release-1.1.1/build
+[  3%] Built target v11_4_apply_exact_boundary_failpoints_test
+[  5%] Built target db_engine_startup_delay_failpoint_test
+[  7%] Built target pacificdb_socket_runtime
+[  8%] Built target pacificdb_structured_event
+[  9%] Built target pacificdb_media_upload_state
+[ 11%] Built target pacificdb_test_failpoints_disabled
+[ 12%] Built target pacificdb_test_failpoints_enabled
+[ 13%] Built target pacificdb_cli_connection
+[ 14%] Built target db_engine_socket_runtime_test
+[ 16%] Built target db_engine_native_shell_parser_test
+[ 18%] Built target db_engine_env_config_unicode_path_test
+[ 20%] Built target db_engine_storage_root_guard_owner_test
+[ 21%] Built target db_engine_media_upload_state_test
+[ 23%] Built target db_engine_structured_event_test
+[ 24%] Built target storage_path_security_test
+[ 25%] Built target pacificdb_local_engine
+[ 26%] Built target db_engine_cli_connection_test
+[ 28%] Built target db_engine_local_engine_state_test
+[ 57%] Built target pacificdb_engine_core
+[ 59%] Built target pacificdb
+[ 61%] Built target db_engine
+[ 63%] Built target db_engine_vector_correctness_test
+[ 64%] Built target db_engine_lsm_compaction_test
+[ 65%] Built target db_engine_strong_read_memtable_test
+[ 66%] Built target db_engine_comprehensive_test
+[ 67%] Built target db_engine_timeout_test
+[ 68%] Built target db_engine_query_limit_test
+[ 70%] Built target db_engine_memory_test
+[ 72%] Built target db_engine_snapshot_e2e
+[ 73%] Built target db_engine_snapshot_bundle_test
+[ 74%] Built target db_engine_wal_group_commit_test
+[ 75%] Built target db_engine_wal_segment_recovery_test
+[ 77%] Built target db_engine_lsm_manifest_test
+[ 78%] Built target db_engine_lsm_checkpoint_test
+[ 79%] Built target db_engine_replica_digest_test
+[ 80%] Built target db_engine_lsm_bounded_recovery_test
+[ 81%] Built target db_engine_index_bounded_recovery_test
+[ 83%] Built target db_engine_lsm_checkpoint_crash_driver
+[ 85%] Built target db_engine_raft_binary_log_test
+[ 86%] Built target db_engine_raft_health_recovery_test
+[ 88%] Built target db_engine_raft_snapshot_metadata_test
+[ 90%] Built target db_engine_storage_format_v2_test
+[ 91%] Built target db_engine_storage_root_migration_test
+[ 92%] Built target db_engine_partitioned_queue_test
+[ 94%] Built target db_engine_work_stealing_test
+[ 95%] Built target db_engine_community_manual_operations_test
+[ 97%] Built target db_engine_community_catalog_test
+[ 98%] Built target db_engine_community_api_key_test
+[100%] Built target db_engine_community_query_test
+[TEST_FAILPOINT] reached name=FP_APPLY_BEFORE_BASE_MUTATION raftIndex=7 action=crash
+FAILPOINT_COMPILE_GUARD_AND_EXACT_INDEX_PASS
+PATH002_STORAGE_PATH_UNIT_PASS
+[ENGINE] Data root initialized: /tmp/pacificdb-test-vector-correctness-2565683-98318517847742-0-0/data
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-test-vector-correctness-2565683-98318517847742-0-0/data/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-vector-correctness-2565683-98318517847742-0-0/data/system/system/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087707,"id":"6ac1d45b73180e748856cddb","name":"users"}
+[LSM] Initialized at: /tmp/pacificdb-test-vector-correctness-2565683-98318517847742-0-0/data/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[LSM] Initialized at: /tmp/pacificdb-test-vector-correctness-2565683-98318517847742-0-0/data/
+[DLOG][CREATE_DB][PATH] user=vector_tester db=vector_db base=/tmp/pacificdb-test-vector-correctness-2565683-98318517847742-0-0/data/vector_tester/vector_db
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: vector
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-vector-correctness-2565683-98318517847742-0-0/data/vector_tester/vector_db/data/embeddings.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087707,"id":"6ac1d45b73180e748856cddd","name":"embeddings"}
+[PASS] cosine unit score is normalized
+[PASS] cosine same direction ignores magnitude
+[PASS] cosine returns same-direction vectors
+[PASS] dimension-mismatched vector is skipped
+[PASS] dot product ranking remains magnitude-sensitive
+[PASS] streaming vector scan applies field and modality filters
+[PASS] invalid vector query is rejected explicitly
+[PASS] invalid vector query is rejected explicitly
+[PASS] invalid vector query is rejected explicitly
+[PASS] invalid vector query is rejected explicitly
+VECTOR_CORRECTNESS_PASS
+[ENGINE] Data root initialized: /tmp/pacificdb-test-lsm-compaction-2565684-98318546286800-0-0/data
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-test-lsm-compaction-2565684-98318546286800-0-0/data/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-lsm-compaction-2565684-98318546286800-0-0/data/system/system/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087707,"id":"6ac1d45ba3e846f453ef4619","name":"users"}
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-compaction-2565684-98318546286800-0-0/data/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-compaction-2565684-98318546286800-0-0/data/
+[DLOG][CREATE_DB][PATH] user=gc_tester db=gc_db base=/tmp/pacificdb-test-lsm-compaction-2565684-98318546286800-0-0/data/gc_tester/gc_db
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-lsm-compaction-2565684-98318546286800-0-0/data/gc_tester/gc_db/data/docs.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087707,"id":"6ac1d45ba3e846f453ef461b","name":"docs"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-lsm-compaction-2565684-98318546286800-0-0/data/gc_tester/gc_db/data/tiered.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087707,"id":"6ac1d45ba3e846f453ef461c","name":"tiered"}
+[LSM][DEL] 9:gc_tester5:gc_db4:docs / id=doc1
+[PASS] delete writes tombstone
+[PASS] test produced three SSTs below fanout
+[PASS] binary SST is readable: 
+[PASS] tombstone exists before compaction
+[PASS] bloom filter skips a missing id
+[PASS] parsed bloom filter is reused from cache
+[PASS] tier fixture has one SST larger than twice the small tier
+[RAFTCORE] Loaded persisted state term=0 commit=0 applied=0 source=legacy
+[RAFTCORE] No Raft log entries to replay
+[RAFTCORE] Worker pool configured initial=1 max=1
+[RAFTCORE] Production Raft initialized node=lsm-compaction-test leader=true peers=0 configuredWorkers=1 dataRoot=/tmp/pacificdb-test-lsm-compaction-2565684-98318546286800-0-0/data
+[PASS] three SSTs do not compact below fanout four
+[PASS] below-fanout compaction does not count a run
+[PASS] a differently-sized SST is excluded from a three-file small tier
+[PASS] concurrent reads keep their SST file set through compaction
+[PASS] deleted document stays deleted and live documents survive compaction
+[PASS] fanout compaction collapsed four similarly-sized SSTs
+[PASS] compaction publishes exactly one authoritative SST generation
+[PASS] binary SST is readable: 
+[PASS] full-coverage compaction reclaimed tombstone
+[PASS] streaming latest-row visitor applies tombstones and memtable overlays
+[PASS] streaming latest-row visitor keeps the highest MVCC version
+[PASS] logical ingested bytes advance before an SST flush
+[PASS] four small SSTs compact without rewriting the large tier
+[PASS] reclaimed tombstone metric increments
+[PASS] applied mutation bytes are counted as logical ingested bytes
+[PASS] compaction input bytes are counted
+[PASS] compaction output bytes are counted
+[PASS] compaction write amplification is exported
+[PASS] ordinary reads do not increment compaction bytes
+LSM_COMPACTION_TOMBSTONE_GC_PASS
+[ENGINE] Data root initialized: /tmp/pacificdb-strong-read-memtable-98318767260616
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-strong-read-memtable-98318767260616/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-strong-read-memtable-98318767260616/system/system/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087707,"id":"6ac1d45b0c8ff33d1505299c","name":"users"}
+[LSM] Initialized at: /tmp/pacificdb-strong-read-memtable-98318767260616/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[LSM] Initialized at: /tmp/pacificdb-strong-read-memtable-98318767260616/
+[LSM] Background maintenance started
+[LSM] flush_threads=2 max_concurrent_flushes=2
+[DLOG][CREATE_DB][PATH] user=strong-read-user db=strong-read-db base=/tmp/pacificdb-strong-read-memtable-98318767260616/strong-read-user/strong-read-db
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[PASS] database created
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-strong-read-memtable-98318767260616/strong-read-user/strong-read-db/data/documents.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087707,"id":"6ac1d45b0c8ff33d1505299e","name":"documents"}
+[PASS] collection created
+[PASS] read fence uses the engine MVCC version
+[PASS] unflushed document is visible by id
+[PASS] snapshot-bound read satisfies MVCC floor
+[PASS] snapshot-bound read resolves the active memtable
+[PASS] returned version matches the engine read fence
+[PASS] authoritative id index preserves the strong-read result
+[PASS] repeated strong point read avoids storage amplification
+[PASS] secondary index created
+[PASS] strong read drains pending index updates
+[PASS] strong read uses the secondary index path
+[PASS] secondary index is stored as binary segments
+[PASS] whole-file JSON index is retired
+[PASS] shadowed strong id read keeps authoritative result
+[PASS] strong id cache candidate matches the authoritative path
+[PASS] strong id cache shadow reports no mismatch
+[PASS] indexed value updated
+[PASS] id update avoids a full collection scan
+[PASS] index tombstone removes the previous value
+[LSM][DEL] 16:strong-read-user14:strong-read-db9:documents / id=schema-manifest-2
+[PASS] indexed document deleted
+[PASS] index tombstone removes a deleted document
+[PASS] shadowed strong id read preserves deletion
+[PASS] strong id cache retains the authoritative tombstone
+[PASS] deleted id is not misclassified as a cache miss
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-SHARDED] Started 4 workers across 1 shards (4 workers per shard), max queue per shard: 5000
+[DB-TASK-QUEUE-PARTITIONED] Started with 32 shards, 4 workers per shard, 5000 max queue per shard
+[PASS] strong id cache shadow matches are exported
+[PASS] strong id cache shadow mismatches are exported
+[LSM] Background maintenance stopping
+STRONG_READ_MEMTABLE_REGRESSION_PASS
+[1m╔═══════════════════════════════════════════════════════╗[0m
+[1m║  PacificDB Engine — Comprehensive Test Suite          ║[0m
+[1m║  15 test sections covering core engine correctness     ║[0m
+[1m╚═══════════════════════════════════════════════════════╝[0m
+
+[36m── 1. Basic CRUD ──[0m
+[ENGINE] Data root initialized: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087707,"id":"6ac1d45b76f0f5cfebfcd90f","name":"users"}
+[LSM] Initialized at: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[DLOG][CREATE_DB][PATH] user=u1 db=db1 base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/db1
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/db1/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087707,"id":"6ac1d45b76f0f5cfebfcd911","name":"users"}
+  [32m[PASS][0m Insert 3 documents
+  [32m[PASS][0m Find by exact field
+  [32m[PASS][0m UpdateOne returns true
+  [32m[PASS][0m Field updated correctly
+[LSM][DEL] 2:u13:db15:users / id=u2
+  [32m[PASS][0m DeleteOne returns true
+  [32m[PASS][0m Document count after delete
+  [32m[PASS][0m Find nonexistent returns empty
+
+[36m── 2. Query Operators ──[0m
+[ENGINE] Data root initialized: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087707,"id":"6ac1d45b76f0f5cfebfcd912","name":"users"}
+[LSM] Initialized at: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[DLOG][CREATE_DB][PATH] user=u1 db=db1 base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/db1
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/db1/data/nums.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087707,"id":"6ac1d45b76f0f5cfebfcd914","name":"nums"}
+  [32m[PASS][0m $gt operator
+  [32m[PASS][0m $gte operator
+  [32m[PASS][0m $lt operator
+  [32m[PASS][0m $lte operator
+  [32m[PASS][0m $ne operator
+  [32m[PASS][0m $in operator
+  [32m[PASS][0m $or operator
+  [32m[PASS][0m Boolean field filter
+  [32m[PASS][0m Unindexed equality scan avoids getAll materialization
+  [32m[PASS][0m Streaming count filter
+
+[36m── 3. Multiple Collections in One Database ──[0m
+[ENGINE] Data root initialized: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087708,"id":"6ac1d45c76f0f5cfebfcd91f","name":"users"}
+[LSM] Initialized at: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[DLOG][CREATE_DB][PATH] user=u1 db=db1 base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/db1
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/db1/data/orders.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087708,"id":"6ac1d45c76f0f5cfebfcd921","name":"orders"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/db1/data/products.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087708,"id":"6ac1d45c76f0f5cfebfcd922","name":"products"}
+  [32m[PASS][0m Orders collection has 2 docs
+  [32m[PASS][0m Products collection has 2 docs
+[LSM][DEL] 2:u13:db16:orders / id=o1
+  [32m[PASS][0m Orders after delete
+  [32m[PASS][0m Products unaffected by orders delete
+
+[36m── 4. Multi-Tenant Isolation ──[0m
+[ENGINE] Data root initialized: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087708,"id":"6ac1d45c76f0f5cfebfcd925","name":"users"}
+[LSM] Initialized at: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[DLOG][CREATE_DB][PATH] user=tenant_A db=db1 base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/tenant_A/db1
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/tenant_A/db1/data/secrets.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087708,"id":"6ac1d45c76f0f5cfebfcd927","name":"secrets"}
+[DLOG][CREATE_DB][PATH] user=tenant_B db=db1 base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/tenant_B/db1
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/tenant_B/db1/data/secrets.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087708,"id":"6ac1d45c76f0f5cfebfcd929","name":"secrets"}
+  [32m[PASS][0m Tenant A has 1 document
+  [32m[PASS][0m Tenant B has 1 document
+  [32m[PASS][0m Tenant A data is correct
+  [32m[PASS][0m Tenant B data is correct
+  [32m[PASS][0m Tenant isolation: A cannot read B's documents
+
+[36m── 5. Concurrent Inserts (16 threads × 50 docs) ──[0m
+[ENGINE] Data root initialized: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087708,"id":"6ac1d45c76f0f5cfebfcd92c","name":"users"}
+[LSM] Initialized at: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[DLOG][CREATE_DB][PATH] user=u1 db=db1 base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/db1
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/db1/data/concurrent.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087708,"id":"6ac1d45c76f0f5cfebfcd92e","name":"concurrent"}
+  [32m[PASS][0m No insert errors under concurrency
+  [32m[PASS][0m All 800 concurrent docs present
+
+[36m── 6. Concurrent Read-Write (no stale reads) ──[0m
+[ENGINE] Data root initialized: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087709,"id":"6ac1d45d76f0f5cfebfcdc4f","name":"users"}
+[LSM] Initialized at: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[DLOG][CREATE_DB][PATH] user=u1 db=db1 base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/db1
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/db1/data/shared.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087709,"id":"6ac1d45d76f0f5cfebfcdc51","name":"shared"}
+  [32m[PASS][0m No write errors under concurrent read-write
+  [32m[PASS][0m No read errors under concurrent read-write
+
+[36m── 7. Update & Upsert Semantics ──[0m
+[ENGINE] Data root initialized: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087709,"id":"6ac1d45d76f0f5cfebfcdcb7","name":"users"}
+[LSM] Initialized at: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[DLOG][CREATE_DB][PATH] user=u1 db=db1 base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/db1
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/db1/data/items.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087709,"id":"6ac1d45d76f0f5cfebfcdcb9","name":"items"}
+  [32m[PASS][0m UpdateOne on existing doc
+  [32m[PASS][0m Stock updated to 20
+  [32m[PASS][0m UpdateOne on missing doc returns false
+[LSM][DEL] 2:u13:db15:items / id=6ac1d45d76f0f5cfebfcdcba
+  [32m[PASS][0m Deleted item gone
+
+[36m── 8. Large Document Handling ──[0m
+[ENGINE] Data root initialized: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087709,"id":"6ac1d45d76f0f5cfebfcdcbb","name":"users"}
+[LSM] Initialized at: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[DLOG][CREATE_DB][PATH] user=u1 db=db1 base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/db1
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/db1/data/blobs.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087709,"id":"6ac1d45d76f0f5cfebfcdcbd","name":"blobs"}
+  [32m[PASS][0m Large doc inserted
+  [32m[PASS][0m Large doc data intact (1024 bytes)
+  [32m[PASS][0m 10KB doc data intact
+
+[36m── 9. Nested JSON Documents ──[0m
+[ENGINE] Data root initialized: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087709,"id":"6ac1d45d76f0f5cfebfcdcbe","name":"users"}
+[LSM] Initialized at: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[DLOG][CREATE_DB][PATH] user=u1 db=db1 base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/db1
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/db1/data/profiles.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087709,"id":"6ac1d45d76f0f5cfebfcdcc0","name":"profiles"}
+  [32m[PASS][0m Nested doc inserted
+  [32m[PASS][0m Nested field access correct
+  [32m[PASS][0m Array field preserved
+
+[36m── 10. Delete All Documents ──[0m
+[ENGINE] Data root initialized: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087709,"id":"6ac1d45d76f0f5cfebfcdcc1","name":"users"}
+[LSM] Initialized at: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[DLOG][CREATE_DB][PATH] user=u1 db=db1 base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/db1
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/db1/data/tmp.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087709,"id":"6ac1d45d76f0f5cfebfcdcc3","name":"tmp"}
+  [32m[PASS][0m 5 docs inserted
+[LSM][DEL] 2:u13:db13:tmp / id=doc0
+[LSM][DEL] 2:u13:db13:tmp / id=doc1
+[LSM][DEL] 2:u13:db13:tmp / id=doc2
+[LSM][DEL] 2:u13:db13:tmp / id=doc3
+[LSM][DEL] 2:u13:db13:tmp / id=doc4
+  [32m[PASS][0m All docs deleted
+
+[36m── 11. Multiple Databases Under Same Tenant ──[0m
+[ENGINE] Data root initialized: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087709,"id":"6ac1d45d76f0f5cfebfcdcc4","name":"users"}
+[LSM] Initialized at: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[DLOG][CREATE_DB][PATH] user=u1 db=analytics base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/analytics
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/analytics/data/events.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087709,"id":"6ac1d45d76f0f5cfebfcdcc6","name":"events"}
+[DLOG][CREATE_DB][PATH] user=u1 db=accounting base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/accounting
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/accounting/data/invoices.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087709,"id":"6ac1d45d76f0f5cfebfcdcc8","name":"invoices"}
+[DLOG][CREATE_DB][PATH] user=u1 db=core base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/core
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/core/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087709,"id":"6ac1d45d76f0f5cfebfcdcca","name":"users"}
+  [32m[PASS][0m Analytics DB
+  [32m[PASS][0m Accounting DB
+  [32m[PASS][0m Core DB
+  [32m[PASS][0m No cross-DB bleed
+
+[36m── 12. High-Volume Insert & Query (1000 docs) ──[0m
+[ENGINE] Data root initialized: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087709,"id":"6ac1d45d76f0f5cfebfcdcce","name":"users"}
+[LSM] Initialized at: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[DLOG][CREATE_DB][PATH] user=u1 db=db1 base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/db1
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/db1/data/bulk.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087709,"id":"6ac1d45d76f0f5cfebfcdcd0","name":"bulk"}
+  [32m[PASS][0m All 1000 docs present (took 1084ms)
+  [32m[PASS][0m Even subset query correct
+  [32m[PASS][0m 1000 inserts complete in < 30s
+
+[36m── 13. Special Characters & Unicode in Values ──[0m
+[ENGINE] Data root initialized: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087710,"id":"6ac1d45e76f0f5cfebfcdcd1","name":"users"}
+[LSM] Initialized at: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[DLOG][CREATE_DB][PATH] user=u1 db=db1 base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/db1
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/db1/data/strings.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087710,"id":"6ac1d45e76f0f5cfebfcdcd3","name":"strings"}
+  [32m[PASS][0m Special char doc inserted
+  [32m[PASS][0m Unicode value preserved
+  [32m[PASS][0m Empty string preserved
+
+[36m── 14. Field Overwrite on Update ──[0m
+[ENGINE] Data root initialized: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087710,"id":"6ac1d45e76f0f5cfebfcdcd4","name":"users"}
+[LSM] Initialized at: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[DLOG][CREATE_DB][PATH] user=u1 db=db1 base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/db1
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/db1/data/props.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087710,"id":"6ac1d45e76f0f5cfebfcdcd6","name":"props"}
+  [32m[PASS][0m Color updated to blue
+  [32m[PASS][0m Document still present after partial update
+
+[36m── 15. Numeric Type Handling ──[0m
+[ENGINE] Data root initialized: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/system/system/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087710,"id":"6ac1d45e76f0f5cfebfcdcd7","name":"users"}
+[LSM] Initialized at: /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[DLOG][CREATE_DB][PATH] user=u1 db=db1 base=/tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/db1
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-comprehensive-2565821-98318877452877-0-0/data/u1/db1/data/nums.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087710,"id":"6ac1d45e76f0f5cfebfcdcd9","name":"nums"}
+  [32m[PASS][0m Integer preserved
+  [32m[PASS][0m Negative integer preserved
+  [32m[PASS][0m Zero preserved
+  [32m[PASS][0m Large integer preserved
+
+[1m══════════════════════════════════════════[0m
+  Total : 58
+  [32mPassed: 58[0m
+  Failed: 0
+[1m══════════════════════════════════════════[0m
+
+[32m✅ ALL 58 TESTS PASSED[0m
+
+[TIMEOUT-TEST] Initializing connection pool...
+[CONNECTION-POOL] Initializing with 2 min threads, 2 max threads
+[CONNECTION-POOL] Started 2 worker threads
+[TIMEOUT-TEST] Submitting long task with 1s timeout
+[TIMEOUT-TEST] Long task started on worker
+[TIMEOUT-TEST] Detected cancellation inside task at iteration 5
+[TIMEOUT-TEST] Long task exiting
+[TIMEOUT-TEST] SUCCESS: Task observed cancellation as expected
+[CONNECTION-POOL] Shutting down...
+[CONNECTION-POOL] Total tasks processed: 1
+[CONNECTION-POOL] Shutdown complete
+[QUERY-LIMIT-TEST] Initializing engine test data...
+[ENGINE] Data root initialized: /tmp/pacificdb-test-query-limiter-2566034-98325391765400-0-0/data
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-test-query-limiter-2566034-98325391765400-0-0/data/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-query-limiter-2566034-98325391765400-0-0/data/system/system/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087714,"id":"6ac1d462dcaea207e353ab30","name":"users"}
+[LSM] Initialized at: /tmp/pacificdb-test-query-limiter-2566034-98325391765400-0-0/data/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[DLOG][CREATE_DB][PATH] user=system db=ql_test_db base=/tmp/pacificdb-test-query-limiter-2566034-98325391765400-0-0/data/system/ql_test_db
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-query-limiter-2566034-98325391765400-0-0/data/system/ql_test_db/data/items.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087714,"id":"6ac1d462dcaea207e353ab32","name":"items"}
+[LIMITER] Result limit reached: 20 >= 20
+[QUERY-LIMIT-TEST] results=20 truncated=1 reason=result_limit
+[QUERY-LIMIT-TEST] SUCCESS: Query was truncated as expected
+
+========================================
+    MEMORY MANAGER TEST SUITE
+========================================
+
+
+[TEST] Testing memory manager initialization...
+[MEMORY] malloc tuned: M_ARENA_MAX=2, M_TRIM_THRESHOLD=256KB
+[MEMORY] Initialized v2.9R - Max: 2048MB, BUSY=70%, THROTTLE=85%, BULK_REJECT=95%, READ_ONLY=98%, poll=1000ms
+✅ PASSED: Memory manager configured correctly
+
+[TEST] Testing memory monitoring...
+[MEMORY] Monitor thread started
+✅ PASSED: Memory tracking working - Current: 5MB
+[MEMORY] Monitor thread stopped
+
+[TEST] Testing backpressure mechanism...
+[TEST] Current memory usage: 0.291061%
+[TEST] Backpressure active: NO
+✅ PASSED: No backpressure under threshold
+
+[TEST] Testing memory usage calculation...
+[TEST] Current: 5MB
+[TEST] Max: 2048MB
+[TEST] Usage: 0.291061%
+✅ PASSED: Memory usage calculation accurate
+
+[TEST] Testing force flush functionality...
+[ENGINE] Data root initialized: /tmp/pacificdb_memory_test
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb_memory_test/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb_memory_test/system/system/data/users.bin
+[LSM] Initialized at: /tmp/pacificdb_memory_test/
+[LSM][RESTORE] Replayed 20 records from records.wal
+[LSM][RESTORE] Replayed 0 records from items.wal
+[LSM][RESTORE] Replayed 2 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[LSM] Initialized at: /tmp/pacificdb_memory_test/
+[DLOG][CREATE_DB][PATH] user=test_user db=memory_test_db base=/tmp/pacificdb_memory_test/test_user/memory_test_db
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[TEST] Inserted 50 documents, calling force flush...
+[LSM] Force flushing all memtables...
+[LSM] Force flush completed - 1 memtables flushed
+✅ PASSED: Force flush completed without errors
+
+[TEST] Testing integration with write operations...
+[DLOG][CREATE_DB][PATH] user=test_user db=integration_db base=/tmp/pacificdb_memory_test/test_user/integration_db
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[TEST] Wrote 20 records in 17ms
+✅ PASSED: Write integration working
+
+========================================
+   ✅ ALL TESTS PASSED!
+========================================
+
+[LSM] Initialized at: /tmp/pacificdb-test-snapshot-e2e-2566199-98337775593125-0-0/data/leader/
+[LSM] Force flushing all memtables...
+[LSM] Force flush completed - 1 memtables flushed
+[LSM] Force flushing all memtables...
+[LSM] Force flush completed - 0 memtables flushed
+[LSM] Initialized at: /tmp/pacificdb-test-snapshot-e2e-2566199-98337775593125-0-0/data/follower/
+[LSM][IDXRECOVERY] state=SNAPSHOT_BASE_RESTORED
+[LSM][IDXRECOVERY] state=INDEX_CATALOG_RESTORED
+[LSM][IDXRECOVERY] state=INDEX_REBUILD_REQUIRED
+[LSM] Applied snapshot payload (lastIncludedIndex=0)
+[LSM][IDXRECOVERY] state=INDEX_REBUILDING
+[LSM][IDXRECOVERY] state=INDEX_REBUILDING
+[LSM][IDXRECOVERY] state=INDEX_REBUILD_VERIFYING
+[LSM][IDXRECOVERY] rebuilt user1/db1/coll1 entries=3 documents=4
+[LSM][IDXRECOVERY] state=INDEX_REBUILD_COMPLETE
+[LSM][IDXRECOVERY] readiness=published
+[LSM] Initialized at: /tmp/pacificdb-test-snapshot-e2e-2566199-98337775593125-0-0/data/follower/
+E2E snapshot apply verification passed: docs=4, binary SST, bloom, and rebuilt column index verified
+[WAL] Clean shutdown marked at /tmp/pacificdb-test-snapshot-bundle-2566210-98337810765405-0-0/data/.clean_shutdown
+[LSM] Initialized at: /tmp/pacificdb-test-snapshot-bundle-2566210-98337810765405-0-0/data/apply/
+[LSM][IDXRECOVERY] state=SNAPSHOT_BASE_RESTORED
+[LSM][IDXRECOVERY] state=INDEX_REBUILD_COMPLETE
+[LSM][IDXRECOVERY] readiness=published
+[LSM] Applied snapshot payload (lastIncludedIndex=42)
+SNAPSHOT_BUNDLE_BOUNDED_PASS
+[WAL] group_commit=enabled
+[WAL] group_commit_interval_ms=5
+[WAL] group_commit_batch_size=64
+[WAL] group_commit_max_bytes=65536
+[WAL] Background flusher started, interval=5ms groupCommit=on
+[WAL] Read 200 entries
+[PASS] group commit mode persists all WAL entries
+[PASS] WAL_FSYNC_ENABLED is the canonical fsync switch
+[WAL] group_commit=enabled
+[WAL] group_commit_interval_ms=200
+[WAL] group_commit_batch_size=64
+[WAL] group_commit_max_bytes=65536
+[WAL] Background flusher started, interval=200ms groupCommit=on
+[PASS] durable grouped calls return only after their fsync batch
+[WAL] Read 32 entries
+[PASS] durable grouped acknowledgements are immediately readable
+[PASS] durable written and acknowledged counters match logical entries
+[WAL] Read 25 entries
+[PASS] direct WAL mode persists all WAL entries
+[PASS] binary JSON strings survive WAL checksum and replay
+[PASS] insertMany is encoded as one physical record with logical-entry accounting
+[PASS] contiguous binary insertMany record survives checksum and scan
+[WAL] group_commit=enabled
+[WAL] group_commit_interval_ms=200
+[WAL] group_commit_batch_size=2
+[WAL] group_commit_max_bytes=65536
+[WAL] Background flusher started, interval=200ms groupCommit=on
+[PASS] concurrent insertMany requests share one append group and one fdatasync
+[WAL] group_commit=disabled
+[WAL] group_commit_interval_ms=200
+[WAL] group_commit_batch_size=2
+[WAL] group_commit_max_bytes=65536
+[PASS] WAL_GROUP_COMMIT_ENABLED=false disables coalescing despite an interval
+[WAL] Read 1 entries
+[PASS] clear closes the persistent WAL handle before recreating the file
+[WAL] collection WAL append exception for /tmp/pacificdb-test-wal-group-commit-2566211-98339061286018-0-0/data/wal_group_commit/not-a-directory/events.wal: filesystem error: cannot create directories: Not a directory [/tmp/pacificdb-test-wal-group-commit-2566211-98339061286018-0-0/data/wal_group_commit/not-a-directory]
+[PASS] append failure reaches the caller before acknowledgement
+[PASS] failed WAL entries are counted without acknowledgement
+[PASS] WAL fsync is enabled by default
+✅ wal_group_commit_test passed
+[PASS] legacy WAL fixture opens
+[PASS] legacy WAL fixture is complete
+[PASS] append returns contiguous collection-local LSNs
+[PASS] small threshold rotates segments
+[PASS] sealed segments respect the configured byte threshold
+[PASS] scan yields contiguous collection-local LSNs
+[PASS] legacy plus segments scan cleanly
+[PASS] scan visits every logical record
+[PASS] tail fixture has segments
+[PASS] partial final segment frame is classified as tail
+[PASS] partial tail preserves the valid prefix
+[PASS] append truncates only the partial tail and continues the LSN sequence
+[PASS] tail repair preserves all acknowledged records
+[PASS] corruption fixture has a sealed segment
+[PASS] first segmented payload is large enough to corrupt
+[PASS] interior segment corruption fails closed
+[PASS] checksum-flag fixture has segments
+[PASS] prepared WAL fixture has checksum enabled
+[PASS] corrupted checksum-present flag cannot disable validation
+[PASS] corrupt WAL cannot be reclaimed
+[PASS] covered legacy and sealed segments are reclaimed
+[PASS] reclaim preserves every later segment record
+[PASS] legacy WAL fixture opens
+[PASS] legacy WAL fixture is complete
+[PASS] fully covered legacy WAL is reclaimed
+[PASS] append after full legacy reclaim continues beyond the checkpoint LSN
+[WAL] group_commit=enabled
+[WAL] group_commit_interval_ms=500
+[WAL] group_commit_batch_size=512
+[WAL] group_commit_max_bytes=4194304
+[WAL] Background flusher started, interval=500ms groupCommit=on
+[PASS] clear rejects an append queued before removal
+[PASS] clear cannot race a queued append into a recreated WAL
+wal_segment_recovery_test passed
+lsm_manifest_test passed
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-2566287-98340444644641-0-0/data/
+lsm_checkpoint_test passed
+[LSM] Initialized at: /tmp/pacificdb-test-replica-digest-2566301-98340560994014-0-0/data/
+REPLICA_DIGEST_PASS
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-bounded-recovery-2566302-98340604632520-0-0/data/
+[LSM][DEL] 13:recovery_user11:recovery_db9:documents / id=doc-0
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-bounded-recovery-2566302-98340604632520-0-0/data/
+[LSM][RESTORE] Replayed 200002 records from documents.wal
+[LSM][RESTORE] Replayed 1 WAL files
+lsm_bounded_recovery_test passed: {"count":199999,"hashes":{"1":1144237459,"100000":1656284677,"199999":1752225239},"manifest_generation":41,"streamed_count":199999,"streamed_peak_rss_bytes":25063424}
+[LSM] Initialized at: /tmp/pacificdb-test-index-bounded-recovery-2566435-98350055528963-0-0/data/
+[LSM] Initialized at: /tmp/pacificdb-test-index-bounded-recovery-2566435-98350055528963-0-0/data/
+[LSM][RESTORE] Replayed 200002 records from documents.wal
+[LSM][IDXRECOVERY] state=INDEX_REBUILD_REQUIRED
+[LSM][IDXRECOVERY] state=INDEX_REBUILDING
+[LSM][IDXRECOVERY] state=INDEX_REBUILDING
+[LSM][IDXRECOVERY] state=INDEX_REBUILD_VERIFYING
+[LSM][IDXRECOVERY] state=INDEX_REBUILD_VERIFYING
+[LSM][IDXRECOVERY] state=INDEX_REBUILD_VERIFYING
+[LSM][IDXRECOVERY] state=INDEX_REBUILDING
+[LSM][IDXRECOVERY] state=INDEX_REBUILD_VERIFYING
+[LSM][IDXRECOVERY] state=INDEX_REBUILD_VERIFYING
+[LSM][IDXRECOVERY] state=INDEX_REBUILD_VERIFYING
+[LSM][IDXRECOVERY] rebuilt index_recovery_user/index_recovery_db/documents entries=399998 documents=199999
+[LSM][IDXRECOVERY] state=INDEX_REBUILD_COMPLETE
+[LSM][IDXRECOVERY] readiness=published
+[LSM][RESTORE] Replayed 1 WAL files
+index_bounded_recovery_test passed: {"entries_per_index":199999,"peak_rss_bytes":60362752,"recovery":{"completedIndexCount":1,"currentIndex":"index_recovery_user/index_recovery_db/documents","declaredIndexCount":1,"failedIndexCount":0,"indexRebuildDocumentsScanned":199999,"indexRebuildEntriesWritten":399998,"indexRecoveryState":"INDEX_REBUILD_COMPLETE","readinessPublished":true,"rebuildError":"","rebuildLastProgressTime":1791087746244,"rebuildStartTime":1791087744326,"rebuildingIndexCount":0,"settled":true,"snapshotIndex":0},"segments_a":3,"segments_b":3}
+[ENGINE] Data root initialized: /tmp/pacificdb-raft-binary-log-98358032766855
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-raft-binary-log-98358032766855/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-raft-binary-log-98358032766855/system/system/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087747,"id":"6ac1d4836b673373c0d55c16","name":"users"}
+[LSM] Initialized at: /tmp/pacificdb-raft-binary-log-98358032766855/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[LSM] Initialized at: /tmp/pacificdb-raft-binary-log-98358032766855/
+[WAL] group_commit=enabled
+[WAL] group_commit_interval_ms=3
+[WAL] group_commit_batch_size=512
+[WAL] group_commit_max_bytes=4194304
+[WAL] Background flusher started, interval=3ms groupCommit=on
+[RAFTCORE] Loaded persisted state term=0 commit=0 applied=0 source=legacy
+[RAFTCORE] No Raft log entries to replay
+[RAFTCORE] Worker pool configured initial=1 max=1
+[RAFTCORE] Production Raft initialized node=binary-log-writer leader=true peers=0 configuredWorkers=1 dataRoot=/tmp/pacificdb-raft-binary-log-98358032766855
+[RAFTCORE] Monitor loop waiting 10 seconds for full cluster initialization...
+[RAFTCORE] Listener starting on port 0
+[RAFTCORE] Listener ready on 0.0.0.0:0
+[RAFTCORE] apply worker started node=binary-log-writer
+[RAFTCORE] Production Raft started (leader=true) mode=2) circuit=0) workers=1
+[RAFTCORE] Inbound RPC pool workers=16 queue=1024
+[DLOG][CREATE_DB][APPLY_REPLICATED_ENTRY] requestId= user=binary-user db=binary-db type=binary
+[DLOG][CREATE_DB][PATH] user=binary-user db=binary-db base=/tmp/pacificdb-raft-binary-log-98358032766855/binary-user/binary-db
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[DLOG][CREATE_COLLECTION][APPLY_REPLICATED_ENTRY] requestId= user=binary-user db=binary-db collection=docs
+[ENGINE] Data root initialized: /tmp/pacificdb-raft-binary-log-98358032766855
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-raft-binary-log-98358032766855/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-raft-binary-log-98358032766855/system/system/data/users.bin
+[LSM] Initialized at: /tmp/pacificdb-raft-binary-log-98358032766855/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[LSM] Initialized at: /tmp/pacificdb-raft-binary-log-98358032766855/
+[WAL] group_commit=enabled
+[WAL] group_commit_interval_ms=3
+[WAL] group_commit_batch_size=512
+[WAL] group_commit_max_bytes=4194304
+[WAL] Background flusher started, interval=3ms groupCommit=on
+[RAFTCORE] Loaded persisted state term=0 commit=6 applied=6 source=checksummed
+[RAFTCORE] Replaying 6 Raft log entries from raft/log.bin maxIndex=6 committedPrefix=6 recoveryMode=checksummed
+[DLOG][CREATE_DB][APPLY_REPLICATED_ENTRY] requestId= user=binary-user db=binary-db type=binary
+[DLOG][CREATE_DB][PATH] user=binary-user db=binary-db base=/tmp/pacificdb-raft-binary-log-98358032766855/binary-user/binary-db
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[DLOG][CREATE_COLLECTION][APPLY_REPLICATED_ENTRY] requestId= user=binary-user db=binary-db collection=docs
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-raft-binary-log-98358032766855/binary-user/binary-db/data/docs.bin
+[RAFTCORE] ✅ Raft log replay complete reapplied=6
+[RAFTCORE] Worker pool configured initial=1 max=1
+[RAFTCORE] Production Raft initialized node=binary-log-recoverer leader=true peers=0 configuredWorkers=1 dataRoot=/tmp/pacificdb-raft-binary-log-98358032766855
+[RAFTCORE] Listener starting on port 0
+[RAFTCORE] Monitor loop waiting 10 seconds for full cluster initialization...
+[RAFTCORE] Listener ready on 0.0.0.0:0
+[RAFTCORE] apply worker started node=binary-log-recoverer
+[RAFTCORE] Production Raft started (leader=true) mode=2) circuit=0) workers=1
+[RAFTCORE] Inbound RPC pool workers=16 queue=1024
+[RAFTCORE] stopping operation workers
+[RAFTCORE] operation workers stopped elapsed_ms=0
+[RAFTCORE] stopping listener
+[RAFTCORE] apply worker stopped node=binary-log-recoverer
+[RAFTCORE] Listener exiting on port 0
+[RAFTCORE] stopped listener elapsed_ms=1
+[RAFTCORE] stopping monitor
+[RAFTCORE] stopped monitor elapsed_ms=1
+[RAFTCORE] stopping snapshot maintenance
+[RAFTCORE] stopped snapshot maintenance elapsed_ms=1
+[RAFTCORE] stopping health monitor
+[RAFTCORE] stopped health monitor elapsed_ms=1
+[RAFTCORE] stopping adaptive controller
+[RAFTCORE] stopped adaptive controller elapsed_ms=1
+[RAFTCORE] stopping apply worker
+[RAFTCORE] stopped apply worker elapsed_ms=1
+[RAFTCORE] stopping read barrier
+[RAFTCORE] stopped read barrier elapsed_ms=1
+[ENGINE] Data root initialized: /tmp/pacificdb-raft-binary-log-98358032766855
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-raft-binary-log-98358032766855/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-raft-binary-log-98358032766855/system/system/data/users.bin
+[LSM] Initialized at: /tmp/pacificdb-raft-binary-log-98358032766855/
+[LSM][RESTORE] Replayed 1 records from docs.wal
+[LSM][RESTORE] Replayed 1 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[LSM] Initialized at: /tmp/pacificdb-raft-binary-log-98358032766855/
+[WAL] group_commit=enabled
+[WAL] group_commit_interval_ms=3
+[WAL] group_commit_batch_size=512
+[WAL] group_commit_max_bytes=4194304
+[WAL] Background flusher started, interval=3ms groupCommit=on
+[RAFTCORE] Loaded persisted state term=0 commit=7 applied=7 source=checksummed
+[RAFTCORE] Replaying 7 Raft log entries from raft/log.bin maxIndex=7 committedPrefix=7 recoveryMode=checksummed
+[DLOG][CREATE_DB][APPLY_REPLICATED_ENTRY] requestId= user=binary-user db=binary-db type=binary
+[DLOG][CREATE_DB][PATH] user=binary-user db=binary-db base=/tmp/pacificdb-raft-binary-log-98358032766855/binary-user/binary-db
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[DLOG][CREATE_COLLECTION][APPLY_REPLICATED_ENTRY] requestId= user=binary-user db=binary-db collection=docs
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-raft-binary-log-98358032766855/binary-user/binary-db/data/docs.bin
+[RAFTCORE] ✅ Raft log replay complete reapplied=7
+[RAFTCORE] Worker pool configured initial=1 max=1
+[RAFTCORE] Production Raft initialized node=project-writer leader=true peers=0 configuredWorkers=1 dataRoot=/tmp/pacificdb-raft-binary-log-98358032766855
+[RAFTCORE] Listener starting on port 0
+[RAFTCORE] Monitor loop waiting 10 seconds for full cluster initialization...
+[RAFTCORE] Listener ready on 0.0.0.0:0
+[RAFTCORE] apply worker started node=[RAFTCORE] Production Raft started (leader=true) mode=2) circuit=0) workers=1
+project-writer
+[DLOG][CREATE_DB][PATH] user=system db=pacificdb_meta base=/tmp/pacificdb-raft-binary-log-98358032766855/system/pacificdb_meta
+[RAFTCORE] Inbound RPC pool workers=16 queue=1024
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-raft-binary-log-98358032766855/system/pacificdb_meta/data/projects.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087747,"id":"6ac1d483f95c2325133612bb","name":"projects"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-raft-binary-log-98358032766855/system/pacificdb_meta/data/database_projects.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087747,"id":"6ac1d483f95c2325133612bc","name":"database_projects"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-raft-binary-log-98358032766855/system/pacificdb_meta/data/media_manifests.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087747,"id":"6ac1d483f95c2325133612bd","name":"media_manifests"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-raft-binary-log-98358032766855/system/pacificdb_meta/data/media_chunks.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087747,"id":"6ac1d483f95c2325133612be","name":"media_chunks"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-raft-binary-log-98358032766855/system/pacificdb_meta/data/restore_journal.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087747,"id":"6ac1d483f95c2325133612bf","name":"restore_journal"}
+{"code":"media_reconciled","fields":{"expired_uploads":0,"removed_orphans":0,"repaired_progress":0,"reset_verifying":0},"message":"Media upload state reconciled","severity":"info","subsystem":"media","timestamp_ms":1791087747200}
+[DLOG][CREATE_DB][PATH] user=system db=pacificdb_meta base=/tmp/pacificdb-raft-binary-log-98358032766855/system/pacificdb_meta
+[ENGINE] Data root initialized: /tmp/pacificdb-raft-binary-log-98358032766855
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-raft-binary-log-98358032766855/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-raft-binary-log-98358032766855/system/system/data/users.bin
+[LSM] Initialized at: /tmp/pacificdb-raft-binary-log-98358032766855/
+[LSM][RESTORE] Replayed 0 records from docs.wal
+[LSM][RESTORE] Replayed 1 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[LSM] Initialized at: /tmp/pacificdb-raft-binary-log-98358032766855/
+[WAL] group_commit=enabled
+[WAL] group_commit_interval_ms=3
+[WAL] group_commit_batch_size=512
+[WAL] group_commit_max_bytes=4194304
+[WAL] Background flusher started, interval=3ms groupCommit=on
+[RAFTCORE] Loaded persisted state term=0 commit=8 applied=8 source=checksummed
+[RAFTCORE] Replaying 8 Raft log entries from raft/log.bin maxIndex=8 committedPrefix=8 recoveryMode=checksummed
+[DLOG][CREATE_DB][APPLY_REPLICATED_ENTRY] requestId= user=binary-user db=binary-db type=binary
+[DLOG][CREATE_DB][PATH] user=binary-user db=binary-db base=/tmp/pacificdb-raft-binary-log-98358032766855/binary-user/binary-db
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[DLOG][CREATE_COLLECTION][APPLY_REPLICATED_ENTRY] requestId= user=binary-user db=binary-db collection=docs
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-raft-binary-log-98358032766855/binary-user/binary-db/data/docs.bin
+[DLOG][CREATE_DB][PATH] user=system db=pacificdb_meta base=/tmp/pacificdb-raft-binary-log-98358032766855/system/pacificdb_meta
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-raft-binary-log-98358032766855/system/pacificdb_meta/data/projects.bin
+[RAFTCORE] ✅ Raft log replay complete reapplied=8
+[RAFTCORE] Worker pool configured initial=1 max=1
+[RAFTCORE] Production Raft initialized node=project-recoverer leader=true peers=0 configuredWorkers=1 dataRoot=/tmp/pacificdb-raft-binary-log-98358032766855
+[RAFTCORE] Listener starting on port 0
+[RAFTCORE] Listener ready on 0.0.0.0:0
+[RAFTCORE] Monitor loop waiting 10 seconds for full cluster initialization...
+[RAFTCORE] apply worker started node=project-recoverer
+[RAFTCORE] Production Raft started (leader=true) mode=2) circuit=0) workers=1
+[RAFTCORE] Inbound RPC pool workers=16 queue=1024
+[DLOG][CREATE_DB][PATH] user=system db=pacificdb_meta base=/tmp/pacificdb-raft-binary-log-98358032766855/system/pacificdb_meta
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-raft-binary-log-98358032766855/system/pacificdb_meta/data/projects.bin
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-raft-binary-log-98358032766855/system/pacificdb_meta/data/database_projects.bin
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-raft-binary-log-98358032766855/system/pacificdb_meta/data/media_manifests.bin
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-raft-binary-log-98358032766855/system/pacificdb_meta/data/media_chunks.bin
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-raft-binary-log-98358032766855/system/pacificdb_meta/data/restore_journal.bin
+{"code":"media_reconciled","fields":{"expired_uploads":0,"removed_orphans":0,"repaired_progress":0,"reset_verifying":0},"message":"Media upload state reconciled","severity":"info","subsystem":"media","timestamp_ms":1791087747219}
+[RAFTCORE] stopping operation workers
+[RAFTCORE] apply worker stopped node=project-recoverer
+[RAFTCORE] operation workers stopped elapsed_ms=0
+[RAFTCORE] stopping listener
+[RAFTCORE] Listener exiting on port 0
+[RAFTCORE] stopped listener elapsed_ms=0
+[RAFTCORE] stopping monitor
+[RAFTCORE] stopped monitor elapsed_ms=0
+[RAFTCORE] stopping snapshot maintenance
+[RAFTCORE] stopped snapshot maintenance elapsed_ms=0
+[RAFTCORE] stopping health monitor
+[RAFTCORE] stopped health monitor elapsed_ms=0
+[RAFTCORE] stopping adaptive controller
+[RAFTCORE] stopped adaptive controller elapsed_ms=0
+[RAFTCORE] stopping apply worker
+[RAFTCORE] stopped apply worker elapsed_ms=0
+[RAFTCORE] stopping read barrier
+[RAFTCORE] stopped read barrier elapsed_ms=0
+[ENGINE] Data root initialized: /tmp/pacificdb-raft-binary-log-98358032766855-corrupt
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-raft-binary-log-98358032766855-corrupt/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-raft-binary-log-98358032766855-corrupt/system/system/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087747,"id":"6ac1d483909fa5e913ac2f68","name":"users"}
+[LSM] Initialized at: /tmp/pacificdb-raft-binary-log-98358032766855-corrupt/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[LSM] Initialized at: /tmp/pacificdb-raft-binary-log-98358032766855-corrupt/
+[WAL] group_commit=enabled
+[WAL] group_commit_interval_ms=3
+[WAL] group_commit_batch_size=512
+[WAL] group_commit_max_bytes=4194304
+[WAL] Background flusher started, interval=3ms groupCommit=on
+[RAFTCORE] Loaded persisted state term=0 commit=0 applied=0 source=legacy
+[RAFTCORE] No Raft log entries to replay
+[RAFTCORE] Worker pool configured initial=1 max=1
+[RAFTCORE] Production Raft initialized node=binary-log-writer leader=true peers=0 configuredWorkers=1 dataRoot=/tmp/pacificdb-raft-binary-log-98358032766855-corrupt
+[RAFTCORE] Listener starting on port 0
+[RAFTCORE] Listener ready on 0.0.0.0:0
+[RAFTCORE] Monitor loop waiting 10 seconds for full cluster initialization...
+[RAFTCORE] apply worker started node=binary-log-writer
+[RAFTCORE] Production Raft started (leader=true) mode=2) circuit=0) workers=1
+[DLOG][CREATE_DB][APPLY_REPLICATED_ENTRY] requestId= user=binary-user db=binary-db type=binary
+[RAFTCORE] Inbound RPC pool workers=16 queue=1024
+[DLOG][CREATE_DB][PATH] user=binary-user db=binary-db base=/tmp/pacificdb-raft-binary-log-98358032766855-corrupt/binary-user/binary-db
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[DLOG][CREATE_COLLECTION][APPLY_REPLICATED_ENTRY] requestId= user=binary-user db=binary-db collection=docs
+[ENGINE] Data root initialized: /tmp/pacificdb-raft-binary-log-98358032766855-corrupt
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-raft-binary-log-98358032766855-corrupt/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-raft-binary-log-98358032766855-corrupt/system/system/data/users.bin
+[LSM] Initialized at: /tmp/pacificdb-raft-binary-log-98358032766855-corrupt/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[LSM] Initialized at: /tmp/pacificdb-raft-binary-log-98358032766855-corrupt/
+[WAL] group_commit=enabled
+[WAL] group_commit_interval_ms=3
+[WAL] group_commit_batch_size=512
+[WAL] group_commit_max_bytes=4194304
+[WAL] Background flusher started, interval=3ms groupCommit=on
+[RAFTCORE] Loaded persisted state term=0 commit=6 applied=6 source=checksummed
+[RAFTCORE] Raft recovery failed: invalid Raft payload
+[RAFTCORE] Worker pool configured initial=1 max=1
+[RAFTCORE] Production Raft initialized node=binary-log-recoverer leader=false peers=0 configuredWorkers=1 dataRoot=/tmp/pacificdb-raft-binary-log-98358032766855-corrupt
+[RAFTCORE] Listener starting on port 0
+[RAFTCORE] Listener ready on 0.0.0.0:0
+[RAFTCORE] Monitor loop waiting 10 seconds for full cluster initialization...
+[RAFTCORE] apply worker started node=binary-log-recoverer
+[RAFTCORE] Production Raft started (leader=false) mode=2) circuit=0) workers=1
+[RAFTCORE] apply worker stopped node=binary-log-recoverer
+[RAFTCORE] stopping operation workers
+[RAFTCORE] operation workers stopped elapsed_ms=0
+[RAFTCORE] stopping listener
+[RAFTCORE] Inbound RPC pool workers=16 queue=1024
+[RAFTCORE] Listener exiting on port 0
+[RAFTCORE] stopped listener elapsed_ms=0
+[RAFTCORE] stopping monitor
+[RAFTCORE] stopped monitor elapsed_ms=0
+[RAFTCORE] stopping snapshot maintenance
+[RAFTCORE] stopped snapshot maintenance elapsed_ms=0
+[RAFTCORE] stopping health monitor
+[RAFTCORE] stopped health monitor elapsed_ms=0
+[RAFTCORE] stopping adaptive controller
+[RAFTCORE] stopped adaptive controller elapsed_ms=0
+[RAFTCORE] stopping apply worker
+[RAFTCORE] stopped apply worker elapsed_ms=0
+[RAFTCORE] stopping read barrier
+[RAFTCORE] stopped read barrier elapsed_ms=0
+RAFT_BINARY_LOG_RECOVER_FAIL: single-node leader lease is not immediately valid
+[ENGINE] Data root initialized: /tmp/pacificdb-raft-binary-log-98358032766855-corrupt
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-raft-binary-log-98358032766855-corrupt/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-raft-binary-log-98358032766855-corrupt/system/system/data/users.bin
+[LSM] Initialized at: /tmp/pacificdb-raft-binary-log-98358032766855-corrupt/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[LSM] Initialized at: /tmp/pacificdb-raft-binary-log-98358032766855-corrupt/
+[WAL] group_commit=enabled
+[WAL] group_commit_interval_ms=3
+[WAL] group_commit_batch_size=512
+[WAL] group_commit_max_bytes=4194304
+[WAL] Background flusher started, interval=3ms groupCommit=on
+[RAFTCORE] Loaded persisted state term=0 commit=6 applied=6 source=checksummed
+[RAFTCORE] Raft recovery failed: invalid Raft payload
+[RAFTCORE] Worker pool configured initial=1 max=1
+[RAFTCORE] Production Raft initialized node=binary-log-recoverer leader=false peers=0 configuredWorkers=1 dataRoot=/tmp/pacificdb-raft-binary-log-98358032766855-corrupt
+[RAFTCORE] Listener starting on port 0
+[RAFTCORE] Monitor loop waiting 10 seconds for full cluster initialization...
+[RAFTCORE] Listener ready on 0.0.0.0:0
+[RAFTCORE] apply worker started node=binary-log-recoverer
+[RAFTCORE] Production Raft started (leader=false) mode=2) circuit=0) workers=1
+[RAFTCORE] apply worker stopped node=binary-log-recoverer
+[RAFTCORE] stopping operation workers
+[RAFTCORE] operation workers stopped elapsed_ms=0
+[RAFTCORE] stopping listener
+[RAFTCORE] Inbound RPC pool workers=16 queue=1024
+[RAFTCORE] Listener exiting on port 0
+[RAFTCORE] stopped listener elapsed_ms=1
+[RAFTCORE] stopping monitor
+[RAFTCORE] stopped monitor elapsed_ms=1
+[RAFTCORE] stopping snapshot maintenance
+[RAFTCORE] stopped snapshot maintenance elapsed_ms=1
+[RAFTCORE] stopping health monitor
+[RAFTCORE] stopped health monitor elapsed_ms=1
+[RAFTCORE] stopping adaptive controller
+[RAFTCORE] stopped adaptive controller elapsed_ms=1
+[RAFTCORE] stopping apply worker
+[RAFTCORE] stopped apply worker elapsed_ms=1
+[RAFTCORE] stopping read barrier
+[RAFTCORE] stopped read barrier elapsed_ms=1
+RAFT_BINARY_LOG_RECOVER_FAIL: single-node leader lease is not immediately valid
+[ENGINE] Data root initialized: /tmp/pacificdb-raft-binary-log-98358032766855-corrupt
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-raft-binary-log-98358032766855-corrupt/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-raft-binary-log-98358032766855-corrupt/system/system/data/users.bin
+[LSM] Initialized at: /tmp/pacificdb-raft-binary-log-98358032766855-corrupt/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[LSM] Initialized at: /tmp/pacificdb-raft-binary-log-98358032766855-corrupt/
+[WAL] group_commit=enabled
+[WAL] group_commit_interval_ms=3
+[WAL] group_commit_batch_size=512
+[WAL] group_commit_max_bytes=4194304
+[WAL] Background flusher started, interval=3ms groupCommit=on
+[RAFTCORE] Loaded persisted state term=0 commit=6 applied=6 source=checksummed
+[RAFTCORE] Discarded torn uncommitted raft/log.bin tail at 940 after index 6
+[RAFTCORE] Replaying 6 Raft log entries from raft/log.bin maxIndex=6 committedPrefix=6 recoveryMode=checksummed
+[DLOG][CREATE_DB][APPLY_REPLICATED_ENTRY] requestId= user=binary-user db=binary-db type=binary
+[DLOG][CREATE_DB][PATH] user=binary-user db=binary-db base=/tmp/pacificdb-raft-binary-log-98358032766855-corrupt/binary-user/binary-db
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[DLOG][CREATE_COLLECTION][APPLY_REPLICATED_ENTRY] requestId= user=binary-user db=binary-db collection=docs
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-raft-binary-log-98358032766855-corrupt/binary-user/binary-db/data/docs.bin
+[RAFTCORE] ✅ Raft log replay complete reapplied=6
+[RAFTCORE] Worker pool configured initial=1 max=1
+[RAFTCORE] Production Raft initialized node=binary-log-recoverer leader=true peers=0 configuredWorkers=1 dataRoot=/tmp/pacificdb-raft-binary-log-98358032766855-corrupt
+[RAFTCORE] Listener starting on port 0
+[RAFTCORE] Monitor loop waiting 10 seconds for full cluster initialization...
+[RAFTCORE] Listener ready on 0.0.0.0:0
+[RAFTCORE] apply worker started node=binary-log-recoverer
+[RAFTCORE] Production Raft started (leader=true) mode=2) circuit=0) workers=1
+[RAFTCORE] Inbound RPC pool workers=16 queue=1024
+[RAFTCORE] apply worker stopped node=binary-log-recoverer
+[RAFTCORE] stopping operation workers
+[RAFTCORE] operation workers stopped elapsed_ms=0
+[RAFTCORE] stopping listener
+[RAFTCORE] Listener exiting on port 0
+[RAFTCORE] stopped listener elapsed_ms=0
+[RAFTCORE] stopping monitor
+[RAFTCORE] stopped monitor elapsed_ms=0
+[RAFTCORE] stopping snapshot maintenance
+[RAFTCORE] stopped snapshot maintenance elapsed_ms=1
+[RAFTCORE] stopping health monitor
+[RAFTCORE] stopped health monitor elapsed_ms=1
+[RAFTCORE] stopping adaptive controller
+[RAFTCORE] stopped adaptive controller elapsed_ms=1
+[RAFTCORE] stopping apply worker
+[RAFTCORE] stopped apply worker elapsed_ms=1
+[RAFTCORE] stopping read barrier
+[RAFTCORE] stopped read barrier elapsed_ms=1
+[ENGINE] Data root initialized: /tmp/pacificdb-raft-binary-log-98358032766855-corrupt
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-raft-binary-log-98358032766855-corrupt/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-raft-binary-log-98358032766855-corrupt/system/system/data/users.bin
+[LSM] Initialized at: /tmp/pacificdb-raft-binary-log-98358032766855-corrupt/
+[LSM][RESTORE] Replayed 1 records from docs.wal
+[LSM][RESTORE] Replayed 1 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[LSM] Initialized at: /tmp/pacificdb-raft-binary-log-98358032766855-corrupt/
+[WAL] group_commit=enabled
+[WAL] group_commit_interval_ms=3
+[WAL] group_commit_batch_size=512
+[WAL] group_commit_max_bytes=4194304
+[WAL] Background flusher started, interval=3ms groupCommit=on
+[RAFTCORE] Loaded persisted state term=0 commit=7 applied=7 source=checksummed
+[RAFTCORE] Raft recovery failed: truncated raft/log.bin payload at index 6
+[RAFTCORE] Worker pool configured initial=1 max=1
+[RAFTCORE] Production Raft initialized node=binary-log-recoverer leader=false peers=0 configuredWorkers=1 dataRoot=/tmp/pacificdb-raft-binary-log-98358032766855-corrupt
+[RAFTCORE] Listener starting on port 0
+[RAFTCORE] Monitor loop waiting 10 seconds for full cluster initialization...
+[RAFTCORE] Listener ready on 0.0.0.0:0
+[RAFTCORE] apply worker started node=binary-log-recoverer
+[RAFTCORE] Production Raft started (leader=false) mode=2) circuit=0) workers=1
+[RAFTCORE] stopping operation workers
+[RAFTCORE] apply worker stopped node=binary-log-recoverer
+[RAFTCORE] operation workers stopped elapsed_ms=0
+[RAFTCORE] stopping listener
+[RAFTCORE] Inbound RPC pool workers=16 queue=1024
+[RAFTCORE] Listener exiting on port 0
+[RAFTCORE] stopped listener elapsed_ms=1
+[RAFTCORE] stopping monitor
+[RAFTCORE] stopped monitor elapsed_ms=1
+[RAFTCORE] stopping snapshot maintenance
+[RAFTCORE] stopped snapshot maintenance elapsed_ms=1
+[RAFTCORE] stopping health monitor
+[RAFTCORE] stopped health monitor elapsed_ms=1
+[RAFTCORE] stopping adaptive controller
+[RAFTCORE] stopped adaptive controller elapsed_ms=1
+[RAFTCORE] stopping apply worker
+[RAFTCORE] stopped apply worker elapsed_ms=1
+[RAFTCORE] stopping read barrier
+[RAFTCORE] stopped read barrier elapsed_ms=1
+RAFT_BINARY_LOG_RECOVER_FAIL: single-node leader lease is not immediately valid
+RAFT_BINARY_LOG_V3_PASS
+[ENGINE] Data root initialized: /tmp/pacificdb-test-raft-health-recovery-2566830-98358220465465-0-0/data
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-test-raft-health-recovery-2566830-98358220465465-0-0/data/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-raft-health-recovery-2566830-98358220465465-0-0/data/system/system/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087747,"id":"6ac1d4838fd71691d7debcb6","name":"users"}
+[LSM] Initialized at: /tmp/pacificdb-test-raft-health-recovery-2566830-98358220465465-0-0/data/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[LSM] Initialized at: /tmp/pacificdb-test-raft-health-recovery-2566830-98358220465465-0-0/data/
+[WAL] group_commit=enabled
+[WAL] group_commit_interval_ms=3
+[WAL] group_commit_batch_size=512
+[WAL] group_commit_max_bytes=4194304
+[WAL] Background flusher started, interval=3ms groupCommit=on
+[RAFTCORE] Loaded persisted state term=1 commit=0 applied=0 source=legacy
+[RAFTCORE] No Raft log entries to replay
+[RAFTCORE] Worker pool configured initial=2 max=2
+[RAFTCORE] Production Raft initialized node=health-test leader=true peers=0 configuredWorkers=2 dataRoot=/tmp/pacificdb-test-raft-health-recovery-2566830-98358220465465-0-0/data
+[RAFTCORE] Listener starting on port 0
+[RAFTCORE] Listener ready on 0.0.0.0:0
+[RAFTCORE] Monitor loop waiting 10 seconds for full cluster initialization...
+[RAFTCORE] apply worker started node=health-test
+[RAFTCORE] Production Raft started (leader=true) mode=2) circuit=0) workers=2
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Inbound RPC pool workers=4 queue=256[RAFTCORE] Rejecting write with stale term 0 < current 1
+
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Rejecting write with stale term 0 < current 1
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Error rate exceeded threshold: 20
+[RAFTCORE] System unhealthy - rejecting request
+[RAFTCORE] Monitor loop starting with peers=0 quorum=1
+[RAFTCORE] Adapting to SYNCHRONOUS mode due to high load
+RAFT_HEALTH_RECOVERY_PASS
+[RAFTCORE] apply worker stopped node=health-test
+[RAFTCORE] stopping operation workers
+[RAFTCORE] operation workers stopped elapsed_ms=0
+[RAFTCORE] stopping listener
+[RAFTCORE] Listener exiting on port 0
+[RAFTCORE] stopped listener elapsed_ms=1
+[RAFTCORE] stopping monitor
+[RAFTCORE] stopped monitor elapsed_ms=1
+[RAFTCORE] stopping snapshot maintenance
+[RAFTCORE] stopped snapshot maintenance elapsed_ms=1
+[RAFTCORE] stopping health monitor
+[RAFTCORE] stopped health monitor elapsed_ms=1
+[RAFTCORE] stopping adaptive controller
+[RAFTCORE] stopped adaptive controller elapsed_ms=1
+[RAFTCORE] stopping apply worker
+[RAFTCORE] stopped apply worker elapsed_ms=1
+[RAFTCORE] stopping read barrier
+[RAFTCORE] stopped read barrier elapsed_ms=1
+[ENGINE] Data root initialized: /tmp/pacificdb-test-raft-snapshot-metadata-2566997-98368248260016-0-0/data
+[LSM] Initialized at: /tmp/pacificdb-test-raft-snapshot-metadata-2566997-98368248260016-0-0/data/
+[RAFTCORE] Loaded persisted state term=0 commit=0 applied=0 source=legacy
+[RAFTCORE] Snapshot metadata restore failed: snapshot_metadata_invalid
+[RAFTCORE] Raft recovery failed: snapshot_metadata_invalid
+[RAFTCORE] Worker pool configured initial=1 max=1
+[RAFTCORE] Production Raft initialized node=snapshot-metadata-test leader=false peers=0 configuredWorkers=1 dataRoot=/tmp/pacificdb-test-raft-snapshot-metadata-2566997-98368248260016-0-0/data
+RAFT_SNAPSHOT_METADATA_BOUNDED_PASS
+STORAGE_FORMAT_V2_PASS
+STORAGE_ROOT_V1_TO_V2_MIGRATION_PASS
+[DB-TASK-QUEUE-PARTITIONED] Configured shards=4 workers_per_shard=2 max_queue_per_shard=64
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 64
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 64
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 64
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 64
+[DB-TASK-QUEUE-PARTITIONED] Started with 4 shards, 2 workers per shard, 64 max queue per shard
+✅ db_task_queue_partitioned test passed
+========================================
+Work-Stealing Queue Test Suite
+========================================
+
+=== Test 1: Basic Work Stealing with Imbalanced Load ===
+[DB-TASK-QUEUE-SHARDED] Started 8 workers across 4 shards (2 workers per shard), max queue per shard: 256
+Enqueued 115 tasks across 4 shards
+Distribution: 100 -> shard0, 10 -> shard1, 5 -> shard2, 0 -> shard3
+
+Results:
+  Tasks completed: 115/115
+  Active workers: 0
+  Work steal attempts: 18
+  Work steal successes: 6
+  Total queued: 0
+  Processed tasks: 115
+✅ Test 1 passed: Work stealing reduced queue imbalance
+[DB-TASK-QUEUE-SHARDED] Shutdown complete, processed=115
+
+=== Test 2: Sustained Load with Work Stealing ===
+[DB-TASK-QUEUE-SHARDED] Started 16 workers across 8 shards (2 workers per shard), max queue per shard: 500
+
+Results:
+  Total enqueued: 7056
+  Tasks completed: 7056
+  Completion rate: 100.0%
+  Work steal attempts: 663
+  Work steal successes: 1
+  Work steal success rate: 0.2%
+✅ Test 2 passed: Sustained load with good completion rate
+[DB-TASK-QUEUE-SHARDED] Shutdown complete, processed=7056
+
+=== Test 3: Work Stealing Correctness (No Duplicates) ===
+[DB-TASK-QUEUE-SHARDED] Started 8 workers across 4 shards (2 workers per shard), max queue per shard: 500
+
+Results:
+  Tasks executed exactly once: 100/100
+  Tasks not executed: 0/100
+  Duplicate executions: 0
+  Work steal attempts: 18
+  Work steal successes: 0
+✅ Test 3 passed: No duplicate executions
+[DB-TASK-QUEUE-SHARDED] Shutdown complete, processed=100
+
+=== Test 4: Partitioned Queue with Work Stealing ===
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 500
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 500
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 500
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 500
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 500
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 500
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 500
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 500
+[DB-TASK-QUEUE-PARTITIONED] Started with 8 shards, 2 workers per shard, 500 max queue per shard
+
+Results:
+  Tasks enqueued: 200
+  Tasks processed: 200
+  Work steal attempts: 0
+  Work steal successes: 0
+  Total workers: 16
+✅ Test 4 passed: partitioned queue with stealing
+[DB-TASK-QUEUE-SHARDED] Shutdown complete, processed=0
+[DB-TASK-QUEUE-SHARDED] Shutdown complete, processed=160
+[DB-TASK-QUEUE-SHARDED] Shutdown complete, processed=0
+[DB-TASK-QUEUE-SHARDED] Shutdown complete, processed=0
+[DB-TASK-QUEUE-SHARDED] Shutdown complete, processed=0
+[DB-TASK-QUEUE-SHARDED] Shutdown complete, processed=0
+[DB-TASK-QUEUE-SHARDED] Shutdown complete, processed=0
+[DB-TASK-QUEUE-SHARDED] Shutdown complete, processed=40
+[DB-TASK-QUEUE-PARTITIONED] Shutdown complete, processed=200
+
+========================================
+✅ All work-stealing tests PASSED
+========================================
+[ENGINE] Data root initialized: /tmp/pacificdb-community-manual-test/data
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-community-manual-test/data/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-community-manual-test/data/system/system/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087762,"id":"6ac1d4923ed95e84445d66af","name":"users"}
+[LSM] Initialized at: /tmp/pacificdb-community-manual-test/data/
+[ENGINE] Clean shutdown: collection and media WAL restore skipped
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[DLOG][CREATE_DB][PATH] user=system db=pacificdb_meta base=/tmp/pacificdb-community-manual-test/data/system/pacificdb_meta
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-community-manual-test/data/system/pacificdb_meta/data/projects.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087762,"id":"6ac1d4923ed95e84445d66b1","name":"projects"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-community-manual-test/data/system/pacificdb_meta/data/database_projects.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087762,"id":"6ac1d4923ed95e84445d66b2","name":"database_projects"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-community-manual-test/data/system/pacificdb_meta/data/media_manifests.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087762,"id":"6ac1d4923ed95e84445d66b3","name":"media_manifests"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-community-manual-test/data/system/pacificdb_meta/data/media_chunks.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087762,"id":"6ac1d4923ed95e84445d66b4","name":"media_chunks"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-community-manual-test/data/system/pacificdb_meta/data/restore_journal.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087762,"id":"6ac1d4923ed95e84445d66b5","name":"restore_journal"}
+{"code":"media_reconciled","fields":{"expired_uploads":0,"removed_orphans":0,"repaired_progress":0,"reset_verifying":0},"message":"Media upload state reconciled","severity":"info","subsystem":"media","timestamp_ms":1791087762205}
+[ShardManager] Initialized 1 shard(s), replica target=3, nodes=1
+[ShardManager] Registered node node-1 at 127.0.0.1:9000
+[ShardManager] Registered node node-2 at 127.0.0.1:9010
+[ShardManager] Split shard shard-0 at key m
+[ShardManager] Migrated shard shard-0-split to node-2
+[ShardManager] Rebalancing: 2 shards across 2 nodes (target: 1 per node)
+manual backup/restore and sharding passed
+[ENGINE] Data root initialized: /tmp/pacificdb-test-community-catalog-2567196-98373124552199-0-0/data
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-test-community-catalog-2567196-98373124552199-0-0/data/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-community-catalog-2567196-98373124552199-0-0/data/system/system/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087762,"id":"6ac1d492644e83088cf6c8ac","name":"users"}
+[LSM] Initialized at: /tmp/pacificdb-test-community-catalog-2567196-98373124552199-0-0/data/
+[ENGINE] Clean shutdown: collection and media WAL restore skipped
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[LIMITER] Initialized - timeout=30s, maxResult=1MB, maxScan=1000000 rows, maxResultDocs=10000
+[DLOG][CREATE_DB][PATH] user=system db=pacificdb_meta base=/tmp/pacificdb-test-community-catalog-2567196-98373124552199-0-0/data/system/pacificdb_meta
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-community-catalog-2567196-98373124552199-0-0/data/system/pacificdb_meta/data/projects.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087762,"id":"6ac1d492644e83088cf6c8ae","name":"projects"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-community-catalog-2567196-98373124552199-0-0/data/system/pacificdb_meta/data/database_projects.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087762,"id":"6ac1d492644e83088cf6c8af","name":"database_projects"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-community-catalog-2567196-98373124552199-0-0/data/system/pacificdb_meta/data/media_manifests.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087762,"id":"6ac1d492644e83088cf6c8b0","name":"media_manifests"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-community-catalog-2567196-98373124552199-0-0/data/system/pacificdb_meta/data/media_chunks.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087762,"id":"6ac1d492644e83088cf6c8b1","name":"media_chunks"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-community-catalog-2567196-98373124552199-0-0/data/system/pacificdb_meta/data/restore_journal.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791087762,"id":"6ac1d492644e83088cf6c8b2","name":"restore_journal"}
+{"code":"media_reconciled","fields":{"expired_uploads":0,"removed_orphans":0,"repaired_progress":0,"reset_verifying":0},"message":"Media upload state reconciled","severity":"info","subsystem":"media","timestamp_ms":1791087762218}
+[DLOG][CREATE_DB][PATH] user=system db=app base=/tmp/pacificdb-test-community-catalog-2567196-98373124552199-0-0/data/system/app
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[DLOG][CREATE_DB][PATH] user=system db=other-db base=/tmp/pacificdb-test-community-catalog-2567196-98373124552199-0-0/data/system/other-db
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+{"code":"media_upload_started","fields":{"chunk_count":1,"size_bytes":4},"message":"Media upload started","operation_id":"media_6ac1d492644e83088cf6c8b7","severity":"info","subsystem":"media","timestamp_ms":1791087762236}
+{"code":"media_chunk_committed","fields":{"index":0},"message":"Media chunk committed","operation_id":"media_6ac1d492644e83088cf6c8b7","severity":"info","subsystem":"media","timestamp_ms":1791087762243}
+{"code":"media_verification_started","fields":{},"message":"Media verification started","operation_id":"media_6ac1d492644e83088cf6c8b7","severity":"info","subsystem":"media","timestamp_ms":1791087762246}
+{"code":"media_ready","fields":{"received_chunks":1,"size_bytes":4},"message":"Media upload is ready","operation_id":"media_6ac1d492644e83088cf6c8b7","severity":"info","subsystem":"media","timestamp_ms":1791087762247}
+{"code":"media_upload_started","fields":{"chunk_count":3,"size_bytes":9},"message":"Media upload started","operation_id":"media_6ac1d492644e83088cf6c8b8","severity":"info","subsystem":"media","timestamp_ms":1791087762249}
+{"code":"media_chunk_committed","fields":{"index":0},"message":"Media chunk committed","operation_id":"media_6ac1d492644e83088cf6c8b8","severity":"info","subsystem":"media","timestamp_ms":1791087762252}
+{"code":"media_upload_resumed","fields":{"next_chunk":1,"received_chunks":1},"message":"Media upload resumed","operation_id":"media_6ac1d492644e83088cf6c8b8","severity":"info","subsystem":"media","timestamp_ms":1791087762255}
+[LSM][DEL] 6:system14:pacificdb_meta12:media_chunks / id=media_6ac1d492644e83088cf6c8b8:0
+{"code":"media_upload_aborted","fields":{},"message":"Media upload aborted","operation_id":"media_6ac1d492644e83088cf6c8b8","severity":"info","subsystem":"media","timestamp_ms":1791087762260}
+{"code":"media_upload_started","fields":{"chunk_count":1,"size_bytes":3},"message":"Media upload started","operation_id":"media_6ac1d492644e83088cf6c8b9","severity":"info","subsystem":"media","timestamp_ms":1791087762262}
+{"code":"media_chunk_committed","fields":{"index":0},"message":"Media chunk committed","operation_id":"media_6ac1d492644e83088cf6c8b9","severity":"info","subsystem":"media","timestamp_ms":1791087762266}
+[LSM][DEL] 6:system14:pacificdb_meta12:media_chunks / id=media_6ac1d492644e83088cf6c8b9:0
+{"code":"media_chunk_conflict","fields":{"index":0},"message":"Media chunk conflicts with durable chunk metadata","operation_id":"media_6ac1d492644e83088cf6c8b9","severity":"error","subsystem":"media","timestamp_ms":1791087762270}
+{"code":"media_upload_started","fields":{"chunk_count":2,"size_bytes":6},"message":"Media upload started","operation_id":"media_6ac1d492644e83088cf6c8ba","severity":"info","subsystem":"media","timestamp_ms":1791087762272}
+{"code":"media_reconciled","fields":{"expired_uploads":0,"removed_orphans":0,"repaired_progress":1,"reset_verifying":1},"message":"Media upload state reconciled","operation_id":"media_6ac1d492644e83088cf6c8ba","severity":"info","subsystem":"media","timestamp_ms":1791087762279}
+[LIMITER] Result limit reached: 1 >= 1
+[LIMITER] Result limit reached: 1 >= 1
+[LIMITER] Result limit reached: 1 >= 1
+[LSM][DEL] 6:system14:pacificdb_meta12:media_chunks / id=missing-media:0
+{"code":"media_reconciled","fields":{"expired_uploads":0,"removed_orphans":1,"repaired_progress":2,"reset_verifying":0},"message":"Media upload state reconciled","severity":"info","subsystem":"media","timestamp_ms":1791087762289}
+{"code":"media_upload_started","fields":{"chunk_count":1,"size_bytes":3},"message":"Media upload started","operation_id":"media_6ac1d492644e83088cf6c8bb","severity":"info","subsystem":"media","timestamp_ms":1791087762290}
+{"code":"media_upload_started","fields":{"chunk_count":1,"size_bytes":3},"message":"Media upload started","operation_id":"media_6ac1d492644e83088cf6c8bc","severity":"info","subsystem":"media","timestamp_ms":1791087762291}
+[LIMITER] Result limit reached: 1 >= 1
+[LIMITER] Result limit reached: 1 >= 1
+{"code":"media_reconciled","fields":{"expired_uploads":1,"removed_orphans":0,"repaired_progress":0,"reset_verifying":0},"message":"Media upload state reconciled","severity":"info","subsystem":"media","timestamp_ms":1791087762296}
+{"code":"media_upload_started","fields":{"chunk_count":2,"size_bytes":1228800},"message":"Media upload started","operation_id":"media_6ac1d492644e83088cf6c8bd","severity":"info","subsystem":"media","timestamp_ms":1791087762301}
+{"code":"media_chunk_committed","fields":{"index":1},"message":"Media chunk committed","operation_id":"media_6ac1d492644e83088cf6c8bd","severity":"info","subsystem":"media","timestamp_ms":1791087762321}
+{"code":"media_chunk_committed","fields":{"index":0},"message":"Media chunk committed","operation_id":"media_6ac1d492644e83088cf6c8bd","severity":"info","subsystem":"media","timestamp_ms":1791087762330}
+{"code":"media_verification_started","fields":{},"message":"Media verification started","operation_id":"media_6ac1d492644e83088cf6c8bd","severity":"info","subsystem":"media","timestamp_ms":1791087762336}
+{"code":"media_ready","fields":{"received_chunks":2,"size_bytes":1228800},"message":"Media upload is ready","operation_id":"media_6ac1d492644e83088cf6c8bd","severity":"info","subsystem":"media","timestamp_ms":1791087762339}
+[DLOG][CREATE_DB][PATH] user=system db=page-a base=/tmp/pacificdb-test-community-catalog-2567196-98373124552199-0-0/data/system/page-a
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[DLOG][CREATE_DB][PATH] user=system db=page-b base=/tmp/pacificdb-test-community-catalog-2567196-98373124552199-0-0/data/system/page-b
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[LIMITER] Result limit reached: 2 >= 2
+[LIMITER] Result limit reached: 2 >= 2
+[LIMITER] Result limit reached: 2 >= 2
+[LIMITER] Result limit reached: 1 >= 1
+[LIMITER] Result limit reached: 1 >= 1
+[LIMITER] Result limit reached: 1 >= 1
+[LIMITER] Result limit reached: 1 >= 1
+[LIMITER] Result limit reached: 1 >= 1
+[LIMITER] Result limit reached: 1 >= 1
+[LIMITER] Result limit reached: 1 >= 1
+[LIMITER] Result limit reached: 1 >= 1
+[LIMITER] Result limit reached: 1 >= 1
+[LSM][DEL] 6:system14:pacificdb_meta12:media_chunks / id=orphan-page-0:0
+[LSM][DEL] 6:system14:pacificdb_meta12:media_chunks / id=orphan-page-1:0
+[LSM][DEL] 6:system14:pacificdb_meta12:media_chunks / id=orphan-page-2:0
+[LSM][DEL] 6:system14:pacificdb_meta12:media_chunks / id=orphan-page-3:0
+[LSM][DEL] 6:system14:pacificdb_meta12:media_chunks / id=orphan-page-4:0
+{"code":"media_reconciled","fields":{"expired_uploads":0,"removed_orphans":5,"repaired_progress":1,"reset_verifying":0},"message":"Media upload state reconciled","severity":"info","subsystem":"media","timestamp_ms":1791087762364}
+COMMUNITY_CATALOG_PASS
+COMMUNITY_API_KEY_PASS
+COMMUNITY_QUERY_PASS
+NATIVE_SHELL_PARSER_PASS
+CLI_CONNECTION_FIXTURES_PASS
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567202-98373294641331-0-0/data/
+[LSM] Force flushing all memtables...
+[LSM] Force flush completed - 1 memtables flushed
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567202-98373294641331-0-0/data/
+[LSM][RESTORE] Replayed 0 records from documents.wal
+[LSM][RESTORE] Replayed 1 WAL files
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567202-98373294641331-0-0/data/
+[TEST_FAILPOINT] reached name=FP_LSM_CHECKPOINT_AFTER_SST_SYNC raftIndex=20 action=crash
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567202-98373294641331-0-0/data/
+[LSM][RESTORE] Replayed 10000 records from documents.wal
+[LSM][RESTORE] Replayed 1 WAL files
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567202-98373294641331-0-0/data/
+[LSM][RESTORE] Replayed 0 records from documents.wal
+[LSM][RESTORE] Replayed 1 WAL files
+CHECKPOINT_CRASH_PASS FP_LSM_CHECKPOINT_AFTER_SST_SYNC {"count":20000,"digest":"fdea598a265f4f939386c0008dcfabb905303c251133422a8425d139d0db3d43","sst_files":2,"wal_bytes":376298}
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567213-98373950161299-0-0/data/
+[LSM] Force flushing all memtables...
+[LSM] Force flush completed - 1 memtables flushed
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567213-98373950161299-0-0/data/
+[LSM][RESTORE] Replayed 0 records from documents.wal
+[LSM][RESTORE] Replayed 1 WAL files
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567213-98373950161299-0-0/data/
+[TEST_FAILPOINT] reached name=FP_LSM_CHECKPOINT_AFTER_ARTIFACT_RENAME raftIndex=20 action=crash
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567213-98373950161299-0-0/data/
+[LSM][RESTORE] Replayed 10000 records from documents.wal
+[LSM][RESTORE] Replayed 1 WAL files
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567213-98373950161299-0-0/data/
+[LSM][RESTORE] Replayed 0 records from documents.wal
+[LSM][RESTORE] Replayed 1 WAL files
+CHECKPOINT_CRASH_PASS FP_LSM_CHECKPOINT_AFTER_ARTIFACT_RENAME {"count":20000,"digest":"fdea598a265f4f939386c0008dcfabb905303c251133422a8425d139d0db3d43","sst_files":3,"wal_bytes":376298}
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567235-98374608942044-0-0/data/
+[LSM] Force flushing all memtables...
+[LSM] Force flush completed - 1 memtables flushed
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567235-98374608942044-0-0/data/
+[LSM][RESTORE] Replayed 0 records from documents.wal
+[LSM][RESTORE] Replayed 1 WAL files
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567235-98374608942044-0-0/data/
+[TEST_FAILPOINT] reached name=FP_LSM_CHECKPOINT_AFTER_MANIFEST_SYNC raftIndex=20 action=crash
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567235-98374608942044-0-0/data/
+[LSM][RESTORE] Replayed 10000 records from documents.wal
+[LSM][RESTORE] Replayed 1 WAL files
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567235-98374608942044-0-0/data/
+[LSM][RESTORE] Replayed 0 records from documents.wal
+[LSM][RESTORE] Replayed 1 WAL files
+CHECKPOINT_CRASH_PASS FP_LSM_CHECKPOINT_AFTER_MANIFEST_SYNC {"count":20000,"digest":"fdea598a265f4f939386c0008dcfabb905303c251133422a8425d139d0db3d43","sst_files":3,"wal_bytes":376298}
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567264-98375316592576-0-0/data/
+[LSM] Force flushing all memtables...
+[LSM] Force flush completed - 1 memtables flushed
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567264-98375316592576-0-0/data/
+[LSM][RESTORE] Replayed 0 records from documents.wal
+[LSM][RESTORE] Replayed 1 WAL files
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567264-98375316592576-0-0/data/
+[TEST_FAILPOINT] reached name=FP_LSM_CHECKPOINT_AFTER_MANIFEST_RENAME raftIndex=20 action=crash
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567264-98375316592576-0-0/data/
+[LSM][RESTORE] Replayed 0 records from documents.wal
+[LSM][RESTORE] Replayed 1 WAL files
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567264-98375316592576-0-0/data/
+[LSM][RESTORE] Replayed 0 records from documents.wal
+[LSM][RESTORE] Replayed 1 WAL files
+CHECKPOINT_CRASH_PASS FP_LSM_CHECKPOINT_AFTER_MANIFEST_RENAME {"count":20000,"digest":"fdea598a265f4f939386c0008dcfabb905303c251133422a8425d139d0db3d43","sst_files":2,"wal_bytes":376298}
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567275-98375935864916-0-0/data/
+[LSM] Force flushing all memtables...
+[LSM] Force flush completed - 1 memtables flushed
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567275-98375935864916-0-0/data/
+[LSM][RESTORE] Replayed 0 records from documents.wal
+[LSM][RESTORE] Replayed 1 WAL files
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567275-98375935864916-0-0/data/
+[TEST_FAILPOINT] reached name=FP_LSM_CHECKPOINT_BEFORE_WAL_RECLAIM raftIndex=20 action=crash
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567275-98375935864916-0-0/data/
+[LSM][RESTORE] Replayed 0 records from documents.wal
+[LSM][RESTORE] Replayed 1 WAL files
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567275-98375935864916-0-0/data/
+[LSM][RESTORE] Replayed 0 records from documents.wal
+[LSM][RESTORE] Replayed 1 WAL files
+CHECKPOINT_CRASH_PASS FP_LSM_CHECKPOINT_BEFORE_WAL_RECLAIM {"count":20000,"digest":"fdea598a265f4f939386c0008dcfabb905303c251133422a8425d139d0db3d43","sst_files":2,"wal_bytes":376298}
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567296-98376554293264-0-0/data/
+[LSM] Force flushing all memtables...
+[LSM] Force flush completed - 1 memtables flushed
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567296-98376554293264-0-0/data/
+[LSM][RESTORE] Replayed 0 records from documents.wal
+[LSM][RESTORE] Replayed 1 WAL files
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567296-98376554293264-0-0/data/
+[TEST_FAILPOINT] reached name=FP_LSM_CHECKPOINT_AFTER_WAL_RECLAIM raftIndex=20 action=crash
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567296-98376554293264-0-0/data/
+[LSM][RESTORE] Replayed 0 records from documents.wal
+[LSM][RESTORE] Replayed 1 WAL files
+[LSM] Initialized at: /tmp/pacificdb-test-lsm-checkpoint-crash-2567296-98376554293264-0-0/data/
+[LSM][RESTORE] Replayed 0 records from documents.wal
+[LSM][RESTORE] Replayed 1 WAL files
+CHECKPOINT_CRASH_PASS FP_LSM_CHECKPOINT_AFTER_WAL_RECLAIM {"count":20000,"digest":"fdea598a265f4f939386c0008dcfabb905303c251133422a8425d139d0db3d43","sst_files":2,"wal_bytes":376298}
+natural query and query helpers passed
+RELEASE_CONSISTENCY_PASS
+BUILD_IDENTITY_PASS: explicit archive revision retained; absent metadata stays unknown
+WORKFLOW_CONTRACT_PASS
+DEPLOYMENT_CONTRACT_PASS
+NATIVE_SIGNING_CONTRACT_PASS
+PacificDB website documentation checks passed
+
+up to date in 209ms
+
+> test:npm
+> npm test --workspace @pacificdb/client && npm test --workspace @pacificdb/cli
+
+
+> @pacificdb/client@1.1.1 test
+> node --test test/*.test.js
+
+✔ a timed out TLS handshake cannot poison the queued reconnect (112.943357ms)
+✔ a refused connection cannot reject the queued request reconnecting after it (2.413383ms)
+✔ a concurrent burst after one warm request uses the bounded pool (67.770781ms)
+✔ sends one JSON command and parses one response (3.521087ms)
+✔ decodes a UTF-8 response split inside multibyte characters (14.718677ms)
+✔ explicit legacy project flow retains mapping and membership checks (9.403335ms)
+✔ preserves the public engine detail in request errors (2.820456ms)
+✔ reuses a bounded persistent connection pool under concurrent load (51.295873ms)
+✔ returns a completed connection to the pool before resolving sequential requests (7.501698ms)
+✔ retires a pooled connection when the server marks its response as final (2.69014ms)
+✔ does not reuse a legacy one-request socket before its delayed FIN (1.582478ms)
+✔ prewarms the configured pool and sends insertMany data in one request (1.504745ms)
+✔ reports a non-PacificDB server without leaking a JSON parser error (0.893239ms)
+✔ stores arbitrary media bytes and vector data through public methods (2.413299ms)
+✔ uploads and downloads media sequentially in bounded chunks (24.085959ms)
+✔ preserves an existing media destination until checksum verification succeeds (6.344031ms)
+✔ reports a stable upload id and resumes only missing media chunks (6.549011ms)
+✔ exports complete backup files in verified bounded chunks (14.097955ms)
+✔ direct creation selects database and creates collections without catalog calls (13.884593ms)
+✔ failed direct creation or selection preserves database (2.926043ms)
+✔ URL grammar uses shared normalized fixtures and rejects malformed values (2.107709ms)
+✔ lazy URL requests authenticate once before concurrent writes with captured scope (2.720964ms)
+✔ eager factory authenticates before returning and failure sends no command (1.581588ms)
+✔ invalid URL fails without any network connections (0.453439ms)
+✔ malformed authentication success cannot release queued writes (0.997265ms)
+✔ explicit legacy creation keeps its original project and user across awaits (1.383338ms)
+✔ upload captures database and token across all transfer requests (6.67307ms)
+✔ download captures database and token across all transfer requests (3.410456ms)
+✔ backup captures database and token across all transfer requests (2.559445ms)
+✔ raw credential diagnostics sanitize codes, keys and exception causes (0.508962ms)
+✔ backup export owns a unique private temporary and preserves unrelated part files (4.445321ms)
+ℹ tests 31
+ℹ suites 0
+ℹ pass 31
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 377.870237
+
+> @pacificdb/cli@1.1.1 test
+> node --test test/*.test.js
+
+✔ friendly parser maps Community commands and rejects Cloud commands (2.14539ms)
+✔ shell prints structured resumable media interruption details (6.740088ms)
+✔ rejects unknown commands with useful usage (0.709061ms)
+✔ shell help lists commands without contacting the server (1.328928ms)
+✔ plain pacificdb opens the branded shell (0.889845ms)
+✔ --help prints command categories without starting an engine (0.238118ms)
+✔ --version and -V print the package version without starting an engine (1.007402ms)
+✔ hides internal telemetry from normal output (7.317499ms)
+✔ uploads and downloads media files (4.405776ms)
+✔ direct shell selects only successful creations and failed drop keeps context (8.790586ms)
+✔ restored direct context validates once and removes extra fields (3.129909ms)
+✔ restored legacy context validates once and removes extra fields (3.534074ms)
+✔ stale restored database blocks dependent operation without deleting its data (1.978716ms)
+✔ explicit URL selection overrides saved context and project commands are unavailable (1.910275ms)
+✔ URL passwords do not reach shell output or persisted history (1.796689ms)
+✔ malformed raw JSON cannot echo credential contents (1.803058ms)
+✔ URL command authenticates first, honors environment and closes one-shot sockets (19.376025ms)
+✔ flags with missing values fail before networking (0.269521ms)
+✔ local-engine state decisions match the native shared fixture (0.548521ms)
+✔ TLS connections never start a local plaintext engine (0.297394ms)
+✔ unpublished root owner waits only under the startup lock (112.607576ms)
+✔ malformed request targets return an error without stopping Workbench (60.246464ms)
+✔ direct database adapter preserves browser protections and exposes safe connection info (37.345682ms)
+✔ CRUD queries dispatch one engine action and use independent request clients (15.269398ms)
+✔ engine failures and input/page/read-only limits remain enforced (23.171885ms)
+✔ media transfer and deletion require matching database and collection before access (26.472568ms)
+✔ direct database byte limit and percent-encoded upload scope match engine names (15.079168ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 244.223474
+engine auth boundary and bind-host checks passed
+{"status":"PASS","accepted_cases":10,"rejected_empty":1,"maximum_bytes":10485760,"restart":"abrupt","filenames":5}
+Community automatic-start checks passed
+E2E: start authenticated engine
+E2E: exercise interactive shells on the disposable local engine
+E2E: advertised shell command matrix complete
+E2E: shell error matrix complete
+E2E: graceful restart complete
+E2E: abrupt restart complete
+{
+  "status": "PASS",
+  "root": "/tmp/pacificdb-community-e2e-heTtM9",
+  "shell_commands_executed": 71,
+  "media_chunks": 3,
+  "insert_many_documents": 500,
+  "concurrent_writes": 24,
+  "concurrent_project_creates": 6,
+  "concurrent_api_key_create_revoke": 6,
+  "concurrent_media_chunks": 4,
+  "graceful_restarts": 1,
+  "abrupt_restarts": 1
+}
+{"status":"PASS","cases":6,"port":40575}
+{
+  "status": "PASS",
+  "database_name_cases": 13,
+  "document_contract_cases": 15,
+  "aggregation_cases": 16,
+  "explain_cases": 4,
+  "role_cases": 8,
+  "vector_cases": 18,
+  "timeout_categories": 9,
+  "malformed_response_categories": 9
+}
+✔ reports CONSISTENT for equal canonical digests (45.327384ms)
+✔ reports DIVERGENT without document contents (33.483727ms)
+✔ reports LAGGING when applied indexes do not converge (111.998797ms)
+✔ reports UNAVAILABLE for an unreachable member (52.519992ms)
+✔ reports INCOMPATIBLE for cluster or schema mismatch (30.636541ms)
+✔ reports AUTHENTICATION_FAILED and redacts server detail (46.150957ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 359.959493
+REPLICA_INTEGRITY_RF3_PASS
+{
+  "status": "PASS",
+  "persistent_entities": 13,
+  "graceful_restarts": 2,
+  "abrupt_restarts": 1,
+  "exact_project_id": "project_6ac1d4cd8371bea1495409a1"
+}
+{
+  "status": "PASS",
+  "genuine_enospc": true,
+  "isolated_mount_namespace": true,
+  "write_categories": 21,
+  "filled_bytes_by_case": {
+    "project-create": 134217728,
+    "project-delete": 134217728,
+    "database-create": 134217728,
+    "database-drop": 134217728,
+    "collection-create": 134217728,
+    "collection-drop": 134217728,
+    "document-insert": 134217728,
+    "document-update": 134217728,
+    "document-delete": 134217728,
+    "index-create": 134217728,
+    "index-drop": 134217728,
+    "api-key-create": 134217728,
+    "api-key-revoke": 134217728,
+    "backup-create": 134217728,
+    "backup-restore": 134217728,
+    "media-begin": 134217728,
+    "media-chunk": 134217728,
+    "media-finalize": 134217728,
+    "vector-put": 134217728,
+    "cli-history": 134217728,
+    "cli-context": 134217728
+  }
+}
+{
+  "status": "PASS",
+  "leader_term": 0,
+  "commit_indexes": [
+    17,
+    17,
+    17
+  ],
+  "last_applied": [
+    17,
+    17,
+    17
+  ],
+  "replicated_media_chunks": 3,
+  "follower_restart": 1
+}
+{
+  "status": "PASS",
+  "partition_transport": "six directed TCP proxies",
+  "rounds": [
+    {
+      "isolated": 0,
+      "elected": 2,
+      "term": 1,
+      "convergedLeader": 2,
+      "commitIndex": 7
+    },
+    {
+      "isolated": 2,
+      "elected": 1,
+      "term": 2,
+      "convergedLeader": 1,
+      "commitIndex": 9
+    }
+  ],
+  "minority_writes_acknowledged": 0,
+  "majority_writes_acknowledged": 2,
+  "final_term": 2,
+  "final_commit_index": 9
+}
+✔ restartNode swaps one binary while preserving node identity and storage (244.432353ms)
+✔ upgrade rollback decisions fail closed at format boundaries (0.939145ms)
+✔ RF3 fixture can service its persistent-client capacity without socket starvation (8.030835ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 302.191372
+Mixed-version RF3 test skipped: set PACIFICDB_OLD_BUILD to an exact prior artifact
+{"status":"ROUND_PASS","clients":64,"repeat":1,"duration_seconds":10,"operations":1088,"acknowledged_documents":320,"errors":0,"initial_term":0,"final_term":0,"max_apply_lag":1,"convergence_ms":160,"final_commit_index":580,"final_last_applied":[580,580,580]}
+{"status":"ROUND_PASS","clients":128,"repeat":1,"duration_seconds":10,"operations":2176,"acknowledged_documents":640,"errors":0,"initial_term":0,"final_term":0,"max_apply_lag":1,"convergence_ms":168,"final_commit_index":1156,"final_last_applied":[1156,1156,1156]}
+{
+  "status": "PASS",
+  "configured_duration_seconds": 10,
+  "configured_repeats": 1,
+  "client_counts": [
+    64,
+    128
+  ],
+  "rounds": 2,
+  "total_operations": 3264,
+  "total_acknowledged_documents": 960
+}
+........................................................................ [ 54%]
+.............................................................            [100%]
+133 passed in 46.50s
+PASS: 135 Community dispatches have checked named SDK bindings
+{"status": "PASS", "language": "python", "phase": "prepare", "exact_documents": 160, "media_bytes": 700000}
+{"status":"PASS","language":"java","phase":"prepare","exact_documents":160,"media_bytes":700000}
+{"status": "PASS", "language": "python", "phase": "recovered", "exact_documents": 160, "media_bytes": 700000}
+{"status":"PASS","language":"java","phase":"recovered","exact_documents":160,"media_bytes":700000}
+{"status": "PASS", "language": "python", "phase": "tls", "exact_documents": 160, "media_bytes": 700000}
+{"status":"PASS","language":"java","phase":"tls","exact_documents":160,"media_bytes":700000}
+{"status":"PASS","authenticated":["TCP","TLS"],"sdk_clients":2,"exact_documents_per_client":160,"restart":"SIGKILL","root":"/tmp/pacificdb-cross-sdk-SE12xF"}
+PacificDB Community checks passed

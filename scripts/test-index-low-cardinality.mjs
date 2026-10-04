@@ -8,9 +8,7 @@ import { startDesktopEngine } from '../desktop/engine.mjs';
 
 const build = path.resolve(process.argv[2] || 'build');
 const root = await mkdtemp(path.join(os.tmpdir(), 'pacificdb-index-scale-'));
-const records = Number(process.argv[3] || 50000);
-assert.ok(Number.isSafeInteger(records) && records >= 1000 && records % 1000 === 0,
-  'record count must be a positive multiple of 1000');
+const records = 50000;
 let engine, client;
 try {
   engine = await startDesktopEngine({ executable: path.join(build,
@@ -31,9 +29,7 @@ try {
     const result = await client.request({ action, collection: 'records',
       name: 'country_idx', ...(action === 'createIndex' ? { fields: { country: 1 } } : {}) });
     const elapsedMs = Math.round(performance.now() - started);
-    // Keep the 50k regression budget strict; larger optional fixtures allow linear growth.
-    const budgetMs = 15000 * Math.max(1, records / 50000);
-    assert.ok(elapsedMs < budgetMs, `${action} took ${elapsedMs} ms for ${records} identical values`);
+    assert.ok(elapsedMs < 15000, `${action} took ${elapsedMs} ms for ${records} identical values`);
     assert.ok(['ok', 'clean', 'CLEAN'].includes(result.status), JSON.stringify(result));
     console.log('INDEX_SCALE_CHECK', action, elapsedMs, 'ms');
   }

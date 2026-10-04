@@ -1,0 +1,107 @@
+
+> test:npm
+> npm test --workspace @pacificdb/client && npm test --workspace @pacificdb/cli
+
+
+> @pacificdb/client@1.1.1 test
+> node --test test/*.test.js
+
+✔ a timed out TLS handshake cannot poison the queued reconnect (113.486126ms)
+✔ a refused connection cannot reject the queued request reconnecting after it (5.345691ms)
+✔ a concurrent burst after one warm request uses the bounded pool (66.252661ms)
+✔ sends one JSON command and parses one response (3.679239ms)
+✔ decodes a UTF-8 response split inside multibyte characters (12.756859ms)
+✔ explicit legacy project flow retains mapping and membership checks (4.767231ms)
+✔ preserves the public engine detail in request errors (1.791764ms)
+✔ reuses a bounded persistent connection pool under concurrent load (48.383267ms)
+✔ returns a completed connection to the pool before resolving sequential requests (2.877214ms)
+✔ retires a pooled connection when the server marks its response as final (1.422732ms)
+✔ does not reuse a legacy one-request socket before its delayed FIN (1.160219ms)
+✔ prewarms the configured pool and sends insertMany data in one request (1.346311ms)
+✔ reports a non-PacificDB server without leaking a JSON parser error (1.078091ms)
+✔ stores arbitrary media bytes and vector data through public methods (3.73521ms)
+✔ uploads and downloads media sequentially in bounded chunks (28.70122ms)
+✔ preserves an existing media destination until checksum verification succeeds (4.868881ms)
+✔ reports a stable upload id and resumes only missing media chunks (7.723366ms)
+✔ exports complete backup files in verified bounded chunks (16.063327ms)
+✔ direct creation selects database and creates collections without catalog calls (14.111347ms)
+✔ failed direct creation or selection preserves database (4.7852ms)
+✔ URL grammar uses shared normalized fixtures and rejects malformed values (2.447149ms)
+✔ lazy URL requests authenticate once before concurrent writes with captured scope (4.497354ms)
+✔ eager factory authenticates before returning and failure sends no command (2.37121ms)
+✔ invalid URL fails without any network connections (3.953352ms)
+✔ malformed authentication success cannot release queued writes (1.534863ms)
+✔ explicit legacy creation keeps its original project and user across awaits (1.942591ms)
+✔ upload captures database and token across all transfer requests (7.690098ms)
+✔ download captures database and token across all transfer requests (4.441534ms)
+✔ backup captures database and token across all transfer requests (3.64236ms)
+✔ raw credential diagnostics sanitize codes, keys and exception causes (0.71735ms)
+✔ backup export owns a unique private temporary and preserves unrelated part files (3.243261ms)
+ℹ tests 31
+ℹ suites 0
+ℹ pass 31
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 381.694205
+
+> @pacificdb/cli@1.1.1 test
+> node --test test/*.test.js
+
+✔ friendly parser maps Community commands and rejects Cloud commands (2.237689ms)
+✔ shell prints structured resumable media interruption details (7.322951ms)
+✔ rejects unknown commands with useful usage (0.975518ms)
+✔ shell help lists commands without contacting the server (2.265792ms)
+✔ plain pacificdb opens the branded shell (2.420171ms)
+✔ --help prints command categories without starting an engine (0.415552ms)
+✔ --version and -V print the package version without starting an engine (1.646835ms)
+✔ hides internal telemetry from normal output (11.291611ms)
+✔ uploads and downloads media files (6.928135ms)
+✔ direct shell selects only successful creations and failed drop keeps context (15.954727ms)
+✔ restored direct context validates once and removes extra fields (3.6776ms)
+✔ restored legacy context validates once and removes extra fields (3.229918ms)
+✔ stale restored database blocks dependent operation without deleting its data (2.199702ms)
+✔ explicit URL selection overrides saved context and project commands are unavailable (2.606465ms)
+✔ URL passwords do not reach shell output or persisted history (2.208971ms)
+✔ malformed raw JSON cannot echo credential contents (2.077708ms)
+✔ URL command authenticates first, honors environment and closes one-shot sockets (20.175677ms)
+✔ flags with missing values fail before networking (0.301561ms)
+✔ local-engine state decisions match the native shared fixture (0.642309ms)
+✔ TLS connections never start a local plaintext engine (0.307344ms)
+✔ unpublished root owner waits only under the startup lock (113.073986ms)
+✔ malformed request targets return an error without stopping Workbench (73.564494ms)
+✔ direct database adapter preserves browser protections and exposes safe connection info (47.47345ms)
+✔ CRUD queries dispatch one engine action and use independent request clients (17.545159ms)
+✔ engine failures and input/page/read-only limits remain enforced (23.762013ms)
+✔ media transfer and deletion require matching database and collection before access (18.697592ms)
+✔ direct database byte limit and percent-encoded upload scope match engine names (14.470823ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 269.115478
+DESKTOP_ENGINE_ISOLATION_AND_CLEAN_SHUTDOWN_PASS
+DESKTOP_ENGINE_ORIGINAL_LOG_DIAGNOSTICS_PASS
+DESKTOP_ENGINE_WRITE_ONLY_LOG_COMPATIBILITY_PASS
+✔ lifecycle JSON stays intact when stdout arrives before its stderr newline (79.856804ms)
+✔ upgrade artifact intake accepts files and build directories and rejects nonexecutables (292.153476ms)
+✔ restartNode swaps one binary while preserving node identity and storage (226.083858ms)
+✔ upgrade rollback decisions fail closed at format boundaries (0.242386ms)
+✔ RF3 fixture can service its persistent-client capacity without socket starvation (1.615056ms)
+✔ website validation still rejects missing files, fragments, assets and obsolete links (217.238362ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 568.628612
+{"status":"PASS","cycles":5,"clients_per_cycle":16,"writes":1000,"acknowledged":996,"pid":3040136}
+PacificDB website documentation checks passed
+RELEASE_CONSISTENCY_PASS
+WORKFLOW_CONTRACT_PASS

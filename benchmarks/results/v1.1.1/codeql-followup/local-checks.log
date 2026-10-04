@@ -1,0 +1,120 @@
+Command:
+set -e
+npm run test:npm
+node scripts/test-desktop-engine.mjs build
+node --test scripts/test-rf3-upgrade-contract.mjs scripts/test-site-docs-contract.mjs
+node scripts/test-site-docs.mjs
+python3 scripts/test-release-consistency.py
+python3 scripts/test-workflow-contract.py
+node --check desktop/engine.mjs
+node --check scripts/test-community-rf3-upgrade.mjs
+git diff --check
+
+Exit code: 0
+
+
+> test:npm
+> npm test --workspace @pacificdb/client && npm test --workspace @pacificdb/cli
+
+
+> @pacificdb/client@1.1.1 test
+> node --test test/*.test.js
+
+✔ a timed out TLS handshake cannot poison the queued reconnect (117.148755ms)
+✔ a refused connection cannot reject the queued request reconnecting after it (8.459923ms)
+✔ a concurrent burst after one warm request uses the bounded pool (74.66197ms)
+✔ sends one JSON command and parses one response (2.337041ms)
+✔ decodes a UTF-8 response split inside multibyte characters (13.562277ms)
+✔ explicit legacy project flow retains mapping and membership checks (6.401923ms)
+✔ preserves the public engine detail in request errors (2.5211ms)
+✔ reuses a bounded persistent connection pool under concurrent load (50.791713ms)
+✔ returns a completed connection to the pool before resolving sequential requests (8.883768ms)
+✔ retires a pooled connection when the server marks its response as final (6.967785ms)
+✔ does not reuse a legacy one-request socket before its delayed FIN (5.795392ms)
+✔ prewarms the configured pool and sends insertMany data in one request (6.434142ms)
+✔ reports a non-PacificDB server without leaking a JSON parser error (4.326345ms)
+✔ stores arbitrary media bytes and vector data through public methods (14.428447ms)
+✔ uploads and downloads media sequentially in bounded chunks (76.432546ms)
+✔ preserves an existing media destination until checksum verification succeeds (17.361296ms)
+✔ reports a stable upload id and resumes only missing media chunks (15.405671ms)
+✔ exports complete backup files in verified bounded chunks (27.247372ms)
+✔ direct creation selects database and creates collections without catalog calls (25.2965ms)
+✔ failed direct creation or selection preserves database (6.084449ms)
+✔ URL grammar uses shared normalized fixtures and rejects malformed values (4.717467ms)
+✔ lazy URL requests authenticate once before concurrent writes with captured scope (5.646092ms)
+✔ eager factory authenticates before returning and failure sends no command (3.542465ms)
+✔ invalid URL fails without any network connections (0.871203ms)
+✔ malformed authentication success cannot release queued writes (1.967464ms)
+✔ explicit legacy creation keeps its original project and user across awaits (2.871839ms)
+✔ upload captures database and token across all transfer requests (12.615228ms)
+✔ download captures database and token across all transfer requests (7.880017ms)
+✔ backup captures database and token across all transfer requests (5.758997ms)
+✔ raw credential diagnostics sanitize codes, keys and exception causes (1.232714ms)
+✔ backup export owns a unique private temporary and preserves unrelated part files (8.072645ms)
+ℹ tests 31
+ℹ suites 0
+ℹ pass 31
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 552.221541
+
+> @pacificdb/cli@1.1.1 test
+> node --test test/*.test.js
+
+✔ friendly parser maps Community commands and rejects Cloud commands (5.139959ms)
+✔ shell prints structured resumable media interruption details (15.545592ms)
+✔ rejects unknown commands with useful usage (1.717775ms)
+✔ shell help lists commands without contacting the server (3.333683ms)
+✔ plain pacificdb opens the branded shell (2.191198ms)
+✔ --help prints command categories without starting an engine (0.573224ms)
+✔ --version and -V print the package version without starting an engine (2.197338ms)
+✔ hides internal telemetry from normal output (15.490208ms)
+✔ uploads and downloads media files (9.005242ms)
+✔ direct shell selects only successful creations and failed drop keeps context (23.900928ms)
+✔ restored direct context validates once and removes extra fields (5.366673ms)
+✔ restored legacy context validates once and removes extra fields (4.885436ms)
+✔ stale restored database blocks dependent operation without deleting its data (2.483971ms)
+✔ explicit URL selection overrides saved context and project commands are unavailable (3.526812ms)
+✔ URL passwords do not reach shell output or persisted history (2.957787ms)
+✔ malformed raw JSON cannot echo credential contents (3.48753ms)
+✔ URL command authenticates first, honors environment and closes one-shot sockets (30.314767ms)
+✔ flags with missing values fail before networking (0.521198ms)
+✔ local-engine state decisions match the native shared fixture (1.254692ms)
+✔ TLS connections never start a local plaintext engine (0.700404ms)
+✔ unpublished root owner waits only under the startup lock (131.969548ms)
+✔ malformed request targets return an error without stopping Workbench (131.391546ms)
+✔ direct database adapter preserves browser protections and exposes safe connection info (69.564978ms)
+✔ CRUD queries dispatch one engine action and use independent request clients (23.317404ms)
+✔ engine failures and input/page/read-only limits remain enforced (36.216334ms)
+✔ media transfer and deletion require matching database and collection before access (38.704262ms)
+✔ direct database byte limit and percent-encoded upload scope match engine names (21.814568ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 459.066124
+DESKTOP_ENGINE_ISOLATION_AND_CLEAN_SHUTDOWN_PASS
+DESKTOP_ENGINE_ORIGINAL_LOG_DIAGNOSTICS_PASS
+DESKTOP_ENGINE_WRITE_ONLY_LOG_COMPATIBILITY_PASS
+✔ upgrade artifact intake accepts files and build directories and rejects nonexecutables (563.367542ms)
+✔ restartNode swaps one binary while preserving node identity and storage (255.387355ms)
+✔ upgrade rollback decisions fail closed at format boundaries (0.646551ms)
+✔ RF3 fixture can service its persistent-client capacity without socket starvation (5.750375ms)
+✔ website validation still rejects missing files, fragments, assets and obsolete links (405.086238ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 930.841366
+PacificDB website documentation checks passed
+RELEASE_CONSISTENCY_PASS
+WORKFLOW_CONTRACT_PASS
+

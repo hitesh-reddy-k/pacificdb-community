@@ -1,0 +1,3 @@
+# Generated benchmark and validation logs are retained byte-for-byte as evidence.
+benchmarks/results/**/*.log whitespace=-trailing-space
+benchmarks/results/**/hosted-p0/*.json whitespace=-trailing-space

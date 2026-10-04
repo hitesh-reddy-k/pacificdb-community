@@ -1,0 +1,8 @@
+{
+  "status": "ABORTED_DIAGNOSTIC",
+  "reason": "Reproduced SDK serial-warmup pool starvation; regression test failed peak concurrency 1 vs configured 4. Preserve all completed trials; new corrected series will be separate. One regression test overlapped the final cancelled diagnostic phase, not the fresh final benchmark.",
+  "owner_pid": 2284370,
+  "terminated_engine_pids": [
+    2297433
+  ]
+}

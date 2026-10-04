@@ -1,0 +1,329 @@
+[MAIN] Starting PacificDB Engine...
+[EnvConfig] Loaded 23 configuration entries
+{"code":"engine_starting","fields":{"engine_pid":2295935,"engine_version":"1.1.1","instance_id":"engine_2904442b376cf8648f955b42f4841ab7"},"message":"PacificDB engine is starting","operation_id":"engine_2904442b376cf8648f955b42f4841ab7","severity":"info","subsystem":"engine","timestamp_ms":1791042125661}
+[MAIN] Data root: /tmp/pacificdb-release-bench-oo2OTz/data
+[MAIN] Root identity: /tmp/pacificdb-release-bench-oo2OTz/data/.pacificdb-root-identity.json
+[MAIN] Root lock: /tmp/pacificdb-release-bench-oo2OTz/data/.pacificdb-root.lock
+[MAIN] WAL dir:   /tmp/pacificdb-release-bench-oo2OTz/data/wal
+[MAIN] SST dir:   /tmp/pacificdb-release-bench-oo2OTz/data/sst
+[MAIN] Backups:   /tmp/pacificdb-release-bench-oo2OTz/backup
+
+[MAIN] ========== CRASH RECOVERY PHASE ==========
+[ENGINE] Data root initialized: /tmp/pacificdb-release-bench-oo2OTz/data
+[LSM] Initialized at: /tmp/pacificdb-release-bench-oo2OTz/data/
+
+[RECOVERY] Starting 6-phase recovery sequence...
+[RECOVERY] Data root: /tmp/pacificdb-release-bench-oo2OTz/data
+
+[RECOVERY] Phase 1: Lock & Validate Directory
+[RECOVERY] Last shutdown was UNCLEAN - crash recovery in progress
+[RECOVERY] ✓ Directory locked, clean shutdown flag checked
+
+[RECOVERY] Phase 2: WAL Scan & Truncate
+[RECOVERY] ✓ WAL scanned, 0 records found, tail truncated
+
+[RECOVERY] Phase 3: Replay WAL (Committed Only)
+[RECOVERY] ✓ WAL ownership assigned without payload materialization
+
+[RECOVERY] Phase 4: Restore Raft State
+[RECOVERY] ✓ Raft state restored, currentTerm: 0, commitIndex: 0
+
+[RECOVERY] Phase 5: Snapshot Restore
+[RECOVERY] ✓ No snapshot found (normal)
+
+[RECOVERY] Phase 6: Consistency Check
+[RECOVERY] Invariants OK: appliedLSN=0, commitIndex=0, currentTerm=0
+[RECOVERY] ✓ Consistency check passed
+
+[RECOVERY] ✓✓✓ Recovery complete - node ready for operation ✓✓✓
+
+[MAIN] ✓ Recovery successful, node ready to serve
+[ENGINE] Data root initialized: /tmp/pacificdb-release-bench-oo2OTz/data
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-release-bench-oo2OTz/data/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-release-bench-oo2OTz/data/system/system/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791042125,"id":"6ac1224d3f5d425a95fa8aa8","name":"users"}
+[LSM] Initialized at: /tmp/pacificdb-release-bench-oo2OTz/data/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[DLOG][CREATE_DB][PATH] user=system db=pacificdb_meta base=/tmp/pacificdb-release-bench-oo2OTz/data/system/pacificdb_meta
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-release-bench-oo2OTz/data/system/pacificdb_meta/data/projects.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791042125,"id":"6ac1224d3f5d425a95fa8aaa","name":"projects"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-release-bench-oo2OTz/data/system/pacificdb_meta/data/database_projects.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791042125,"id":"6ac1224d3f5d425a95fa8aab","name":"database_projects"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-release-bench-oo2OTz/data/system/pacificdb_meta/data/media_manifests.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791042125,"id":"6ac1224d3f5d425a95fa8aac","name":"media_manifests"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-release-bench-oo2OTz/data/system/pacificdb_meta/data/media_chunks.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791042125,"id":"6ac1224d3f5d425a95fa8aad","name":"media_chunks"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-release-bench-oo2OTz/data/system/pacificdb_meta/data/restore_journal.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791042125,"id":"6ac1224d3f5d425a95fa8aae","name":"restore_journal"}
+[LIMITER] Initialized - timeout=30s, maxResult=100MB, maxScan=1000000 rows, maxResultDocs=10000
+[MEMORY] malloc tuned: M_ARENA_MAX=2, M_TRIM_THRESHOLD=256KB
+[MEMORY] Initialized v2.9R - Max: 4096MB, BUSY=80%, THROTTLE=90%, BULK_REJECT=95%, READ_ONLY=98%, poll=1000ms
+{"code":"media_reconciled","fields":{"expired_uploads":0,"removed_orphans":0,"repaired_progress":0,"reset_verifying":0},"message":"Media upload state reconciled","severity":"info","subsystem":"media","timestamp_ms":1791042125671}
+[MEMORY] Monitor thread started
+
+[MAIN] ========== MVCC INITIALIZATION ==========
+[MAIN] ✓ TXIDAllocator initialized, next TXID: 1
+[MAIN] ✓ SnapshotManager initialized
+[GC] Garbage collector started (interval: 5000ms)
+[MAIN] ✓ GarbageCollector started
+[LSM] Initialized at: /tmp/pacificdb-release-bench-oo2OTz/data/
+[GC] GC loop started
+[LSM] Background maintenance started
+[LSM] flush_threads=2 max_concurrent_flushes=2
+[WAL] group_commit=enabled
+[WAL] group_commit_interval_ms=3
+[WAL] group_commit_batch_size=512
+[WAL] group_commit_max_bytes=4194304
+[WAL] Background flusher started, interval=3ms groupCommit=on
+
+[MAIN] ========== SHARD MANAGER INITIALIZATION ==========
+[ShardManager] Initialized 1 shard(s), replica target=3, nodes=1
+[ShardManager] Started with 1 shards
+[MAIN] ✓ ShardManager started with dynamic shard allocation
+[ShardManager] Registered node bench-1 at 127.0.0.1:33831
+[MAIN] Single-node or RAFT_IS_LEADER=true, starting as LEADER
+[RAFTCORE] Loaded persisted state term=0 commit=0 applied=0 source=legacy
+[RAFTCORE] No Raft log entries to replay
+[RAFTCORE] Worker pool configured initial=1 max=1
+[RAFTCORE] Production Raft initialized node=bench-1 leader=true peers=0 configuredWorkers=1 dataRoot=/tmp/pacificdb-release-bench-oo2OTz/data
+[RAFTCORE] Listener starting on port 37329
+[RAFTCORE] Listener ready on 0.0.0.0:37329
+[RAFTCORE] Monitor loop waiting 10 seconds for full cluster initialization...
+[RAFTCORE] apply worker started node=bench-1
+[RAFTCORE] Production Raft started (leader=true) mode=2) circuit=0) workers=1
+[MAIN] standalone_raft_bypass=true
+
+[MAIN] ========== SERVER STARTUP ==========
+[TenantManager] Initialized with 0 tenants
+[SERVER] TenantManager initialized for multi-tenant isolation
+[DYNAMIC-RESOURCE] ENGINE_CPU_CORES override: 16 -> 2 (concurrency cap)
+[DYNAMIC-RESOURCE] CPU Cores: 2 | Target: 90%
+[DYNAMIC-RESOURCE] Optimal Workers: 4 | Threads: 64
+[DYNAMIC-RESOURCE] Connection Pool: 4-64 threads, queue: 32768
+[CONNECTION-POOL] Initializing with 4 min threads, 64 max threads
+[CONNECTION-POOL] Started 4 worker threads
+[DYNAMIC-RESOURCE] DB Task Queue Partitioned: 4 shards, 2 workers/shard, queue/shard: 131072
+[DB-TASK-QUEUE-PARTITIONED] Configured shards=4 workers_per_shard=2 max_queue_per_shard=131072
+[SERVER] Listening on 127.0.0.1:33831 with connection pool...
+[SERVER] Connection pool: 4-64 threads, max queue: 32768
+[SERVER] Admission control: max connections=128 (effective inflight target), queue high watermark=24576
+[SERVER] Role: LEADER
+{"code":"engine_ready","fields":{"engine_pid":2295935,"host":"127.0.0.1","instance_id":"engine_2904442b376cf8648f955b42f4841ab7","port":33831},"message":"PacificDB engine is ready","operation_id":"engine_2904442b376cf8648f955b42f4841ab7","severity":"info","subsystem":"engine","timestamp_ms":1791042125673}
+[SERVER] I/O model: epoll (events=256, accept_batch=256, dispatch_batch=64, coalesce_us=250, priority_scheduler=on)
+[RAFTCORE] Inbound RPC pool workers=16 queue=1024
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 131072
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 131072
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 131072
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 131072
+[DB-TASK-QUEUE-PARTITIONED] Started with 4 shards, 2 workers per shard, 131072 max queue per shard
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_1","severity":"debug","subsystem":"network","timestamp_ms":1791042125758}
+[DLOG][CREATE_DB][SUBMIT] user=system db=bench type=binary raftEnabled=1 leader=1
+[DLOG][CREATE_DB][APPLY_REPLICATED_ENTRY] requestId=eng_req_2 user=system db=bench type=binary
+[DLOG][CREATE_DB][PATH] user=system db=bench base=/tmp/pacificdb-release-bench-oo2OTz/data/system/bench
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[DLOG][SCHEMA][RESPONSE] requestId=eng_req_2 action=createDatabase committed=true user=system db=bench
+[DLOG][CREATE_COLLECTION][APPLY_REPLICATED_ENTRY] requestId=eng_req_3 user=system db=bench collection=records
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-release-bench-oo2OTz/data/system/bench/data/records.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791042125,"id":"6ac1224d3f5d425a95fa8ab0","name":"records"}
+[DLOG][SCHEMA][RESPONSE] requestId=eng_req_3 action=createCollection committed=true user=system db=bench collection=records
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_135","severity":"debug","subsystem":"network","timestamp_ms":1791042126229}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_137","severity":"debug","subsystem":"network","timestamp_ms":1791042126230}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_136","severity":"debug","subsystem":"network","timestamp_ms":1791042126230}
+[CONNECTION-POOL] Scaled up to 8 threads (queued=4, idle=0, shortage=4)
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_144","severity":"debug","subsystem":"network","timestamp_ms":1791042126274}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_146","severity":"debug","subsystem":"network","timestamp_ms":1791042126274}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_145","severity":"debug","subsystem":"network","timestamp_ms":1791042126274}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_147","severity":"debug","subsystem":"network","timestamp_ms":1791042126274}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_1","severity":"debug","subsystem":"network","timestamp_ms":1791042127588}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_147","severity":"debug","subsystem":"network","timestamp_ms":1791042127588}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_137","severity":"debug","subsystem":"network","timestamp_ms":1791042127588}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_144","severity":"debug","subsystem":"network","timestamp_ms":1791042127588}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_145","severity":"debug","subsystem":"network","timestamp_ms":1791042127588}
+[MAIN] Starting PacificDB Engine...
+[EnvConfig] Loaded 23 configuration entries
+{"code":"engine_starting","fields":{"engine_pid":2295995,"engine_version":"1.1.1","instance_id":"engine_aade5bc6f080a3676c44579dcd7036a0"},"message":"PacificDB engine is starting","operation_id":"engine_aade5bc6f080a3676c44579dcd7036a0","severity":"info","subsystem":"engine","timestamp_ms":1791042127598}
+[MAIN] Data root: /tmp/pacificdb-release-bench-oo2OTz/data
+[MAIN] Root identity: /tmp/pacificdb-release-bench-oo2OTz/data/.pacificdb-root-identity.json
+[MAIN] Root lock: /tmp/pacificdb-release-bench-oo2OTz/data/.pacificdb-root.lock
+[MAIN] WAL dir:   /tmp/pacificdb-release-bench-oo2OTz/data/wal
+[MAIN] SST dir:   /tmp/pacificdb-release-bench-oo2OTz/data/sst
+[MAIN] Backups:   /tmp/pacificdb-release-bench-oo2OTz/backup
+
+[MAIN] ========== CRASH RECOVERY PHASE ==========
+[ENGINE] Data root initialized: /tmp/pacificdb-release-bench-oo2OTz/data
+[LSM] Initialized at: /tmp/pacificdb-release-bench-oo2OTz/data/
+
+[RECOVERY] Starting 6-phase recovery sequence...
+[RECOVERY] Data root: /tmp/pacificdb-release-bench-oo2OTz/data
+
+[RECOVERY] Phase 1: Lock & Validate Directory
+[RECOVERY] Last shutdown was UNCLEAN - crash recovery in progress
+[RECOVERY] ✓ Directory locked, clean shutdown flag checked
+
+[RECOVERY] Phase 2: WAL Scan & Truncate
+[RECOVERY] ✓ WAL scanned, 0 records found, tail truncated
+
+[RECOVERY] Phase 3: Replay WAL (Committed Only)
+[RECOVERY] ✓ WAL ownership assigned without payload materialization
+
+[RECOVERY] Phase 4: Restore Raft State
+[RECOVERY] ✓ Raft state restored, currentTerm: 0, commitIndex: 0
+
+[RECOVERY] Phase 5: Snapshot Restore
+[RECOVERY] ✓ No snapshot found (normal)
+
+[RECOVERY] Phase 6: Consistency Check
+[RECOVERY] Invariants OK: appliedLSN=0, commitIndex=0, currentTerm=0
+[RECOVERY] ✓ Consistency check passed
+
+[RECOVERY] ✓✓✓ Recovery complete - node ready for operation ✓✓✓
+
+[MAIN] ✓ Recovery successful, node ready to serve
+[ENGINE] Data root initialized: /tmp/pacificdb-release-bench-oo2OTz/data
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-release-bench-oo2OTz/data/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-release-bench-oo2OTz/data/system/system/data/users.bin
+[LSM] Initialized at: /tmp/pacificdb-release-bench-oo2OTz/data/
+[LSM][RESTORE] Replayed 2000 records from records.wal
+[LSM][RESTORE] Replayed 1 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[DLOG][CREATE_DB][PATH] user=system db=pacificdb_meta base=/tmp/pacificdb-release-bench-oo2OTz/data/system/pacificdb_meta
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-release-bench-oo2OTz/data/system/pacificdb_meta/data/projects.bin
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-release-bench-oo2OTz/data/system/pacificdb_meta/data/database_projects.bin
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-release-bench-oo2OTz/data/system/pacificdb_meta/data/media_manifests.bin
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-release-bench-oo2OTz/data/system/pacificdb_meta/data/media_chunks.bin
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-release-bench-oo2OTz/data/system/pacificdb_meta/data/restore_journal.bin
+{"code":"media_reconciled","fields":{"expired_uploads":0,"removed_orphans":0,"repaired_progress":0,"reset_verifying":0},"message":"Media upload state reconciled","severity":"info","subsystem":"media","timestamp_ms":1791042127700}
+[LIMITER] Initialized - timeout=30s, maxResult=100MB, maxScan=1000000 rows, maxResultDocs=10000
+[MEMORY] malloc tuned: M_ARENA_MAX=2, M_TRIM_THRESHOLD=256KB
+[MEMORY] Initialized v2.9R - Max: 4096MB, BUSY=80%, THROTTLE=90%, BULK_REJECT=95%, READ_ONLY=98%, poll=1000ms
+[MEMORY] Monitor thread started
+
+[MAIN] ========== MVCC INITIALIZATION ==========
+[MAIN] ✓ TXIDAllocator initialized, next TXID: 1
+[MAIN] ✓ SnapshotManager initialized
+[GC] Garbage collector started (interval: 5000ms)
+[MAIN] ✓ GarbageCollector started
+[LSM] Initialized at: /tmp/pacificdb-release-bench-oo2OTz/data/
+[GC] GC loop started
+[LSM] Background maintenance started
+[LSM] flush_threads=2 max_concurrent_flushes=2
+[WAL] group_commit=enabled
+[WAL] group_commit_interval_ms=3
+[WAL] group_commit_batch_size=512
+[WAL] group_commit_max_bytes=4194304
+[WAL] Background flusher started, interval=3ms groupCommit=on
+
+[MAIN] ========== SHARD MANAGER INITIALIZATION ==========
+[ShardManager] Loaded 1 shards from /tmp/pacificdb-release-bench-oo2OTz/data/shard_map.json
+[ShardManager] Started with 1 shards
+[MAIN] ✓ ShardManager started with dynamic shard allocation
+[ShardManager] Registered node bench-1 at 127.0.0.1:33831
+[MAIN] Single-node or RAFT_IS_LEADER=true, starting as LEADER
+[RAFTCORE] Loaded persisted state term=0 commit=22 applied=22 source=checksummed
+[RAFTCORE] Replaying 22 Raft log entries from raft/log.bin maxIndex=22 committedPrefix=22 recoveryMode=checksummed
+[DLOG][CREATE_DB][APPLY_REPLICATED_ENTRY] requestId=eng_req_2 user=system db=bench type=binary
+[DLOG][CREATE_DB][PATH] user=system db=bench base=/tmp/pacificdb-release-bench-oo2OTz/data/system/bench
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[DLOG][CREATE_COLLECTION][APPLY_REPLICATED_ENTRY] requestId=eng_req_3 user=system db=bench collection=records
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-release-bench-oo2OTz/data/system/bench/data/records.bin
+[RAFTCORE] ✅ Raft log replay complete reapplied=22
+[RAFTCORE] Worker pool configured initial=1 max=1
+[RAFTCORE] Production Raft initialized node=bench-1 leader=true peers=0 configuredWorkers=1 dataRoot=/tmp/pacificdb-release-bench-oo2OTz/data
+[RAFTCORE] Listener starting on port 37329
+[RAFTCORE] Listener ready on 0.0.0.0:37329
+[RAFTCORE] apply worker started node=bench-1
+[RAFTCORE] Monitor loop waiting 10 seconds for full cluster initialization...
+[RAFTCORE] Production Raft started (leader=true) mode=2) circuit=0) workers=1
+[MAIN] standalone_raft_bypass=true
+
+[MAIN] ========== SERVER STARTUP ==========
+[TenantManager] Initialized with 0 tenants
+[SERVER] TenantManager initialized for multi-tenant isolation
+[DYNAMIC-RESOURCE] ENGINE_CPU_CORES override: 16 -> 2 (concurrency cap)
+[DYNAMIC-RESOURCE] CPU Cores: 2 | Target: 90%
+[DYNAMIC-RESOURCE] Optimal Workers: 4 | Threads: 64
+[DYNAMIC-RESOURCE] Connection Pool: 4-64 threads, queue: 32768
+[CONNECTION-POOL] Initializing with 4 min threads, 64 max threads
+[CONNECTION-POOL] Started 4 worker threads
+[DYNAMIC-RESOURCE] DB Task Queue Partitioned: 4 shards, 2 workers/shard, queue/shard: 131072
+[DB-TASK-QUEUE-PARTITIONED] Configured shards=4 workers_per_shard=2 max_queue_per_shard=131072
+[SERVER] Listening on 127.0.0.1:33831 with connection pool...
+[SERVER] Connection pool: 4-64 threads, max queue: 32768
+[SERVER] Admission control: max connections=128 (effective inflight target), queue high watermark=24576
+[SERVER] Role: LEADER
+{"code":"engine_ready","fields":{"engine_pid":2295995,"host":"127.0.0.1","instance_id":"engine_aade5bc6f080a3676c44579dcd7036a0","port":33831},"message":"PacificDB engine is ready","operation_id":"engine_aade5bc6f080a3676c44579dcd7036a0","severity":"info","subsystem":"engine","timestamp_ms":1791042127705}
+[SERVER] I/O model: epoll (events=256, accept_batch=256, dispatch_batch=64, coalesce_us=250, priority_scheduler=on)
+[RAFTCORE] Inbound RPC pool workers=16 queue=1024
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 131072
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 131072
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 131072
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 131072
+[DB-TASK-QUEUE-PARTITIONED] Started with 4 shards, 2 workers per shard, 131072 max queue per shard
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_1","severity":"debug","subsystem":"network","timestamp_ms":1791042127797}
+[SERVER][SHUTDOWN] {"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_1","severity":"debug","subsystem":"network","timestamp_ms":1791042132850}
+clients_interrupted elapsed_ms=0
+[CONNECTION-POOL] Shutting down...
+[CONNECTION-POOL] Total tasks processed: 1
+[CONNECTION-POOL] Shutdown complete
+[SERVER][SHUTDOWN] connection_pool_stopped elapsed_ms=14
+[DB-TASK-QUEUE-SHARDED] Shutdown complete, processed=0
+[DB-TASK-QUEUE-SHARDED] Shutdown complete, processed=0
+[DB-TASK-QUEUE-SHARDED] Shutdown complete, processed=0
+[DB-TASK-QUEUE-SHARDED] Shutdown complete, processed=0
+[DB-TASK-QUEUE-PARTITIONED] Shutdown complete, processed=0
+[SERVER][SHUTDOWN] db_task_queue_stopped elapsed_ms=15
+[SERVER][SHUTDOWN] server_monitors_stopped elapsed_ms=15
+{"code":"engine_shutdown_requested","fields":{"instance_id":"engine_aade5bc6f080a3676c44579dcd7036a0","signal":2},"message":"PacificDB engine shutdown was requested","operation_id":"engine_aade5bc6f080a3676c44579dcd7036a0","severity":"info","subsystem":"engine","timestamp_ms":1791042132866}
+
+[MAIN] ========== SHUTDOWN PHASE ==========
+[RAFTCORE] stopping operation workers
+[RAFTCORE] apply worker stopped node=bench-1
+[RAFTCORE] operation workers stopped elapsed_ms=0
+[RAFTCORE] stopping listener
+[RAFTCORE] Listener exiting on port 37329
+[RAFTCORE] stopped listener elapsed_ms=0
+[RAFTCORE] stopping monitor
+[RAFTCORE] stopped monitor elapsed_ms=0
+[RAFTCORE] stopping snapshot maintenance
+[RAFTCORE] stopped snapshot maintenance elapsed_ms=0
+[RAFTCORE] stopping health monitor
+[RAFTCORE] stopped health monitor elapsed_ms=0
+[RAFTCORE] stopping adaptive controller
+[RAFTCORE] stopped adaptive controller elapsed_ms=0
+[RAFTCORE] stopping apply worker
+[RAFTCORE] stopped apply worker elapsed_ms=0
+[RAFTCORE] stopping read barrier
+[RAFTCORE] stopped read barrier elapsed_ms=0
+[MAIN] ✓ Raft core stopped
+[MAIN][SHUTDOWN] raft_stopped elapsed_ms=3
+[ShardManager] Stopped
+[MAIN] ✓ ShardManager stopped
+[MAIN][SHUTDOWN] shard_manager_stopped elapsed_ms=835
+[GC] GC loop exited
+[GC] Garbage collector stopped (versions collected: 0)
+[LSM] Force flushing all memtables...
+[MAIN][SHUTDOWN] garbage_collector_stopped elapsed_ms=835
+[LSM] Force flush completed - 1 memtables flushed
+[MAIN] ✓ Active LSM memtables force-flushed
+[MAIN][SHUTDOWN] lsm_force_flushed elapsed_ms=878
+[LSM] Background maintenance stopping
+[MAIN] ✓ LSM background tasks stopped
+[MAIN][SHUTDOWN] lsm_stopped elapsed_ms=898
+[MAIN][SHUTDOWN] wal_stopped elapsed_ms=898
+[MAIN] ✓ WAL flusher stopped
+[WAL] Clean shutdown marked at /tmp/pacificdb-release-bench-oo2OTz/data/.clean_shutdown
+[MAIN] ✓ Clean shutdown marker v2 written
+[MEMORY] Monitor thread stopped
+[MAIN][SHUTDOWN] clean_marker_written elapsed_ms=900
+[MAIN][SHUTDOWN] memory_manager_stopped elapsed_ms=900
+{"code":"engine_shutdown_complete","fields":{"clean_shutdown":true,"instance_id":"engine_aade5bc6f080a3676c44579dcd7036a0"},"message":"PacificDB engine shutdown completed","operation_id":"engine_aade5bc6f080a3676c44579dcd7036a0","severity":"info","subsystem":"engine","timestamp_ms":1791042133766}
+[MAIN] Shutdown complete after signal 2

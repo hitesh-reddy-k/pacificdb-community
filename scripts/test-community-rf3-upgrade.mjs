@@ -3,8 +3,7 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { constants } from 'node:fs';
-import { access, mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { RaftTestCluster, pause } from './lib/raft-test-cluster.mjs';
@@ -30,15 +29,27 @@ function argumentsFrom(argv) {
 
 async function resolveEngine(value) {
   const selected = path.resolve(value);
-  const details = await stat(selected);
-  const executable = details.isDirectory() ? path.join(selected, 'db_engine') : selected;
-  await access(executable, constants.X_OK);
-  const artifact = await readFile(executable);
+  let executable = selected;
+  let artifact;
+  try {
+    artifact = await readFile(executable);
+  } catch (error) {
+    if (error.code !== 'EISDIR' && error.code !== 'EACCES') throw error;
+    const candidate = path.join(selected, 'db_engine');
+    try {
+      artifact = await readFile(candidate);
+    } catch (childError) {
+      if (error.code === 'EACCES' && childError.code === 'ENOTDIR') throw error;
+      throw childError;
+    }
+    executable = candidate;
+  }
   let version = 'unavailable';
   try {
     ({ stdout: version } = await execFileAsync(executable, ['--version'], { timeout: 5000 }));
     version = version.trim();
   } catch (error) {
+    if (error.code === 'EACCES') throw error;
     version = `unavailable: ${error.message}`;
   }
   return { path: executable,
@@ -212,7 +223,7 @@ async function main() {
     evidence.node_upgrade_order = [...followers, originalLeader].map((index) => index + 1);
     evidence.acknowledged_ids = acknowledgedIds;
     evidence.acknowledged_count = acknowledgedIds.length;
-    evidence.format_transition = 'none_declared_for_beta14_to_candidate';
+    evidence.format_transition = 'none_declared; see exact old/candidate artifact versions and hashes';
     evidence.status = 'PASS';
   } catch (error) {
     evidence.error = { name: error.name, message: error.message, stack: error.stack };
@@ -220,8 +231,7 @@ async function main() {
   } finally {
     evidence.finished_at = new Date().toISOString();
     if (cluster) await cluster.close();
-    const evidenceArg = process.argv.indexOf('--evidence');
-    const destination = options?.evidence || (evidenceArg >= 0 ? process.argv[evidenceArg + 1] : undefined);
+    const destination = options?.evidence || process.argv[process.argv.indexOf('--evidence') + 1];
     if (destination) await writeEvidence(destination, evidence);
     console.log(JSON.stringify(evidence, null, 2));
   }

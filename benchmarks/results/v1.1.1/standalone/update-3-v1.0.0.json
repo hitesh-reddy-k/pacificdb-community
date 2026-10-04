@@ -1,0 +1,68 @@
+{
+  "name": "update-3-v1.0.0",
+  "round": 3,
+  "artifact": {
+    "label": "v1.0.0",
+    "binary": "/home/hitesh/pacificdb-release-1.1.1/build-baseline-installed/usr/bin/db_engine",
+    "sha256": "9fd9d6cf9c2d39dd4a9aa850a34f84987d88726f2317fa96efeea43d88218eac",
+    "version": "PacificDB Engine 1.0.0"
+  },
+  "workload": {
+    "name": "update",
+    "operation": "update",
+    "calls": 1000
+  },
+  "seed_records": 1000,
+  "calls": 1000,
+  "successful_calls": 1000,
+  "errors": [],
+  "elapsed_ms": 1630.8589920000231,
+  "attempted_calls_per_second": 613.1737966957145,
+  "successful_calls_per_second": 613.1737966957145,
+  "documents_per_second": 613.1737966957145,
+  "latency_ms": {
+    "mean": 13.001885502999649,
+    "p50": 12.879747999977553,
+    "p95": 14.960210999997798,
+    "p99": 20.68884000001708
+  },
+  "resources": {
+    "before": {
+      "cpu_seconds": 0.23,
+      "rss_kib": 21420,
+      "peak_rss_kib": 21420,
+      "threads": 48,
+      "open_fds": 10,
+      "read_bytes": 0,
+      "write_bytes": 1597440,
+      "rchar": 33942,
+      "wchar": 1313985,
+      "voluntary_context_switches": 9,
+      "involuntary_context_switches": 2
+    },
+    "after": {
+      "cpu_seconds": 1.89,
+      "rss_kib": 26128,
+      "peak_rss_kib": 26128,
+      "threads": 52,
+      "open_fds": 17,
+      "read_bytes": 0,
+      "write_bytes": 6094848,
+      "rchar": 471161,
+      "wchar": 1898742,
+      "voluntary_context_switches": 15,
+      "involuntary_context_switches": 2
+    },
+    "sampled_peak_rss_kib": 25844,
+    "delta": {
+      "cpu_seconds": 1.66,
+      "read_bytes": 0,
+      "write_bytes": 4497408,
+      "rchar": 437219,
+      "wchar": 584757,
+      "voluntary_context_switches": 6,
+      "involuntary_context_switches": 0
+    }
+  },
+  "integrity": "PASS: full expected application fields and deleted-ID absence before/after SIGKILL; vector count/search after recovery"
+}

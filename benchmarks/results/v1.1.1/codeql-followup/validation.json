@@ -1,0 +1,82 @@
+{
+  "date": "2026-10-04",
+  "base_revision": "40c19b0801bb4d8ca3cf001535a1362e73d67011",
+  "scope": "Owner-approved post-publication branch-only CodeQL follow-up",
+  "original_scanner_gate": {
+    "check_run": 111413094081,
+    "result": "FAIL",
+    "reported_alerts": [
+      20,
+      17,
+      18,
+      19
+    ],
+    "production_exploitability": "Not established by the scanner claims or bounded static triage"
+  },
+  "red_checks": [
+    {
+      "command": "node scripts/test-desktop-engine.mjs build",
+      "result": "FAIL before descriptor fix",
+      "observed": "Error diagnostics contained the replacement engine.log rather than the original marker"
+    },
+    {
+      "command": "node scripts/test-desktop-engine.mjs build",
+      "result": "FAIL on first patch before compatibility fallback",
+      "observed": "EACCES opening an existing mode-0200 log with a+"
+    },
+    {
+      "command": "node --test scripts/test-rf3-upgrade-contract.mjs",
+      "result": "FAIL on first patch before directory compatibility fallback",
+      "observed": "Mode-0111 build directory intake exited 1 rather than the expected identical-artifact rejection exit 2"
+    }
+  ],
+  "final_local_checks": [
+    {
+      "command": "set -e\nnpm run test:npm\nnode scripts/test-desktop-engine.mjs build\nnode --test scripts/test-rf3-upgrade-contract.mjs scripts/test-site-docs-contract.mjs\nnode scripts/test-site-docs.mjs\npython3 scripts/test-release-consistency.py\npython3 scripts/test-workflow-contract.py\nnode --check desktop/engine.mjs\nnode --check scripts/test-community-rf3-upgrade.mjs\ngit diff --check",
+      "exit_code": 0,
+      "evidence": "local-checks.log",
+      "counts": {
+        "node_sdk": 31,
+        "node_cli": 27,
+        "contract_tests": 5
+      }
+    },
+    {
+      "command": "npm run desktop:unpacked",
+      "exit_code": 0,
+      "scope": "Local build only, not republished"
+    },
+    {
+      "command": "set -e\ntest ! -L dist/desktop/linux-unpacked/chrome-sandbox\nsudo -n chown root:root /home/hitesh/pacificdb-release-1.1.1/dist/desktop/linux-unpacked/chrome-sandbox\nsudo -n chmod 4755 /home/hitesh/pacificdb-release-1.1.1/dist/desktop/linux-unpacked/chrome-sandbox\nPACIFICDB_TEST_DESKTOP=/home/hitesh/pacificdb-release-1.1.1/dist/desktop/linux-unpacked/pacificdb-workbench xvfb-run -a node scripts/test-workbench-desktop.mjs",
+      "exit_code": 0,
+      "evidence": "packaged-desktop.log"
+    },
+    {
+      "command": "node scripts/test-community-rf3-upgrade.mjs --old-build build-baseline-installed/usr/bin/db_engine --candidate-build build/db_engine --evidence OUTPUT",
+      "exit_code": 0,
+      "evidence": "rf3-upgrade-final.json",
+      "acknowledged_ids": 29
+    }
+  ],
+  "review": {
+    "cycles": 1,
+    "pre_patch_investigator": "log_boundary_review",
+    "post_patch_reviewer": "log_patch_review",
+    "findings_addressed": [
+      "Restored stat import used by actual backup/restore path",
+      "Traverse-only-directory compatibility",
+      "Existing write-only-log compatibility"
+    ],
+    "validation": "Permission regressions observed RED then GREEN; actual backup/restore/upgrade/restart completed"
+  },
+  "unchanged_public_tags": {
+    "v1_1_1": "9800c9abb5891f974d0d413c6be6fac92649f912",
+    "workbench_v1_1_1": "9800c9abb5891f974d0d413c6be6fac92649f912"
+  },
+  "publication": "No artifact or tag replaced; follow-up is not in the published Workbench",
+  "limitations": [
+    "Pathname substitution after original open is prevented; initial symlink/in-place mutation and hostile ancestor ownership are separate unproven claims",
+    "New failure fixtures run on POSIX; Windows retains the native startup/shutdown check and hosted packaged UI tests",
+    "Final CodeQL verdict requires the follow-up commit's hosted check; no alert dismissed or check disabled"
+  ]
+}

@@ -1,0 +1,544 @@
+[MAIN] Starting PacificDB Engine...
+[EnvConfig] Loaded 23 configuration entries
+{"code":"engine_starting","fields":{"engine_pid":2637619,"engine_version":"1.0.0","instance_id":"engine_0d66b4cb9266e9208e00275af7a92631"},"message":"PacificDB engine is starting","operation_id":"engine_0d66b4cb9266e9208e00275af7a92631","severity":"info","subsystem":"engine","timestamp_ms":1791090890373}
+[MAIN] Data root: /tmp/pacificdb-batch-lock-z3Jvce/data
+[MAIN] Root identity: /tmp/pacificdb-batch-lock-z3Jvce/data/.pacificdb-root-identity.json
+[MAIN] Root lock: /tmp/pacificdb-batch-lock-z3Jvce/data/.pacificdb-root.lock
+[MAIN] WAL dir:   /tmp/pacificdb-batch-lock-z3Jvce/data/wal
+[MAIN] SST dir:   /tmp/pacificdb-batch-lock-z3Jvce/data/sst
+[MAIN] Backups:   /tmp/pacificdb-batch-lock-z3Jvce/backup
+
+[MAIN] ========== CRASH RECOVERY PHASE ==========
+[ENGINE] Data root initialized: /tmp/pacificdb-batch-lock-z3Jvce/data
+[LSM] Initialized at: /tmp/pacificdb-batch-lock-z3Jvce/data/
+
+[RECOVERY] Starting 6-phase recovery sequence...
+[RECOVERY] Data root: /tmp/pacificdb-batch-lock-z3Jvce/data
+
+[RECOVERY] Phase 1: Lock & Validate Directory
+[RECOVERY] Last shutdown was UNCLEAN - crash recovery in progress
+[RECOVERY] ✓ Directory locked, clean shutdown flag checked
+
+[RECOVERY] Phase 2: WAL Scan & Truncate
+[RECOVERY] ✓ WAL scanned, 0 records found, tail truncated
+
+[RECOVERY] Phase 3: Replay WAL (Committed Only)
+[RECOVERY] ✓ WAL ownership assigned without payload materialization
+
+[RECOVERY] Phase 4: Restore Raft State
+[RECOVERY] ✓ Raft state restored, currentTerm: 0, commitIndex: 0
+
+[RECOVERY] Phase 5: Snapshot Restore
+[RECOVERY] ✓ No snapshot found (normal)
+
+[RECOVERY] Phase 6: Consistency Check
+[RECOVERY] Invariants OK: appliedLSN=0, commitIndex=0, currentTerm=0
+[RECOVERY] ✓ Consistency check passed
+
+[RECOVERY] ✓✓✓ Recovery complete - node ready for operation ✓✓✓
+
+[MAIN] ✓ Recovery successful, node ready to serve
+[ENGINE] Data root initialized: /tmp/pacificdb-batch-lock-z3Jvce/data
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-batch-lock-z3Jvce/data/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-batch-lock-z3Jvce/data/system/system/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791090890,"id":"6ac1e0ca0ae5608b3437b5d9","name":"users"}
+[LSM] Initialized at: /tmp/pacificdb-batch-lock-z3Jvce/data/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[DLOG][CREATE_DB][PATH] user=system db=pacificdb_meta base=/tmp/pacificdb-batch-lock-z3Jvce/data/system/pacificdb_meta
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-batch-lock-z3Jvce/data/system/pacificdb_meta/data/projects.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791090890,"id":"6ac1e0ca0ae5608b3437b5db","name":"projects"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-batch-lock-z3Jvce/data/system/pacificdb_meta/data/database_projects.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791090890,"id":"6ac1e0ca0ae5608b3437b5dc","name":"database_projects"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-batch-lock-z3Jvce/data/system/pacificdb_meta/data/media_manifests.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791090890,"id":"6ac1e0ca0ae5608b3437b5dd","name":"media_manifests"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-batch-lock-z3Jvce/data/system/pacificdb_meta/data/media_chunks.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791090890,"id":"6ac1e0ca0ae5608b3437b5de","name":"media_chunks"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-batch-lock-z3Jvce/data/system/pacificdb_meta/data/restore_journal.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791090890,"id":"6ac1e0ca0ae5608b3437b5df","name":"restore_journal"}
+{"code":"media_reconciled","fields":{"expired_uploads":0,"removed_orphans":0,"repaired_progress":0,"reset_verifying":0},"message":"Media upload state reconciled","severity":"info","subsystem":"media","timestamp_ms":1791090890383}
+[LIMITER] Initialized - timeout=30s, maxResult=100MB, maxScan=1000000 rows, maxResultDocs=10000
+[MEMORY] malloc tuned: M_ARENA_MAX=2, M_TRIM_THRESHOLD=256KB
+[MEMORY] Initialized v2.9R - Max: 4096MB, BUSY=80%, THROTTLE=90%, BULK_REJECT=95%, READ_ONLY=98%, poll=1000ms
+[MEMORY] Monitor thread started
+
+[MAIN] ========== MVCC INITIALIZATION ==========
+[MAIN] ✓ TXIDAllocator initialized, next TXID: 1
+[MAIN] ✓ SnapshotManager initialized
+[GC] Garbage collector started (interval: 5000ms)
+[MAIN] ✓ GarbageCollector started
+[LSM] Initialized at: /tmp/pacificdb-batch-lock-z3Jvce/data/
+[GC] GC loop started
+[LSM] Background maintenance started
+[LSM] flush_threads=2 max_concurrent_flushes=2
+[WAL] group_commit=enabled
+[WAL] group_commit_interval_ms=3
+[WAL] group_commit_batch_size=512
+[WAL] group_commit_max_bytes=4194304
+[WAL] Background flusher started, interval=3ms groupCommit=on
+
+[MAIN] ========== SHARD MANAGER INITIALIZATION ==========
+[ShardManager] Initialized 1 shard(s), replica target=3, nodes=1
+[ShardManager] Started with 1 shards
+[MAIN] ✓ ShardManager started with dynamic shard allocation
+[ShardManager] Registered node diagnostic-1 at 127.0.0.1:36107
+[MAIN] Single-node or RAFT_IS_LEADER=true, starting as LEADER
+[RAFTCORE] Loaded persisted state term=0 commit=0 applied=0 source=legacy
+[RAFTCORE] No Raft log entries to replay
+[RAFTCORE] Worker pool configured initial=1 max=1
+[RAFTCORE] Production Raft initialized node=diagnostic-1 leader=true peers=0 configuredWorkers=1 dataRoot=/tmp/pacificdb-batch-lock-z3Jvce/data
+[RAFTCORE] Monitor loop waiting 10 seconds for full cluster initialization...
+[RAFTCORE] Listener starting on port 39367
+[RAFTCORE] Listener ready on 0.0.0.0:39367
+[RAFTCORE] apply worker started node=diagnostic-1
+[RAFTCORE] Production Raft started (leader=true) mode=2) circuit=0) workers=1
+[MAIN] standalone_raft_bypass=true
+
+[MAIN] ========== SERVER STARTUP ==========
+[TenantManager] Initialized with 0 tenants
+[SERVER] TenantManager initialized for multi-tenant isolation
+[DYNAMIC-RESOURCE] ENGINE_CPU_CORES override: 16 -> 2 (concurrency cap)
+[DYNAMIC-RESOURCE] CPU Cores: 2 | Target: 90%
+[DYNAMIC-RESOURCE] Optimal Workers: 4 | Threads: 64
+[DYNAMIC-RESOURCE] Connection Pool: 4-64 threads, queue: 32768
+[CONNECTION-POOL] Initializing with 4 min threads, 64 max threads
+[CONNECTION-POOL] Started 4 worker threads
+[DYNAMIC-RESOURCE] DB Task Queue Partitioned: 4 shards, 2 workers/shard, queue/shard: 131072
+[DB-TASK-QUEUE-PARTITIONED] Configured shards=4 workers_per_shard=2 max_queue_per_shard=131072
+[SERVER] Listening on 127.0.0.1:36107 with connection pool...
+[SERVER] Connection pool: 4-64 threads, max queue: 32768
+[SERVER] Admission control: max connections=128 (effective inflight target), queue high watermark=24576
+[SERVER] Role: LEADER
+{"code":"engine_ready","fields":{"engine_pid":2637619,"host":"127.0.0.1","instance_id":"engine_0d66b4cb9266e9208e00275af7a92631","port":36107},"message":"PacificDB engine is ready","operation_id":"engine_0d66b4cb9266e9208e00275af7a92631","severity":"info","subsystem":"engine","timestamp_ms":1791090890385}
+[SERVER] I/O model: epoll (events=256, accept_batch=256, dispatch_batch=64, coalesce_us=250, priority_scheduler=on)
+[RAFTCORE] Inbound RPC pool workers=16 queue=1024
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 131072
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 131072
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 131072
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 131072
+[DB-TASK-QUEUE-PARTITIONED] Started with 4 shards, 2 workers per shard, 131072 max queue per shard
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_1","severity":"debug","subsystem":"network","timestamp_ms":1791090890471}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_1","severity":"debug","subsystem":"network","timestamp_ms":1791090890472}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_3","severity":"debug","subsystem":"network","timestamp_ms":1791090890472}
+[DLOG][CREATE_DB][SUBMIT] user=system db=bench type=binary raftEnabled=1 leader=1
+[DLOG][CREATE_DB][APPLY_REPLICATED_ENTRY] requestId=eng_req_3 user=system db=bench type=binary
+[DLOG][CREATE_DB][PATH] user=system db=bench base=/tmp/pacificdb-batch-lock-z3Jvce/data/system/bench
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: binary
+[DLOG][SCHEMA][RESPONSE] requestId=eng_req_3 action=createDatabase committed=true user=system db=bench
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_3","severity":"debug","subsystem":"network","timestamp_ms":1791090890478}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_5","severity":"debug","subsystem":"network","timestamp_ms":1791090890479}
+[DLOG][CREATE_COLLECTION][APPLY_REPLICATED_ENTRY] requestId=eng_req_5 user=system db=bench collection=records
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-batch-lock-z3Jvce/data/system/bench/data/records.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1791090890,"id":"6ac1e0ca0ae5608b3437b5e1","name":"records"}
+[DLOG][SCHEMA][RESPONSE] requestId=eng_req_5 action=createCollection committed=true user=system db=bench collection=records
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_5","severity":"debug","subsystem":"network","timestamp_ms":1791090890484}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_7","severity":"debug","subsystem":"network","timestamp_ms":1791090890484}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_7","severity":"debug","subsystem":"network","timestamp_ms":1791090890492}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_9","severity":"debug","subsystem":"network","timestamp_ms":1791090890493}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_9","severity":"debug","subsystem":"network","timestamp_ms":1791090890499}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_11","severity":"debug","subsystem":"network","timestamp_ms":1791090890500}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_11","severity":"debug","subsystem":"network","timestamp_ms":1791090890503}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_13","severity":"debug","subsystem":"network","timestamp_ms":1791090890503}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_13","severity":"debug","subsystem":"network","timestamp_ms":1791090890507}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_15","severity":"debug","subsystem":"network","timestamp_ms":1791090890508}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_15","severity":"debug","subsystem":"network","timestamp_ms":1791090890511}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_17","severity":"debug","subsystem":"network","timestamp_ms":1791090890511}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_17","severity":"debug","subsystem":"network","timestamp_ms":1791090890515}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_19","severity":"debug","subsystem":"network","timestamp_ms":1791090890516}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_19","severity":"debug","subsystem":"network","timestamp_ms":1791090890519}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_21","severity":"debug","subsystem":"network","timestamp_ms":1791090890520}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_21","severity":"debug","subsystem":"network","timestamp_ms":1791090890527}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_23","severity":"debug","subsystem":"network","timestamp_ms":1791090890527}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_23","severity":"debug","subsystem":"network","timestamp_ms":1791090890534}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_25","severity":"debug","subsystem":"network","timestamp_ms":1791090890534}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_25","severity":"debug","subsystem":"network","timestamp_ms":1791090890541}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_27","severity":"debug","subsystem":"network","timestamp_ms":1791090890542}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_27","severity":"debug","subsystem":"network","timestamp_ms":1791090890547}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_29","severity":"debug","subsystem":"network","timestamp_ms":1791090890547}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_29","severity":"debug","subsystem":"network","timestamp_ms":1791090890551}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_31","severity":"debug","subsystem":"network","timestamp_ms":1791090890552}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_31","severity":"debug","subsystem":"network","timestamp_ms":1791090890559}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_33","severity":"debug","subsystem":"network","timestamp_ms":1791090890559}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_33","severity":"debug","subsystem":"network","timestamp_ms":1791090890563}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_35","severity":"debug","subsystem":"network","timestamp_ms":1791090890563}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_35","severity":"debug","subsystem":"network","timestamp_ms":1791090890567}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_37","severity":"debug","subsystem":"network","timestamp_ms":1791090890568}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_37","severity":"debug","subsystem":"network","timestamp_ms":1791090890575}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_39","severity":"debug","subsystem":"network","timestamp_ms":1791090890576}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_39","severity":"debug","subsystem":"network","timestamp_ms":1791090890582}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_41","severity":"debug","subsystem":"network","timestamp_ms":1791090890582}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_41","severity":"debug","subsystem":"network","timestamp_ms":1791090890586}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_43","severity":"debug","subsystem":"network","timestamp_ms":1791090890587}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_43","severity":"debug","subsystem":"network","timestamp_ms":1791090890590}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_45","severity":"debug","subsystem":"network","timestamp_ms":1791090890591}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_45","severity":"debug","subsystem":"network","timestamp_ms":1791090890595}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_47","severity":"debug","subsystem":"network","timestamp_ms":1791090890595}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_47","severity":"debug","subsystem":"network","timestamp_ms":1791090890599}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_49","severity":"debug","subsystem":"network","timestamp_ms":1791090890599}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_49","severity":"debug","subsystem":"network","timestamp_ms":1791090890603}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_51","severity":"debug","subsystem":"network","timestamp_ms":1791090890603}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_51","severity":"debug","subsystem":"network","timestamp_ms":1791090890607}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_53","severity":"debug","subsystem":"network","timestamp_ms":1791090890607}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_53","severity":"debug","subsystem":"network","timestamp_ms":1791090890611}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_55","severity":"debug","subsystem":"network","timestamp_ms":1791090890611}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_55","severity":"debug","subsystem":"network","timestamp_ms":1791090890615}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_57","severity":"debug","subsystem":"network","timestamp_ms":1791090890616}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_57","severity":"debug","subsystem":"network","timestamp_ms":1791090890619}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_59","severity":"debug","subsystem":"network","timestamp_ms":1791090890620}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_59","severity":"debug","subsystem":"network","timestamp_ms":1791090890627}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_61","severity":"debug","subsystem":"network","timestamp_ms":1791090890627}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_61","severity":"debug","subsystem":"network","timestamp_ms":1791090890634}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_63","severity":"debug","subsystem":"network","timestamp_ms":1791090890634}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_63","severity":"debug","subsystem":"network","timestamp_ms":1791090890638}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_65","severity":"debug","subsystem":"network","timestamp_ms":1791090890638}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_65","severity":"debug","subsystem":"network","timestamp_ms":1791090890641}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_67","severity":"debug","subsystem":"network","timestamp_ms":1791090890642}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_67","severity":"debug","subsystem":"network","timestamp_ms":1791090890645}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_69","severity":"debug","subsystem":"network","timestamp_ms":1791090890646}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_69","severity":"debug","subsystem":"network","timestamp_ms":1791090890650}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_71","severity":"debug","subsystem":"network","timestamp_ms":1791090890650}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_71","severity":"debug","subsystem":"network","timestamp_ms":1791090890653}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_73","severity":"debug","subsystem":"network","timestamp_ms":1791090890654}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_73","severity":"debug","subsystem":"network","timestamp_ms":1791090890658}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_75","severity":"debug","subsystem":"network","timestamp_ms":1791090890658}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_75","severity":"debug","subsystem":"network","timestamp_ms":1791090890662}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_77","severity":"debug","subsystem":"network","timestamp_ms":1791090890662}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_77","severity":"debug","subsystem":"network","timestamp_ms":1791090890665}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_79","severity":"debug","subsystem":"network","timestamp_ms":1791090890666}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_79","severity":"debug","subsystem":"network","timestamp_ms":1791090890669}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_81","severity":"debug","subsystem":"network","timestamp_ms":1791090890670}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_81","severity":"debug","subsystem":"network","timestamp_ms":1791090890673}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_83","severity":"debug","subsystem":"network","timestamp_ms":1791090890673}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_83","severity":"debug","subsystem":"network","timestamp_ms":1791090890677}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_85","severity":"debug","subsystem":"network","timestamp_ms":1791090890677}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_85","severity":"debug","subsystem":"network","timestamp_ms":1791090890681}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_87","severity":"debug","subsystem":"network","timestamp_ms":1791090890682}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_87","severity":"debug","subsystem":"network","timestamp_ms":1791090890685}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_89","severity":"debug","subsystem":"network","timestamp_ms":1791090890685}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_89","severity":"debug","subsystem":"network","timestamp_ms":1791090890689}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_91","severity":"debug","subsystem":"network","timestamp_ms":1791090890689}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_91","severity":"debug","subsystem":"network","timestamp_ms":1791090890693}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_93","severity":"debug","subsystem":"network","timestamp_ms":1791090890693}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_93","severity":"debug","subsystem":"network","timestamp_ms":1791090890697}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_95","severity":"debug","subsystem":"network","timestamp_ms":1791090890697}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_95","severity":"debug","subsystem":"network","timestamp_ms":1791090890701}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_97","severity":"debug","subsystem":"network","timestamp_ms":1791090890701}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_97","severity":"debug","subsystem":"network","timestamp_ms":1791090890705}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_99","severity":"debug","subsystem":"network","timestamp_ms":1791090890705}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_99","severity":"debug","subsystem":"network","timestamp_ms":1791090890709}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_101","severity":"debug","subsystem":"network","timestamp_ms":1791090890709}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_101","severity":"debug","subsystem":"network","timestamp_ms":1791090890713}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_103","severity":"debug","subsystem":"network","timestamp_ms":1791090890713}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_103","severity":"debug","subsystem":"network","timestamp_ms":1791090890717}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_105","severity":"debug","subsystem":"network","timestamp_ms":1791090890717}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_105","severity":"debug","subsystem":"network","timestamp_ms":1791090890721}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_107","severity":"debug","subsystem":"network","timestamp_ms":1791090890721}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_107","severity":"debug","subsystem":"network","timestamp_ms":1791090890728}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_109","severity":"debug","subsystem":"network","timestamp_ms":1791090890728}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_109","severity":"debug","subsystem":"network","timestamp_ms":1791090890735}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_111","severity":"debug","subsystem":"network","timestamp_ms":1791090890735}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_111","severity":"debug","subsystem":"network","timestamp_ms":1791090890742}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_113","severity":"debug","subsystem":"network","timestamp_ms":1791090890743}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_113","severity":"debug","subsystem":"network","timestamp_ms":1791090890749}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_115","severity":"debug","subsystem":"network","timestamp_ms":1791090890749}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_115","severity":"debug","subsystem":"network","timestamp_ms":1791090890753}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_117","severity":"debug","subsystem":"network","timestamp_ms":1791090890753}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_117","severity":"debug","subsystem":"network","timestamp_ms":1791090890757}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_119","severity":"debug","subsystem":"network","timestamp_ms":1791090890757}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_119","severity":"debug","subsystem":"network","timestamp_ms":1791090890761}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_121","severity":"debug","subsystem":"network","timestamp_ms":1791090890761}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_121","severity":"debug","subsystem":"network","timestamp_ms":1791090890768}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_123","severity":"debug","subsystem":"network","timestamp_ms":1791090890768}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_123","severity":"debug","subsystem":"network","timestamp_ms":1791090890775}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_125","severity":"debug","subsystem":"network","timestamp_ms":1791090890775}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_125","severity":"debug","subsystem":"network","timestamp_ms":1791090890781}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_127","severity":"debug","subsystem":"network","timestamp_ms":1791090890782}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_127","severity":"debug","subsystem":"network","timestamp_ms":1791090890785}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_129","severity":"debug","subsystem":"network","timestamp_ms":1791090890786}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_129","severity":"debug","subsystem":"network","timestamp_ms":1791090890790}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_131","severity":"debug","subsystem":"network","timestamp_ms":1791090890790}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_131","severity":"debug","subsystem":"network","timestamp_ms":1791090890797}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_133","severity":"debug","subsystem":"network","timestamp_ms":1791090890797}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_133","severity":"debug","subsystem":"network","timestamp_ms":1791090890801}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_135","severity":"debug","subsystem":"network","timestamp_ms":1791090890801}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_135","severity":"debug","subsystem":"network","timestamp_ms":1791090890804}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_137","severity":"debug","subsystem":"network","timestamp_ms":1791090890805}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_137","severity":"debug","subsystem":"network","timestamp_ms":1791090890808}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_139","severity":"debug","subsystem":"network","timestamp_ms":1791090890809}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_139","severity":"debug","subsystem":"network","timestamp_ms":1791090890812}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_141","severity":"debug","subsystem":"network","timestamp_ms":1791090890813}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_141","severity":"debug","subsystem":"network","timestamp_ms":1791090890816}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_143","severity":"debug","subsystem":"network","timestamp_ms":1791090890817}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_143","severity":"debug","subsystem":"network","timestamp_ms":1791090890820}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_145","severity":"debug","subsystem":"network","timestamp_ms":1791090890821}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_145","severity":"debug","subsystem":"network","timestamp_ms":1791090890827}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_147","severity":"debug","subsystem":"network","timestamp_ms":1791090890827}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_147","severity":"debug","subsystem":"network","timestamp_ms":1791090890831}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_149","severity":"debug","subsystem":"network","timestamp_ms":1791090890831}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_149","severity":"debug","subsystem":"network","timestamp_ms":1791090890834}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_151","severity":"debug","subsystem":"network","timestamp_ms":1791090890834}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_151","severity":"debug","subsystem":"network","timestamp_ms":1791090890838}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_153","severity":"debug","subsystem":"network","timestamp_ms":1791090890838}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_153","severity":"debug","subsystem":"network","timestamp_ms":1791090890841}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_155","severity":"debug","subsystem":"network","timestamp_ms":1791090890842}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_155","severity":"debug","subsystem":"network","timestamp_ms":1791090890846}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_157","severity":"debug","subsystem":"network","timestamp_ms":1791090890846}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_157","severity":"debug","subsystem":"network","timestamp_ms":1791090890850}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_159","severity":"debug","subsystem":"network","timestamp_ms":1791090890850}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_159","severity":"debug","subsystem":"network","timestamp_ms":1791090890854}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_161","severity":"debug","subsystem":"network","timestamp_ms":1791090890854}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_161","severity":"debug","subsystem":"network","timestamp_ms":1791090890857}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_163","severity":"debug","subsystem":"network","timestamp_ms":1791090890857}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_163","severity":"debug","subsystem":"network","timestamp_ms":1791090890862}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_165","severity":"debug","subsystem":"network","timestamp_ms":1791090890862}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_165","severity":"debug","subsystem":"network","timestamp_ms":1791090890866}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_167","severity":"debug","subsystem":"network","timestamp_ms":1791090890866}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_167","severity":"debug","subsystem":"network","timestamp_ms":1791090890869}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_169","severity":"debug","subsystem":"network","timestamp_ms":1791090890869}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_169","severity":"debug","subsystem":"network","timestamp_ms":1791090890873}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_171","severity":"debug","subsystem":"network","timestamp_ms":1791090890873}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_171","severity":"debug","subsystem":"network","timestamp_ms":1791090890877}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_173","severity":"debug","subsystem":"network","timestamp_ms":1791090890877}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_173","severity":"debug","subsystem":"network","timestamp_ms":1791090890881}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_175","severity":"debug","subsystem":"network","timestamp_ms":1791090890881}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_175","severity":"debug","subsystem":"network","timestamp_ms":1791090890885}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_177","severity":"debug","subsystem":"network","timestamp_ms":1791090890885}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_177","severity":"debug","subsystem":"network","timestamp_ms":1791090890889}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_179","severity":"debug","subsystem":"network","timestamp_ms":1791090890889}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_179","severity":"debug","subsystem":"network","timestamp_ms":1791090890892}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_181","severity":"debug","subsystem":"network","timestamp_ms":1791090890893}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_181","severity":"debug","subsystem":"network","timestamp_ms":1791090890896}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_183","severity":"debug","subsystem":"network","timestamp_ms":1791090890897}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_183","severity":"debug","subsystem":"network","timestamp_ms":1791090890900}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_185","severity":"debug","subsystem":"network","timestamp_ms":1791090890901}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_185","severity":"debug","subsystem":"network","timestamp_ms":1791090890904}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_187","severity":"debug","subsystem":"network","timestamp_ms":1791090890904}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_187","severity":"debug","subsystem":"network","timestamp_ms":1791090890908}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_189","severity":"debug","subsystem":"network","timestamp_ms":1791090890908}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_189","severity":"debug","subsystem":"network","timestamp_ms":1791090890912}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_191","severity":"debug","subsystem":"network","timestamp_ms":1791090890912}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_191","severity":"debug","subsystem":"network","timestamp_ms":1791090890915}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_193","severity":"debug","subsystem":"network","timestamp_ms":1791090890916}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_193","severity":"debug","subsystem":"network","timestamp_ms":1791090890919}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_195","severity":"debug","subsystem":"network","timestamp_ms":1791090890920}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_195","severity":"debug","subsystem":"network","timestamp_ms":1791090890923}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_197","severity":"debug","subsystem":"network","timestamp_ms":1791090890924}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_197","severity":"debug","subsystem":"network","timestamp_ms":1791090890927}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_199","severity":"debug","subsystem":"network","timestamp_ms":1791090890927}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_199","severity":"debug","subsystem":"network","timestamp_ms":1791090890931}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_201","severity":"debug","subsystem":"network","timestamp_ms":1791090890931}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_201","severity":"debug","subsystem":"network","timestamp_ms":1791090890934}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_203","severity":"debug","subsystem":"network","timestamp_ms":1791090890935}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_203","severity":"debug","subsystem":"network","timestamp_ms":1791090890938}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_205","severity":"debug","subsystem":"network","timestamp_ms":1791090890938}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_205","severity":"debug","subsystem":"network","timestamp_ms":1791090890942}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_207","severity":"debug","subsystem":"network","timestamp_ms":1791090890942}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_207","severity":"debug","subsystem":"network","timestamp_ms":1791090890946}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_209","severity":"debug","subsystem":"network","timestamp_ms":1791090890946}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_209","severity":"debug","subsystem":"network","timestamp_ms":1791090890950}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_211","severity":"debug","subsystem":"network","timestamp_ms":1791090890950}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_211","severity":"debug","subsystem":"network","timestamp_ms":1791090890953}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_213","severity":"debug","subsystem":"network","timestamp_ms":1791090890954}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_213","severity":"debug","subsystem":"network","timestamp_ms":1791090890957}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_215","severity":"debug","subsystem":"network","timestamp_ms":1791090890958}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_215","severity":"debug","subsystem":"network","timestamp_ms":1791090890961}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_217","severity":"debug","subsystem":"network","timestamp_ms":1791090890962}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_217","severity":"debug","subsystem":"network","timestamp_ms":1791090890965}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_219","severity":"debug","subsystem":"network","timestamp_ms":1791090890966}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_219","severity":"debug","subsystem":"network","timestamp_ms":1791090890969}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_221","severity":"debug","subsystem":"network","timestamp_ms":1791090890970}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_221","severity":"debug","subsystem":"network","timestamp_ms":1791090890976}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_223","severity":"debug","subsystem":"network","timestamp_ms":1791090890977}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_223","severity":"debug","subsystem":"network","timestamp_ms":1791090890981}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_225","severity":"debug","subsystem":"network","timestamp_ms":1791090890981}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_225","severity":"debug","subsystem":"network","timestamp_ms":1791090890985}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_227","severity":"debug","subsystem":"network","timestamp_ms":1791090890986}
+[MAIN] Starting PacificDB Engine...
+[EnvConfig] Loaded 23 configuration entries
+{"code":"engine_starting","fields":{"engine_pid":2637687,"engine_version":"1.0.0","instance_id":"engine_e6ddf97710920222db8373b4ddb83680"},"message":"PacificDB engine is starting","operation_id":"engine_e6ddf97710920222db8373b4ddb83680","severity":"info","subsystem":"engine","timestamp_ms":1791090891015}
+[MAIN] Data root: /tmp/pacificdb-batch-lock-z3Jvce/data
+[MAIN] Root identity: /tmp/pacificdb-batch-lock-z3Jvce/data/.pacificdb-root-identity.json
+[MAIN] Root lock: /tmp/pacificdb-batch-lock-z3Jvce/data/.pacificdb-root.lock
+[MAIN] WAL dir:   /tmp/pacificdb-batch-lock-z3Jvce/data/wal
+[MAIN] SST dir:   /tmp/pacificdb-batch-lock-z3Jvce/data/sst
+[MAIN] Backups:   /tmp/pacificdb-batch-lock-z3Jvce/backup
+
+[MAIN] ========== CRASH RECOVERY PHASE ==========
+[ENGINE] Data root initialized: /tmp/pacificdb-batch-lock-z3Jvce/data
+[LSM] Initialized at: /tmp/pacificdb-batch-lock-z3Jvce/data/
+
+[RECOVERY] Starting 6-phase recovery sequence...
+[RECOVERY] Data root: /tmp/pacificdb-batch-lock-z3Jvce/data
+
+[RECOVERY] Phase 1: Lock & Validate Directory
+[RECOVERY] Last shutdown was UNCLEAN - crash recovery in progress
+[RECOVERY] ✓ Directory locked, clean shutdown flag checked
+
+[RECOVERY] Phase 2: WAL Scan & Truncate
+[RECOVERY] ✓ WAL scanned, 0 records found, tail truncated
+
+[RECOVERY] Phase 3: Replay WAL (Committed Only)
+[RECOVERY] ✓ WAL ownership assigned without payload materialization
+
+[RECOVERY] Phase 4: Restore Raft State
+[RECOVERY] ✓ Raft state restored, currentTerm: 0, commitIndex: 0
+
+[RECOVERY] Phase 5: Snapshot Restore
+[RECOVERY] ✓ No snapshot found (normal)
+
+[RECOVERY] Phase 6: Consistency Check
+[RECOVERY] Invariants OK: appliedLSN=0, commitIndex=0, currentTerm=0
+[RECOVERY] ✓ Consistency check passed
+
+[RECOVERY] ✓✓✓ Recovery complete - node ready for operation ✓✓✓
+
+[MAIN] ✓ Recovery successful, node ready to serve
+[ENGINE] Data root initialized: /tmp/pacificdb-batch-lock-z3Jvce/data
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-batch-lock-z3Jvce/data/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-batch-lock-z3Jvce/data/system/system/data/users.bin
+[LSM] Initialized at: /tmp/pacificdb-batch-lock-z3Jvce/data/
+[LSM][RESTORE] Replayed 1100 records from records.wal
+[LSM][RESTORE] Replayed 1 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[DLOG][CREATE_DB][PATH] user=system db=pacificdb_meta base=/tmp/pacificdb-batch-lock-z3Jvce/data/system/pacificdb_meta
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-batch-lock-z3Jvce/data/system/pacificdb_meta/data/projects.bin
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-batch-lock-z3Jvce/data/system/pacificdb_meta/data/database_projects.bin
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-batch-lock-z3Jvce/data/system/pacificdb_meta/data/media_manifests.bin
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-batch-lock-z3Jvce/data/system/pacificdb_meta/data/media_chunks.bin
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-batch-lock-z3Jvce/data/system/pacificdb_meta/data/restore_journal.bin
+[LIMITER] Initialized - timeout=30s, maxResult=100MB, maxScan=1000000 rows, maxResultDocs=10000
+[MEMORY] malloc tuned: M_ARENA_MAX=2, M_TRIM_THRESHOLD=256KB
+[MEMORY] Initialized v2.9R - Max: 4096MB, BUSY=80%, THROTTLE=90%, BULK_REJECT=95%, READ_ONLY=98%, poll=1000ms
+{"code":"media_reconciled","fields":{"expired_uploads":0,"removed_orphans":0,"repaired_progress":0,"reset_verifying":0},"message":"Media upload state reconciled","severity":"info","subsystem":"media","timestamp_ms":1791090891085}
+
+[MAIN] ========== MVCC INITIALIZATION ==========
+[MAIN] ✓ TXIDAllocator initialized, next TXID: 1
+[MAIN] ✓ SnapshotManager initialized
+[GC] Garbage collector started (interval: 5000ms)
+[MAIN] ✓ GarbageCollector started
+[MEMORY] Monitor thread started
+[LSM] Initialized at: /tmp/pacificdb-batch-lock-z3Jvce/data/
+[GC] GC loop started
+[LSM] Background maintenance started
+[LSM] flush_threads=2 max_concurrent_flushes=2
+[WAL] group_commit=enabled
+[WAL] group_commit_interval_ms=3
+[WAL] group_commit_batch_size=512
+[WAL] group_commit_max_bytes=4194304
+[WAL] Background flusher started, interval=3ms groupCommit=on
+
+[MAIN] ========== SHARD MANAGER INITIALIZATION ==========
+[ShardManager] Loaded 1 shards from /tmp/pacificdb-batch-lock-z3Jvce/data/shard_map.json
+[ShardManager] Started with 1 shards
+[MAIN] ✓ ShardManager started with dynamic shard allocation
+[ShardManager] Registered node diagnostic-1 at 127.0.0.1:36107
+[MAIN] Single-node or RAFT_IS_LEADER=true, starting as LEADER
+[RAFTCORE] Loaded persisted state term=0 commit=2 applied=2 source=checksummed
+[RAFTCORE] Replaying 2 Raft log entries from raft/log.bin maxIndex=2 committedPrefix=2 recoveryMode=checksummed
+[DLOG][CREATE_DB][APPLY_REPLICATED_ENTRY] requestId=eng_req_3 user=system db=bench type=binary
+[DLOG][CREATE_DB][PATH] user=system db=bench base=/tmp/pacificdb-batch-lock-z3Jvce/data/system/bench
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[DLOG][CREATE_COLLECTION][APPLY_REPLICATED_ENTRY] requestId=eng_req_5 user=system db=bench collection=records
+[ENGINE][CREATE COLLECTION] Already exists: /tmp/pacificdb-batch-lock-z3Jvce/data/system/bench/data/records.bin
+[RAFTCORE] ✅ Raft log replay complete reapplied=2
+[RAFTCORE] Worker pool configured initial=1 max=1
+[RAFTCORE] Production Raft initialized node=diagnostic-1 leader=true peers=0 configuredWorkers=1 dataRoot=/tmp/pacificdb-batch-lock-z3Jvce/data
+[RAFTCORE] Monitor loop waiting 10 seconds for full cluster initialization...
+[RAFTCORE] Listener starting on port 39367
+[RAFTCORE] Production Raft started (leader=true) mode=2) circuit=0) workers=1
+[MAIN] standalone_raft_bypass=true
+
+[MAIN] ========== SERVER STARTUP ==========
+[RAFTCORE] Listener ready on 0.0.0.0:39367
+[RAFTCORE] apply worker started node=diagnostic-1
+[TenantManager] Initialized with 0 tenants
+[SERVER] TenantManager initialized for multi-tenant isolation
+[DYNAMIC-RESOURCE] ENGINE_CPU_CORES override: 16 -> 2 (concurrency cap)
+[DYNAMIC-RESOURCE] CPU Cores: 2 | Target: 90%
+[DYNAMIC-RESOURCE] Optimal Workers: 4 | Threads: 64
+[DYNAMIC-RESOURCE] Connection Pool: 4-64 threads, queue: 32768
+[CONNECTION-POOL] Initializing with 4 min threads, 64 max threads
+[CONNECTION-POOL] Started 4 worker threads
+[DYNAMIC-RESOURCE] DB Task Queue Partitioned: 4 shards, 2 workers/shard, queue/shard: 131072
+[DB-TASK-QUEUE-PARTITIONED] Configured shards=4 workers_per_shard=2 max_queue_per_shard=131072
+[SERVER] Listening on 127.0.0.1:36107 with connection pool...
+[SERVER] Connection pool: 4-64 threads, max queue: 32768
+[SERVER] Admission control: max connections=128 (effective inflight target), queue high watermark=24576
+[SERVER] Role: LEADER
+{"code":"engine_ready","fields":{"engine_pid":2637687,"host":"127.0.0.1","instance_id":"engine_e6ddf97710920222db8373b4ddb83680","port":36107},"message":"PacificDB engine is ready","operation_id":"engine_e6ddf97710920222db8373b4ddb83680","severity":"info","subsystem":"engine","timestamp_ms":1791090891087}
+[SERVER] I/O model: epoll (events=256, accept_batch=256, dispatch_batch=64, coalesce_us=250, priority_scheduler=on)
+[RAFTCORE] Inbound RPC pool workers=16 queue=1024
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 131072
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 131072
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 131072
+[DB-TASK-QUEUE-SHARDED] Started 2 workers across 1 shards (2 workers per shard), max queue per shard: 131072
+[DB-TASK-QUEUE-PARTITIONED] Started with 4 shards, 2 workers per shard, 131072 max queue per shard
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_1","severity":"debug","subsystem":"network","timestamp_ms":1791090891111}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_1","severity":"debug","subsystem":"network","timestamp_ms":1791090891112}
+{"code":"client_connected","fields":{},"message":"Client connection accepted","operation_id":"connection_3","severity":"debug","subsystem":"network","timestamp_ms":1791090891112}
+{"code":"client_disconnected","fields":{"reason":"peer_closed"},"message":"Client connection closed","operation_id":"connection_3","severity":"debug","subsystem":"network","timestamp_ms":1791090891126}
+[SERVER][SHUTDOWN] clients_interrupted elapsed_ms=0
+[CONNECTION-POOL] Shutting down...
+[CONNECTION-POOL] Total tasks processed: 2
+[CONNECTION-POOL] Shutdown complete
+[SERVER][SHUTDOWN] connection_pool_stopped elapsed_ms=10
+[DB-TASK-QUEUE-SHARDED] Shutdown complete, processed=0
+[DB-TASK-QUEUE-SHARDED] Shutdown complete, processed=0
+[DB-TASK-QUEUE-SHARDED] Shutdown complete, processed=0
+[DB-TASK-QUEUE-SHARDED] Shutdown complete, processed=0
+[DB-TASK-QUEUE-PARTITIONED] Shutdown complete, processed=0
+[SERVER][SHUTDOWN] db_task_queue_stopped elapsed_ms=11
+[SERVER][SHUTDOWN] server_monitors_stopped elapsed_ms=11
+{"code":"engine_shutdown_requested","fields":{"instance_id":"engine_e6ddf97710920222db8373b4ddb83680","signal":2},"message":"PacificDB engine shutdown was requested","operation_id":"engine_e6ddf97710920222db8373b4ddb83680","severity":"info","subsystem":"engine","timestamp_ms":1791090891138}
+[RAFTCORE] apply worker stopped node=diagnostic-1
+
+[MAIN] ========== SHUTDOWN PHASE ==========
+[RAFTCORE] stopping operation workers
+[RAFTCORE] operation workers stopped elapsed_ms=0
+[RAFTCORE] stopping listener
+[RAFTCORE] Listener exiting on port 39367
+[RAFTCORE] stopped listener elapsed_ms=0
+[RAFTCORE] stopping monitor
+[RAFTCORE] stopped monitor elapsed_ms=0
+[RAFTCORE] stopping snapshot maintenance
+[RAFTCORE] stopped snapshot maintenance elapsed_ms=0
+[RAFTCORE] stopping health monitor
+[RAFTCORE] stopped health monitor elapsed_ms=0
+[RAFTCORE] stopping adaptive controller
+[RAFTCORE] stopped adaptive controller elapsed_ms=0
+[RAFTCORE] stopping apply worker
+[RAFTCORE] stopped apply worker elapsed_ms=0
+[RAFTCORE] stopping read barrier
+[RAFTCORE] stopped read barrier elapsed_ms=0
+[MAIN] ✓ Raft core stopped
+[MAIN][SHUTDOWN] raft_stopped elapsed_ms=2
+[ShardManager] Stopped
+[MAIN] ✓ ShardManager stopped
+[MAIN][SHUTDOWN] shard_manager_stopped elapsed_ms=1947
+[MAIN][SHUTDOWN] garbage_collector_stopped elapsed_ms=1948
+[MAIN][SHUTDOWN] [GC] GC loop exited
+[GC] Garbage collector stopped (versions collected: 0)
+[LSM] Force flushing all memtables...
+[LSM] Force flush completed - 0 memtables flushed
+[MAIN] ✓ Active LSM memtables force-flushed
+lsm_force_flushed elapsed_ms=1948
+[LSM] Background maintenance stopping
+[MAIN] ✓ LSM background tasks stopped
+[MAIN][SHUTDOWN] lsm_stopped elapsed_ms=1953
+[MAIN][SHUTDOWN] wal_stopped elapsed_ms=1953
+[MAIN] ✓ WAL flusher stopped
+[WAL] Clean shutdown marked at /tmp/pacificdb-batch-lock-z3Jvce/data/.clean_shutdown
+[MAIN] ✓ Clean shutdown marker v2 written
+[MAIN][SHUTDOWN] clean_marker_written elapsed_ms=1958
+[MEMORY] Monitor thread stopped
+[MAIN][SHUTDOWN] memory_manager_stopped elapsed_ms=1958
+{"code":"engine_shutdown_complete","fields":{"clean_shutdown":true,"instance_id":"engine_e6ddf97710920222db8373b4ddb83680"},"message":"PacificDB engine shutdown completed","operation_id":"engine_e6ddf97710920222db8373b4ddb83680","severity":"info","subsystem":"engine","timestamp_ms":1791090893096}
+[MAIN] Shutdown complete after signal 2

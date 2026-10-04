@@ -1,0 +1,61 @@
+{
+  "status": "PASS",
+  "version": "1.0.1",
+  "git_revision": "e6781c9e1cc5a8722df09c9e7a9f10242a5f34b9",
+  "source_clean": true,
+  "publication": "not performed",
+  "signing": {
+    "status": "PASS",
+    "identity": "TEST_ONLY",
+    "primary_fingerprint": "048BA529980939F8FC31254655A146EB94339628",
+    "signature_verification": "PASS",
+    "wrong_fingerprint": "REJECTED",
+    "modified_signed_JAR": "REJECTED",
+    "publication": "NOT_PERFORMED",
+    "private_keyring": "REMOVED_AFTER_CHECK"
+  },
+  "artifacts": [
+    {
+      "path": "sdk/python/dist/pacificdb-1.0.1-py3-none-any.whl",
+      "size_bytes": 22957,
+      "sha256": "e1463b8f6ad6c683acb700f6549d06f6c033aafee1a13c3cb7e758aab2daa7b1",
+      "frozen_path": "release-sdk/qualified-e6781c9/sdk/python/dist/pacificdb-1.0.1-py3-none-any.whl"
+    },
+    {
+      "path": "sdk/python/dist/pacificdb-1.0.1.tar.gz",
+      "size_bytes": 33849,
+      "sha256": "b86eecfca6e26479cd2e4a568443e0a7f5ff00f93a0d308220fce1577ccdfb8c",
+      "frozen_path": "release-sdk/qualified-e6781c9/sdk/python/dist/pacificdb-1.0.1.tar.gz"
+    },
+    {
+      "path": "sdk/java/target/pacificdb-client-1.0.1.jar",
+      "size_bytes": 54884,
+      "sha256": "8a6d67c7d9e8e46badc3f3cc983c4367df683eac19fa6470a94d8273a07cbf26",
+      "frozen_path": "release-sdk/qualified-e6781c9/sdk/java/target/pacificdb-client-1.0.1.jar"
+    },
+    {
+      "path": "sdk/java/target/pacificdb-client-1.0.1-sources.jar",
+      "size_bytes": 26363,
+      "sha256": "e178c57c7e7ac07de656e7aceca2ca65cd02f005e5fe2b836cfac3390f4c4d9d",
+      "frozen_path": "release-sdk/qualified-e6781c9/sdk/java/target/pacificdb-client-1.0.1-sources.jar"
+    },
+    {
+      "path": "sdk/java/target/pacificdb-client-1.0.1-javadoc.jar",
+      "size_bytes": 143243,
+      "sha256": "d50393529ed638ce8d96a7f522bea9ad7d988bb58a918635dca1662fbd67ee22",
+      "frozen_path": "release-sdk/qualified-e6781c9/sdk/java/target/pacificdb-client-1.0.1-javadoc.jar"
+    },
+    {
+      "path": "sdk/java/target/pacificdb-client-1.0.1.pom",
+      "size_bytes": 3834,
+      "sha256": "690f54468033fba2bbf3511aacad73ec589a6fd3f600f8ffdba82723c3fc7702",
+      "frozen_path": "release-sdk/qualified-e6781c9/sdk/java/target/pacificdb-client-1.0.1.pom"
+    },
+    {
+      "path": "sdk/java/target/central-publishing/central-bundle.zip",
+      "size_bytes": 228854,
+      "sha256": "943b161ae1db7732278e8b2d605508916bfb4e7dca4edef550e9ac41ac760bbf",
+      "frozen_path": "release-sdk/qualified-e6781c9/sdk/java/target/central-publishing/central-bundle.zip"
+    }
+  ]
+}

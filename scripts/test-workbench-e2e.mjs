@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -16,6 +16,8 @@ const binary = path.join(build, process.platform === 'win32' ? 'db_engine.exe' :
 const root = await mkdtemp(path.join(os.tmpdir(), 'pacificdb-workbench-e2e-'));
 let engine;
 let workbench;
+const frames = [];
+const originalRequest = PacificDBClient.prototype.request;
 
 async function freePort() {
   const server = net.createServer();
@@ -66,8 +68,22 @@ try {
   } });
   await waitReady(port);
 
+  // Seed legacy-mapped data through the retained API; the UI must also see unmapped data.
+  const legacy = new PacificDBClient({ port, poolSize: 1 });
+  let project;
+  try {
+    project = (await legacy.createProject('legacy-demo')).project;
+    await legacy.useProject(project.id);
+    await legacy.createDatabase('legacy_app');
+    await legacy.createCollection('records');
+    await legacy.insert('records', { id: 'kept', value: 'legacy' });
+  } finally { legacy.close(); }
+  PacificDBClient.prototype.request = function(command) {
+    frames.push({ ...command, dbName: command.dbName ?? this.database });
+    return originalRequest.call(this, command);
+  };
   const output = new PassThrough();
-  workbench = await main(['workbench', '--port', String(port), '--no-start'], {
+  workbench = await main(['workbench', '--url', `pacificdb://127.0.0.1:${port}/legacy_app`, '--no-start'], {
     input: new PassThrough(), output,
   });
   const htmlResponse = await fetch(workbench.url);
@@ -90,18 +106,21 @@ try {
     return payload.result;
   };
 
-  const project = (await post('projects.create', { name: 'workbench-demo' })).project;
-  assert.equal((await post('projects.list')).projects[0].id, project.id);
-  const scope = { projectId: project.id, database: 'app', collection: 'records' };
-  await post('databases.create', { projectId: project.id, name: 'app' });
-  assert.deepEqual((await post('databases.list', scope)).databases, ['app']);
+  assert.equal((await post('connection.info')).database, 'legacy_app');
+  const scope = { database: 'app', collection: 'records' };
+  await post('databases.create', { name: 'app' });
+  assert.deepEqual((await post('databases.list')).databases.sort(), ['app', 'legacy_app']);
+  assert.equal((await post('documents.find', { database: 'legacy_app', collection: 'records', filter: { id: 'kept' } })).data[0].value, 'legacy');
+  frames.length = 0;
   await post('collections.create', { ...scope, name: 'records' });
   const collectionList = await post('collections.list', scope);
   assert.ok(collectionList.collections.includes('records'),
     JSON.stringify(collectionList));
   await post('documents.insert', { ...scope, data: { id: 'one', value: 1 } });
+  frames.length = 0;
   assert.equal((await post('documents.find', { ...scope,
     filter: { id: 'one' } })).data[0].value, 1);
+  assert.deepEqual(frames.map(frame => frame.action), ['find']);
   await post('documents.update', { ...scope, filter: { id: 'one' },
     update: { value: 2 } });
   assert.equal((await post('documents.find', { ...scope,
@@ -119,7 +138,6 @@ try {
     method: 'POST', headers: {
       'Content-Type': 'application/octet-stream',
       'X-PacificDB-Workbench-Token': token,
-      'X-Project-Id': project.id,
       'X-Database': 'app',
       'X-Collection': 'media',
       'X-Filename': 'sample.txt',
@@ -134,12 +152,36 @@ try {
     method: 'POST', headers: {
       'Content-Type': 'application/json',
       'X-PacificDB-Workbench-Token': token,
-    }, body: JSON.stringify({ projectId: project.id, database: 'app', mediaId }),
+    }, body: JSON.stringify({ database: 'app', collection: 'media', mediaId }),
   });
   assert.equal(download.status, 200);
   assert.deepEqual(Buffer.from(await download.arrayBuffer()), bytes);
-  console.log('WORKBENCH_E2E_PASS');
+  assert.ok(frames.every(frame => !frame.action.startsWith('community_project_') && frame.action !== 'community_database_list'));
+  const legacyCheck = new PacificDBClient({ port, poolSize: 1 });
+  try { assert.ok((await legacyCheck.request({ action: 'community_project_list' })).projects.some(item => item.id === project.id)); }
+  finally { legacyCheck.close(); }
+  // Execute the copyable website snippets against the same disposable engine.
+  const docs = await readFile(new URL('../site/docs.html', import.meta.url), 'utf8');
+  const snippet = id => docs.match(new RegExp(`<code id="${id}">([\\s\\S]*?)</code>`))[1]
+    .replaceAll('&#x27;', "'").replaceAll('&quot;', '"').replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&amp;', '&');
+  const shell = spawnSync(path.join(build, process.platform === 'win32' ? 'pacificdb.exe' : 'pacificdb'),
+    ['--port', String(port), '--no-start'], { input: snippet('quickstart-code') + '\nquit\n', encoding: 'utf8', timeout: 15_000,
+      env: { ...process.env, PACIFICDB_CLI_HOME: path.join(root, 'snippet-cli') } });
+  assert.equal(shell.status, 0, shell.stderr);
+  assert.doesNotMatch(shell.stdout, /unknown (?:or invalid )?command|unknown_command|select a project|Error:/i);
+  assert.match(shell.stdout, /Hello PacificDB/);
+  frames.length = 0;
+  await writeFile(path.join(root, 'demo.mp4'), Buffer.from('website media fixture'));
+  const nodeCode = snippet('node-code').replace(/import[^;]+;/, '')
+    .replace('127.0.0.1:9000', `127.0.0.1:${port}`).replace('port: 9000', `port: ${port}`)
+    .replace('process.env.PACIFICDB_URL', 'undefined')
+    .replace("'./demo.mp4'", JSON.stringify(path.join(root, 'demo.mp4')))
+    .replace("'./downloaded-node.mp4'", JSON.stringify(path.join(root, 'downloaded-node.mp4')));
+  await new (Object.getPrototypeOf(async function(){}).constructor)('PacificDBClient', 'PacificDB', nodeCode)(PacificDBClient, PacificDBClient);
+  assert.ok(frames.every(frame => !frame.action.startsWith('community_project_') && frame.action !== 'community_database_map'), 'beginner snippet must use direct engine APIs');
+  console.log('WORKBENCH_DATABASE_FIRST_E2E_AND_DOC_EXAMPLES_PASS');
 } finally {
+  PacificDBClient.prototype.request = originalRequest;
   if (workbench) await workbench.close();
   if (engine && engine.exitCode === null) {
     engine.kill('SIGINT');

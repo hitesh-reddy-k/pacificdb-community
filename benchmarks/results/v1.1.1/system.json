@@ -1,0 +1,407 @@
+{
+  "kernel": "7.0.0-34-generic",
+  "platform": "Linux-7.0.0-34-generic-x86_64-with-glibc2.39",
+  "cpu": {
+    "lscpu": [
+      {
+        "field": "Architecture:",
+        "data": "x86_64"
+      },
+      {
+        "field": "CPU op-mode(s):",
+        "data": "32-bit, 64-bit"
+      },
+      {
+        "field": "Address sizes:",
+        "data": "39 bits physical, 48 bits virtual"
+      },
+      {
+        "field": "Byte Order:",
+        "data": "Little Endian"
+      },
+      {
+        "field": "CPU(s):",
+        "data": "16"
+      },
+      {
+        "field": "On-line CPU(s) list:",
+        "data": "0-15"
+      },
+      {
+        "field": "Vendor ID:",
+        "data": "GenuineIntel"
+      },
+      {
+        "field": "Model name:",
+        "data": "13th Gen Intel(R) Core(TM) i5-13450HX"
+      },
+      {
+        "field": "CPU family:",
+        "data": "6"
+      },
+      {
+        "field": "Model:",
+        "data": "183"
+      },
+      {
+        "field": "Thread(s) per core:",
+        "data": "2"
+      },
+      {
+        "field": "Core(s) per socket:",
+        "data": "10"
+      },
+      {
+        "field": "Socket(s):",
+        "data": "1"
+      },
+      {
+        "field": "Stepping:",
+        "data": "1"
+      },
+      {
+        "field": "CPU(s) scaling MHz:",
+        "data": "24%"
+      },
+      {
+        "field": "CPU max MHz:",
+        "data": "4600.0000"
+      },
+      {
+        "field": "CPU min MHz:",
+        "data": "800.0000"
+      },
+      {
+        "field": "BogoMIPS:",
+        "data": "5222.40"
+      },
+      {
+        "field": "Flags:",
+        "data": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 monitor ds_cpl vmx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb ssbd ibrs ibpb stibp ibrs_enhanced tpr_shadow flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb intel_pt sha_ni xsaveopt xsavec xgetbv1 xsaves split_lock_detect user_shstk avx_vnni dtherm ida arat pln pts hwp hwp_notify hwp_act_window hwp_epp hwp_pkg_req hfi vnmi umip pku ospke waitpkg gfni vaes vpclmulqdq rdpid movdiri movdir64b fsrm md_clear serialize arch_lbr ibt flush_l1d arch_capabilities"
+      },
+      {
+        "field": "Virtualization:",
+        "data": "VT-x"
+      },
+      {
+        "field": "L1d cache:",
+        "data": "416 KiB (10 instances)"
+      },
+      {
+        "field": "L1i cache:",
+        "data": "448 KiB (10 instances)"
+      },
+      {
+        "field": "L2 cache:",
+        "data": "9.5 MiB (7 instances)"
+      },
+      {
+        "field": "L3 cache:",
+        "data": "20 MiB (1 instance)"
+      },
+      {
+        "field": "NUMA node(s):",
+        "data": "1"
+      },
+      {
+        "field": "NUMA node0 CPU(s):",
+        "data": "0-15"
+      },
+      {
+        "field": "Vulnerability Gather data sampling:",
+        "data": "Not affected"
+      },
+      {
+        "field": "Vulnerability Ghostwrite:",
+        "data": "Not affected"
+      },
+      {
+        "field": "Vulnerability Indirect target selection:",
+        "data": "Not affected"
+      },
+      {
+        "field": "Vulnerability Itlb multihit:",
+        "data": "Not affected"
+      },
+      {
+        "field": "Vulnerability L1tf:",
+        "data": "Not affected"
+      },
+      {
+        "field": "Vulnerability Mds:",
+        "data": "Not affected"
+      },
+      {
+        "field": "Vulnerability Meltdown:",
+        "data": "Not affected"
+      },
+      {
+        "field": "Vulnerability Mmio stale data:",
+        "data": "Not affected"
+      },
+      {
+        "field": "Vulnerability Old microcode:",
+        "data": "Not affected"
+      },
+      {
+        "field": "Vulnerability Reg file data sampling:",
+        "data": "Mitigation; Clear Register File"
+      },
+      {
+        "field": "Vulnerability Retbleed:",
+        "data": "Not affected"
+      },
+      {
+        "field": "Vulnerability Spec rstack overflow:",
+        "data": "Not affected"
+      },
+      {
+        "field": "Vulnerability Spec store bypass:",
+        "data": "Mitigation; Speculative Store Bypass disabled via prctl"
+      },
+      {
+        "field": "Vulnerability Spectre v1:",
+        "data": "Mitigation; usercopy/swapgs barriers and __user pointer sanitization"
+      },
+      {
+        "field": "Vulnerability Spectre v2:",
+        "data": "Mitigation; Enhanced / Automatic IBRS; IBPB conditional; PBRSB-eIBRS SW sequence; BHI BHI_DIS_S"
+      },
+      {
+        "field": "Vulnerability Srbds:",
+        "data": "Not affected"
+      },
+      {
+        "field": "Vulnerability Tsa:",
+        "data": "Not affected"
+      },
+      {
+        "field": "Vulnerability Tsx async abort:",
+        "data": "Not affected"
+      },
+      {
+        "field": "Vulnerability Vmscape:",
+        "data": "Mitigation; IBPB before exit to userspace"
+      }
+    ]
+  },
+  "block_devices": {
+    "blockdevices": [
+      {
+        "name": "loop0",
+        "model": null,
+        "type": "loop",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "loop1",
+        "model": null,
+        "type": "loop",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "loop2",
+        "model": null,
+        "type": "loop",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "loop3",
+        "model": null,
+        "type": "loop",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "loop4",
+        "model": null,
+        "type": "loop",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "loop5",
+        "model": null,
+        "type": "loop",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "loop6",
+        "model": null,
+        "type": "loop",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "loop8",
+        "model": null,
+        "type": "loop",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "loop9",
+        "model": null,
+        "type": "loop",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "loop10",
+        "model": null,
+        "type": "loop",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "loop11",
+        "model": null,
+        "type": "loop",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "loop12",
+        "model": null,
+        "type": "loop",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "loop13",
+        "model": null,
+        "type": "loop",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "loop14",
+        "model": null,
+        "type": "loop",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "loop15",
+        "model": null,
+        "type": "loop",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "loop16",
+        "model": null,
+        "type": "loop",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "loop17",
+        "model": null,
+        "type": "loop",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "loop18",
+        "model": null,
+        "type": "loop",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "loop19",
+        "model": null,
+        "type": "loop",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "loop20",
+        "model": null,
+        "type": "loop",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "loop21",
+        "model": null,
+        "type": "loop",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "loop22",
+        "model": null,
+        "type": "loop",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "loop23",
+        "model": null,
+        "type": "loop",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "loop24",
+        "model": null,
+        "type": "loop",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "loop25",
+        "model": null,
+        "type": "loop",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "loop26",
+        "model": null,
+        "type": "loop",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "loop27",
+        "model": null,
+        "type": "loop",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "sdb",
+        "model": "ST1000LM035-1RK172",
+        "type": "disk",
+        "rota": true,
+        "tran": "usb"
+      },
+      {
+        "name": "zram0",
+        "model": null,
+        "type": "disk",
+        "rota": false,
+        "tran": null
+      },
+      {
+        "name": "nvme0n1",
+        "model": "BG6 KIOXIA 1024GB",
+        "type": "disk",
+        "rota": false,
+        "tran": "nvme"
+      }
+    ]
+  },
+  "filesystem": "/dev/nvme0n1p8 ext4   rw,relatime",
+  "governors": [
+    "powersave"
+  ],
+  "notes": "Read-only system inventory collected during series; no stress, build, test or profiler."
+}

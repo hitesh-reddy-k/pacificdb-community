@@ -206,6 +206,7 @@ async function writeMetadata(filename, metadata) {
 
 async function executableForPid(pid) {
   try {
+    if (pid === process.pid) return await realpath(process.execPath);
     if (process.platform === 'linux') {
       return await realpath(await readlink(`/proc/${pid}/exe`));
     }
@@ -346,6 +347,7 @@ async function logTail(filename, maximum = 8192) {
 }
 
 export async function ensureLocalEngine(client, { autoStart = true, output } = {}) {
+  if (client.useTls) return false;
   if (!isLocalHost(client.host)) return false;
   // --no-start is deliberately side-effect free: it does not create the home,
   // clean stale metadata, join a startup owner, or signal any process.
@@ -359,7 +361,10 @@ export async function ensureLocalEngine(client, { autoStart = true, output } = {
     host: client.host, port: client.port, home, engine,
   });
   let state = classifyEngineState(inspection.observations);
-  if (state === 'pid_reused' && await fileExists(startLock)) state = 'starting';
+  // The engine can acquire its root lock before publishing discovery metadata.
+  // Match the native launcher: only an existing startup lock permits waiting.
+  if (['pid_reused', 'data_root_in_use'].includes(state) &&
+      await fileExists(startLock)) state = 'starting';
   if (state === 'healthy_existing') return false;
   if (state === 'stale_pid') {
     if (inspection.observations.portOpen) {

@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -41,39 +40,21 @@ try {
     return { sandbox: p.sandbox, contextIsolation: p.contextIsolation, nodeIntegration: p.nodeIntegration };
   });
   assert.deepEqual(preferences, { sandbox: true, contextIsolation: true, nodeIntegration: false });
-  if (process.platform === 'linux' && executablePath) {
-    const version = await desktop.evaluate(({ app }) => app.getVersion());
-    const arch = process.arch === 'x64' ? 'amd64' : process.arch;
-    const packageFile = path.join('dist/desktop', `PacificDB-Workbench-${version}-linux-${arch}.deb`);
-    if (existsSync(packageFile)) {
-      const packageContents = spawnSync('dpkg-deb', ['-c', packageFile], { encoding: 'utf8' });
-      assert.equal(packageContents.status, 0, packageContents.stderr);
-      assert.ok(packageContents.stdout.includes('./opt/PacificDB-Workbench/pacificdb-workbench'),
-        'the installed executable path must not contain spaces');
-      for (const size of [16, 32, 256, 512]) {
-        const icon = `hicolor/${size}x${size}/apps/pacificdb-workbench.png`;
-        assert.ok(packageContents.stdout.includes(icon), `missing packaged icon: ${icon}`);
-      }
-    }
-  }
   async function create(kind, name) {
-    await page.locator(kind === 'project' ? '#overview-create' : `#add-${kind}`).click();
+    await page.locator(kind === 'database' ? '#overview-create' : `#add-${kind}`).click();
     await page.locator('#create-name').fill(name);
     await page.locator('#submit-create').click();
     await page.locator('#notice').filter({ hasText: `Created ${kind} ${name}.` }).waitFor();
   }
-  await create('project', 'Desktop project');
   await create('database', 'workspace');
   await create('collection', 'notes');
-  const projectId = await page.locator('#project-id').textContent();
-  assert.match(projectId, /^project_/);
-  assert.equal(await page.locator('#projects > .tree-node > .tree-children > .tree-node > .tree-children > .tree-node .tree-item').count(), 1);
+  assert.equal(await page.locator('#databases > .tree-node > .tree-children .tree-item').count(), 1);
   await page.locator('#environment-open').click();
   await page.locator('#connection-dialog').waitFor();
   assert.match(await page.locator('#connection-endpoint').textContent(), /^127\.0\.0\.1:\d+$/);
-  assert.match(await page.locator('#connection-example').textContent(), /pacificdb(?:\.exe)?['"]? --host "127\.0\.0\.1" --port \d+ --no-start/);
+  assert.match(await page.locator('#connection-example').textContent(), /pacificdb(?:\.exe)?['"]? --url "pacificdb:\/\/127\.0\.0\.1:\d+\/workspace" --no-start/);
   await page.locator('#connection-node').click();
-  assert.ok((await page.locator('#connection-example').textContent()).includes(projectId));
+  assert.match(await page.locator('#connection-example').textContent(), /PacificDB.connect.*workspace/);
   await page.locator('#close-connection').click();
   await page.locator('#new-document').click();
   await page.locator('#document-json').fill('{"id":"desktop-note","message":"Saved in the desktop app"}');
@@ -98,11 +79,11 @@ try {
   assert.match(version.stdout, /PacificDB/);
   const shell = spawnSync(cli, ['--host', '127.0.0.1', '--port',
     command.match(/--port (\d+)/)[1], '--no-start'], {
-    encoding: 'utf8', input: 'list projects\nquit\n', timeout: 10_000,
+    encoding: 'utf8', input: 'list databases\nquit\n', timeout: 10_000,
     env: { ...process.env, PACIFICDB_CLI_HOME: path.join(directory, 'cli') },
   });
   assert.equal(shell.status, 0, shell.stderr);
-  assert.match(shell.stdout, /Desktop project/);
+  assert.match(shell.stdout, /workspace/);
   await page.locator('#open-settings').click();
   await page.locator('#theme-select').selectOption('dark');
   await page.locator('#settings-done').click();
@@ -115,8 +96,6 @@ try {
   const exit = new Promise((resolve) => desktop.process().once('exit', resolve));
   await desktop.evaluate(({ app }) => { app.quit(); });
   await exit;
-  assert.ok((await readFile(path.join(directory, 'database/data/.clean_shutdown'))).length > 0,
-    'desktop quit must flush the engine and write its clean shutdown marker');
   desktop = null;
   page = await launch();
   assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');

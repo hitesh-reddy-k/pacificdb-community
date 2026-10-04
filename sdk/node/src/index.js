@@ -1,12 +1,15 @@
 import net from 'node:net';
 import tls from 'node:tls';
 import { createHash } from 'node:crypto';
-import { createReadStream, createWriteStream } from 'node:fs';
+import { createReadStream, createWriteStream, readFileSync } from 'node:fs';
 import { mkdtemp, rename, rmdir, stat, unlink } from 'node:fs/promises';
 import { once } from 'node:events';
 import { finished } from 'node:stream/promises';
 import { StringDecoder } from 'node:string_decoder';
 import path from 'node:path';
+import { inspect } from 'node:util';
+import { parseConnectionUrl } from './connection-url.js';
+export { parseConnectionUrl } from './connection-url.js';
 
 const MAX_SOURCE_CHUNK_BYTES = 4 * 1024 * 1024;
 const REQUEST_RESERVE_BYTES = 64 * 1024;
@@ -17,7 +20,7 @@ function responseError(value) {
   const code = String(value.error);
   const detail = typeof value.message === 'string' && value.message !== code
     ? `${code}: ${value.message}` : code;
-  return Object.assign(new Error(detail), { response: value });
+  return Object.assign(new Error(detail), { code, response: value });
 }
 
 class PooledConnection {
@@ -34,7 +37,7 @@ class PooledConnection {
 
   async connect() {
     if (this.connected && this.socket && !this.socket.destroyed) return;
-    if (this.connecting) return this.connecting;
+    if (this.connecting && this.socket && !this.socket.destroyed) return this.connecting;
 
     const options = { host: this.pool.host, port: this.pool.port,
       ...(this.pool.ca ? { ca: this.pool.ca } : {}) };
@@ -44,7 +47,7 @@ class PooledConnection {
     this.decoder = new StringDecoder('utf8');
     this.responsesOnSocket = 0;
     const connectedEvent = this.pool.useTls ? 'secureConnect' : 'connect';
-    this.connecting = new Promise((resolve, reject) => {
+    const connecting = new Promise((resolve, reject) => {
       const onConnect = () => {
         cleanup();
         if (socket !== this.socket || socket.destroyed) {
@@ -71,7 +74,8 @@ class PooledConnection {
       socket.once(connectedEvent, onConnect);
       socket.once('error', onError);
       socket.once('close', onClose);
-    }).finally(() => { this.connecting = null; });
+    }).finally(() => { if (this.connecting === connecting) this.connecting = null; });
+    this.connecting = connecting;
 
     socket.on('data', (chunk) => this.onData(socket, chunk));
     socket.on('error', (error) => this.onFailure(socket, error));
@@ -142,14 +146,17 @@ class PooledConnection {
       const timer = setTimeout(() => this.finish(
         new Error('PacificDB request timed out'), true), this.pool.timeoutMs);
       timer.unref?.();
-      this.current = { resolve, reject, timer };
+      const current = { resolve, reject, timer };
+      this.current = current;
       this.connect().then(() => {
-        if (!this.current || !this.socket || this.socket.destroyed) return;
+        if (this.current !== current || !this.socket || this.socket.destroyed) return;
         this.socket.ref();
         this.socket.write(wire, (error) => {
-          if (error) this.finish(error, true);
+          if (error && this.current === current) this.finish(error, true);
         });
-      }).catch((error) => this.finish(error, true));
+      }).catch((error) => {
+        if (this.current === current) this.finish(error, true);
+      });
     });
   }
 
@@ -169,7 +176,6 @@ class ConnectionPool {
     this.connections = [];
     this.idle = [];
     this.queue = [];
-    this.pendingRelease = 0;
     this.closed = false;
   }
 
@@ -180,33 +186,22 @@ class ConnectionPool {
   }
 
   dispatch(connection, job) {
+    const release = () => {
+      if (!this.closed) {
+        const next = this.queue.shift();
+        if (next) this.dispatch(connection, next);
+        else this.idle.push(connection);
+      }
+    };
     connection.request(job.wire).then((value) => {
-      // Give an older one-request-per-connection server a chance to deliver
-      // its FIN before assigning more work to this slot. Keep-alive engines
-      // retain the same socket; closed peers reconnect on the next request.
-      this.pendingRelease += 1;
+      // Response parsing already retires peers that do not explicitly promise
+      // keep-alive. Return the slot before callers submit their next burst;
+      // delaying release can trap every queued request on one warm connection.
+      release();
       job.resolve(value);
-      const releaseDelayMs = connection.responsesOnSocket < 2 ? 5 : 0;
-      setTimeout(() => {
-        this.pendingRelease -= 1;
-        if (!this.closed) {
-          const next = this.queue.shift();
-          if (next) this.dispatch(connection, next);
-          else this.idle.push(connection);
-        }
-      }, releaseDelayMs);
     }, (error) => {
-      this.pendingRelease += 1;
+      release();
       job.reject(error);
-      const releaseDelayMs = connection.responsesOnSocket < 2 ? 5 : 0;
-      setTimeout(() => {
-        this.pendingRelease -= 1;
-        if (!this.closed) {
-          const next = this.queue.shift();
-          if (next) this.dispatch(connection, next);
-          else this.idle.push(connection);
-        }
-      }, releaseDelayMs);
     });
   }
 
@@ -216,7 +211,6 @@ class ConnectionPool {
       const job = { wire, resolve, reject };
       const connection = this.idle.pop();
       if (connection) this.dispatch(connection, job);
-      else if (this.pendingRelease > 0) this.queue.push(job);
       else if (this.connections.length < this.poolSize) {
         this.dispatch(this.newConnection(), job);
       } else this.queue.push(job);
@@ -265,9 +259,24 @@ function mediaType(filename) {
 }
 
 export class PacificDBClient {
+  #credentials;
+  #authentication;
+  #authenticated = false;
+  #secrets = new Set();
+
+  static fromUrl(url, options = {}) {
+    return new this(parseConnectionUrl(url, options));
+  }
+
+  static async connect(url, options = {}) {
+    const client = this.fromUrl(url, options);
+    try { await client.connect(); return client; }
+    catch (error) { client.close(); throw error; }
+  }
+
   constructor({ host = '127.0.0.1', port = 9000, userId = 'system',
                 database = '', projectId = '', tls: useTls = false, ca, timeoutMs = 30000,
-                poolSize = DEFAULT_POOL_SIZE, token = '' } = {}) {
+                poolSize = DEFAULT_POOL_SIZE, token = '', caFile, username, password } = {}) {
     if (!Number.isSafeInteger(poolSize) || poolSize < 1 || poolSize > MAX_POOL_SIZE) {
       throw new RangeError(`poolSize must be an integer between 1 and ${MAX_POOL_SIZE}`);
     }
@@ -277,21 +286,119 @@ export class PacificDBClient {
     this.database = database;
     this.projectId = projectId;
     this.useTls = useTls;
-    this.ca = ca;
     this.timeoutMs = timeoutMs;
-    this.token = token;
+    let currentToken = token;
+    if (token) this.#secrets.add(token);
+    Object.defineProperty(this, 'token', { get: () => currentToken,
+      set: value => { currentToken = value; if (value) this.#secrets.add(value); } });
+    if (username !== undefined || password !== undefined) {
+      if (!username || !password) throw new TypeError('username and password are required together');
+      this.#credentials = { username, password };
+      this.#secrets.add(password);
+    }
+    if (caFile) {
+      if (!useTls) throw new TypeError('caFile requires TLS');
+      try { ca = readFileSync(caFile); }
+      catch { throw new Error('could not read TLS CA file'); }
+    }
+    this.ca = ca;
     this.poolSize = poolSize;
     this._pool = new ConnectionPool({ host, port, useTls, ca, timeoutMs, poolSize });
   }
 
   request(command) {
-    const payload = { userId: this.userId, dbName: this.database,
-      ...(this.token ? { token: this.token } : {}), ...command };
-    return this._pool.request(JSON.stringify(payload) + '\n');
+    return this._scopedRequest()(command);
   }
 
-  connect() {
-    return this._pool.connect();
+  _scopedRequest() {
+    const scope = { userId: this.userId, dbName: this.database,
+      ...(this.token ? { token: this.token } : {}) };
+    const needsAuth = !!this.#credentials && !this.#authenticated;
+    const request = async command => {
+      const payload = JSON.parse(JSON.stringify({ ...scope, ...command }));
+      try {
+        if (needsAuth && command.action !== 'security_authenticate') {
+          const token = await this.#ensureAuthenticated();
+          if (!Object.hasOwn(scope, 'token')) scope.token = token;
+          if (!Object.hasOwn(payload, 'token')) payload.token = token;
+        }
+        return await this.#send(payload);
+      } catch (error) { throw this.#redact(error); }
+    };
+    request.wireBytes = command => Buffer.byteLength(JSON.stringify({ ...scope, ...command })) + 1;
+    return request;
+  }
+
+  async #send(payload) {
+    const learn = value => {
+      if (Array.isArray(value)) value.forEach(learn);
+      else if (value && typeof value === 'object') for (const [key, item] of Object.entries(value)) {
+        if (/password|token|authorization/i.test(key) && typeof item === 'string' && item) this.#secrets.add(item);
+        learn(item);
+      }
+    };
+    learn(payload);
+    try {
+      return await this._pool.request(JSON.stringify(payload) + '\n');
+    } catch (error) { throw this.#redact(error); }
+  }
+
+  #ensureAuthenticated() {
+    if (!this.#credentials) return Promise.resolve(this.token);
+    if (!this.#authentication) {
+      this.#authentication = this.authenticate(this.#credentials.username,
+        this.#credentials.password).then(() => {
+        this.#authenticated = true;
+        return this.token;
+      }).catch(error => { this.close(); throw error; });
+    }
+    return this.#authentication;
+  }
+
+  #redact(error) {
+    const clean = value => {
+      if (typeof value === 'string') {
+        let safe = value.replace(/pacificdbs?:\/\/[^\s/]*@/g, 'pacificdb://[redacted]@');
+        for (const secret of this.#secrets) safe = safe.split(secret).join('[redacted]');
+        return safe;
+      }
+      if (Array.isArray(value)) return value.map(clean);
+      if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value)
+        .map(([key, val]) => [clean(key), /password|token|authorization/i.test(key) ? '[redacted]' : clean(val)]));
+      return value;
+    };
+    const seen = new Set();
+    const safeError = original => {
+      if (!original || seen.has(original)) return new Error('Operation failed');
+      seen.add(original);
+      const message = clean(original.message || 'Operation failed');
+      const result = original instanceof MediaUploadError
+        ? new MediaUploadError(message, { code: clean(original.code), uploadId: clean(original.uploadId),
+          nextChunk: original.nextChunk, receivedChunks: original.receivedChunks,
+          receivedBytes: original.receivedBytes, resumable: original.resumable })
+        : new Error(message);
+      result.name = clean(original.name || 'Error');
+      if (original.code !== undefined) result.code = clean(original.code);
+      if (original.response !== undefined) result.response = clean(original.response);
+      if (original.stack) result.stack = clean(original.stack);
+      if (original.cause) result.cause = safeError(original.cause);
+      return result;
+    };
+    return safeError(error);
+  }
+
+  async connect() {
+    try { await this.#ensureAuthenticated(); await this._pool.connect(); }
+    catch (error) { this.close(); throw this.#redact(error); }
+  }
+
+  toJSON() {
+    return { host: this.host, port: this.port, database: this.database,
+      userId: this.userId, tls: this.useTls, poolSize: this.poolSize };
+  }
+
+  [inspect.custom]() {
+    return `PacificDBClient ${inspect(this.toJSON())}`;
   }
 
   close() {
@@ -303,13 +410,13 @@ export class PacificDBClient {
   }
 
   _wireBytes(command) {
-    const payload = { userId: this.userId, dbName: this.database,
-      ...(this.token ? { token: this.token } : {}), ...command };
-    return Buffer.byteLength(JSON.stringify(payload)) + 1;
+    return this._scopedRequest().wireBytes(command);
   }
 
   async authenticate(username, password) {
+    if (typeof password === 'string' && password) this.#secrets.add(password);
     const result = await this.request({ action: 'security_authenticate', username, password });
+    if (typeof result?.token !== 'string' || !result.token) throw new Error('invalid authentication response');
     this.token = result.token;
     return result;
   }
@@ -328,34 +435,43 @@ export class PacificDBClient {
     return response;
   }
   async createDatabase(name = this.database, dbType = 'binary') {
-    if (!this.projectId) throw new Error('select a project before creating a database');
     if (!name) throw new Error('database name is required');
+    const request = this._scopedRequest();
+    const projectId = this.projectId;
+    if (!projectId) {
+      const response = await request({ action: 'createDatabase', dbName: name, dbType });
+      this.database = name;
+      return response;
+    }
     if (Buffer.byteLength(name, 'utf8') > 128)
       throw new Error('database name must be 1-128 bytes when mapped to a project');
-    const project = await this.request({ action: 'community_project_get', id: this.projectId });
+    const project = await request({ action: 'community_project_get', id: projectId });
     if (!project.project?.id) throw new Error('project_not_found');
-    const response = await this.request({ action: 'createDatabase', dbName: name,
-      dbType, project_id: this.projectId });
-    await this.request({ action: 'community_database_map', database: name,
-      project_id: this.projectId });
+    const response = await request({ action: 'createDatabase', dbName: name,
+      dbType, project_id: projectId });
+    await request({ action: 'community_database_map', database: name,
+      project_id: projectId });
     this.database = name;
     return response;
   }
   async useDatabase(name) {
-    if (!this.projectId) throw new Error('select a project before selecting a database');
-    const response = await this.request({ action: 'community_database_list',
-      project_id: this.projectId });
-    if (!response.databases?.includes(name)) throw new Error('database_not_found');
+    const projectId = this.projectId;
+    const response = await this.request(projectId ?
+      { action: 'community_database_list', project_id: projectId } : { action: 'listDatabases' });
+    const names = projectId ? response.databases : response;
+    if (!Array.isArray(names) || !names.includes(name)) throw new Error('database_not_found');
     this.database = name;
     return response;
   }
   async createCollection(name) {
-    if (!this.projectId) throw new Error('select a project before creating a collection');
     if (!this.database) throw new Error('select a database before creating a collection');
-    const response = await this.request({ action: 'community_database_list',
-      project_id: this.projectId });
-    if (!response.databases?.includes(this.database)) throw new Error('database_not_found');
-    return this.request({ action: 'createCollection', collection: name });
+    const request = this._scopedRequest();
+    const database = this.database;
+    if (this.projectId) {
+      const response = await request({ action: 'community_database_list', project_id: this.projectId });
+      if (!response.databases?.includes(database)) throw new Error('database_not_found');
+    }
+    return request({ action: 'createCollection', collection: name });
   }
   insert(collection, data) {
     return this.request({ action: 'insert', collection, data });
@@ -400,12 +516,13 @@ export class PacificDBClient {
     if (typeof collection !== 'string' || !collection) {
       throw new TypeError('media collection is required');
     }
+    const request = this._scopedRequest();
     const file = await stat(filename);
     if (!file.isFile()) throw new Error('media path must be a regular file');
     if (file.size === 0) {
       throw Object.assign(new Error('media_file_empty'), { code: 'media_file_empty' });
     }
-    const capabilities = await this.capabilities();
+    const capabilities = await request({ action: 'community_capabilities' });
     const maxRequestBytes = capabilities.max_request_bytes;
     if (!Number.isSafeInteger(maxRequestBytes) || maxRequestBytes <= REQUEST_RESERVE_BYTES) {
       throw new Error('engine request limit is too small for media chunks');
@@ -424,7 +541,7 @@ export class PacificDBClient {
       { highWaterMark: sourceChunkBytes })) wholeHash.update(chunk);
     const sha256 = wholeHash.digest('hex');
     const chunkCount = Math.ceil(file.size / sourceChunkBytes);
-    const begun = await this.request({ action: 'community_media_begin', collection,
+    const begun = await request({ action: 'community_media_begin', collection,
       filename: path.basename(filename), content_type: contentType,
       size_bytes: file.size, chunk_count: chunkCount, sha256,
       ...(resume ? { resume_id: resume } : {}) });
@@ -463,10 +580,10 @@ export class PacificDBClient {
           const command = { action: 'community_media_put_chunk', media_id: media.id,
             index, data: chunk.toString('base64'), size_bytes: chunk.length,
             sha256: createHash('sha256').update(chunk).digest('hex') };
-          if (this._wireBytes(command) > maxRequestBytes) {
+          if (request.wireBytes(command) > maxRequestBytes) {
             throw new Error('serialized media chunk exceeds engine request limit');
           }
-          const stored = await this.request(command);
+          const stored = await request(command);
           const alreadyReceived = received.has(index);
           updateProgress(stored?.media ?? stored, index, chunk.length);
           if (!alreadyReceived && !Number.isSafeInteger((stored?.media ?? stored)?.received_bytes)) {
@@ -475,7 +592,7 @@ export class PacificDBClient {
         }
         index += 1;
       }
-      const finalized = await this.request({ action: 'community_media_finalize',
+      const finalized = await request({ action: 'community_media_finalize',
         media_id: media.id });
       return finalized.media;
     } catch (error) {
@@ -485,7 +602,8 @@ export class PacificDBClient {
   }
 
   async downloadMediaFile(mediaId, destination) {
-    const response = await this.request({ action: 'community_media_get',
+    const request = this._scopedRequest();
+    const response = await request({ action: 'community_media_get',
       media_id: mediaId });
     const manifest = response.media;
     if (!manifest || manifest.status !== 'ready') {
@@ -504,7 +622,7 @@ export class PacificDBClient {
     let sizeBytes = 0;
     try {
       for (let index = 0; index < manifest.chunk_count; index += 1) {
-        const result = await this.request({ action: 'community_media_get_chunk',
+        const result = await request({ action: 'community_media_get_chunk',
           media_id: mediaId, index });
         const chunk = result.chunk;
         if (!chunk || typeof chunk.data !== 'string') {
@@ -540,15 +658,18 @@ export class PacificDBClient {
     }
   }
   async exportBackup(backupId, destination, { chunkBytes = 1024 * 1024 } = {}) {
+    const request = this._scopedRequest();
     if (typeof backupId !== 'string' || !backupId) throw new TypeError('backup id is required');
     if (!Number.isSafeInteger(chunkBytes) || chunkBytes < 1 || chunkBytes > 1024 * 1024) {
       throw new TypeError('backup chunk size must be between 1 byte and 1 MiB');
     }
-    const manifest = await this.request({ action: 'export_backup_manifest',
+    const manifest = await request({ action: 'export_backup_manifest',
       backup_id: backupId });
     if (!Array.isArray(manifest.files)) throw new Error('invalid backup export manifest');
-    const partial = `${destination}.part`;
-    const output = createWriteStream(partial, { mode: 0o600 });
+    const temporaryDirectory = await mkdtemp(path.join(
+      path.dirname(path.resolve(destination)), '.pacificdb-export-'));
+    const partial = path.join(temporaryDirectory, 'backup.json');
+    const output = createWriteStream(partial, { flags: 'wx', mode: 0o600 });
     let outputError;
     output.on('error', (error) => { outputError = error; });
     const write = async (value) => {
@@ -570,7 +691,7 @@ export class PacificDBClient {
         let offset = 0;
         let chunkIndex = 0;
         while (offset < file.size_bytes) {
-          const response = await this.request({ action: 'export_backup_file_chunk',
+          const response = await request({ action: 'export_backup_file_chunk',
             backup_id: backupId, path: file.path, offset,
             max_bytes: Math.min(chunkBytes, file.size_bytes - offset) });
           const bytes = Buffer.from(response.data || '', 'base64');
@@ -598,8 +719,11 @@ export class PacificDBClient {
       return { backupId, destination, files: manifest.files.length, sizeBytes: total };
     } catch (error) {
       output.destroy();
-      await unlink(partial).catch(() => {});
+      await finished(output).catch(() => {});
       throw error;
+    } finally {
+      await unlink(partial).catch(() => {});
+      await rmdir(temporaryDirectory).catch(() => {});
     }
   }
   putVector(collection, id, vector, metadata = {}) {
@@ -621,3 +745,5 @@ export class PacificDBClient {
       filter, ...(modality ? { modality } : {}) });
   }
 }
+
+export const PacificDB = PacificDBClient;

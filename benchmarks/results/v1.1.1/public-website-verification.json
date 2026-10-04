@@ -1,0 +1,38 @@
+{
+  "checked_at": "2026-10-04T15:26:13+05:30",
+  "status": "DEPLOYED_VERIFIED",
+  "workflow": {
+    "run_id": 37193691784,
+    "source_revision": "05838dc73e495d170c16a1b029f2e751c4f69ceb",
+    "conclusion": "success",
+    "url": "https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/37193691784"
+  },
+  "pages": [
+    {
+      "url": "https://pacificdb.in/",
+      "http_status": 200,
+      "target_version_present": true,
+      "removed_comparison_present": false
+    },
+    {
+      "url": "https://pacificdb.in/docs.html",
+      "http_status": 200,
+      "target_version_present": true,
+      "removed_comparison_present": false
+    },
+    {
+      "url": "https://pacificdb.in/release-1.1.1.html",
+      "http_status": 200,
+      "target_version_present": true,
+      "removed_comparison_present": false
+    }
+  ],
+  "source_validation": {
+    "commands": [
+      "node scripts/test-site-docs.mjs",
+      "python3 scripts/test-release-consistency.py",
+      "repository-wide removed-product-comparison scan"
+    ],
+    "result": "PASS"
+  }
+}

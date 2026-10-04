@@ -24,6 +24,12 @@ nlohmann::json MediaUploadInterrupted::publicResponse() const {
 namespace {
 using json = nlohmann::json;
 
+json decodeJson(const std::string& text) {
+    auto result = json::parse(text, nullptr, false);
+    if (result.is_discarded()) throw std::invalid_argument("invalid JSON");
+    return result;
+}
+
 std::string trim(std::string text) {
     while (!text.empty() && std::isspace(static_cast<unsigned char>(text.front())))
         text.erase(text.begin());
@@ -34,13 +40,7 @@ std::string trim(std::string text) {
 
 json request(json command) { return {{"kind", "request"}, {"command", std::move(command)}}; }
 
-void requireProject(const ShellContext& context) {
-    if (context.projectId.empty())
-        throw std::invalid_argument("select a project with: use project <id>");
-}
-
 void requireDatabase(const ShellContext& context) {
-    requireProject(context);
     if (context.database.empty())
         throw std::invalid_argument("select a database with: use <name>");
 }
@@ -91,7 +91,7 @@ std::pair<json, std::string> takeJson(const std::string& input) {
         } else if (character == '"') quoted = true;
         else if (character == opening) ++depth;
         else if (character == closing && --depth == 0) {
-            return {json::parse(text.substr(0, i + 1)), trim(text.substr(i + 1))};
+            return {decodeJson(text.substr(0, i + 1)), trim(text.substr(i + 1))};
         }
     }
     throw std::invalid_argument("incomplete JSON value");
@@ -100,14 +100,7 @@ std::pair<json, std::string> takeJson(const std::string& input) {
 }  // namespace
 
 const char* shellHelp() {
-    return R"HELP(Projects
-  create project <name>               Create project
-  list projects                       List projects
-  use project <id>                    Switch project
-  show project                        Show project
-  delete project <id>                 Delete project
-
-Databases and queries
+    return R"HELP(Databases and queries
   create database <name>              Create database
   list databases                      List databases
   use <name>                          Switch database
@@ -156,7 +149,7 @@ Vectors
 System
   help [topic]                        Show help
   context show                        Show context
-  context clear                       Clear project and database context
+  context clear                       Clear database context
   status                              Show connection status
   history                             Show command history
   clear                               Clear screen
@@ -168,8 +161,8 @@ System
 json parseShellCommand(const std::string& input, const ShellContext& context) {
     const std::string text = trim(input);
     if (text.empty()) return {{"kind", "empty"}};
-    if (text.front() == '{') return request(json::parse(text));
-    if (text.rfind("request ", 0) == 0) return request(json::parse(text.substr(8)));
+    if (text.front() == '{') return request(decodeJson(text));
+    if (text.rfind("request ", 0) == 0) return request(decodeJson(text.substr(8)));
     if (text == "exit" || text == "quit") return {{"kind", "exit"}};
     if (text == "help" || text.rfind("help ", 0) == 0) return {{"kind", "help"}};
     if (text == "clear") return {{"kind", "clear"}};
@@ -178,34 +171,16 @@ json parseShellCommand(const std::string& input, const ShellContext& context) {
     if (text == "context clear") return {{"kind", "context_clear"}};
     if (text == "status") return request({{"action", "ping"}});
     std::smatch match;
-    if (std::regex_match(text, match, std::regex(R"(^create project (.+)$)")))
-        return request({{"action", "community_project_create"}, {"name", match[1].str()}});
-    if (text == "list projects") return request({{"action", "community_project_list"}});
-    if (std::regex_match(text, match, std::regex(R"(^use project (\S+)$)")))
-        return {{"kind", "use_project"}, {"id", match[1].str()}};
-    if (text == "show project") {
-        if (context.projectId.empty()) throw std::invalid_argument("no project selected");
-        return request({{"action", "community_project_get"}, {"id", context.projectId}});
-    }
-    if (std::regex_match(text, match, std::regex(R"(^delete project(?: (\S+))?$)"))) {
-        const std::string id = match[1].matched ? match[1].str() : context.projectId;
-        if (id.empty()) throw std::invalid_argument("project id required");
-        auto result = request({{"action", "community_project_delete"}, {"id", id}});
-        result["clear_project"] = id;
-        return result;
-    }
+    if (std::regex_search(text, std::regex(R"(^(create|list|use|show|delete) projects?(\s|$))")))
+        throw std::invalid_argument("unknown command; use databases directly or request JSON for legacy APIs");
 
     if (std::regex_match(text, match, std::regex(R"(^create database (\S+)$)"))) {
-        requireProject(context);
         return {{"kind", "create_database"}, {"name", match[1].str()}};
     }
     if (text == "list databases") {
-        requireProject(context);
-        return request({{"action", "community_database_list"},
-                        {"project_id", context.projectId}});
+        return request({{"action", "listDatabases"}});
     }
     if (std::regex_match(text, match, std::regex(R"(^use (\S+)$)"))) {
-        requireProject(context);
         return {{"kind", "use_database"}, {"name", match[1].str()}};
     }
     if (text == "show database") {
@@ -213,10 +188,8 @@ json parseShellCommand(const std::string& input, const ShellContext& context) {
         return {{"kind", "show_database"}};
     }
     if (std::regex_match(text, match, std::regex(R"(^drop database (\S+)$)"))) {
-        requireProject(context);
         auto result = request({{"action", "dropDatabase"},
-                               {"dbName", match[1].str()},
-                               {"project_id", context.projectId}});
+                               {"dbName", match[1].str()}});
         result["clear_database"] = match[1].str();
         return result;
     }
@@ -239,7 +212,7 @@ json parseShellCommand(const std::string& input, const ShellContext& context) {
     if (std::regex_match(text, match, std::regex(R"(^insert (\S+)\s+(.+)$)"))) {
         requireDatabase(context);
         return request({{"action", "insert"}, {"collection", match[1].str()},
-                        {"data", json::parse(match[2].str())}});
+                        {"data", decodeJson(match[2].str())}});
     }
     if (std::regex_match(text, match,
                          std::regex(R"(^(findOne|find|count|explain) (\S+)(?:\s+(.+))?$)"))) {
@@ -247,7 +220,7 @@ json parseShellCommand(const std::string& input, const ShellContext& context) {
         const std::string name = match[1].str();
         json command{{"action", name == "findOne" ? "find" : name},
                      {"collection", match[2].str()},
-                     {"filter", match[3].matched ? json::parse(match[3].str()) : json::object()}};
+                     {"filter", match[3].matched ? decodeJson(match[3].str()) : json::object()}};
         if (name == "findOne") command["limit"] = 1;
         return request(std::move(command));
     }
@@ -262,12 +235,12 @@ json parseShellCommand(const std::string& input, const ShellContext& context) {
     if (std::regex_match(text, match, std::regex(R"(^delete (\S+)\s+(.+)$)"))) {
         requireDatabase(context);
         return request({{"action", "deleteOne"}, {"collection", match[1].str()},
-                        {"filter", json::parse(match[2].str())}});
+                        {"filter", decodeJson(match[2].str())}});
     }
     if (std::regex_match(text, match, std::regex(R"(^aggregate (\S+)\s+(.+)$)"))) {
         requireDatabase(context);
         return request({{"action", "aggregate"}, {"collection", match[1].str()},
-                        {"pipeline", json::parse(match[2].str())}});
+                        {"pipeline", decodeJson(match[2].str())}});
     }
 
     if (text.rfind("create backup", 0) == 0) {
@@ -322,7 +295,7 @@ json parseShellCommand(const std::string& input, const ShellContext& context) {
                          std::regex(R"(^put vector (\S+)\s+(\S+)\s+(.+)$)"))) {
         requireDatabase(context);
         return {{"kind", "vector_put"}, {"collection", match[1].str()},
-                {"id", match[2].str()}, {"vector", json::parse(match[3].str())}};
+                {"id", match[2].str()}, {"vector", decodeJson(match[3].str())}};
     }
     if (std::regex_match(text, match,
                          std::regex(R"(^query vector (\S+)\s+(.+)$)"))) {
@@ -334,7 +307,7 @@ json parseShellCommand(const std::string& input, const ShellContext& context) {
                         {"metric", flag(tokens, "--metric", "cosine")}});
     }
 
-    throw std::invalid_argument("unknown command: " + text);
+    throw std::invalid_argument("unknown command; type help for available commands");
 }
 
 }  // namespace pacificdb::cli

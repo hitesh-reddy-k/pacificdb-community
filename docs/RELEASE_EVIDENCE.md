@@ -16,13 +16,6 @@ or application data from entering release evidence. Referenced artifacts must
 be regular files inside the repository and are recorded by repository-relative
 path, byte length, and SHA-256 digest.
 
-For mixed-version RF3 qualification, pass `--old-build` with the verified
-previous release's `db_engine` executable or its containing directory. The
-candidate is built in `build-release-integrity`. Without that input the upgrade
-gate remains `BLOCKED`; the runner never invokes the test with missing arguments.
-The runner checks the worktree again after all commands, so a gate that modifies
-source files cannot produce release-eligible evidence.
-
 ## Status meanings
 
 - `PASS`: the named gate ran successfully against the recorded revision.
@@ -45,3 +38,17 @@ Physical power interruption and independent security review are required,
 external gates. Repository automation can validate their evidence but cannot
 self-certify either result. Until complete external records are attached to the
 same revision, both gates remain `BLOCKED`.
+
+
+## Database-first CLI, Workbench and SDK candidate
+
+The [3 October database-first qualification](evidence/2026-10-03-database-first-package-readiness.md)
+records isolated direct-database UX, Java/Python client and local distribution checks,
+including independent review findings and their tested corrections. Its
+[artifact manifest](evidence/2026-10-03-sdk-package-artifacts.json) identifies exact
+clean-source candidate hashes and explicitly test-only signing.
+
+These scoped checks do not waive the required external gates above. No package,
+release tag or installer was published or deployed. Registry ownership/protected
+publisher setup, supported-platform execution, and release-owner approval remain
+separate prerequisites; see [publication instructions](SDK_PUBLISHING.md).

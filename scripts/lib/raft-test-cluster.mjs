@@ -190,7 +190,7 @@ export class RaftTestCluster {
 
   async stopNode(index, signal = 'SIGINT') {
     const node = this.nodes[index];
-    if (!node?.child || node.child.exitCode !== null) return;
+    if (!node?.child || node.child.exitCode !== null || node.child.signalCode !== null) return;
     node.child.kill(signal);
     const timer = setTimeout(() => node.child.kill('SIGKILL'), 10_000);
     await once(node.child, 'exit');
