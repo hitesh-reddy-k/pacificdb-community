@@ -2,7 +2,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 module.exports = {
   appId: 'in.pacificdb.workbench',
-  productName: process.platform === 'linux' ? 'PacificDB-Workbench' : 'PacificDB Workbench',
+  productName: 'PacificDB Workbench',
   artifactName: 'PacificDB-Workbench-${version}-${os}-${arch}.${ext}',
   directories: { app: path.join(__dirname, 'stage'),
     output: path.join(root, 'dist', 'desktop'), buildResources: __dirname },
@@ -13,11 +13,10 @@ module.exports = {
   publish: null,
   linux: { target: ['deb', 'tar.gz'], executableName: 'pacificdb-workbench',
     syncDesktopName: true,
-    category: 'Development', icon: path.join(__dirname, 'icons'),
+    category: 'Development', icon: path.join(__dirname, 'icon.png'),
     synopsis: 'Desktop workspace for PacificDB',
     description: 'Explore documents, vectors, and media in a local PacificDB database. Includes the database engine.',
-    desktop: { entry: { Name: 'PacificDB Workbench',
-      Keywords: 'database;documents;vectors;PacificDB;', Terminal: 'false' } },
+    desktop: { entry: { Keywords: 'database;documents;vectors;PacificDB;', Terminal: 'false' } },
   },
   deb: { maintainer: 'PacificDB Community', depends: [process.env.PACIFICDB_DESKTOP_UBUNTU_24 === '1' ?
     'libc6 (>= 2.39)' : 'libc6 (>= 2.38)', process.env.PACIFICDB_DESKTOP_UBUNTU_24 === '1' ?

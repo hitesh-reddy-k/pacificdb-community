@@ -4,6 +4,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const version = JSON.parse(await readFile(path.join(repositoryRoot, 'cli/package.json'), 'utf8')).version;
+const releaseFilename = `release-${version}.html`;
 const siteRoot = path.join(repositoryRoot, 'site');
 
 async function readSiteFile(filename) {
@@ -23,21 +25,19 @@ async function assertLocalReferences(filename, html) {
     const targetName = relativeFile || filename;
     const targetPath = path.resolve(siteRoot, targetName);
     assert.ok(targetPath.startsWith(siteRoot + path.sep), `unsafe local reference: ${reference}`);
-    await access(targetPath);
-
     if (fragment) {
       const targetHtml = relativeFile && relativeFile !== filename
         ? await readFile(targetPath, 'utf8')
         : html;
       assert.ok(elementIds(targetHtml).has(fragment), `missing fragment target: ${reference}`);
-    }
+    } else await access(targetPath);
   }
 }
 
 const [index, docs, releaseNotes] = await Promise.all([
   readSiteFile('index.html'),
   readSiteFile('docs.html'),
-  readSiteFile('release-1.0.1.html')
+  readSiteFile(releaseFilename)
 ]);
 
 for (const asset of [
@@ -49,20 +49,24 @@ for (const asset of [
 }
 
 assert.match(index, /href=["']docs\.html["'][^>]*>Documentation</);
-assert.match(index, /href=["']#workbench["'][^>]*>Workbench</);
 assert.match(index, /href=["']docs\.html#quickstart["']/);
-assert.doesNotMatch(index, /hitesh-reddy-k\.github\.io\/pacificdb-community\/docs\.html/);
+assert.ok(!index.includes('hitesh-reddy-k.github.io/pacificdb-community/docs.html'));
 assert.match(index, /id=["']sdks["']/);
-assert.match(index, /href=["']release-1\.0\.1\.html["']/);
-assert.match(docs, /href=["']release-1\.0\.1\.html["']/);
-const workbenchDownload = 'https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-linux-v1.0.1/PacificDB-Workbench-1.0.1-linux-amd64.deb';
-assert.ok(index.includes(workbenchDownload), 'landing page must link the Linux Workbench installer');
-assert.ok(docs.includes(workbenchDownload), 'documentation must link the same Workbench installer');
+assert.ok(index.includes(`release-${version}.html`));
+assert.ok(docs.includes(`release-${version}.html`));
+const workbench = index.match(/<section\b[^>]*\bid=["']workbench["'][^>]*>[\s\S]*?<\/section>/)?.[0];
+assert.ok(workbench, 'landing page must expose the Workbench section');
+assert.ok(workbench.includes('href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-v1.1.1/PacificDB-Workbench-1.1.1-win-x64.exe"'),
+  'Workbench must link the published Windows desktop installer, not the engine installer');
+assert.match(workbench, /<button\b[^>]*\bdisabled[^>]*>macOS — Coming soon<\/button>/,
+  'Workbench macOS placeholder must be visibly unavailable and disabled');
+assert.doesNotMatch(workbench, /href=["'][^"']*macos/i,
+  'Workbench macOS placeholder must not expose a download link');
 for (const heading of ['Added', 'Removed', 'Improved']) {
   assert.match(releaseNotes, new RegExp(`<h3>${heading}</h3>`));
 }
 
-for (const landingSection of ['top', 'why', 'how', 'features', 'workbench', 'downloads', 'start', 'sdks']) {
+for (const landingSection of ['top', 'why', 'how', 'features', 'downloads', 'start', 'sdks']) {
   assert.ok(elementIds(index).has(landingSection), `missing landing section: ${landingSection}`);
 }
 
@@ -121,7 +125,7 @@ assert.doesNotMatch(docs, /motion-reveal|flushScrollMotion|--scroll-shift/);
 await Promise.all([
   assertLocalReferences('index.html', index),
   assertLocalReferences('docs.html', docs),
-  assertLocalReferences('release-1.0.1.html', releaseNotes)
+  assertLocalReferences(releaseFilename, releaseNotes)
 ]);
 
 for (const obsolete of ['style.css', 'docs.css', 'app.js', 'docs.js', 'pacificdb-logo.png']) {

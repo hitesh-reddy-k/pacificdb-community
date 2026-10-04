@@ -1,13 +1,34 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "pacificdb"
-version = "1.0.1"
-description = "PacificDB Community Python client"
+version = "1.1.1"
+description = "Database-first PacificDB Community client with verified pooled connections and streaming transfers"
+readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{name = "PacificDB contributors"}]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Operating System :: OS Independent",
+  "Topic :: Database",
+]
+
+[project.urls]
+Source = "https://github.com/hitesh-reddy-k/pacificdb-community"
+Issues = "https://github.com/hitesh-reddy-k/pacificdb-community/issues"
+Documentation = "https://github.com/hitesh-reddy-k/pacificdb-community/tree/pacificdb-v1.0/sdk/python"
+
+[tool.setuptools.packages.find]
+include = ["pacificdb", "pacificdb.*"]
+exclude = ["tests", "tests.*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

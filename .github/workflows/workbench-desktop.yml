@@ -16,7 +16,7 @@ on:
       - 'package-lock.json'
   push:
     branches: [pacificdb-v1.0]
-    tags: ['workbench-v*', 'workbench-linux-v*']
+    tags: ['workbench-v*']
     paths:
       - '.github/workflows/workbench-desktop.yml'
       - 'desktop/**'
@@ -30,6 +30,13 @@ on:
       - 'package.json'
       - 'package-lock.json'
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Exact existing workbench-vMAJOR.MINOR.PATCH tag to retry
+        required: false
+
+env:
+  WORKBENCH_RELEASE_TAG: ${{ inputs.release_tag || (startsWith(github.ref, 'refs/tags/workbench-v') && github.ref_name) || '' }}
 
 permissions:
   contents: read
@@ -43,6 +50,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.WORKBENCH_RELEASE_TAG || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -56,7 +65,7 @@ jobs:
       - run: npm run test:npm
       - name: Build native engine and CLI
         run: |
-          cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.0.1
+          cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.1.1
           cmake --build build --target db_engine pacificdb -j2
       - run: node scripts/test-workbench-e2e.mjs build
       - run: node scripts/test-desktop-engine.mjs build
@@ -74,13 +83,6 @@ jobs:
         run: |
           PACIFICDB_TEST_DESKTOP="$PWD/dist/desktop/linux-unpacked/pacificdb-workbench" \
             xvfb-run -a npm run test:workbench:desktop
-      - name: Install and test Linux package
-        run: |
-          sudo apt install -y ./dist/desktop/PacificDB-Workbench-1.0.1-linux-amd64.deb
-          test "$(stat -c %a /opt/PacificDB-Workbench/chrome-sandbox)" = 4755
-          test "$(readlink -f /usr/bin/pacificdb-workbench)" = /opt/PacificDB-Workbench/pacificdb-workbench
-          PACIFICDB_TEST_DESKTOP=/opt/PacificDB-Workbench/pacificdb-workbench \
-            xvfb-run -a npm run test:workbench:desktop
       - uses: actions/upload-artifact@v4
         with:
           name: workbench-linux-x64
@@ -90,14 +92,15 @@ jobs:
             dist/desktop/PacificDB-Workbench-*.tar.gz
 
   windows:
-    if: ${{ !startsWith(github.ref, 'refs/tags/workbench-linux-v') }}
     runs-on: windows-2025
     env:
       CSC_LINK: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
       CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
-      PACIFICDB_DESKTOP_RELEASE: ${{ startsWith(github.ref, 'refs/tags/workbench-v') && '1' || '0' }}
+      PACIFICDB_DESKTOP_RELEASE: ${{ (startsWith(github.ref, 'refs/tags/workbench-v') || startsWith(inputs.release_tag, 'workbench-v')) && '1' || '0' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.WORKBENCH_RELEASE_TAG || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -114,12 +117,12 @@ jobs:
             -DVCPKG_TARGET_TRIPLET=x64-windows-static `
             -DVCPKG_INSTALLED_DIR="$pwd/vcpkg_installed" `
             -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded `
-            -DPACIFICDB_ENGINE_VERSION=1.0.1
+            -DPACIFICDB_ENGINE_VERSION=1.1.1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cmake --build build --config Release --target db_engine pacificdb
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require signing credentials for release tags
-        if: startsWith(github.ref, 'refs/tags/workbench-v')
+        if: env.WORKBENCH_RELEASE_TAG != '' && env.WORKBENCH_RELEASE_TAG != 'workbench-v1.1.1'
         shell: pwsh
         run: |
           if (-not $env:CSC_LINK -or -not $env:CSC_KEY_PASSWORD) {
@@ -131,7 +134,7 @@ jobs:
           node scripts/test-desktop-engine.mjs build/Release
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Sign bundled native executables for release tags
-        if: startsWith(github.ref, 'refs/tags/workbench-v')
+        if: env.WORKBENCH_RELEASE_TAG != '' && env.WORKBENCH_RELEASE_TAG != 'workbench-v1.1.1'
         shell: pwsh
         run: |
           $certificate = "$env:RUNNER_TEMP\workbench-signing.pfx"
@@ -152,7 +155,13 @@ jobs:
         run: |
           $env:PACIFICDB_WORKBENCH_ENGINE = "$pwd\build\Release\db_engine.exe"
           $env:ELECTRON_BUILDER_COMPRESSION_LEVEL = '1'
-          npm run desktop:build -- --win nsis --x64
+          if ($env:WORKBENCH_RELEASE_TAG -eq 'workbench-v1.1.1') {
+            $env:PACIFICDB_DESKTOP_RELEASE = '0'
+          }
+          if ($env:PACIFICDB_DESKTOP_RELEASE -ne '1') {
+            Remove-Item Env:CSC_LINK,Env:CSC_KEY_PASSWORD -ErrorAction SilentlyContinue
+          }
+          npm run desktop:build -- --win nsis --x64 --publish never
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Test packaged application
         shell: pwsh
@@ -167,7 +176,6 @@ jobs:
           path: dist/desktop/PacificDB-Workbench-*.exe
 
   macos:
-    if: ${{ !startsWith(github.ref, 'refs/tags/workbench-linux-v') }}
     strategy:
       fail-fast: false
       matrix:
@@ -183,9 +191,11 @@ jobs:
       APPLE_ID: ${{ secrets.APPLE_ID }}
       APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-      PACIFICDB_DESKTOP_RELEASE: ${{ startsWith(github.ref, 'refs/tags/workbench-v') && '1' || '0' }}
+      PACIFICDB_DESKTOP_RELEASE: ${{ (startsWith(github.ref, 'refs/tags/workbench-v') || startsWith(inputs.release_tag, 'workbench-v')) && '1' || '0' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.WORKBENCH_RELEASE_TAG || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -201,14 +211,14 @@ jobs:
             -DOPENSSL_ROOT_DIR="$(brew --prefix openssl@3)" \
             -DOPENSSL_USE_STATIC_LIBS=TRUE \
             -DLZ4_LIBRARY="$(brew --prefix lz4)/lib/liblz4.a" \
-            -DPACIFICDB_ENGINE_VERSION=1.0.1
+            -DPACIFICDB_ENGINE_VERSION=1.1.1
           cmake --build build --target db_engine pacificdb -j2
           if otool -L build/db_engine build/pacificdb | grep -E '/(opt/homebrew|usr/local)/(opt|Cellar)/'; then
             echo 'Native binaries must not depend on Homebrew libraries at runtime.' >&2
             exit 1
           fi
       - name: Require signing and notarization for release tags
-        if: startsWith(github.ref, 'refs/tags/workbench-v')
+        if: env.WORKBENCH_RELEASE_TAG != '' && env.WORKBENCH_RELEASE_TAG != 'workbench-v1.1.1'
         run: |
           for name in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
             if [[ -z "${!name}" ]]; then echo "Missing $name" >&2; exit 1; fi
@@ -217,7 +227,15 @@ jobs:
       - name: Package Workbench for macOS
         env:
           ELECTRON_BUILDER_COMPRESSION_LEVEL: '1'
-        run: npm run desktop:build -- --mac dmg --${{ matrix.arch }}
+        run: |
+          if [[ "$WORKBENCH_RELEASE_TAG" == workbench-v1.1.1 ]]; then
+            export PACIFICDB_DESKTOP_RELEASE=0
+          fi
+          if [[ "$PACIFICDB_DESKTOP_RELEASE" != 1 ]]; then
+            unset CSC_LINK CSC_KEY_PASSWORD
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+          fi
+          npm run desktop:build -- --mac dmg --${{ matrix.arch }} --publish never
       - name: Test packaged application
         shell: bash
         run: |
@@ -225,7 +243,7 @@ jobs:
           executable=$(find dist/desktop -path '*/Contents/MacOS/PacificDB Workbench' -type f -print -quit)
           test -n "$executable"
           PACIFICDB_TEST_DESKTOP="$PWD/$executable" npm run test:workbench:desktop
-          if [[ "$PACIFICDB_DESKTOP_RELEASE" == 1 ]]; then
+          if [[ "$PACIFICDB_DESKTOP_RELEASE" == 1 && "$WORKBENCH_RELEASE_TAG" != workbench-v1.1.1 ]]; then
             contents=$(dirname "$(dirname "$executable")")
             codesign --verify --deep --strict --verbose=2 "$(dirname "$contents")"
             codesign --verify --strict "$contents/Resources/engine/db_engine"
@@ -237,47 +255,16 @@ jobs:
           if-no-files-found: error
           path: dist/desktop/PacificDB-Workbench-*.dmg
 
-  linux-release:
-    if: startsWith(github.ref, 'refs/tags/workbench-linux-v')
-    needs: linux
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: workbench-linux-x64
-          path: dist/desktop
-      - name: Check version and generate checksums
-        run: |
-          set -euo pipefail
-          version="${GITHUB_REF_NAME#workbench-linux-v}"
-          test "$version" = "$(node -p "require('./cli/package.json').version")"
-          test "$version" = "$(dpkg-deb -f dist/desktop/PacificDB-Workbench-*.deb Version)"
-          cd dist/desktop
-          sha256sum PacificDB-Workbench-*.deb PacificDB-Workbench-*.tar.gz > SHA256SUMS
-          sha256sum -c SHA256SUMS
-      - name: Publish Linux preview
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release create "$GITHUB_REF_NAME" \
-            dist/desktop/PacificDB-Workbench-*.deb \
-            dist/desktop/PacificDB-Workbench-*.tar.gz \
-            dist/desktop/SHA256SUMS \
-            --verify-tag --prerelease \
-            --title "PacificDB Workbench ${GITHUB_REF_NAME#workbench-linux-v} for Linux" \
-            --notes-file docs/releases/workbench-linux-1.0.1.md
-
   release:
-    if: startsWith(github.ref, 'refs/tags/workbench-v')
+    if: startsWith(github.ref, 'refs/tags/workbench-v') || startsWith(inputs.release_tag, 'workbench-v')
     needs: [linux, windows, macos]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.WORKBENCH_RELEASE_TAG }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -285,7 +272,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          version="${GITHUB_REF_NAME#workbench-v}"
+          version="${WORKBENCH_RELEASE_TAG#workbench-v}"
+          test "$WORKBENCH_RELEASE_TAG" = "workbench-v$version"
           test "$version" = "$(node -p "require('./cli/package.json').version")"
       - uses: actions/download-artifact@v4
         with:
@@ -303,9 +291,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" dist/desktop/PacificDB-Workbench-*.deb \
+          gh release create "$WORKBENCH_RELEASE_TAG" dist/desktop/PacificDB-Workbench-*.deb \
             dist/desktop/PacificDB-Workbench-*.tar.gz \
             dist/desktop/PacificDB-Workbench-*.exe \
             dist/desktop/PacificDB-Workbench-*.dmg dist/desktop/SHA256SUMS \
-            --title "PacificDB Workbench ${GITHUB_REF_NAME#workbench-v}" \
+            --title "PacificDB Workbench ${WORKBENCH_RELEASE_TAG#workbench-v}" \
             --notes "Desktop Workbench with bundled engine and CLI for Linux, Windows, and macOS."

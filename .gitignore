@@ -16,9 +16,14 @@
 *.token
 *.secret
 *.log
+!benchmarks/results/**/*.log
 *.pid
 *.bin
 .DS_Store
 
 /desktop/stage/
 /desktop/resources/
+
+.superpowers/
+**/*.egg-info/
+/release-sdk/

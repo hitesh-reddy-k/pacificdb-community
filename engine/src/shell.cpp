@@ -1,7 +1,9 @@
 #include <nlohmann/json.hpp>
 #include <openssl/evp.h>
+#include <openssl/rand.h>
 #include "build_identity.hpp"
 #include "community_shell.hpp"
+#include "cli_connection.hpp"
 #include "local_engine.hpp"
 
 #include <algorithm>
@@ -18,6 +20,7 @@
 #include <optional>
 #include <sstream>
 #include <set>
+#include <regex>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -43,14 +46,6 @@ constexpr Socket invalid_socket = -1;
 
 namespace {
 
-void closeSocket(Socket socket) {
-#ifdef _WIN32
-    closesocket(socket);
-#else
-    close(socket);
-#endif
-}
-
 class Network {
 public:
     Network() {
@@ -71,6 +66,55 @@ public:
 #endif
     }
 };
+
+pacificdb::cli::ConnectionOptions connection;
+std::string authenticationToken;
+std::set<std::string> diagnosticSecrets;
+
+bool sensitiveKey(const std::string& key) {
+    static const std::regex sensitive("password|token|authorization", std::regex::icase);
+    return std::regex_search(key, sensitive);
+}
+
+void learnSecrets(const nlohmann::json& value) {
+    if (value.is_object()) {
+        for (auto it = value.begin(); it != value.end(); ++it) {
+            if (sensitiveKey(it.key()) && it.value().is_string()) {
+                const auto secret = it.value().get<std::string>();
+                if (!secret.empty()) diagnosticSecrets.insert(secret);
+            }
+            learnSecrets(it.value());
+        }
+    } else if (value.is_array()) for (const auto& item : value) learnSecrets(item);
+}
+
+std::string redact(std::string text) {
+    text = std::regex_replace(text, std::regex(R"(pacificdbs?://[^\s/]*@)"), "pacificdb://[redacted]@");
+    auto secrets = diagnosticSecrets;
+    secrets.insert(connection.password); secrets.insert(authenticationToken);
+    for (const auto& secret : secrets) {
+        if (secret.empty()) continue;
+        for (std::size_t pos = 0; (pos = text.find(secret, pos)) != std::string::npos;) {
+            text.replace(pos, secret.size(), "[redacted]"); pos += 10;
+        }
+    }
+    return text;
+}
+
+nlohmann::json redactError(nlohmann::json value) {
+    if (value.is_string()) return redact(value.get<std::string>());
+    if (value.is_object()) {
+        for (auto it = value.begin(); it != value.end(); ++it)
+            it.value() = sensitiveKey(it.key()) ? nlohmann::json("[redacted]") : redactError(std::move(it.value()));
+    } else if (value.is_array()) for (auto& item : value) item = redactError(std::move(item));
+    return value;
+}
+
+nlohmann::json parseJson(const std::string& text) {
+    auto result = nlohmann::json::parse(text, nullptr, false);
+    if (result.is_discarded()) throw std::invalid_argument("invalid JSON");
+    return result;
+}
 
 bool isLocalHost(const std::string& host) {
     return host == "127.0.0.1" || host == "localhost" || host == "::1";
@@ -175,70 +219,13 @@ std::chrono::milliseconds configuredStartupTimeout() {
 }
 
 std::string request(const std::string& host, const std::string& port,
-                    const nlohmann::json& command, int timeoutSeconds = 30) {
-    addrinfo hints{};
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    addrinfo* addresses = nullptr;
-    if (getaddrinfo(host.c_str(), port.c_str(), &hints, &addresses) != 0) {
-        throw std::runtime_error("could not resolve host " + host);
-    }
-
-    Socket socket = invalid_socket;
-    for (auto* address = addresses; address; address = address->ai_next) {
-        socket = ::socket(address->ai_family, address->ai_socktype, address->ai_protocol);
-        if (socket != invalid_socket &&
-            connect(socket, address->ai_addr, static_cast<int>(address->ai_addrlen)) == 0) {
-            break;
-        }
-        if (socket != invalid_socket) closeSocket(socket);
-        socket = invalid_socket;
-    }
-    freeaddrinfo(addresses);
-    if (socket == invalid_socket) {
-        throw std::runtime_error("could not connect to " + host + ":" + port);
-    }
-
-#ifdef _WIN32
-    DWORD timeout = static_cast<DWORD>(timeoutSeconds * 1000);
-    setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO,
-               reinterpret_cast<const char*>(&timeout), sizeof(timeout));
-    setsockopt(socket, SOL_SOCKET, SO_SNDTIMEO,
-               reinterpret_cast<const char*>(&timeout), sizeof(timeout));
-#else
-    timeval timeout{timeoutSeconds, 0};
-    setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-    setsockopt(socket, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
-#endif
-
-    const std::string payload = command.dump() + "\n";
-    std::size_t sent = 0;
-    while (sent < payload.size()) {
-        const auto count = send(socket, payload.data() + sent,
-                                static_cast<int>(payload.size() - sent), 0);
-        if (count <= 0) {
-            closeSocket(socket);
-            throw std::runtime_error("connection closed while sending request");
-        }
-        sent += static_cast<std::size_t>(count);
-    }
-    std::string response;
-    char buffer[4096];
-    while (response.find('\n') == std::string::npos) {
-        const auto count = recv(socket, buffer, sizeof(buffer), 0);
-        if (count <= 0) {
-            closeSocket(socket);
-            throw std::runtime_error("connection closed before a complete response");
-        }
-        response.append(buffer, static_cast<std::size_t>(count));
-        if (response.size() > 16 * 1024 * 1024) {
-            closeSocket(socket);
-            throw std::runtime_error("response exceeded 16 MiB");
-        }
-    }
-    closeSocket(socket);
-    response.resize(response.find('\n'));
-    return response;
+                    const nlohmann::json& command) {
+    auto options = connection;
+    options.host = host; options.port = std::stoi(port);
+    auto payload = command;
+    learnSecrets(payload);
+    if (!payload.contains("token") && !authenticationToken.empty()) payload["token"] = authenticationToken;
+    return pacificdb::cli::requestJson(options, payload).dump();
 }
 
 nlohmann::json parseServerResponse(const std::string& response,
@@ -255,8 +242,9 @@ nlohmann::json parseServerResponse(const std::string& response,
 int sendAndPrint(const std::string& host, const std::string& port,
                  const nlohmann::json& command) {
     auto payload = command;
-    if (!payload.contains("userId")) payload["userId"] = "system";
+    if (!payload.contains("userId")) payload["userId"] = connection.userId;
     auto response = parseServerResponse(request(host, port, payload), host, port);
+    if (response.is_object() && response.contains("error")) response = redactError(std::move(response));
     const std::string action = payload.value("action", "");
     if (response.is_object() && action.rfind("admin_", 0) != 0) {
         for (auto it = response.begin(); it != response.end();) {
@@ -320,7 +308,7 @@ std::vector<unsigned char> decodeBase64(const std::string& encoded) {
 nlohmann::json sendJson(const std::string& host, const std::string& port,
                         nlohmann::json command,
                         const pacificdb::cli::ShellContext* context = nullptr) {
-    if (!command.contains("userId")) command["userId"] = "system";
+    if (!command.contains("userId")) command["userId"] = connection.userId;
     if (context) {
         if (!command.contains("dbName") && !context->database.empty())
             command["dbName"] = context->database;
@@ -341,7 +329,7 @@ nlohmann::json sendJson(const std::string& host, const std::string& port,
 void usage(std::ostream& output = std::cerr) {
     output << "usage: pacificdb [options] "
                  "[shell|ping|stop|request JSON|put-media|get-media|put-vector|query-vector]\n"
-                 "       options: --host HOST --port PORT --database NAME --no-start\n"
+                 "       options: --url URL --host HOST --port PORT --database NAME --no-start\n"
                  "                --help, -h  --version, -V\n";
 }
 
@@ -383,42 +371,57 @@ pacificdb::cli::ShellContext loadContext(const std::filesystem::path& home,
     if (!input) return context;
     auto value = nlohmann::json::parse(input, nullptr, false);
     if (!value.is_object()) return context;
-    if (hadLegacyToken) *hadLegacyToken = value.contains("token");
-    context.database = value.value("database", "");
-    context.projectId = value.value("projectId", "");
-    if (context.projectId.empty()) context.database.clear();
+    if (value.contains("database") && value["database"].is_string()) {
+        context.database = value["database"].get<std::string>();
+        for (unsigned char c : context.database) if (c < 32 || c == 127) { context.database.clear(); break; }
+    }
+    if (hadLegacyToken) *hadLegacyToken = value.size() > (value.contains("database") ? 1 : 0);
+    ownerOnly(home / "context.json");
     return context;
 }
 
 void saveContext(const std::filesystem::path& home,
                  const pacificdb::cli::ShellContext& context) {
     std::filesystem::create_directories(home);
-    const auto temporary = home / "context.json.tmp";
+    unsigned char random[16];
+    if (RAND_bytes(random, sizeof(random)) != 1) throw std::runtime_error("could not save CLI context");
+    std::ostringstream suffix;
+    for (auto byte : random) suffix << std::hex << std::setw(2) << std::setfill('0') << int(byte);
+    const auto directory = home / (".context-" + suffix.str());
+    if (!std::filesystem::create_directory(directory)) throw std::runtime_error("could not save CLI context");
+    struct Cleanup {
+        std::filesystem::path path;
+        ~Cleanup() { std::error_code ignored; std::filesystem::remove_all(path, ignored); }
+    } cleanup{directory};
+    std::filesystem::permissions(directory, std::filesystem::perms::owner_all,
+        std::filesystem::perm_options::replace);
+    const auto temporary = directory / "context.json";
     const auto destination = home / "context.json";
     std::ofstream output(temporary, std::ios::trunc);
     if (!output) throw std::runtime_error("could not save CLI context");
-    output << nlohmann::json{{"database", context.database},
-                             {"projectId", context.projectId}}.dump(2);
+    output << (context.database.empty() ? nlohmann::json::object() :
+        nlohmann::json{{"database", context.database}}).dump(2);
     output.flush();
     if (!output) throw std::runtime_error("could not save CLI context");
     output.close();
     if (!output) throw std::runtime_error("could not save CLI context");
     ownerOnly(temporary);
-    std::error_code error;
-    std::filesystem::rename(temporary, destination, error);
-    if (error) {
-        std::filesystem::remove(destination, error);
-        error.clear();
-        std::filesystem::rename(temporary, destination, error);
-    }
-    if (error) throw std::runtime_error("could not save CLI context: " + error.message());
+#ifdef _WIN32
+    if (!MoveFileExW(temporary.c_str(), destination.c_str(), MOVEFILE_REPLACE_EXISTING))
+        throw std::runtime_error("could not save CLI context");
+#else
+    std::filesystem::rename(temporary, destination);
+#endif
     ownerOnly(destination);
 }
 
-bool safeHistory(const std::string& line) {
+bool safeHistory(std::string line) {
+    std::transform(line.begin(), line.end(), line.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     return line.find("password") == std::string::npos &&
            line.find("\"token\"") == std::string::npos &&
-           line.find("pdb_") == std::string::npos;
+           line.find("pdb_") == std::string::npos &&
+           line.find("pacificdb://") == std::string::npos &&
+           line.find("pacificdbs://") == std::string::npos;
 }
 
 void appendHistory(const std::filesystem::path& home, const std::string& line) {
@@ -490,11 +493,8 @@ std::string contentTypeFor(const std::filesystem::path& filename) {
 
 nlohmann::json withContext(nlohmann::json command,
                            const pacificdb::cli::ShellContext& context) {
-    if (!command.contains("userId")) command["userId"] = "system";
-    if (!command.contains("dbName") && !context.database.empty())
-        command["dbName"] = context.database;
-    if (!command.contains("project_id") && !context.projectId.empty())
-        command["project_id"] = context.projectId;
+    if (!command.contains("userId")) command["userId"] = connection.userId;
+    if (!command.contains("dbName")) command["dbName"] = context.database;
     return command;
 }
 
@@ -765,6 +765,8 @@ int main(int argc, char** argv) {
         std::string host = "127.0.0.1";
         std::string port = "9000";
         std::string database;
+        std::string url;
+        bool urlSupplied = false, hostSupplied = false, portSupplied = false, databaseSupplied = false;
         std::string contentType;
         std::string metric = "cosine";
         bool autoStart = true;
@@ -778,15 +780,16 @@ int main(int argc, char** argv) {
             if (arg == "--no-start") autoStart = false;
             else if (arg == "--help" || arg == "-h") showHelp = true;
             else if (arg == "--version" || arg == "-V") showVersion = true;
-            else if (arg == "--host" || arg == "--port" || arg == "--database" ||
+            else if (arg == "--url" || arg == "--host" || arg == "--port" || arg == "--database" ||
                 arg == "--content-type" || arg == "--metadata" ||
                 arg == "--metric" || arg == "--k") {
-                if (++i >= argc) throw std::runtime_error(arg + " requires a value");
-                if (arg == "--host") host = argv[i];
-                else if (arg == "--port") port = argv[i];
-                else if (arg == "--database") database = argv[i];
+                if (++i >= argc || std::string(argv[i]).rfind("--", 0) == 0) throw std::runtime_error(arg + " requires a value");
+                if (arg == "--url") { url = argv[i]; urlSupplied = true; }
+                else if (arg == "--host") { host = argv[i]; hostSupplied = true; }
+                else if (arg == "--port") { port = argv[i]; portSupplied = true; }
+                else if (arg == "--database") { database = argv[i]; databaseSupplied = true; }
                 else if (arg == "--content-type") contentType = argv[i];
-                else if (arg == "--metadata") metadata = nlohmann::json::parse(argv[i]);
+                else if (arg == "--metadata") metadata = parseJson(argv[i]);
                 else if (arg == "--metric") metric = argv[i];
                 else topK = std::stoi(argv[i]);
             } else {
@@ -797,7 +800,16 @@ int main(int argc, char** argv) {
             std::cout << "PacificDB " << PACIFICDB_ENGINE_VERSION << '\n';
             return 0;
         }
+        if (!urlSupplied) { if (const char* environmentUrl = std::getenv("PACIFICDB_URL")) { url = environmentUrl; urlSupplied = true; } }
+        if (urlSupplied) {
+            connection = pacificdb::cli::parseConnectionUrl(url);
+            if ((hostSupplied && host != connection.host) ||
+                (portSupplied && port != std::to_string(connection.port)) ||
+                (databaseSupplied && database != connection.database)) throw std::invalid_argument("invalid_connection_url: conflicting options");
+            host = connection.host; port = std::to_string(connection.port); database = connection.database;
+        } else { connection.host = host; connection.database = database; }
         const int numericPort = std::stoi(port);
+        connection.port = numericPort;
         if (numericPort < 1 || numericPort > 65535 || port != std::to_string(numericPort)) {
             throw std::runtime_error("port must be an integer from 1 to 65535");
         }
@@ -851,7 +863,7 @@ int main(int argc, char** argv) {
         const std::vector<std::string> commands{"ping", "request", "shell", "put-media",
                                                 "get-media", "put-vector", "query-vector"};
         if (std::find(commands.begin(), commands.end(), positional[0]) != commands.end() &&
-            isLocalHost(host)) {
+            isLocalHost(host) && !connection.tls && autoStart) {
             pacificdb::cli::ensureLocalEngine({
                 host,
                 numericPort,
@@ -861,13 +873,21 @@ int main(int argc, char** argv) {
                 configuredStartupTimeout(),
             }, std::cout);
         }
+        if (std::find(commands.begin(), commands.end(), positional[0]) != commands.end() && !connection.username.empty()) {
+            const auto response = pacificdb::cli::requestJson(connection, {{"action", "security_authenticate"},
+                {"username", connection.username}, {"password", connection.password}});
+            if (response.contains("error")) throw std::runtime_error("authentication_failed");
+            if (!response.contains("token") || !response["token"].is_string() || response["token"].get<std::string>().empty())
+                throw std::runtime_error("invalid authentication response");
+            authenticationToken = response["token"].get<std::string>();
+        }
         if (positional[0] == "ping" && positional.size() == 1) {
             return sendAndPrint(host, port, {{"action", "ping"}});
         }
         if (positional[0] == "request" && positional.size() >= 2) {
             std::string json = positional[1];
             for (std::size_t i = 2; i < positional.size(); ++i) json += " " + positional[i];
-            return sendAndPrint(host, port, nlohmann::json::parse(json));
+            return sendAndPrint(host, port, parseJson(json));
         }
         if (positional[0] == "put-media" && positional.size() == 4) {
             if (database.empty()) throw std::runtime_error("--database is required");
@@ -910,7 +930,7 @@ int main(int argc, char** argv) {
             if (!metadata.is_object()) throw std::runtime_error("--metadata must be a JSON object");
             metadata["id"] = positional[2];
             metadata["kind"] = "vector";
-            metadata["vector"] = nlohmann::json::parse(positional[3]);
+            metadata["vector"] = parseJson(positional[3]);
             return sendAndPrint(host, port, {{"action", "insertVector"},
                 {"dbName", database}, {"collection", positional[1]}, {"data", metadata}});
         }
@@ -918,7 +938,7 @@ int main(int argc, char** argv) {
             if (database.empty()) throw std::runtime_error("--database is required");
             return sendAndPrint(host, port, {{"action", "queryVector"},
                 {"dbName", database}, {"collection", positional[1]},
-                {"vector", nlohmann::json::parse(positional[2])},
+                {"vector", parseJson(positional[2])},
                 {"k", topK}, {"metric", metric}});
         }
         if (positional[0] == "shell" && positional.size() == 1) {
@@ -926,6 +946,7 @@ int main(int argc, char** argv) {
             bool hadLegacyToken = false;
             auto context = loadContext(home, &hadLegacyToken);
             if (hadLegacyToken) saveContext(home, context);
+            bool needsValidation = database.empty() && !context.database.empty();
             if (!database.empty()) context.database = database;
             std::cout << "\n"
                          "             .--------.\n"
@@ -935,7 +956,7 @@ int main(int argc, char** argv) {
                          "       ~~~~~~~~\\______/~~~~~~~~\n"
                          "         ~~~~~~~~~~~~~~~~~~~~\n"
                          "             PacificDB\n"
-                         "               v1.0.1\n"
+                         "               v1.1.1\n"
                          "       Documents · Vectors · Media\n"
                          "  Type help to see commands.\n";
             for (std::string line;
@@ -947,69 +968,38 @@ int main(int argc, char** argv) {
                     const std::string kind = parsed.value("kind", "");
                     if (kind == "exit") break;
                     appendHistory(home, line);
+                    const std::set<std::string> databaseActions{"createCollection", "listCollections", "insert", "find", "count", "explain", "aggregate", "updateOne", "deleteOne", "queryVector"};
+                    const auto command = parsed.value("command", nlohmann::json::object());
+                    if (needsValidation && (kind == "show_database" || kind.rfind("media_", 0) == 0 || kind == "vector_put" ||
+                        (databaseActions.count(command.value("action", "")) && !command.contains("dbName")))) {
+                        const auto databases = sendJson(host, port, withContext({{"action", "listDatabases"}}, context));
+                        if (!databases.is_array() || std::find(databases.begin(), databases.end(), context.database) == databases.end()) throw std::runtime_error("database_not_found");
+                        needsValidation = false;
+                    }
                     if (kind == "help") printShellHelp();
                     else if (kind == "clear") std::cout << "\033[2J\033[H";
                     else if (kind == "history") {
                         std::ifstream history(home / "history");
-                        std::cout << history.rdbuf();
+                        for (std::string entry; std::getline(history, entry);) if (safeHistory(entry)) std::cout << entry << '\n';
                     } else if (kind == "context_show") {
                         std::cout << nlohmann::json{{"database", context.database.empty()
-                            ? nlohmann::json(nullptr) : nlohmann::json(context.database)},
-                            {"projectId", context.projectId.empty()
-                            ? nlohmann::json(nullptr) : nlohmann::json(context.projectId)}}.dump(2) << '\n';
+                            ? nlohmann::json(nullptr) : nlohmann::json(context.database)}}.dump(2) << '\n';
                     } else if (kind == "context_clear") {
-                        context = {};
+                        context = {}; needsValidation = false;
                         saveContext(home, context);
                         std::cout << nlohmann::json{{"status", "ok"}}.dump(2) << '\n';
-                    } else if (kind == "use_project") {
-                        const auto response = sendJson(host, port, withContext({
-                            {"action", "community_project_get"},
-                            {"id", parsed.at("id")}}, context));
-                        if (!response.contains("project") ||
-                            !response.at("project").is_object() ||
-                            response.at("project").value("id", "").empty()) {
-                            throw std::runtime_error("project_not_found");
-                        }
-                        context.projectId = response.at("project").at("id");
-                        context.database.clear();
-                        saveContext(home, context);
-                        std::cout << nlohmann::json{{"status", "ok"},
-                            {"projectId", context.projectId}}.dump(2) << '\n';
                     } else if (kind == "use_database") {
-                        const auto response = sendJson(host, port, withContext(
-                            {{"action", "community_database_list"},
-                             {"project_id", context.projectId}}, context));
-                        const auto databases = response.is_array()
-                            ? response
-                            : response.value("databases", nlohmann::json::array());
-                        if (!databases.is_array() ||
-                            std::find(databases.begin(), databases.end(), parsed.at("name")) ==
-                                databases.end()) {
+                        const auto databases = sendJson(host, port, withContext({{"action", "listDatabases"}}, context));
+                        if (!databases.is_array() || std::find(databases.begin(), databases.end(), parsed.at("name")) == databases.end())
                             throw std::runtime_error("database_not_found");
-                        }
-                        context.database = parsed.at("name");
+                        context.database = parsed.at("name"); needsValidation = false;
                         saveContext(home, context);
-                        std::cout << nlohmann::json{{"status", "ok"},
-                            {"database", context.database}}.dump(2) << '\n';
+                        std::cout << nlohmann::json{{"status", "ok"}, {"database", context.database}}.dump(2) << '\n';
                     } else if (kind == "create_database") {
                         const std::string name = parsed.at("name");
-                        if (name.size() > 128) {
-                            throw std::runtime_error(
-                                "database name must be 1-128 bytes when mapped to a project");
-                        }
-                        const auto project = sendJson(host, port, withContext({
-                            {"action", "community_project_get"},
-                            {"id", context.projectId}}, context));
-                        if (!project.contains("project") ||
-                            !project.at("project").is_object() ||
-                            project.at("project").value("id", "") != context.projectId) {
-                            throw std::runtime_error("project_not_found");
-                        }
-                        const auto created = sendJson(host, port, withContext(
-                            {{"action", "createDatabase"}, {"dbName", name}}, context));
-                        sendJson(host, port, withContext({
-                            {"action", "community_database_map"},
-                            {"database", name}, {"project_id", context.projectId}}, context));
+                        const auto created = sendJson(host, port, withContext({{"action", "createDatabase"}, {"dbName", name}}, context));
+                        context.database = name; needsValidation = false;
+                        saveContext(home, context);
                         std::cout << created.dump(2) << '\n';
                     } else if (kind == "show_database") {
                         const auto collections = sendJson(host, port, withContext(
@@ -1072,24 +1062,7 @@ int main(int argc, char** argv) {
                                 {"vector", parsed.at("vector")}}}}, context);
                     } else if (kind == "request") {
                         const auto command = parsed.at("command");
-                        if (command.value("action", "") == "createCollection") {
-                            const auto mapped = sendJson(host, port, withContext({
-                                {"action", "community_database_list"},
-                                {"project_id", context.projectId}}, context));
-                            const auto databases = mapped.value("databases", nlohmann::json::array());
-                            if (!databases.is_array() ||
-                                std::find(databases.begin(), databases.end(), context.database) ==
-                                    databases.end()) {
-                                throw std::runtime_error("database_not_found");
-                            }
-                        }
                         const int status = sendContextAndPrint(host, port, command, context);
-                        if (status == 0 && parsed.contains("clear_project") &&
-                            context.projectId == parsed.at("clear_project")) {
-                            context.projectId.clear();
-                            context.database.clear();
-                            saveContext(home, context);
-                        }
                         if (status == 0 && parsed.contains("clear_database") &&
                             context.database == parsed.at("clear_database")) {
                             context.database.clear();
@@ -1097,7 +1070,7 @@ int main(int argc, char** argv) {
                         }
                     }
                 } catch (const std::exception& error) {
-                    std::cerr << "error: " << error.what() << '\n';
+                    std::cerr << "error: " << redact(error.what()) << '\n';
                 }
             }
             return 0;
@@ -1105,7 +1078,7 @@ int main(int argc, char** argv) {
         usage();
         return 2;
     } catch (const std::exception& error) {
-        std::cerr << "error: " << error.what() << '\n';
+        std::cerr << "error: " << redact(error.what()) << '\n';
         return 1;
     }
 }

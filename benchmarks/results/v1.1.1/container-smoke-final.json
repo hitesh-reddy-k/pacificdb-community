@@ -1,0 +1,21 @@
+{
+  "status": "PASS",
+  "image": "pacificdb-local:1.1.1",
+  "image_id": "sha256:a2d83d8a3b42660bec22483d44eb487b6c464068d154fc4ecdcad7a5798d5b8b",
+  "version": "1.1.1",
+  "revision": "2d751c0d907b8479e1d58bf8d6570a475d2966a3",
+  "registry_digest": "",
+  "embedded_identity": {
+    "product": "PacificDB Engine",
+    "engineVersion": "1.1.1",
+    "gitCommit": "2d751c0d907b8479e1d58bf8d6570a475d2966a3",
+    "storageFormatVersion": "2",
+    "raftProtocolVersion": "2",
+    "buildTimestamp": "2026-10-03T21:37:57+05:30",
+    "compiler": "GNU-12.2.0"
+  },
+  "non_root": true,
+  "read_only_root": true,
+  "application_ping": true,
+  "write_read": true
+}

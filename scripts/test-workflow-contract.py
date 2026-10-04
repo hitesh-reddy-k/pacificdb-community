@@ -97,7 +97,7 @@ require(
     "contents: read",
     "packages:",
     "uses: ./.github/workflows/release.yml",
-    "version: 1.0.1",
+    "version: 1.1.1",
 )
 forbid(".github/workflows/ci.yml", "secrets: inherit")
 require(
@@ -110,6 +110,17 @@ require(
     'test "$cli_client_version" = "$version"',
 )
 forbid(".github/workflows/npm-publish.yml", "workflow_dispatch:")
+require(
+    ".github/workflows/workbench-desktop.yml",
+    "release_tag:",
+    "WORKBENCH_RELEASE_TAG:",
+    "ref: ${{ env.WORKBENCH_RELEASE_TAG || github.ref }}",
+    "if ($env:WORKBENCH_RELEASE_TAG -eq 'workbench-v1.1.1')",
+    "$env:PACIFICDB_DESKTOP_RELEASE = '0'",
+    'if [[ "$WORKBENCH_RELEASE_TAG" == workbench-v1.1.1 ]]',
+    "export PACIFICDB_DESKTOP_RELEASE=0",
+    'gh release create "$WORKBENCH_RELEASE_TAG"',
+)
 require_flat_release_uploads()
 require(
     ".github/workflows/release.yml",

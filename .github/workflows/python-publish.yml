@@ -1,0 +1,45 @@
+name: Publish tested Python SDK
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Exact existing vMAJOR.MINOR.PATCH release tag
+        required: true
+permissions:
+  contents: read
+jobs:
+  build:
+    uses: ./.github/workflows/sdk-packages.yml
+    with:
+      ref: ${{ inputs.release_tag || github.ref_name }}
+  publish:
+    needs: build
+    runs-on: ubuntu-22.04
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag || github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: tested-sdk-packages
+          path: release-sdk/
+      - name: Verify tag and exact tested artifacts
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+        run: |
+          python scripts/check-sdk-release-tag.py "$RELEASE_TAG" --require-tag --manifest release-sdk/inspection.json
+          python scripts/verify-sdk-packages.py --python-dist release-sdk/python --hash-manifest release-sdk/inspection.json --output release-sdk/python-inspected.json
+      - name: Publish with registered OIDC identity after environment approval
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
+        with:
+          packages-dir: release-sdk/python/

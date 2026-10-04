@@ -66,34 +66,21 @@ async function readJson(req) {
     if (size > JSON_LIMIT) throw new Error('request exceeds 1 MiB');
     chunks.push(chunk);
   }
-  return object(JSON.parse(Buffer.concat(chunks).toString('utf8')), 'request');
+  let value;
+  try { value = JSON.parse(Buffer.concat(chunks).toString('utf8')); }
+  catch { throw new Error('request must contain valid JSON'); }
+  return object(value, 'request');
 }
 
-async function project(client, projectId) {
-  const id = string(projectId, 'projectId');
-  const result = await client.request({ action: 'community_project_get', id });
-  if (result.project?.id !== id) throw new Error('project_not_found');
-  return id;
-}
-
-async function database(client, projectId, databaseName) {
-  const id = await project(client, projectId);
-  const name = string(databaseName, 'database');
-  const response = await client.request({ action: 'community_database_list',
-    project_id: id });
-  if (!response.databases?.includes(name)) throw new Error('database_not_found');
+function database(client, databaseName) {
+  const name = string(databaseName, 'database', 255);
   client.database = name;
   return name;
 }
 
-async function collection(client, body) {
-  await database(client, body.projectId, body.database);
-  const name = string(body.collection, 'collection', 251);
-  const response = await client.request({ action: 'listCollections' });
-  const collections = (Array.isArray(response) ? response : response.collections || [])
-    .map((item) => typeof item === 'string' ? item : item.name);
-  if (!collections?.includes(name)) throw new Error('collection_not_found');
-  return name;
+function collection(client, body) {
+  database(client, body.database);
+  return string(body.collection, 'collection', 251);
 }
 
 async function execute(client, body) {
@@ -109,33 +96,22 @@ async function execute(client, body) {
     }
     case 'engine.metrics':
       return client.request({ action: 'get_metrics' });
-    case 'projects.list':
-      return client.request({ action: 'community_project_list', ...page(body) });
-    case 'projects.create':
-      return client.request({ action: 'community_project_create',
-        name: string(body.name, 'name') });
-    case 'databases.list':
-      await project(client, body.projectId);
-      return client.request({ action: 'community_database_list',
-        project_id: body.projectId });
-    case 'databases.create': {
-      await project(client, body.projectId);
-      const name = string(body.name, 'name');
-      const response = await client.request({ action: 'createDatabase', dbName: name,
-        project_id: body.projectId });
-      await client.request({ action: 'community_database_map', database: name,
-        project_id: body.projectId });
-      return response;
+    case 'databases.list': {
+      const databases = await client.request({ action: 'listDatabases' });
+      if (!Array.isArray(databases)) throw new Error('invalid database listing');
+      return { databases };
     }
+    case 'databases.create':
+      return client.request({ action: 'createDatabase', dbName: string(body.name, 'name', 255) });
     case 'collections.list':
-      await database(client, body.projectId, body.database);
+      database(client, body.database);
       {
         const response = await client.request({ action: 'listCollections' });
         return { collections: (Array.isArray(response) ? response : response.collections || [])
           .map((item) => typeof item === 'string' ? item : item.name) };
       }
     case 'collections.create':
-      await database(client, body.projectId, body.database);
+      database(client, body.database);
       return client.request({ action: 'createCollection',
         collection: string(body.name, 'name', 251) });
     case 'collections.summary': {
@@ -160,15 +136,10 @@ async function execute(client, body) {
       } : ['rebuild', 'delete'].includes(operation) ? { name: string(body.name, 'index name') } : {};
       return client.request({ action: actions[operation], collection: name, ...values });
     }
-    case 'projects.delete':
-      await project(client, body.projectId);
-      return client.request({ action: 'community_project_delete', id: body.projectId });
     case 'databases.delete':
-      await database(client, body.projectId, body.database);
-      return client.request({ action: 'dropDatabase', dbName: body.database, project_id: body.projectId });
+      return client.request({ action: 'dropDatabase', dbName: database(client, body.database) });
     case 'collections.delete':
-      return client.request({ action: 'dropCollection', collection: await collection(client, body),
-        dbName: body.database, project_id: body.projectId });
+      return client.request({ action: 'dropCollection', collection: collection(client, body) });
     case 'media.delete': {
       await collection(client, body);
       const id = string(body.mediaId, 'mediaId');
@@ -205,7 +176,7 @@ async function execute(client, body) {
       return client.queryVector(await collection(client, body), body.vector,
         { k: body.k ?? 10, metric: body.metric ?? 'cosine', filter: object(body.filter ?? {}, 'filter') });
     case 'media.list':
-      await database(client, body.projectId, body.database);
+      database(client, body.database);
       return client.request({ action: 'community_media_list',
         dbName: body.database, collection: body.collection || '',
         ...page(body) });
@@ -235,6 +206,15 @@ export async function createWorkbenchServer({ clientFactory, port = 0, connectio
   if (connectionInfo && (typeof connectionInfo.host !== 'string' ||
       !Number.isSafeInteger(connectionInfo.port) || connectionInfo.port < 1 ||
       connectionInfo.port > 65535)) throw new TypeError('connectionInfo requires a host and port');
+  const publicConnection = connectionInfo ? {
+    host: connectionInfo.host, port: connectionInfo.port, tls: connectionInfo.tls === true,
+    userId: typeof connectionInfo.userId === 'string' ? connectionInfo.userId : 'system',
+    authenticationRequired: connectionInfo.authenticationRequired === true,
+    ...(typeof connectionInfo.database === 'string' && connectionInfo.database ? { database: connectionInfo.database } : {}),
+    // Desktop examples need the bundled executable path, never connection secrets.
+    ...(typeof connectionInfo.cliPath === 'string' ? { cliPath: connectionInfo.cliPath } : {}),
+    ...(['win32', 'linux', 'darwin'].includes(connectionInfo.platform) ? { platform: connectionInfo.platform } : {}),
+  } : null;
   const token = randomBytes(32).toString('hex');
   const server = http.createServer(async (req, res) => {
     try {
@@ -265,13 +245,12 @@ export async function createWorkbenchServer({ clientFactory, port = 0, connectio
       }
       if (pathname === '/api/execute') {
         const body = await readJson(req);
-        const result = body.op === 'connection.info' ? connectionInfo :
+        const result = body.op === 'connection.info' ? publicConnection :
           await withClient(clientFactory, (client) => execute(client, body));
         send(res, 200, { result });
       } else if (pathname === '/api/media/upload') {
-        const projectId = string(req.headers['x-project-id'], 'projectId');
-        const databaseName = string(req.headers['x-database'], 'database');
-        const collectionName = string(req.headers['x-collection'], 'collection', 251);
+        const databaseName = string(decodeURIComponent(req.headers['x-database'] || ''), 'database', 255);
+        const collectionName = string(decodeURIComponent(req.headers['x-collection'] || ''), 'collection', 251);
         const filename = path.basename(string(decodeURIComponent(
           req.headers['x-filename'] || ''), 'filename', 255));
         const temporary = await mkdtemp(path.join(os.tmpdir(), 'pacificdb-workbench-'));
@@ -279,7 +258,7 @@ export async function createWorkbenchServer({ clientFactory, port = 0, connectio
           const source = path.join(temporary, filename);
           await receiveFile(req, source);
           const result = await withClient(clientFactory, async (client) => {
-            await collection(client, { projectId, database: databaseName,
+            collection(client, { database: databaseName,
               collection: collectionName });
             return client.uploadMediaFile(collectionName, source);
           });
@@ -288,10 +267,11 @@ export async function createWorkbenchServer({ clientFactory, port = 0, connectio
       } else if (pathname === '/api/media/download') {
         const body = await readJson(req);
         const result = await withClient(clientFactory, async (client) => {
-          await database(client, body.projectId, body.database);
+          collection(client, body);
           const id = string(body.mediaId, 'mediaId');
           const lookup = await client.request({ action: 'community_media_get', media_id: id });
-          if (lookup.media?.database !== body.database || lookup.media?.status !== 'ready') {
+          if (lookup.media?.database !== body.database || lookup.media?.collection !== body.collection ||
+              lookup.media?.status !== 'ready') {
             throw new Error('media_not_found');
           }
           const temporary = await mkdtemp(path.join(os.tmpdir(), 'pacificdb-workbench-'));
@@ -340,7 +320,8 @@ export async function startWorkbench(options, output, ensureConnection) {
     clientFactory: () => new PacificDBClient(options),
     port: options.uiPort ?? 0,
     connectionInfo: { host: options.host || '127.0.0.1', port: options.port || 9000,
-      tls: options.tls === true, source: 'cli' },
+      tls: options.tls === true, userId: options.userId || 'system',
+      authenticationRequired: Boolean(options.username || options.token), database: options.database },
   });
   output.write(`PacificDB Workbench: ${workbench.url}\n`);
   return workbench;

@@ -224,12 +224,11 @@ body{background:#000311;color:var(--ink)}
 .closing{background:radial-gradient(720px 300px at 50% 100%,rgba(13,120,255,.16),transparent 70%),#000311}.closing:before{background:radial-gradient(circle at 50% 0%,rgba(22,217,244,.18),transparent 65%);border-color:rgba(16,175,255,.14)}.footer{background:#00020c;border-color:#10294c;color:#7f97bb}
 .proof-strip,.ops-strip{background:#020817;border-color:#112b50}.proof-cell,.ops-card{border-color:#112b50}.proof-cell p,.ops-card p{color:#8ea6ca}.core{background:radial-gradient(circle at 50% 45%,rgba(13,120,255,.16),transparent 64%),#020817;border-color:#24548b;box-shadow:0 0 0 1px rgba(16,175,255,.05),0 28px 100px rgba(0,0,0,.42)}.core-ripple{border-color:rgba(22,217,244,.22)}
 .engine-shell{background:linear-gradient(180deg,#071a37,#020b1a);border-color:#1c4d83}.module{background:#06162d;border-color:#164172}.module.active{background:linear-gradient(180deg,#0a3970,#072650);border-color:#36cfff;box-shadow:0 0 32px rgba(16,175,255,.18)}.engine-footer span{border-color:#153d69;color:#7196bd}.engine-footer span.active{border-color:#1e76b6;color:#d8efff;background:#082852}
-.workbench-section{background:linear-gradient(135deg,#041126,#000311 70%);border-block:1px solid #12345b}.workbench-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:64px;align-items:center}.workbench-copy .section-lead{margin:0;max-width:650px}.workbench-actions{display:flex;gap:12px;flex-wrap:wrap;margin:30px 0 18px}.workbench-meta{color:#91a9c9;font-size:12px;line-height:1.7}.workbench-meta a{color:#8fdcff;text-decoration:underline;text-underline-offset:3px}
+
+.workbench-section{background:linear-gradient(135deg,#041126,#000311 70%);border-block:1px solid #12345b}.workbench-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:64px;align-items:center}.workbench-copy .section-lead{margin:0;max-width:650px}.workbench-actions{display:flex;gap:12px;flex-wrap:wrap;margin:30px 0 18px}.workbench-actions .btn:disabled{opacity:.65;cursor:not-allowed;transform:none;box-shadow:none}.workbench-meta{color:#91a9c9;font-size:12px;line-height:1.7}.workbench-meta a{color:#8fdcff;text-decoration:underline;text-underline-offset:3px}
 .workbench-panel{border:1px solid #1c4d83;border-radius:24px;background:linear-gradient(180deg,#081c3b,#040e20);padding:30px;box-shadow:0 24px 65px rgba(0,0,0,.24)}.workbench-panel-head{display:flex;align-items:center;gap:16px;padding-bottom:22px;border-bottom:1px solid #1b3c68}.workbench-panel-head img{width:54px;height:54px;object-fit:contain}.workbench-panel-head strong,.workbench-panel-head span{display:block}.workbench-panel-head strong{font-size:18px}.workbench-panel-head span{margin-top:4px;color:#91a9c9;font-size:12px}.workbench-panel ul{list-style:none;padding:0;margin:24px 0}.workbench-panel li{padding:10px 0 10px 20px;border-left:2px solid #168cda}.workbench-panel li+li{margin-top:8px}.workbench-panel li b,.workbench-panel li span{display:block}.workbench-panel li b{font-size:14px}.workbench-panel li span{margin-top:4px;color:#91a9c9;font-size:12px;line-height:1.5}.workbench-command-label{color:#8fdcff;font-size:10px;font-weight:700;letter-spacing:.12em}.workbench-command{display:block;padding:14px;border:1px solid #1b3c68;border-radius:10px;background:#020817;color:#e9f2ff;font-size:11px;overflow-wrap:anywhere}
 @media(max-width:1020px){.workbench-grid{grid-template-columns:1fr;gap:36px}}
-@media(max-width:900px){.nav-links{display:none}}
 @media(max-width:720px){.workbench-panel{padding:22px}.workbench-actions .btn{width:100%}}
-
 </style>
 </head>
 <body>
@@ -243,11 +242,11 @@ body{background:#000311;color:var(--ink)}
 <main id="main">
 <section class="hero" id="top"><canvas class="hero-ambient" id="heroAmbient" aria-hidden="true"></canvas><div class="wrap hero-grid">
   <div class="hero-copy">
-    <p class="eyebrow"><span class="live-dot"></span> PACIFICDB COMMUNITY <span class="badge">v1.0.1</span></p>
+    <p class="eyebrow"><span class="live-dot"></span> PACIFICDB COMMUNITY <span class="badge">v1.1.1</span></p>
     <h1>Built for data<br>that refuses<br><em>one shape.</em></h1>
     <p class="hero-desc">Documents, vector search, resumable media, verified backups, and RF3 replication—unified in one self-hosted database you control.</p>
     <div class="hero-actions"><a class="btn primary" href="#downloads">Download PacificDB ↓</a><a class="btn ghost" href="#how">See how it works →</a></div>
-    <p class="hero-foot">Local-first · Open source · No hosted service required · <a href="#workbench" style="color:#8fdcff;text-decoration:underline;text-underline-offset:3px">Explore Workbench →</a> · <a href="release-1.0.1.html" style="color:#8fdcff;text-decoration:underline;text-underline-offset:3px">What's new in v1.0.1 →</a></p>
+    <p class="hero-foot">Local-first · Open source · No hosted service required · <a href="release-1.1.1.html" style="color:#8fdcff;text-decoration:underline;text-underline-offset:3px">What's new in v1.1.1 →</a></p>
   </div>
   <div class="engine-visual" aria-label="Animated PacificDB multi-model database diagram">
     <div class="engine-grid"></div><div class="engine-orbit o1"></div><div class="engine-orbit o2"></div><div class="engine-orbit o3"></div>
@@ -329,56 +328,57 @@ body{background:#000311;color:var(--ink)}
     <article class="feature"><div class="feature-visual vector-v"><i style="--x:14%;--y:23%;--o:0.5"></i><i style="--x:27%;--y:55%;--o:0.7"></i><i style="--x:38%;--y:33%;--o:0.4"></i><i style="--x:47%;--y:62%;--o:0.8"></i><i style="--x:58%;--y:24%;--o:0.55"></i><i style="--x:69%;--y:49%;--o:0.9"></i><i style="--x:81%;--y:30%;--o:0.4"></i><i style="--x:84%;--y:72%;--o:0.7"></i><i style="--x:21%;--y:77%;--o:0.45"></i><i style="--x:63%;--y:79%;--o:0.5"></i><i style="--x:49%;--y:42%;--o:1"></i></div><h3>Search by meaning.</h3><p>Store finite numeric embeddings, rank nearest matches with vector indexes, and narrow results with metadata filters.</p><span class="feature-label">SIMILARITY WITHOUT A SECOND STORE</span></article>
     <article class="feature"><div class="feature-visual media-v"><i></i><i></i><i></i><i></i><i></i><i></i></div><h3>Move files without losing state.</h3><p>Upload images, GIFs, audio, video, and arbitrary files in bounded chunks with SHA-256 verification and explicit resume IDs.</p><span class="feature-label">MEDIA THAT CAN PICK UP AGAIN</span></article>
   </div>
-  <div class="durability"><span class="d-dot"></span><p>Under every model: WAL, LSM storage, checksums, snapshots, recovery, RF3 Raft, and operator-controlled backups.</p><a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/pacificdb-v1.0/COMMUNITY_SCOPE.md">Explore the exact scope ↗</a></div>
+  <div class="durability"><span class="d-dot"></span><p>Under every model: WAL, LSM storage, checksums, snapshots, recovery, RF3 Raft, and operator-controlled backups.</p><a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/v1.1.1/COMMUNITY_SCOPE.md">Explore the exact scope ↗</a></div>
 </div></section>
 
 <section class="section workbench-section" id="workbench"><div class="wrap workbench-grid">
-  <div class="workbench-copy"><p class="kicker">PACIFICDB WORKBENCH · LINUX PREVIEW</p><h2 class="section-title">Explore your data<br><em>from your desktop.</em></h2><p class="section-lead">Work with documents, vectors, and media in a desktop app that starts its own PacificDB engine. Your data stays on your computer and persists between sessions.</p>
-    <div class="workbench-actions"><a class="btn primary" href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-linux-v1.0.1/PacificDB-Workbench-1.0.1-linux-amd64.deb">Download Linux .deb ↓</a><a class="btn ghost" href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/pacificdb-v1.0/docs/WORKBENCH.md">Install guide →</a></div>
-    <p class="workbench-meta">Version 1.0.1 · Linux x86-64 preview · <a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-linux-v1.0.1/SHA256SUMS">SHA-256 checksums</a> · <a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/workbench-linux-v1.0.1">Release notes</a></p>
+  <div class="workbench-copy"><p class="kicker">PACIFICDB WORKBENCH · v1.1.1</p><h2 class="section-title">Explore your data<br><em>from your desktop.</em></h2><p class="section-lead">Work with documents, vectors, and media in a desktop app that starts its own PacificDB engine. Your data stays on your computer and persists between sessions.</p>
+    <div class="workbench-actions"><a class="btn primary" href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-v1.1.1/PacificDB-Workbench-1.1.1-win-x64.exe">Download Windows .exe ↓</a><a class="btn ghost" href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-v1.1.1/PacificDB-Workbench-1.1.1-linux-amd64.deb">Download Linux .deb ↓</a><button class="btn ghost" type="button" disabled>macOS — Coming soon</button><a class="btn ghost" href="docs.html#workbench">Install guide →</a></div>
+    <p class="workbench-meta">Version 1.1.1 · Linux and Windows · macOS coming soon · <a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-v1.1.1/SHA256SUMS">SHA-256 checksums</a> · <a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/workbench-v1.1.1">Release notes</a>. Windows installer is unsigned; verify checksums before installing.</p>
+  <p class="workbench-meta">Direct database connections, generated SDK examples, and bounded Overview count loading. <a href="release-1.1.1.html#workbench-changes">See what changed</a>.</p>
   </div>
   <div class="workbench-panel"><div class="workbench-panel-head"><img src="assets/pacificdb-logo-symbol.png" alt=""><div><strong>PacificDB Workbench</strong><span>Desktop app with bundled engine and CLI</span></div></div>
-    <ul><li><b>Manage local data</b><span>Create projects, databases, and collections from the app.</span></li><li><b>Run queries</b><span>Inspect documents and search vector data in one workspace.</span></li><li><b>Resume where you left off</b><span>Local database files persist when the app closes.</span></li></ul>
-    <p class="workbench-command-label">INSTALL ON UBUNTU 24.04</p><code class="workbench-command">sudo apt install ./PacificDB-Workbench-1.0.1-linux-amd64.deb</code>
+    <ul><li><b>Manage local data</b><span>Open databases directly and organize collections without mandatory project selection.</span></li><li><b>Run queries</b><span>Inspect documents and search vector data in one workspace.</span></li><li><b>Resume where you left off</b><span>Local database files persist when the app closes.</span></li></ul>
+    <p class="workbench-command-label">INSTALL ON UBUNTU 24.04</p><code class="workbench-command">sudo apt install ./PacificDB-Workbench-1.1.1-linux-amd64.deb</code>
   </div>
 </div></section>
 
 <section class="section download-section" id="downloads"><div class="wrap">
-  <div class="section-head"><div><p class="kicker">COMMUNITY SERVER INSTALLERS</p><h2 class="section-title">Your infrastructure.<br><em>Your database.</em></h2></div><p class="section-lead">Install the Community engine and native CLI for your own deployment. Docker, Kubernetes, and Helm files are available in the repository.</p></div>
-  <p class="release-note"><span class="badge" style="color:#315d9e;border-color:#b9cbea;background:#edf4ff">COMMUNITY v1.0.0</span> Published installer downloads · <a href="release-1.0.1.html">Read the v1.0.1 source update →</a></p>
+  <div class="section-head"><div><p class="kicker">RUN IT WHERE DATA LIVES</p><h2 class="section-title">Your infrastructure.<br><em>Your database.</em></h2></div><p class="section-lead">Start with an installer that includes the engine and native CLI. Docker, Kubernetes, and Helm deployment files are available in the repository.</p></div>
+  <p class="release-note"><span class="badge" style="color:#315d9e;border-color:#b9cbea;background:#edf4ff">COMMUNITY v1.1.1</span> Current stable installer downloads · <a href="release-1.1.1.html">See what’s new →</a></p>
   <div class="downloads">
     <article class="download-card"><div class="platform">L_</div><h3>Linux</h3><p>Ubuntu & Debian · x86-64</p><span class="format">.deb package</span><a class="btn download-btn" data-platform="linux-amd64.deb" href="#">Download deb ↓</a><ol class="install-flow"><li><b>Download</b> the package above.</li><li><b>Install</b> <code>sudo apt install ./pacificdb-community-*-linux-amd64.deb</code></li><li><b>Open</b> <code>pacificdb</code>; the local engine starts automatically.</li></ol></article>
     <article class="download-card"><div class="platform">⊞</div><h3>Windows</h3><p>Windows · x64</p><span class="format">.exe installer</span><a class="btn download-btn" data-platform="windows-x64.exe" href="#">Download exe ↓</a><ol class="install-flow"><li><b>Download</b> the installer above.</li><li><b>Install</b> by opening the downloaded <code>.exe</code>.</li><li><b>Open</b> Command Prompt and run <code>pacificdb</code>.</li></ol></article>
     <article class="download-card"><div class="platform">⌘</div><h3>macOS</h3><label for="mac-arch">Processor</label><select id="mac-arch"><option value="macos-arm64.pkg">Apple silicon (M-series)</option><option value="macos-x86_64.pkg">Intel</option></select><span class="format">.pkg installer</span><a class="btn download-btn" id="mac-download" data-platform="macos-arm64.pkg" href="#">Download pkg ↓</a><ol class="install-flow"><li><b>Download</b> the package for your processor.</li><li><b>Install</b> by opening the downloaded <code>.pkg</code>.</li><li><b>Open</b> Terminal and run <code>pacificdb</code>.</li></ol></article>
   </div>
-  <p class="download-disclosure">Windows and macOS installers are unsigned. Verify downloads against the release checksums. These builds are for evaluation. <a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/pacificdb-v1.0/COMMUNITY_SCOPE.md"><u>See release readiness.</u></a></p>
-  <p class="download-links"><a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v1.0.0/SHA256SUMS">Download checksums ↓</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community">Build from source ↗</a></p>
+  <p class="download-disclosure">Windows and macOS installers are unsigned. Verify downloads against the release checksums. <a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/v1.1.1/COMMUNITY_SCOPE.md"><u>See release scope.</u></a></p>
+  <p class="download-links"><a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v1.1.1/SHA256SUMS">Download checksums ↓</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community/tree/v-1.1.1">Build from source ↗</a></p>
 </div></section>
 
 <section class="section" id="start"><div class="wrap">
   <div class="start-grid"><div class="start-copy"><p class="kicker">FROM ZERO TO YOUR FIRST WRITE</p><h2 class="section-title">Start local.<br><em>Build outward.</em></h2><p>Install the engine, open the shell, and connect an application without handing your data to a hosted service.</p><a class="btn" style="padding-left:0;color:#315d9e" href="docs.html#quickstart">Read the documentation →</a></div>
   <div class="steps">
-    <article class="step"><span class="step-num">01</span><div><h3>Start one local engine</h3><p>After building the 1.0.1 source checkout, launch the loopback engine and enter the interactive shell.</p><div class="code" id="launch-command">./build/pacificdb<button class="copy" data-copy="launch-command">Copy</button></div><p class="hint">Local mode binds to 127.0.0.1:9000. Configure TLS and authentication before any network deployment.</p></div></article>
-    <article class="step"><span class="step-num">02</span><div><h3>Shape your first data</h3><p>Create a project, then a database and collection. Replace <code>project_...</code> with the returned ID:</p><div class="code" id="shell-command">create project demo\nuse project project_...\ncreate database hello\nuse hello\ncreate collection ideas\ninsert ideas {"id":"first","title":"Hello PacificDB"}\nfind ideas {"id":"first"}<button class="copy" data-copy="shell-command">Copy</button></div></div></article>
-    <article class="step"><span class="step-num">03</span><div><h3>Connect the application</h3><p>Install workspace dependencies in the 1.0.1 source checkout and use its Node.js client with the same local engine.</p><div class="code" id="npm-command">npm install<button class="copy" data-copy="npm-command">Copy</button></div><p class="hint">Save the example below as <code>hello.mjs</code> in the repository root, then run <code>node hello.mjs</code>.</p></div></article>
+    <article class="step"><span class="step-num">01</span><div><h3>Start one local engine</h3><p>After installing PacificDB 1.1.1, launch the loopback engine and enter the interactive shell.</p><div class="code" id="launch-command">pacificdb<button class="copy" data-copy="launch-command">Copy</button></div><p class="hint">Local mode binds to 127.0.0.1:9000. Configure TLS and authentication before any network deployment.</p></div></article>
+    <article class="step"><span class="step-num">02</span><div><h3>Shape your first data</h3><p>Create a database, then a collection. The updated source CLI selects a created database automatically:</p><div class="code" id="shell-command">create database hello\ncreate collection ideas\ninsert ideas {"id":"first","title":"Hello PacificDB"}\nfind ideas {"id":"first"}<button class="copy" data-copy="shell-command">Copy</button></div></div></article>
+    <article class="step"><span class="step-num">03</span><div><h3>Connect the application</h3><p>Install the 1.1.1 Node.js client and connect it to the same local engine.</p><div class="code" id="npm-command">npm install @pacificdb/client@1.1.1<button class="copy" data-copy="npm-command">Copy</button></div><p class="hint">Save the example below as <code>hello.mjs</code>, then run <code>node hello.mjs</code>.</p></div></article>
   </div></div>
-  <div class="example" id="sdks"><div class="example-copy"><p class="kicker">ONE PROTOCOL. THREE CLIENTS.</p><h2>Meet your data<br>where your code lives.</h2><p>Connect through Node.js, Python, or Java. This first write uses the PacificDB v1.0.1 Node.js source client and the Community JSON-over-TCP protocol.</p><div class="package-links"><a href="https://www.npmjs.com/package/@pacificdb/client">@pacificdb/client ↗</a><a href="https://www.npmjs.com/package/@pacificdb/cli">@pacificdb/cli ↗</a></div></div>
-  <div class="editor"><div class="editor-head"><span class="dots"><i></i><i></i><i></i></span><span>hello.mjs</span></div><pre><code>import { PacificDBClient } from '@pacificdb/client';
+  <div class="example" id="sdks"><div class="example-copy"><p class="kicker">ONE PROTOCOL. THREE CLIENTS.</p><h2>Meet your data<br>where your code lives.</h2><p>Connect through Node.js, Python, or Java. This first write uses the PacificDB v1.1.1 Node.js source client and the Community JSON-over-TCP protocol.</p><div class="package-links"><a href="https://www.npmjs.com/package/@pacificdb/client">@pacificdb/client ↗</a><a href="https://www.npmjs.com/package/@pacificdb/cli">@pacificdb/cli ↗</a><a href="docs.html#python">Python source guide →</a><a href="docs.html#java">Java source guide →</a></div></div>
+  <div class="editor"><div class="editor-head"><span class="dots"><i></i><i></i><i></i></span><span>hello.mjs</span></div><pre><code>import { PacificDB } from '@pacificdb/client';
 
-const db = new PacificDBClient({ host: '127.0.0.1', port: 9000 });
-await db.createProject('demo');
-await db.createDatabase('hello');
-await db.createCollection('ideas');
-await db.insert('ideas', {
-  id: 'first', title: 'Something worth building'
-});
-
-console.log(await db.find('ideas', { id: 'first' }));</code></pre><div class="editor-foot"><i></i> Local connection · JSON over TCP</div></div></div>
+const db = await PacificDB.connect('pacificdb://127.0.0.1:9000/app');
+try {
+  await db.createDatabase(); // Omit this if the URL database already exists.
+  await db.createCollection('events');
+  await db.insert('events', { id: 'event-1', type: 'signup' });
+  console.log(await db.find('events', { type: 'signup' }));
+} finally {
+  db.close();
+}</code></pre><div class="editor-foot"><i></i> Local connection · JSON over TCP</div></div></div>
 </div></section>
 
-<section class="closing"><div class="wrap"><p class="kicker">OPEN SOURCE. SELF-HOSTED.</p><h2>Give every shape a home.</h2><p>Explore the PacificDB Community v1.0.1 source update and help build a database that keeps more of your stack together.</p><a class="btn primary" href="https://github.com/hitesh-reddy-k/pacificdb-community">Explore PacificDB on GitHub ↗</a></div></section>
+<section class="closing"><div class="wrap"><p class="kicker">OPEN SOURCE. SELF-HOSTED.</p><h2>Give every shape a home.</h2><p>Explore PacificDB Community v1.1.1 and help build a database that keeps more of your stack together.</p><a class="btn primary" href="https://github.com/hitesh-reddy-k/pacificdb-community">Explore PacificDB on GitHub ↗</a></div></section>
 </main>
-<footer class="footer"><div class="wrap footer-in"><a class="brand" href="#top" aria-label="PacificDB home"><img class="brand-lockup footer-lockup" src="assets/pacificdb-logo-lockup.png" alt="PacificDB"></a><small>Community v1.0.1 source · Self-hosted</small><div class="footer-links"><a href="release-1.0.1.html">What's new</a><a href="docs.html">Documentation</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/pacificdb-v1.0/LICENSE">AGPLv3 core</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community/tree/pacificdb-v1.0/sdk">Apache 2.0 SDKs</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community/issues">Feedback ↗</a></div></div></footer>
+<footer class="footer"><div class="wrap footer-in"><a class="brand" href="#top" aria-label="PacificDB home"><img class="brand-lockup footer-lockup" src="assets/pacificdb-logo-lockup.png" alt="PacificDB"></a><small>Community v1.1.1 · Self-hosted</small><div class="footer-links"><a href="release-1.1.1.html">What's new</a><a href="docs.html">Documentation</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/v1.1.1/LICENSE">AGPLv3 core</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community/tree/v1.1.1/sdk">Apache 2.0 SDKs</a><a href="https://github.com/hitesh-reddy-k/pacificdb-community/issues">Feedback ↗</a></div></div></footer>
 <p id="copyStatus" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)"></p>
 <script>
 (() => {
@@ -413,9 +413,8 @@ console.log(await db.find('ideas', { id: 'first' }));</code></pre><div class="ed
   if(!reduce){ const stage=document.getElementById('howStage'); let phaseTimer=null; const start=()=>{if(phaseTimer)return;phaseTimer=setInterval(()=>{p=(p+1)%phases.length;applyPhase(p)},4200)}; const stop=()=>{clearInterval(phaseTimer);phaseTimer=null};
     const io=new IntersectionObserver(es=>es.forEach(e=>e.isIntersecting?start():stop()),{threshold:.18}); io.observe(stage); }
 
-  // Preserve current release download behavior from the production site.
-  const releaseBase='https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v1.0.0';
-  function updateDownloads(){ document.querySelectorAll('[data-platform]').forEach(link=>{link.href=`${releaseBase}/pacificdb-community-1.0.0-${link.dataset.platform}`;link.textContent=`Download ${link.dataset.platform.split('.').pop()} ↓`;}); }
+  const releaseBase='https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v1.1.1';
+  function updateDownloads(){ document.querySelectorAll('[data-platform]').forEach(link=>{link.href=`${releaseBase}/pacificdb-community-1.1.1-${link.dataset.platform}`;link.textContent=`Download ${link.dataset.platform.split('.').pop()} ↓`;}); }
   const mac=document.getElementById('mac-arch'); if(mac) mac.addEventListener('change',e=>{document.getElementById('mac-download').dataset.platform=e.target.value;updateDownloads()}); updateDownloads();
 
   document.querySelectorAll('[data-copy]').forEach(button=>button.addEventListener('click',async()=>{const target=document.getElementById(button.dataset.copy);const clone=target.cloneNode(true);clone.querySelectorAll('button').forEach(b=>b.remove());const text=clone.textContent.trim();try{await navigator.clipboard.writeText(text);button.textContent='Copied';document.getElementById('copyStatus').textContent='Copied to clipboard.';setTimeout(()=>button.textContent='Copy',1500)}catch{const range=document.createRange(),selection=getSelection();range.selectNodeContents(target);selection.removeAllRanges();selection.addRange(range);document.getElementById('copyStatus').textContent='Clipboard unavailable. The command is selected for manual copying.'}}));

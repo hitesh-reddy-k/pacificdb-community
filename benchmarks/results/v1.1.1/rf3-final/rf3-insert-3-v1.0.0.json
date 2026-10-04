@@ -1,0 +1,107 @@
+{
+  "round": 3,
+  "artifact": {
+    "label": "v1.0.0",
+    "binary": "/home/hitesh/pacificdb-release-1.1.1/build-baseline-installed/usr/bin/db_engine",
+    "sha256": "9fd9d6cf9c2d39dd4a9aa850a34f84987d88726f2317fa96efeea43d88218eac",
+    "version": "PacificDB Engine 1.0.0",
+    "build_info": {
+      "product": "PacificDB Engine",
+      "engineVersion": "1.0.0",
+      "gitCommit": "2f14213ff46721e6219ed241e0f842edab795cd1",
+      "storageFormatVersion": "2",
+      "raftProtocolVersion": "2",
+      "buildTimestamp": "2026-09-20T12:35:15+05:30",
+      "compiler": "GNU-11.4.0"
+    }
+  },
+  "workload": {
+    "name": "rf3-insert",
+    "operation": "insert",
+    "calls": 500,
+    "concurrency": 8,
+    "pool": 8
+  },
+  "calls": 500,
+  "successful_calls": 500,
+  "errors": [],
+  "elapsed_ms": 3299.3621920000005,
+  "attempted_calls_per_second": 151.5444412900031,
+  "documents_per_second": 151.5444412900031,
+  "latency_ms": {
+    "mean": 52.30324716799951,
+    "p50": 57.12817100000393,
+    "p95": 75.5971930000087,
+    "p99": 79.82215199999337
+  },
+  "resources": {
+    "before": {
+      "cpu_seconds": 1.45,
+      "rss_kib": 44428,
+      "peak_rss_kib": 44428,
+      "threads": 204,
+      "read_bytes": 0,
+      "write_bytes": 1921024
+    },
+    "after": {
+      "cpu_seconds": 5.94,
+      "rss_kib": 56424,
+      "peak_rss_kib": 56424,
+      "threads": 208,
+      "read_bytes": 4096,
+      "write_bytes": 10604544
+    },
+    "sampled_peak_rss_kib": 56424,
+    "delta": {
+      "cpu_seconds": 4.49,
+      "read_bytes": 4096,
+      "write_bytes": 8683520
+    }
+  },
+  "integrity": "PASS: every expected field on all three nodes, follower catch-up and all-node SIGKILL/restart",
+  "after_timing": {
+    "milliseconds": 202.40336899999238,
+    "pings": [
+      {
+        "commit_index": 602,
+        "consistency_mode": "EVENTUAL",
+        "consistency_semantics": "eventual",
+        "edition": "community",
+        "isLeader": true,
+        "last_applied": 602,
+        "leader_term": 0,
+        "requestId": "eng_req_701",
+        "status": "pong",
+        "term": 0,
+        "trace_id": "eng_701"
+      },
+      {
+        "commit_index": 602,
+        "consistency_mode": "EVENTUAL",
+        "consistency_semantics": "eventual",
+        "edition": "community",
+        "isLeader": false,
+        "last_applied": 602,
+        "leader_term": 0,
+        "requestId": "eng_req_99",
+        "status": "pong",
+        "term": 0,
+        "trace_id": "eng_99"
+      },
+      {
+        "commit_index": 602,
+        "consistency_mode": "EVENTUAL",
+        "consistency_semantics": "eventual",
+        "edition": "community",
+        "isLeader": false,
+        "last_applied": 602,
+        "leader_term": 0,
+        "requestId": "eng_req_99",
+        "status": "pong",
+        "term": 0,
+        "trace_id": "eng_99"
+      }
+    ]
+  },
+  "follower_restart_and_catchup_ms": 211.9202340000047
+}

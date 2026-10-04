@@ -1,0 +1,199 @@
+{
+  "config": {
+    "engine_cpu_cores": 2,
+    "shards": 4,
+    "workers_per_shard": 2,
+    "fsync": true,
+    "replication_factor": 1,
+    "auth": false,
+    "tls": false,
+    "gateway": "direct JSON/TCP loopback",
+    "dataset_records": 1000,
+    "default_payload_characters": 1024,
+    "warmup_calls": 100,
+    "repeats": 3,
+    "cases": [
+      {
+        "name": "read",
+        "operation": "read",
+        "calls": 10000
+      },
+      {
+        "name": "insert",
+        "operation": "insert",
+        "calls": 1000
+      },
+      {
+        "name": "update",
+        "operation": "update",
+        "calls": 1000
+      },
+      {
+        "name": "delete",
+        "operation": "delete",
+        "calls": 1000
+      },
+      {
+        "name": "mixed-70r-30u",
+        "operation": "mixed",
+        "calls": 3000
+      },
+      {
+        "name": "batch-10",
+        "operation": "batch",
+        "batch": 10,
+        "calls": 100
+      },
+      {
+        "name": "batch-100",
+        "operation": "batch",
+        "batch": 100,
+        "calls": 10
+      },
+      {
+        "name": "batch-1000",
+        "operation": "batch",
+        "batch": 1000,
+        "calls": 10
+      },
+      {
+        "name": "read-pool-1",
+        "operation": "read",
+        "pool": 1,
+        "concurrency": 1,
+        "calls": 10000
+      },
+      {
+        "name": "read-pool-4",
+        "operation": "read",
+        "pool": 4,
+        "concurrency": 4,
+        "calls": 10000
+      },
+      {
+        "name": "read-pool-8",
+        "operation": "read",
+        "pool": 8,
+        "concurrency": 8,
+        "calls": 10000
+      },
+      {
+        "name": "read-pool-16",
+        "operation": "read",
+        "pool": 16,
+        "concurrency": 16,
+        "calls": 10000
+      },
+      {
+        "name": "read-pool-32",
+        "operation": "read",
+        "pool": 32,
+        "concurrency": 32,
+        "calls": 10000
+      },
+      {
+        "name": "insert-payload-128",
+        "operation": "insert",
+        "payload": 128,
+        "calls": 500
+      },
+      {
+        "name": "insert-payload-16384",
+        "operation": "insert",
+        "payload": 16384,
+        "calls": 500
+      },
+      {
+        "name": "vector-insert-d32",
+        "operation": "vectorInsert",
+        "calls": 500
+      },
+      {
+        "name": "vector-search-d32",
+        "operation": "vectorSearch",
+        "calls": 1000
+      },
+      {
+        "name": "index-rebuild-low-cardinality",
+        "operation": "index",
+        "calls": 3,
+        "concurrency": 1,
+        "pool": 1
+      }
+    ],
+    "resource_notes": "Linux /proc process counters; main-thread context switches; RSS sampled every 500 ms. No hardware allocation/IOPS/network attribution."
+  },
+  "artifacts": [
+    {
+      "label": "v1.0.0",
+      "binary": "/home/hitesh/pacificdb-release-1.1.1/build-baseline-installed/usr/bin/db_engine",
+      "sha256": "9fd9d6cf9c2d39dd4a9aa850a34f84987d88726f2317fa96efeea43d88218eac",
+      "version": "PacificDB Engine 1.0.0",
+      "build_info": {
+        "product": "PacificDB Engine",
+        "engineVersion": "1.0.0",
+        "gitCommit": "2f14213ff46721e6219ed241e0f842edab795cd1",
+        "storageFormatVersion": "2",
+        "raftProtocolVersion": "2",
+        "buildTimestamp": "2026-09-20T12:35:15+05:30",
+        "compiler": "GNU-11.4.0"
+      }
+    },
+    {
+      "label": "v1.1.1",
+      "binary": "/home/hitesh/pacificdb-release-1.1.1/build/db_engine",
+      "sha256": "517e12b7e821a11abe000eb0b204759220634c87e2c57f12bdb574a00b24513b",
+      "version": "PacificDB Engine 1.1.1",
+      "build_info": {
+        "product": "PacificDB Engine",
+        "engineVersion": "1.1.1",
+        "gitCommit": "2d751c0d907b8479e1d58bf8d6570a475d2966a3",
+        "storageFormatVersion": "2",
+        "raftProtocolVersion": "2",
+        "buildTimestamp": "2026-10-03T21:37:57+05:30",
+        "compiler": "GNU-13.3.0"
+      }
+    }
+  ],
+  "date": "2026-10-03T16:24:28.204Z",
+  "node": "v24.19.0",
+  "kernel": "7.0.0-34-generic",
+  "os": "#34~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Fri Sep  4 15:38:29 UTC 2",
+  "cpu": [
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX"
+  ],
+  "logical_cpus": 16,
+  "total_memory_bytes": 16433008640,
+  "filesystem": "/dev/nvme0n1p8 ext4   rw,relatime",
+  "ordering": "alternating old/new and new/old per independent round; no concurrent build/test/benchmark",
+  "source_revision": "953c0b6a9b7852b6cdbe170fca963bdeb5e80c10",
+  "sdk_sources": [
+    {
+      "label": "v1.0.0",
+      "file": "/home/hitesh/pacificdb-release-1.1.1/build-baseline-sdk/package/src/index.js",
+      "sha256": "e8f24a3b8a32b582b2943378ed1fdbd3e4171c725ce231374eee8c6ecfb432ef"
+    },
+    {
+      "label": "v1.1.1",
+      "file": "/home/hitesh/pacificdb-release-1.1.1/sdk/node/src/index.js",
+      "sha256": "de65bfd782d6d6b9973737a6e06a4928924c0cedad9cf884f3330942944a1d20"
+    }
+  ],
+  "client": "matched published 1.0.0 Node SDK vs local candidate 1.1.1 Node SDK; same API calls/configuration; full stack comparison, not an isolated engine-change attribution",
+  "limitations": "Finite in-memory dataset and short phases on a shared laptop; not a service-level or cross-product claim."
+}

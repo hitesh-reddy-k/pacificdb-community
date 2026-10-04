@@ -1,0 +1,13 @@
+Command:
+set -e
+test ! -L dist/desktop/linux-unpacked/chrome-sandbox
+sudo -n chown root:root /home/hitesh/pacificdb-release-1.1.1/dist/desktop/linux-unpacked/chrome-sandbox
+sudo -n chmod 4755 /home/hitesh/pacificdb-release-1.1.1/dist/desktop/linux-unpacked/chrome-sandbox
+PACIFICDB_TEST_DESKTOP=/home/hitesh/pacificdb-release-1.1.1/dist/desktop/linux-unpacked/pacificdb-workbench xvfb-run -a node scripts/test-workbench-desktop.mjs
+
+Exit code: 0
+
+Desktop ready in 1372 ms
+Desktop ready in 1198 ms
+WORKBENCH_DESKTOP_PASS: native window, sandbox, bundled engine, CRUD, media, shutdown/restart persistence
+

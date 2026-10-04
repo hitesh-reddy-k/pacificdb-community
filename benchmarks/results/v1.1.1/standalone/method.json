@@ -1,0 +1,161 @@
+{
+  "config": {
+    "engine_cpu_cores": 2,
+    "shards": 4,
+    "workers_per_shard": 2,
+    "fsync": true,
+    "replication_factor": 1,
+    "auth": false,
+    "tls": false,
+    "gateway": "direct JSON/TCP loopback",
+    "dataset_records": 1000,
+    "default_payload_characters": 1024,
+    "warmup_calls": 100,
+    "repeats": 3,
+    "cases": [
+      {
+        "name": "read",
+        "operation": "read",
+        "calls": 10000
+      },
+      {
+        "name": "insert",
+        "operation": "insert",
+        "calls": 1000
+      },
+      {
+        "name": "update",
+        "operation": "update",
+        "calls": 1000
+      },
+      {
+        "name": "delete",
+        "operation": "delete",
+        "calls": 1000
+      },
+      {
+        "name": "mixed-70r-30u",
+        "operation": "mixed",
+        "calls": 3000
+      },
+      {
+        "name": "batch-10",
+        "operation": "batch",
+        "batch": 10,
+        "calls": 100
+      },
+      {
+        "name": "batch-100",
+        "operation": "batch",
+        "batch": 100,
+        "calls": 10
+      },
+      {
+        "name": "batch-1000",
+        "operation": "batch",
+        "batch": 1000,
+        "calls": 10
+      },
+      {
+        "name": "read-pool-1",
+        "operation": "read",
+        "pool": 1,
+        "concurrency": 1,
+        "calls": 10000
+      },
+      {
+        "name": "read-pool-4",
+        "operation": "read",
+        "pool": 4,
+        "concurrency": 4,
+        "calls": 10000
+      },
+      {
+        "name": "read-pool-16",
+        "operation": "read",
+        "pool": 16,
+        "concurrency": 16,
+        "calls": 10000
+      },
+      {
+        "name": "read-pool-32",
+        "operation": "read",
+        "pool": 32,
+        "concurrency": 32,
+        "calls": 10000
+      },
+      {
+        "name": "insert-payload-128",
+        "operation": "insert",
+        "payload": 128,
+        "calls": 500
+      },
+      {
+        "name": "insert-payload-16384",
+        "operation": "insert",
+        "payload": 16384,
+        "calls": 500
+      },
+      {
+        "name": "vector-insert-d32",
+        "operation": "vectorInsert",
+        "calls": 500
+      },
+      {
+        "name": "vector-search-d32",
+        "operation": "vectorSearch",
+        "calls": 1000
+      },
+      {
+        "name": "index-rebuild-low-cardinality",
+        "operation": "index",
+        "calls": 3,
+        "concurrency": 1,
+        "pool": 1
+      }
+    ],
+    "resource_notes": "Linux /proc process counters; main-thread context switches; RSS sampled every 500 ms. No hardware allocation/IOPS/network attribution."
+  },
+  "artifacts": [
+    {
+      "label": "v1.0.0",
+      "binary": "/home/hitesh/pacificdb-release-1.1.1/build-baseline-installed/usr/bin/db_engine",
+      "sha256": "9fd9d6cf9c2d39dd4a9aa850a34f84987d88726f2317fa96efeea43d88218eac",
+      "version": "PacificDB Engine 1.0.0"
+    },
+    {
+      "label": "v1.1.1",
+      "binary": "/home/hitesh/pacificdb-release-1.1.1/build/db_engine",
+      "sha256": "fb51411dbe0b08d0148e2153f68a50a84467c3a5405330057212088c8ea7fcfa",
+      "version": "PacificDB Engine 1.1.1"
+    }
+  ],
+  "date": "2026-10-03T15:35:02.300Z",
+  "node": "v24.19.0",
+  "kernel": "7.0.0-34-generic",
+  "os": "#34~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Fri Sep  4 15:38:29 UTC 2",
+  "cpu": [
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX",
+    "13th Gen Intel(R) Core(TM) i5-13450HX"
+  ],
+  "logical_cpus": 16,
+  "total_memory_bytes": 16433008640,
+  "filesystem": "/dev/nvme0n1p8 ext4   rw,relatime",
+  "ordering": "alternating old/new and new/old per independent round; no concurrent build/test/benchmark",
+  "client": "matched published 1.0.0 Node SDK vs local candidate 1.1.1 Node SDK; same API calls/configuration; full stack comparison, not an isolated engine-change attribution",
+  "limitations": "Finite in-memory dataset and short phases on a shared laptop; not a service-level or cross-product claim."
+}

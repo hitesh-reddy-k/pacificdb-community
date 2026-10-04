@@ -90,8 +90,8 @@ async function runCase(category) {
     const probe = new PacificDBClient({ port, timeoutMs: 300 });
     let last;
     for (let attempt = 0; attempt < 150; attempt += 1) {
-      if (engine?.exitCode !== null || engine?.signalCode !== null) {
-        throw new Error(`engine exited with ${engine.exitCode ?? engine.signalCode}: ${engineOutput.slice(-8192)}`);
+      if (engine?.exitCode !== null) {
+        throw new Error(`engine exited with ${engine.exitCode}: ${engineOutput.slice(-8192)}`);
       }
       try {
         if ((await probe.request({ action: 'ping' })).status === 'pong') return;
@@ -112,7 +112,7 @@ async function runCase(category) {
     await waitReady();
   }
   async function stop(signal = 'SIGINT') {
-    if (!engine || engine.exitCode !== null || engine.signalCode !== null) return;
+    if (!engine || engine.exitCode !== null) return;
     const exited = once(engine, 'exit');
     engine.kill(signal);
     const timer = setTimeout(() => engine.kill('SIGKILL'), 8000);

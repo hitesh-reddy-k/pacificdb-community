@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-04T05:15:11.120Z",
+  "source_revision": "9d274ee69aaf8b30f38ce566878a400cbac5f766",
+  "script_sha256": "46b9d377b43ee6ffcd501636edf8a509dbb459e74d67b4470cee9589a35a86a0",
+  "client": "v1.1.1 candidate Node client for both engines to isolate the engine path",
+  "environment": {
+    "node": "v24.19.0",
+    "kernel": "7.0.0-34-generic",
+    "logical_cpus": 16
+  },
+  "method": "Three alternating fresh-data runs; 100 insertMany calls of 10 x 1KiB documents; fsync enabled; RF1; concurrency 1 and 8; exact count before/after SIGKILL.",
+  "summary": [
+    {
+      "engine": "v1.0.0",
+      "concurrency": 1,
+      "median_calls_per_second": 169.49413620798248,
+      "median_mean_latency_ms": 5.870396449999935,
+      "median_mean_wal_append_us": 2958.46,
+      "median_mean_storage_non_wal_us": 544.95,
+      "median_mean_lock_wait_us": 0,
+      "median_reported_physical_syncs": 100
+    },
+    {
+      "engine": "v1.1.1",
+      "concurrency": 1,
+      "median_calls_per_second": 210.60467003767093,
+      "median_mean_latency_ms": 4.720044440000056,
+      "median_mean_wal_append_us": 2249.24,
+      "median_mean_storage_non_wal_us": 494.71,
+      "median_mean_lock_wait_us": 0,
+      "median_reported_physical_syncs": 100
+    },
+    {
+      "engine": "v1.0.0",
+      "concurrency": 8,
+      "median_calls_per_second": 848.9380960197834,
+      "median_mean_latency_ms": 9.137162360000001,
+      "median_mean_wal_append_us": 3537.97,
+      "median_mean_storage_non_wal_us": 1114.16,
+      "median_mean_lock_wait_us": 479.89,
+      "median_reported_physical_syncs": 100
+    },
+    {
+      "engine": "v1.1.1",
+      "concurrency": 8,
+      "median_calls_per_second": 233.72596709237493,
+      "median_mean_latency_ms": 33.23228362999955,
+      "median_mean_wal_append_us": 3617.29,
+      "median_mean_storage_non_wal_us": 26764.43,
+      "median_mean_lock_wait_us": 25991.62,
+      "median_reported_physical_syncs": 100
+    }
+  ]
+}

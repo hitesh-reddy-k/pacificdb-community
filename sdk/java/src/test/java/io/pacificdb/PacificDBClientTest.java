@@ -21,16 +21,17 @@ import java.util.concurrent.Executors;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.TrustManagerFactory;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class PacificDBClientTest {
-    private SSLContext[] testTlsContexts() throws Exception {
+    private SSLContext[] testTlsContexts() throws Exception { return testTlsContexts(null); }
+    private SSLContext[] testTlsContexts(Path caFile) throws Exception {
         // Generate a fresh test-only certificate so no private key is checked in.
         Path keystorePath = Files.createTempFile("pacificdb-tls-test-", ".p12");
         Files.delete(keystorePath);
@@ -60,6 +61,7 @@ class PacificDBClientTest {
             Files.deleteIfExists(keystorePath);
         }
         Certificate certificate = serverKeys.getCertificate("server");
+        if (caFile != null) Files.writeString(caFile, "-----BEGIN CERTIFICATE-----\n" + java.util.Base64.getMimeEncoder(64, new byte[] {10}).encodeToString(certificate.getEncoded()) + "\n-----END CERTIFICATE-----\n");
         KeyManagerFactory keyManagers = KeyManagerFactory.getInstance(
             KeyManagerFactory.getDefaultAlgorithm());
         keyManagers.init(serverKeys, password);
@@ -92,9 +94,10 @@ class PacificDBClientTest {
                 }
                 return null;
             });
-            PacificDBClient client = new PacificDBClient("127.0.0.1", server.getLocalPort(), "app");
+            try (PacificDBClient client = new PacificDBClient("127.0.0.1", server.getLocalPort(), "app")) {
             assertEquals("ping", client.request(Map.of("action", "ping")).get("action"));
             future.get();
+            }
             executor.shutdown();
         }
     }
@@ -117,11 +120,13 @@ class PacificDBClientTest {
                     }
                     return null;
                 });
-                PacificDBClient client = new PacificDBClient("127.0.0.1", server.getLocalPort(),
-                    "system", "app", true, 3_000, contexts[1].getSocketFactory());
-                assertThrows(SSLHandshakeException.class,
+                try (PacificDBClient client = new PacificDBClient("127.0.0.1", server.getLocalPort(),
+                    "system", "app", true, 3_000, contexts[1].getSocketFactory())) {
+                var error = assertThrows(PacificDBException.class,
                     () -> client.request(Map.of("action", "ping", "token", "secret")));
+                assertEquals("tls_error", error.getCode()); assertNull(error.getCause());
                 future.get(5, TimeUnit.SECONDS);
+                }
             } finally {
                 executor.shutdownNow();
             }
@@ -143,13 +148,53 @@ class PacificDBClientTest {
                     }
                     return null;
                 });
-                PacificDBClient client = new PacificDBClient("localhost", server.getLocalPort(),
-                    "system", "app", true, 3_000, contexts[1].getSocketFactory());
+                try (PacificDBClient client = new PacificDBClient("localhost", server.getLocalPort(),
+                    "system", "app", true, 3_000, contexts[1].getSocketFactory())) {
                 assertEquals(true, client.request(Map.of("action", "ping")).get("ok"));
                 future.get(5, TimeUnit.SECONDS);
+                }
             } finally {
                 executor.shutdownNow();
             }
         }
     }
+    @Test
+    void customCaUrlSucceedsAndDefaultTrustRejectsPrivateCertificateBeforeAuth() throws Exception {
+        Path ca = Files.createTempFile("pacificdb-ca-", ".pem");
+        SSLContext[] contexts = testTlsContexts(ca);
+        try {
+            for (boolean trusted : new boolean[] {true, false}) {
+                try (SSLServerSocket server = (SSLServerSocket)contexts[0].getServerSocketFactory().createServerSocket(0)) {
+                    var workers = Executors.newSingleThreadExecutor();
+                    var received = new java.util.concurrent.atomic.AtomicInteger();
+                    try {
+                        var peer = workers.submit(() -> {
+                            try (SSLSocket socket = (SSLSocket)server.accept()) {
+                                var reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+                                var writer = new PrintWriter(socket.getOutputStream(), true);
+                                for (int i = 0; i < 2; i++) {
+                                    String line = reader.readLine();
+                                    if (line == null) break;
+                                    received.incrementAndGet();
+                                    writer.println(i == 0 ? "{\"token\":\"private-token\",\"_pacificdb_connection_keepalive\":true}" : "{\"ok\":true}");
+                                }
+                            } catch (IOException failure) { if (trusted) throw failure; }
+                            return null;
+                        });
+                        String url = "pacificdbs://demo:private-password@localhost:" + server.getLocalPort() + "/app";
+                        if (trusted) {
+                            try (var db = PacificDB.connect(url, Map.of("caFile", ca.toString()))) { assertEquals("app", db.getDatabase()); }
+                            assertEquals(2, received.get());
+                        } else {
+                            var error = assertThrows(PacificDBException.class, () -> PacificDB.connect(url));
+                            assertEquals("tls_error", error.getCode()); assertNull(error.getCause());
+                            assertEquals(0, received.get());
+                        }
+                        peer.get(5, TimeUnit.SECONDS);
+                    } finally { workers.shutdownNow(); }
+                }
+            }
+        } finally { Files.deleteIfExists(ca); }
+    }
+
 }

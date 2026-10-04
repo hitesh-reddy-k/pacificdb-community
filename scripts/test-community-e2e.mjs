@@ -307,10 +307,9 @@ try {
   await startEngine({ ENGINE_AUTH_REQUIRED: '0' });
   console.log('E2E: exercise interactive shells on the disposable local engine');
   const shellCommands = [
-    'help', 'help projects', 'help backups', 'help media', 'help vectors',
-    'create project shell-created', 'list projects', `use project ${removed.id}`,
-    'show project', `delete project ${removed.id}`, 'context show',
-    `use project ${alpha.id}`, 'show project',
+    'help', 'help databases', 'help backups', 'help media', 'help vectors',
+    'context show',
+    `request {"action":"community_project_get","id":"${removed.id}"}`,
     'create database temporary', 'list databases', 'use temporary', 'show database',
     'drop database temporary', 'use app', 'show database',
     'create collection shell_docs', 'list collections',
@@ -341,29 +340,27 @@ try {
   const shellOutput = await runShell(shellCommands);
   console.log('E2E: advertised shell command matrix complete');
   assertPublicOutput(shellOutput);
-  assert.match(shellOutput, /PacificDB[\s\S]*v1\.0\.1/);
+  assert.match(shellOutput, /PacificDB[\s\S]*v1\.1\.1/);
   assert.match(shellOutput, /Grace Hopper/);
   assert.match(shellOutput, /"status": "pong"/);
   assert.match(shellOutput, /"chunk_count": 6/);
   assert.equal(sha256(await readFile(downloadFile)), sha256(mediaBytes));
 
   const invalidCommands = [
-    `use project ${alpha.id}`,
     'use project definitely-does-not-exist', 'use database-that-does-not-exist',
     'use app', 'aggregate users [{"$group":{}}]', 'quit'
   ];
   const invalidOutput = await runShell(invalidCommands);
   console.log('E2E: shell error matrix complete');
   assertPublicOutput(invalidOutput);
-  assert.match(invalidOutput, /project_not_found/);
+  assert.match(invalidOutput, /[Uu]nknown|[Ii]nvalid command/);
   assert.match(invalidOutput, /database_not_found/);
   assert.match(invalidOutput, /unsupported Community aggregation stage/);
   const context = JSON.parse(await readFile(path.join(cliHome, 'context.json')));
-  assert.equal(context.projectId, alpha.id);
+  assert.deepEqual(context, { database: 'app' });
 
   const isolationCommands = [
-    `use project ${alpha.id}`, 'use app',
-    `use project ${isolated.id}`, 'list databases', 'use app',
+    'use app', 'list databases', 'use database-that-does-not-exist',
     'use isolated-db', 'show database', 'quit'
   ];
   const isolationOutput = await runShell(isolationCommands);
@@ -371,8 +368,7 @@ try {
   assert.match(isolationOutput, /isolated-db/);
   assert.match(isolationOutput, /database_not_found/);
   const isolatedContext = JSON.parse(await readFile(path.join(cliHome, 'context.json')));
-  assert.deepEqual({ projectId: isolatedContext.projectId, database: isolatedContext.database },
-    { projectId: isolated.id, database: 'isolated-db' });
+  assert.deepEqual(isolatedContext, { database: 'isolated-db' });
 
   const exported = JSON.parse(await readFile(exportFile, 'utf8'));
   assert.equal(exported.format, 'pacificdb-full-backup-v1');
@@ -461,8 +457,8 @@ try {
   await stopEngine();
   await startEngine({ ENGINE_AUTH_REQUIRED: '0' });
   const freshShellCommands = [
-    'list projects', `use project ${alpha.id}`,
-    'show project', 'use app', 'find users {"id":"persistent"}', 'exit'
+    'list databases', `request {"action":"community_project_get","id":"${alpha.id}"}`,
+    'use app', 'find users {"id":"persistent"}', 'exit'
   ];
   const freshShell = await runShell(freshShellCommands);
   assertPublicOutput(freshShell);

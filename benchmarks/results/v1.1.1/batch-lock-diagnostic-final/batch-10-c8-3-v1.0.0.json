@@ -1,0 +1,28 @@
+{
+  "name": "batch-10-c8-3-v1.0.0",
+  "engine": {
+    "label": "v1.0.0",
+    "binary": "/home/hitesh/pacificdb-release-1.1.1/build-baseline-installed/usr/bin/db_engine",
+    "version": "PacificDB Engine 1.0.0",
+    "sha256": "9fd9d6cf9c2d39dd4a9aa850a34f84987d88726f2317fa96efeea43d88218eac"
+  },
+  "round": 3,
+  "concurrency": 8,
+  "calls": 100,
+  "batch_size": 10,
+  "calls_per_second": 1050.4802617175162,
+  "latency_ms": {
+    "mean": 7.314557540000169,
+    "p50": 7.104945999999472,
+    "p95": 12.905625999999756,
+    "p99": 14.374517000000196
+  },
+  "server_metrics": {
+    "samples": 100,
+    "mean_wal_append_us": 2939.54,
+    "mean_storage_non_wal_us": 1114.16,
+    "mean_lock_wait_us": 479.89,
+    "reported_physical_syncs": 100
+  },
+  "integrity": "PASS: 1100 documents before and after SIGKILL restart"
+}

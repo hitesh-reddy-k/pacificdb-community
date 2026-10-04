@@ -1,0 +1,80 @@
+{
+  "name": "read-pool-32-3-v1.1.1",
+  "round": 3,
+  "artifact": {
+    "label": "v1.1.1",
+    "binary": "/home/hitesh/pacificdb-release-1.1.1/build/db_engine",
+    "sha256": "517e12b7e821a11abe000eb0b204759220634c87e2c57f12bdb574a00b24513b",
+    "version": "PacificDB Engine 1.1.1",
+    "build_info": {
+      "product": "PacificDB Engine",
+      "engineVersion": "1.1.1",
+      "gitCommit": "2d751c0d907b8479e1d58bf8d6570a475d2966a3",
+      "storageFormatVersion": "2",
+      "raftProtocolVersion": "2",
+      "buildTimestamp": "2026-10-03T21:37:57+05:30",
+      "compiler": "GNU-13.3.0"
+    }
+  },
+  "workload": {
+    "name": "read-pool-32",
+    "operation": "read",
+    "pool": 32,
+    "concurrency": 32,
+    "calls": 10000
+  },
+  "seed_records": 1000,
+  "example_document_json_bytes": 1122,
+  "calls": 10000,
+  "successful_calls": 10000,
+  "errors": [],
+  "elapsed_ms": 403.84912800008897,
+  "attempted_calls_per_second": 24761.72240242598,
+  "successful_calls_per_second": 24761.72240242598,
+  "documents_per_second": 24761.72240242598,
+  "latency_ms": {
+    "mean": 1.2904940383006354,
+    "p50": 1.0799510000506416,
+    "p95": 2.008985999971628,
+    "p99": 2.6224209999199957
+  },
+  "resources": {
+    "before": {
+      "cpu_seconds": 0.1,
+      "rss_kib": 21176,
+      "peak_rss_kib": 21176,
+      "threads": 48,
+      "open_fds": 10,
+      "read_bytes": 0,
+      "write_bytes": 1445888,
+      "rchar": 26729,
+      "wchar": 1315512,
+      "voluntary_context_switches": 11,
+      "involuntary_context_switches": 1
+    },
+    "after": {
+      "cpu_seconds": 4.25,
+      "rss_kib": 27212,
+      "peak_rss_kib": 27212,
+      "threads": 76,
+      "open_fds": 41,
+      "read_bytes": 0,
+      "write_bytes": 1445888,
+      "rchar": 26729,
+      "wchar": 1321198,
+      "voluntary_context_switches": 27,
+      "involuntary_context_switches": 2
+    },
+    "sampled_peak_rss_kib": 21176,
+    "delta": {
+      "cpu_seconds": 4.15,
+      "read_bytes": 0,
+      "write_bytes": 0,
+      "rchar": 0,
+      "wchar": 5686,
+      "voluntary_context_switches": 16,
+      "involuntary_context_switches": 1
+    }
+  },
+  "integrity": "PASS: full expected application fields and deleted-ID absence before/after SIGKILL; exact vectors plus count/search after recovery"
+}

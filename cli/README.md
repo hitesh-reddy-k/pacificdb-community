@@ -28,7 +28,7 @@ Workbench from the Applications menu. From a source checkout, run
 `npm run workbench:desktop` for the desktop GUI or `npm run workbench` for
 browser mode.
 
-Workbench includes a workspace overview, project/database/collection navigation,
+Workbench includes a workspace overview, database/collection navigation,
 document filters and editing, vector search, and media upload/download. The
 settings button changes appearance and density. Documents use pages of 25, 50,
 or 100 records; Ctrl/Cmd+Enter runs the current filter. Press `/` to search the
@@ -47,23 +47,27 @@ pacificdb request '{"action":"ping"}'
 Create and query data:
 
 ```text
-create project demo
-list projects
-use project project_...
 create database app
-use app
 create collection users
 insert users {"id":"1","name":"Ada"}
 findOne users {"id":"1"}
 ```
 
-The shell includes projects, databases, document queries,
+The shell includes databases, document queries,
 manual backups, API keys, media, vectors, local context, history, and raw JSON
 requests. Run `help` for the complete command list.
 
-Select a project before creating or using a database. Create a collection only
-after selecting a database in that project. Selecting another project clears
-the current database.
+Creating a database selects it after success. For an existing database, use
+`use app` or connect with `pacificdb --url pacificdb://localhost/app`.
+`PACIFICDB_URL` supplies the default URL; `--url` overrides it. Put credentials
+in a protected environment variable rather than shell commands/history.
+`pacificdbs://` uses verified TLS and never starts a local plaintext engine.
+Conflicting URL and host/port/database flags fail before local startup.
+
+Only the database is saved in context. Older context files keep their database
+and discard project IDs/tokens; a restored database is validated before use.
+Legacy project APIs and stored metadata remain available through SDK methods
+and `request` JSON, while friendly project commands are removed.
 
 Media uses bounded, sequential, checksummed chunks:
 

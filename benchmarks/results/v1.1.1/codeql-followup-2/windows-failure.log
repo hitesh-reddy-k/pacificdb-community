@@ -1,0 +1,100 @@
+2026-10-04T10:58:55.4784717Z [RAFTCORE] stopped snapshot maintenance elapsed_ms=0
+2026-10-04T10:58:55.4784991Z 
+2026-10-04T10:58:55.4785111Z [RAFTCORE] stopping health monitor
+2026-10-04T10:58:55.4785253Z 
+2026-10-04T10:58:55.4785383Z [RAFTCORE] stopped health monitor elapsed_ms=0
+2026-10-04T10:58:55.4785560Z 
+2026-10-04T10:58:55.4785679Z [RAFTCORE] stopping adaptive controller
+2026-10-04T10:58:55.4785855Z 
+2026-10-04T10:58:55.4786039Z [RAFTCORE] stopped adaptive controller elapsed_ms=0
+2026-10-04T10:58:55.4786242Z 
+2026-10-04T10:58:55.4786331Z [RAFTCORE] stopping apply worker
+2026-10-04T10:58:55.4786493Z 
+2026-10-04T10:58:55.4786591Z [RAFTCORE] stopped apply worker elapsed_ms=0
+2026-10-04T10:58:55.4786778Z 
+2026-10-04T10:58:55.4786882Z [RAFTCORE] stopping read barrier
+2026-10-04T10:58:55.4787013Z 
+2026-10-04T10:58:55.4787143Z [RAFTCORE] stopped read barrier elapsed_ms=1
+2026-10-04T10:58:55.4787295Z 
+2026-10-04T10:58:55.4788324Z [MAIN] ✓ Raft core stopped
+2026-10-04T10:58:55.4788454Z 
+2026-10-04T10:58:55.4788578Z [MAIN][SHUTDOWN] raft_stopped elapsed_ms=6
+2026-10-04T10:58:55.4788738Z 
+2026-10-04T10:58:55.4788853Z [ShardManager] Stopped
+2026-10-04T10:58:55.4788993Z 
+2026-10-04T10:58:55.4789118Z [MAIN] ✓ ShardManager stopped
+2026-10-04T10:58:55.4789279Z 
+2026-10-04T10:58:55.4789357Z [GC] GC loop exited
+2026-10-04T10:58:55.4789486Z 
+2026-10-04T10:58:55.4789602Z [MAIN][SHUTDOWN] shard_manager_stopped elapsed_ms=220
+2026-10-04T10:58:55.4789812Z 
+2026-10-04T10:58:55.4790090Z [MAIN][SHUTDOWN] garbage_collector_stopped elapsed_ms=[GC] Garbage collector stopped (versions collected: 0)
+2026-10-04T10:58:55.4790403Z 
+2026-10-04T10:58:55.4790497Z 220
+2026-10-04T10:58:55.4790584Z 
+2026-10-04T10:58:55.4790698Z [LSM] Force flushing all memtables...
+2026-10-04T10:58:55.4790847Z 
+2026-10-04T10:58:55.4790989Z [LSM] Force flush completed - 3 memtables flushed
+2026-10-04T10:58:55.4791433Z 
+2026-10-04T10:58:55.4791577Z [MAIN] ✓ Active LSM memtables force-flushed
+2026-10-04T10:58:55.4791760Z 
+2026-10-04T10:58:55.4791863Z [MAIN][SHUTDOWN] lsm_force_flushed elapsed_ms=508
+2026-10-04T10:58:55.4792063Z 
+2026-10-04T10:58:55.4792152Z [LSM] Background maintenance stopping
+2026-10-04T10:58:55.4792321Z 
+2026-10-04T10:58:55.4792473Z [MAIN] ✓ LSM background tasks stopped
+2026-10-04T10:58:55.4792613Z 
+2026-10-04T10:58:55.4792740Z [MAIN][SHUTDOWN] lsm_stopped elapsed_ms=519
+2026-10-04T10:58:55.4792893Z 
+2026-10-04T10:58:55.4793039Z [MAIN] ✓ WAL flusher stopped
+2026-10-04T10:58:55.4793168Z 
+2026-10-04T10:58:55.4793288Z [MAIN][SHUTDOWN] wal_stopped elapsed_ms=520
+2026-10-04T10:58:55.4793477Z 
+2026-10-04T10:58:55.4794152Z [WAL] Clean shutdown marked at C:\Users\runneradmin\AppData\Local\Temp\PacificDB P0 తెలుగు GwjLYk\space root\pacificdb-p0-lifecycle-H4qGdv\data/.clean_shutdown
+2026-10-04T10:58:55.4794646Z 
+2026-10-04T10:58:55.4794780Z [MAIN] ✓ Clean shutdown marker v2 written
+2026-10-04T10:58:55.4794960Z 
+2026-10-04T10:58:55.4795075Z [MAIN][SHUTDOWN] clean_marker_written elapsed_ms=526
+2026-10-04T10:58:55.4795286Z 
+2026-10-04T10:58:55.4795397Z [MEMORY] Monitor thread stopped
+2026-10-04T10:58:55.4795537Z 
+2026-10-04T10:58:55.4795679Z [MAIN][SHUTDOWN] memory_manager_stopped elapsed_ms=526
+2026-10-04T10:58:55.4795859Z 
+2026-10-04T10:58:55.4796659Z {"code":"engine_shutdown_complete","fields":{"clean_shutdown":true,"instance_id":"engine_7cd18d76ee517f9bea173d7b2905cb0a"},"message":"PacificDB engine shutdown completed","operation_id":"engine_7cd18d76ee517f9bea173d7b2905cb0a","severity":"info","subsystem":"engine","timestamp_ms":1791111535305}[MAIN] Shutdown complete
+2026-10-04T10:58:55.4797517Z 
+2026-10-04T10:58:55.4797520Z 
+2026-10-04T10:58:55.4797523Z 
+2026-10-04T10:58:55.4797525Z 
+2026-10-04T10:58:55.4797706Z AssertionError [ERR_ASSERTION]: missing lifecycle event engine_shutdown_complete
+2026-10-04T10:58:55.4798264Z     at file:///D:/a/pacificdb-community/pacificdb-community/scripts/test-p0-client-lifecycle.mjs:276:13
+2026-10-04T10:58:55.4798581Z 
+2026-10-04T10:58:55.4799012Z     at ChildProcess.<anonymous> (file:///D:/a/pacificdb-community/pacificdb-community/scripts/test-p0-installed.mjs:37:14)
+2026-10-04T10:58:55.4799517Z     at Object.onceWrapper (node:events:634:26)
+2026-10-04T10:58:55.4799805Z     at ChildProcess.emit (node:events:519:28)
+2026-10-04T10:58:55.4800099Z     at maybeClose (node:internal/child_process:1101:16)
+2026-10-04T10:58:55.4800451Z     at ChildProcess._handle.onexit (node:internal/child_process:304:5)
+2026-10-04T10:58:55.4800771Z 
+2026-10-04T10:58:55.4800851Z Node.js v22.23.3
+2026-10-04T10:58:55.5847557Z [31;1mException: [0mD:\a\pacificdb-community\pacificdb-community\scripts\test-p0-windows.ps1:10[0m
+2026-10-04T10:58:55.5848211Z [31;1m[0m[36;1mLine |[0m
+2026-10-04T10:58:55.5849063Z [31;1m[0m[36;1m[36;1m  10 | [0m … DE -ne 0) { [36;1mthrow "PacificDB P0 installed suite failed: $LASTEXITCODE[0m …[0m
+2026-10-04T10:58:55.5849965Z [31;1m[0m[36;1m[36;1m[0m[36;1m[0m[36;1m     | [31;1m               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-10-04T10:58:55.5850794Z [31;1m[0m[36;1m[36;1m[0m[36;1m[0m[36;1m[31;1m[31;1m[36;1m     | [31;1mPacificDB P0 installed suite failed: 1[0m
+2026-10-04T10:58:55.6051790Z ##[error]Process completed with exit code 1.
+2026-10-04T10:58:55.6313508Z Post job cleanup.
+2026-10-04T10:58:55.7598807Z [command]"C:\Program Files\Git\bin\git.exe" version
+2026-10-04T10:58:55.7813997Z git version 2.55.0.windows.5
+2026-10-04T10:58:55.7862352Z Temporarily overriding HOME='D:\a\_temp\7e68967e-ab3a-4076-be4d-57c0fc722da8' before making global git config changes
+2026-10-04T10:58:55.7863323Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-04T10:58:55.7870094Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\pacificdb-community\pacificdb-community
+2026-10-04T10:58:55.8102044Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-10-04T10:58:55.8346192Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-10-04T10:58:56.2576244Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-04T10:58:56.2775583Z http.https://github.com/.extraheader
+2026-10-04T10:58:56.2807616Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all http.https://github.com/.extraheader
+2026-10-04T10:58:56.3037323Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-10-04T10:58:56.7325126Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-04T10:58:56.7552272Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-10-04T10:58:57.1916161Z Cleaning up orphan processes
+2026-10-04T10:58:57.2082971Z Terminate orphan process: pid (3144) (vctip)
+2026-10-04T10:58:57.2466716Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

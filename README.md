@@ -2,11 +2,11 @@
   <img src="site/assets/pacificdb-logo-symbol.png" width="96" alt="PacificDB logo">
 </p>
 
-<h1 align="center">PacificDB v1.0.1</h1>
+<h1 align="center">PacificDB v1.1.1</h1>
 
 <p align="center">
   Open-source, self-hosted database for documents, vectors, and media.<br>
-  Looking for developers to test the v1.0.1 source update.
+  Current stable Community release.
 </p>
 
 <p align="center">
@@ -20,16 +20,13 @@
 Build this checkout using the [source instructions](#build-and-test), then run `./build/pacificdb`. In the shell:
 
 ```text
-create project demo
-use project project_...
 create database app
-use app
 create collection users
 insert users {"id":"1","name":"Ada"}
 find users {"id":"1"}
 ```
 
-Replace `project_...` with the ID returned by `create project`. The project → database → collection order is required. See the [full install options](#install) and [v1.0.1 release notes](docs/releases/v1.0.1.md).
+Database creation selects it automatically. Projects are optional legacy metadata; no data migration is needed. See [database-first migration](docs/DATABASE_FIRST_MIGRATION.md). See the [full install options](#install) and [v1.1.1 release notes](site/release-1.1.1.html).
 
 ## What is included
 
@@ -88,7 +85,7 @@ reused by later CLI and application connections. Use `--no-start` when the CLI
 must only connect to an already-running engine. Check the installed release
 without starting the engine with `pacificdb --version`.
 
-Windows and macOS installers are currently unsigned. Verify downloads
+Windows and macOS 1.1.1 installers are unsigned under a version-specific release-owner exception. Verify downloads
 against `SHA256SUMS` and review the
 [certification status](docs/COMMUNITY_P0_CERTIFICATION.md) before installation.
 
@@ -97,12 +94,11 @@ against `SHA256SUMS` and review the
 Node.js 18 or newer:
 
 ```sh
-npm install --global @pacificdb/cli@latest
-npm install @pacificdb/client@latest
+npm install --global @pacificdb/cli@1.1.1
+npm install @pacificdb/client@1.1.1
 ```
 
-This checkout contains `1.0.1` package sources. The published npm `latest`
-packages are `1.0.0` until the 1.0.1 release is published.
+Pin `1.1.1` when installing the CLI and Node.js client for this release.
 
 The npm CLI is a client. It can automatically start `db_engine` when a native
 PacificDB server package is installed and available on `PATH`. Installing only
@@ -110,15 +106,11 @@ the npm package does not install the database engine.
 
 ### Desktop Workbench
 
+[Workbench 1.1.1](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/workbench-v1.1.1) includes Linux, Windows, and macOS installers with the bundled engine and CLI.
+
 The desktop app bundles the Workbench GUI, native database engine, CLI, and
 runtime. Users can install it and open **PacificDB Workbench** from their app
 menu. It starts and stops its own local engine and retains data between launches.
-
-The public [Workbench 1.0.1 Linux preview installer](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-linux-v1.0.1/PacificDB-Workbench-1.0.1-linux-amd64.deb)
-is built for Ubuntu 24.04 x86-64. Download it, then run
-`sudo apt install ./PacificDB-Workbench-1.0.1-linux-amd64.deb`. See the
-[checksums](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-linux-v1.0.1/SHA256SUMS)
-and [Workbench guide](docs/WORKBENCH.md).
 
 Build the engine and native CLI, then run `npm run workbench:desktop` during
 development. Run `npm run desktop:build -- --linux deb --x64` to create the
@@ -149,8 +141,11 @@ pacificdb:app>
 Run `help` for the complete categorized command list and `quit` to leave the
 shell. Leaving the shell does not stop the background engine.
 
-`create database`, `list databases`, and `use <name>` require a selected
-project. Switching or deleting the active project clears the database selection.
+`create database` selects the database after success; `list databases` lists
+accessible databases and `use <name>` switches to an existing one. Connect
+directly with `pacificdb --url 'pacificdb://127.0.0.1:9000/app'`.
+`pacificdbs://` uses verified TLS. Authenticated connections can read a privately
+configured `PACIFICDB_URL`; credentials never belong in shared commands.
 
 Local mode listens only on `127.0.0.1:9000` and starts with authentication
 disabled. Configure authentication and TLS before exposing the engine to a
@@ -160,7 +155,6 @@ network.
 
 | Area | Commands |
 |---|---|
-| Projects | `create project`, `list projects`, `use project`, `show project`, `delete project` |
 | Databases | `create database`, `list databases`, `use`, `show database`, `drop database` |
 | Collections | `create collection`, `list collections` |
 | Documents | `insert`, `find`, `findOne`, `update`, `delete`, `count` |
@@ -207,19 +201,24 @@ backup file in bounded, checksummed chunks.
 
 ## Connect an application
 
-Start the native `pacificdb` command once before running an application.
+These examples require matching 1.1.1 clients. Start `pacificdb` once before running an application. Install the Node client with `npm install @pacificdb/client@1.1.1`.
+
+For complete install, authenticated connection, CRUD, vector/media, close, upgrade, and troubleshooting examples, see [Node.js](site/docs.html#nodejs), [Python](site/docs.html#python), [Java](site/docs.html#java), [CLI](site/docs.html#shell-reference), and [Workbench](site/docs.html#workbench). A `pacificdb://` database URL uses the engine protocol; open the separately printed `http://` URL for browser Workbench. Keep private credentials in `PACIFICDB_URL` and use `pacificdbs://` for verified TLS.
 
 ### Node.js
 
 ```js
-import { PacificDBClient } from '@pacificdb/client';
+import { PacificDB } from '@pacificdb/client';
 
-const db = new PacificDBClient({ host: '127.0.0.1', port: 9000 });
-await db.createProject('demo');
-await db.createDatabase('app');
-await db.createCollection('events');
-await db.insert('events', { id: 'event-1', type: 'signup' });
-console.log(await db.find('events', { type: 'signup' }));
+const db = await PacificDB.connect('pacificdb://127.0.0.1:9000/app');
+try {
+  await db.createDatabase(); // Omit this if the URL database already exists.
+  await db.createCollection('events');
+  await db.insert('events', { id: 'event-1', type: 'signup' });
+  console.log(await db.find('events', { type: 'signup' }));
+} finally {
+  db.close();
+}
 ```
 
 See [sdk/node/README.md](sdk/node/README.md) for media, vectors, and backup
@@ -227,36 +226,50 @@ export.
 
 ### Python
 
-Install the current source client:
+Install into a virtual environment:
 
 ```sh
-python -m pip install ./sdk/python
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install --no-deps \
+  'git+https://github.com/hitesh-reddy-k/pacificdb-community.git@v1.1.1#subdirectory=sdk/python'
 ```
 
-```python
-from pacificdb import PacificDBClient
+PyPI publication is pending trusted-publisher registration. The tagged-source
+command above was verified from a clean virtual environment.
 
-db = PacificDBClient(database="app")
-db.insert("events", {"id": "event-2", "type": "purchase"})
-print(db.find("events", {"type": "purchase"}))
+```python
+import os
+from pacificdb import PacificDB
+
+url = os.environ.get("PACIFICDB_URL", "pacificdb://127.0.0.1:9000/app")
+with PacificDB.connect(url) as db:
+    print(db.find("events", {"type": "signup"}))
 ```
 
 ### Java
 
-Build the current source client:
+Maven Central ownership is not configured. The release tag predates the final
+Jackson 2.18.11 security update, so install the audited release-branch revision:
 
 ```sh
-mvn -f sdk/java/pom.xml package
+git checkout 25fb81d413973b6779eaf71a26bedb42f6d79be3
+mvn -f sdk/java/pom.xml install
 ```
 
+Use `io.pacificdb:pacificdb-client:1.1.1` in your Maven application with Java 11+:
+
 ```java
-var db = new PacificDBClient("127.0.0.1", 9000, "app");
-var result = db.request(Map.of(
-    "action", "find",
-    "collection", "events",
-    "filter", Map.of("type", "signup")
-));
+import io.pacificdb.PacificDB;
+import java.util.Map;
+
+String url = System.getenv().getOrDefault("PACIFICDB_URL", "pacificdb://127.0.0.1:9000/app");
+try (var db = PacificDB.connect(url)) {
+    System.out.println(db.find("events", Map.of("type", "signup")));
+}
 ```
+
+Create databases and collections explicitly for new data; URL connection alone does not create them. Existing clients can still use the original constructors. See [SDK capabilities](docs/SDK_CAPABILITIES.md) for named operation families and raw protocol access.
 
 ## Local files
 
@@ -284,15 +297,15 @@ The CLI automatically starts an engine only for loopback hosts.
 
 ## Build and test
 
+Run the following from the v1.1.1 tag or `v-1.1.1` branch.
+
 Requirements: CMake 3.20+, a C++17 compiler, OpenSSL development headers and
-libraries, LZ4, Node.js 18+, Python 3.10+, Java 11+, and Maven. On Debian or
+libraries, LZ4, Node.js 22.12+ for repository development, Python 3.10+, Java 11+, and Maven. On Debian or
 Ubuntu, install `libssl-dev` before configuring the engine; the `openssl`
 command alone does not include the files CMake needs.
 
 ```sh
-git clone https://github.com/hitesh-reddy-k/pacificdb-community.git
-cd pacificdb-community
-cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.0.1
+cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.1.1
 cmake --build build -j2
 scripts/test-community.sh build
 ```
@@ -309,10 +322,7 @@ mvn -f sdk/java/pom.xml test
 
 ## Release readiness and support
 
-The Linux candidate passed 57 retained test units, genuine ENOSPC coverage across
-21 write categories, six 10-minute RF3 load rounds, partition/election checks,
-and real Debian package installation. Physical power-controller testing,
-Windows signing, and macOS signing and notarization remain open.
+Version 1.1.1 is the current stable Community release. Retained engineering reports describe their exact revisions, validation scope, known regressions, and release-owner exceptions. See the [changelog](CHANGELOG.md), [release notes](site/release-1.1.1.html), and [upgrade guide](site/docs.html#upgrade).
 
 - [Certification report](docs/COMMUNITY_P0_CERTIFICATION.md)
 - [Production release procedure](docs/PRODUCTION_RELEASE.md)

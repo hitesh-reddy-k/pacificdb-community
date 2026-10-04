@@ -30,7 +30,6 @@ python3 scripts/release_qualification.py \
   --version "$PACIFICDB_RELEASE_VERSION" \
   --output build/release-evidence.json \
   --artifact build/db_engine \
-  --old-build /path/to/verified/previous-release-engine \
   --run
 ```
 

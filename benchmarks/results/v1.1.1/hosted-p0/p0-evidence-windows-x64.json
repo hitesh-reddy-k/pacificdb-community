@@ -1,0 +1,57 @@
+{
+  "schema": "pacificdb.p0-evidence.v1",
+  "platform": "win32",
+  "architecture": "x64",
+  "package_root": "D:\\a\\_temp\\PacificDB",
+  "binary_root": "D:\\a\\_temp\\PacificDB\\bin",
+  "executable": "D:\\a\\_temp\\PacificDB\\bin\\pacificdb.exe",
+  "started_at": "2026-10-04T04:28:15.485Z",
+  "tests": [
+    {
+      "name": "protocol",
+      "exit_code": 0,
+      "elapsed_ms": 2489,
+      "result": "{\"status\":\"PASS\",\"cases\":6,\"port\":50484}"
+    },
+    {
+      "name": "discovery",
+      "exit_code": 0,
+      "elapsed_ms": 53188,
+      "result": "{\"status\":\"PASS\",\"launchers\":8,\"scenarios\":[\"no_start\",\"concurrent_start\",\"healthy_existing\",\"stale_pid\",\"reused_pid\",\"early_exit\",\"data_root_in_use\",\"unrelated_port\"],\"engine_pid\":9036}"
+    },
+    {
+      "name": "lifecycle",
+      "exit_code": 0,
+      "elapsed_ms": 316803,
+      "result": "{\"status\":\"PASS\",\"cycles\":5,\"clients_per_cycle\":16,\"writes\":10000,\"acknowledged\":9960,\"pid\":7756}"
+    },
+    {
+      "name": "load",
+      "exit_code": 0,
+      "elapsed_ms": 294356,
+      "result": "{\"status\":\"PASS\",\"writes\":10000,\"retained_records\":10000,\"clients\":8,\"acknowledged\":10000,\"elapsed_ms\":292905,\"initial_pid\":5684,\"recovery_pid\":2528,\"data_root_fingerprint\":\"sha256:f6ed2af4c88782a723647862d96a8409e3b5dba8b15c8263e0f3c7056dc7f645\"}"
+    },
+    {
+      "name": "media",
+      "exit_code": 0,
+      "elapsed_ms": 82980,
+      "result": "{\"status\":\"PASS\",\"accepted_cases\":11,\"rejected_empty\":1,\"maximum_bytes\":104857600,\"restart\":\"abrupt\",\"filenames\":5}"
+    },
+    {
+      "name": "soak",
+      "exit_code": 0,
+      "elapsed_ms": 342789,
+      "result": "{\"status\":\"PASS\",\"writes\":25000,\"retained_records\":256,\"clients\":16,\"acknowledged\":25000,\"elapsed_ms\":341246,\"initial_pid\":7572,\"recovery_pid\":4516,\"data_root_fingerprint\":\"sha256:d52c49c6e6034c64799629f00c868d40dce1960eabd5b3b23f00d8ccd1954e3c\"}"
+    }
+  ],
+  "version": "PacificDB 1.1.1",
+  "status": "PASS",
+  "completed_at": "2026-10-04T04:46:28.327Z",
+  "revision": "03289fb95999462222973e04d8869827fc1a98c7",
+  "windows_signing": {
+    "status": "NOT_APPLICABLE",
+    "installer": "NOT_APPLICABLE",
+    "installed_pacificdb": "NOT_APPLICABLE",
+    "installed_db_engine": "NOT_APPLICABLE"
+  }
+}

@@ -1,0 +1,1718 @@
+{
+  "schema_version": 1,
+  "source": "engine/src/server.cpp main action dispatch; backup reads delegate to handleBackupReadAction; catalog, tenant, shard, security and LSM handlers retain their actual engine behavior",
+  "actions": [
+    {
+      "action": "ping",
+      "classification": "advanced",
+      "python": "admin.ping",
+      "java": "admin.ping",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {}
+    },
+    {
+      "action": "community_capabilities",
+      "classification": "beginner",
+      "python": "capabilities",
+      "java": "capabilities",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {}
+    },
+    {
+      "action": "community_project_create",
+      "classification": "advanced",
+      "python": "admin.community_project_create",
+      "java": "admin.communityProjectCreate",
+      "required_fields": [
+        "name"
+      ],
+      "scope": "principal",
+      "sample": {
+        "name": "sample"
+      }
+    },
+    {
+      "action": "community_project_list",
+      "classification": "advanced",
+      "python": "admin.community_project_list",
+      "java": "admin.communityProjectList",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {}
+    },
+    {
+      "action": "community_project_get",
+      "classification": "advanced",
+      "python": "admin.community_project_get",
+      "java": "admin.communityProjectGet",
+      "required_fields": [
+        "id"
+      ],
+      "scope": "principal",
+      "sample": {
+        "id": "key-1"
+      }
+    },
+    {
+      "action": "community_project_delete",
+      "classification": "advanced",
+      "python": "admin.community_project_delete",
+      "java": "admin.communityProjectDelete",
+      "required_fields": [
+        "id"
+      ],
+      "scope": "principal",
+      "sample": {
+        "id": "key-1"
+      }
+    },
+    {
+      "action": "community_database_map",
+      "classification": "advanced",
+      "python": "admin.community_database_map",
+      "java": "admin.communityDatabaseMap",
+      "required_fields": [
+        "project_id",
+        "database"
+      ],
+      "scope": "principal",
+      "sample": {
+        "project_id": "project-1",
+        "database": "target"
+      }
+    },
+    {
+      "action": "community_database_list",
+      "classification": "advanced",
+      "python": "admin.community_database_list",
+      "java": "admin.communityDatabaseList",
+      "required_fields": [
+        "project_id"
+      ],
+      "scope": "principal",
+      "sample": {
+        "project_id": "project-1"
+      }
+    },
+    {
+      "action": "community_database_project",
+      "classification": "advanced",
+      "python": "admin.community_database_project",
+      "java": "admin.communityDatabaseProject",
+      "required_fields": [
+        "database"
+      ],
+      "scope": "principal",
+      "sample": {
+        "database": "target"
+      }
+    },
+    {
+      "action": "community_media_begin",
+      "classification": "advanced",
+      "python": "media.begin",
+      "java": "media.begin",
+      "required_fields": [
+        "collection",
+        "filename",
+        "size_bytes",
+        "chunk_count",
+        "sha256"
+      ],
+      "scope": "database",
+      "sample": {
+        "collection": "items",
+        "filename": "sample.bin",
+        "size_bytes": 3,
+        "chunk_count": 1,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    {
+      "action": "community_media_put_chunk",
+      "classification": "advanced",
+      "python": "media.put_chunk",
+      "java": "media.putChunk",
+      "required_fields": [
+        "media_id",
+        "index",
+        "data",
+        "size_bytes",
+        "sha256"
+      ],
+      "scope": "principal",
+      "sample": {
+        "media_id": "media-1",
+        "index": 0,
+        "data": "YWJj",
+        "size_bytes": 3,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    {
+      "action": "community_media_finalize",
+      "classification": "advanced",
+      "python": "media.finalize_upload",
+      "java": "media.finalizeUpload",
+      "required_fields": [
+        "media_id"
+      ],
+      "scope": "principal",
+      "sample": {
+        "media_id": "media-1"
+      }
+    },
+    {
+      "action": "community_media_list",
+      "classification": "advanced",
+      "python": "media.list",
+      "java": "media.list",
+      "required_fields": [],
+      "scope": "database",
+      "sample": {}
+    },
+    {
+      "action": "community_media_get",
+      "classification": "advanced",
+      "python": "media.get_manifest",
+      "java": "media.getManifest",
+      "required_fields": [
+        "media_id"
+      ],
+      "scope": "principal",
+      "sample": {
+        "media_id": "media-1"
+      }
+    },
+    {
+      "action": "community_media_get_chunk",
+      "classification": "advanced",
+      "python": "media.get_chunk",
+      "java": "media.getChunk",
+      "required_fields": [
+        "media_id",
+        "index"
+      ],
+      "scope": "principal",
+      "sample": {
+        "media_id": "media-1",
+        "index": 0
+      }
+    },
+    {
+      "action": "community_media_delete",
+      "classification": "advanced",
+      "python": "media.delete",
+      "java": "media.delete",
+      "required_fields": [
+        "media_id"
+      ],
+      "scope": "principal",
+      "sample": {
+        "media_id": "media-1"
+      }
+    },
+    {
+      "action": "community_media_cleanup",
+      "classification": "advanced",
+      "python": "media.cleanup",
+      "java": "media.cleanup",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {}
+    },
+    {
+      "action": "observeLeaderTerm",
+      "classification": "advanced",
+      "python": "admin.observe_leader_term",
+      "java": "admin.observeLeaderTerm",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {}
+    },
+    {
+      "action": "observe_leader_term",
+      "classification": "alias",
+      "python": "admin.observe_leader_term",
+      "java": "admin.observeLeaderTerm",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {},
+      "alias_of": "observeLeaderTerm"
+    },
+    {
+      "action": "security_authenticate",
+      "classification": "advanced",
+      "python": "security.authenticate",
+      "java": "security.authenticate",
+      "required_fields": [
+        "username",
+        "password"
+      ],
+      "scope": "principal",
+      "sample": {
+        "username": "demo",
+        "password": "private-password"
+      }
+    },
+    {
+      "action": "security_validate_token",
+      "classification": "advanced",
+      "python": "security.validate_token",
+      "java": "security.validateToken",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {}
+    },
+    {
+      "action": "security_whoami",
+      "classification": "advanced",
+      "python": "security.whoami",
+      "java": "security.whoami",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {}
+    },
+    {
+      "action": "api_key_create",
+      "classification": "advanced",
+      "python": "security.create_api_key",
+      "java": "security.createApiKey",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {
+        "name": "sample",
+        "role": "admin"
+      }
+    },
+    {
+      "action": "api_key_list",
+      "classification": "advanced",
+      "python": "security.list_api_keys",
+      "java": "security.listApiKeys",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {}
+    },
+    {
+      "action": "api_key_get",
+      "classification": "advanced",
+      "python": "security.get_api_key",
+      "java": "security.getApiKey",
+      "required_fields": [
+        "id"
+      ],
+      "scope": "principal",
+      "sample": {
+        "id": "key-1"
+      }
+    },
+    {
+      "action": "api_key_revoke",
+      "classification": "advanced",
+      "python": "security.revoke_api_key",
+      "java": "security.revokeApiKey",
+      "required_fields": [
+        "id"
+      ],
+      "scope": "principal",
+      "sample": {
+        "id": "key-1"
+      }
+    },
+    {
+      "action": "security_refresh_token",
+      "classification": "advanced",
+      "python": "security.refresh_token",
+      "java": "security.refreshToken",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {}
+    },
+    {
+      "action": "security_metrics",
+      "classification": "advanced",
+      "python": "security.metrics",
+      "java": "security.metrics",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {}
+    },
+    {
+      "action": "create_backup",
+      "classification": "advanced",
+      "python": "backups.create",
+      "java": "backups.create",
+      "required_fields": [],
+      "scope": "global",
+      "sample": {}
+    },
+    {
+      "action": "list_backups",
+      "classification": "advanced",
+      "python": "backups.list",
+      "java": "backups.list",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {}
+    },
+    {
+      "action": "get_backup",
+      "classification": "advanced",
+      "python": "backups.get",
+      "java": "backups.get",
+      "required_fields": [
+        "backup_id"
+      ],
+      "scope": "principal",
+      "sample": {
+        "backup_id": "backup-1"
+      }
+    },
+    {
+      "action": "export_backup_manifest",
+      "classification": "advanced",
+      "python": "backups.export_manifest",
+      "java": "backups.exportManifest",
+      "required_fields": [
+        "backup_id"
+      ],
+      "scope": "principal",
+      "sample": {
+        "backup_id": "backup-1"
+      }
+    },
+    {
+      "action": "export_backup_file_chunk",
+      "classification": "advanced",
+      "python": "backups.export_file_chunk",
+      "java": "backups.exportFileChunk",
+      "required_fields": [
+        "backup_id",
+        "path",
+        "offset"
+      ],
+      "scope": "principal",
+      "sample": {
+        "backup_id": "backup-1",
+        "path": "raft/log.bin",
+        "offset": 0
+      }
+    },
+    {
+      "action": "delete_backup",
+      "classification": "advanced",
+      "python": "backups.delete",
+      "java": "backups.delete",
+      "required_fields": [
+        "backup_id"
+      ],
+      "scope": "global",
+      "sample": {
+        "backup_id": "backup-1"
+      }
+    },
+    {
+      "action": "list_restores",
+      "classification": "advanced",
+      "python": "backups.list_restores",
+      "java": "backups.listRestores",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {}
+    },
+    {
+      "action": "verify_backup",
+      "classification": "advanced",
+      "python": "backups.verify",
+      "java": "backups.verify",
+      "required_fields": [
+        "backup_id"
+      ],
+      "scope": "principal",
+      "sample": {
+        "backup_id": "backup-1"
+      }
+    },
+    {
+      "action": "restore_backup",
+      "classification": "advanced",
+      "python": "backups.restore",
+      "java": "backups.restore",
+      "required_fields": [
+        "backup_id"
+      ],
+      "scope": "global",
+      "sample": {
+        "backup_id": "backup-1",
+        "target_dir": "/tmp/disposable-restore"
+      }
+    },
+    {
+      "action": "initUserSpace",
+      "classification": "advanced",
+      "python": "admin.init_user_space",
+      "java": "admin.initUserSpace",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {}
+    },
+    {
+      "action": "createDatabase",
+      "classification": "beginner",
+      "python": "create_database",
+      "java": "createDatabase",
+      "required_fields": [
+        "dbName"
+      ],
+      "scope": "explicit_database",
+      "sample": {
+        "dbName": "app"
+      }
+    },
+    {
+      "action": "createCollection",
+      "classification": "beginner",
+      "python": "create_collection",
+      "java": "createCollection",
+      "required_fields": [
+        "collection"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items"
+      }
+    },
+    {
+      "action": "dropDatabase",
+      "classification": "beginner",
+      "python": "drop_database",
+      "java": "dropDatabase",
+      "required_fields": [
+        "dbName"
+      ],
+      "scope": "explicit_database",
+      "sample": {
+        "dbName": "app"
+      }
+    },
+    {
+      "action": "dropCollection",
+      "classification": "beginner",
+      "python": "drop_collection",
+      "java": "dropCollection",
+      "required_fields": [
+        "collection"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items"
+      }
+    },
+    {
+      "action": "listCollections",
+      "classification": "beginner",
+      "python": "list_collections",
+      "java": "listCollections",
+      "required_fields": [],
+      "scope": "database",
+      "sample": {}
+    },
+    {
+      "action": "createIndex",
+      "classification": "advanced",
+      "python": "indexes.create",
+      "java": "indexes.create",
+      "required_fields": [
+        "collection",
+        "fields"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items",
+        "fields": {
+          "name": 1
+        }
+      }
+    },
+    {
+      "action": "listIndexes",
+      "classification": "advanced",
+      "python": "indexes.list",
+      "java": "indexes.list",
+      "required_fields": [
+        "collection"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items"
+      }
+    },
+    {
+      "action": "validateIndex",
+      "classification": "advanced",
+      "python": "indexes.validate",
+      "java": "indexes.validate",
+      "required_fields": [
+        "collection"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items"
+      }
+    },
+    {
+      "action": "indexValidate",
+      "classification": "alias",
+      "python": "indexes.validate",
+      "java": "indexes.validate",
+      "required_fields": [
+        "collection"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items"
+      },
+      "alias_of": "validateIndex"
+    },
+    {
+      "action": "rebuildIndex",
+      "classification": "advanced",
+      "python": "indexes.rebuild",
+      "java": "indexes.rebuild",
+      "required_fields": [
+        "collection",
+        "name"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items",
+        "name": "sample"
+      }
+    },
+    {
+      "action": "indexRebuild",
+      "classification": "alias",
+      "python": "indexes.rebuild",
+      "java": "indexes.rebuild",
+      "required_fields": [
+        "collection",
+        "name"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items",
+        "name": "sample"
+      },
+      "alias_of": "rebuildIndex"
+    },
+    {
+      "action": "dropIndex",
+      "classification": "advanced",
+      "python": "indexes.drop",
+      "java": "indexes.drop",
+      "required_fields": [
+        "collection",
+        "name"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items",
+        "name": "sample"
+      }
+    },
+    {
+      "action": "listDatabases",
+      "classification": "beginner",
+      "python": "list_databases",
+      "java": "listDatabases",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {}
+    },
+    {
+      "action": "insert",
+      "classification": "beginner",
+      "python": "insert",
+      "java": "insert",
+      "required_fields": [
+        "collection",
+        "data"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items",
+        "data": {
+          "id": "1",
+          "name": "Ada",
+          "vector": [
+            1.0,
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "action": "insertVector",
+      "classification": "advanced",
+      "python": "vectors.insert",
+      "java": "vectors.insert",
+      "required_fields": [
+        "collection",
+        "data"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items",
+        "data": {
+          "id": "1",
+          "name": "Ada",
+          "vector": [
+            1.0,
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "action": "count",
+      "classification": "beginner",
+      "python": "count",
+      "java": "count",
+      "required_fields": [
+        "collection"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items"
+      }
+    },
+    {
+      "action": "aggregate",
+      "classification": "beginner",
+      "python": "aggregate",
+      "java": "aggregate",
+      "required_fields": [
+        "collection",
+        "pipeline"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items",
+        "pipeline": [
+          {
+            "$limit": 1
+          }
+        ]
+      }
+    },
+    {
+      "action": "explain",
+      "classification": "beginner",
+      "python": "explain",
+      "java": "explain",
+      "required_fields": [
+        "collection"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items"
+      }
+    },
+    {
+      "action": "find",
+      "classification": "beginner",
+      "python": "find",
+      "java": "find",
+      "required_fields": [
+        "collection"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items"
+      }
+    },
+    {
+      "action": "queryVector",
+      "classification": "advanced",
+      "python": "vectors.query",
+      "java": "vectors.query",
+      "required_fields": [
+        "collection",
+        "vector"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items",
+        "vector": [
+          1.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "action": "updateOne",
+      "classification": "beginner",
+      "python": "update_one",
+      "java": "updateOne",
+      "required_fields": [
+        "collection",
+        "filter",
+        "update"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items",
+        "filter": {
+          "id": "1"
+        },
+        "update": {
+          "$set": {
+            "name": "Ada"
+          }
+        }
+      }
+    },
+    {
+      "action": "update",
+      "classification": "alias",
+      "python": "update_one",
+      "java": "updateOne",
+      "required_fields": [
+        "collection",
+        "filter",
+        "update"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items",
+        "filter": {
+          "id": "1"
+        },
+        "update": {
+          "$set": {
+            "name": "Ada"
+          }
+        }
+      },
+      "alias_of": "updateOne"
+    },
+    {
+      "action": "deleteOne",
+      "classification": "beginner",
+      "python": "delete_one",
+      "java": "deleteOne",
+      "required_fields": [
+        "collection",
+        "filter"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items",
+        "filter": {
+          "id": "1"
+        }
+      }
+    },
+    {
+      "action": "insertMany",
+      "classification": "beginner",
+      "python": "insert_many",
+      "java": "insertMany",
+      "required_fields": [
+        "collection",
+        "data"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items",
+        "data": [
+          {
+            "id": "1"
+          }
+        ]
+      }
+    },
+    {
+      "action": "updateMany",
+      "classification": "beginner",
+      "python": "update_many",
+      "java": "updateMany",
+      "required_fields": [
+        "collection",
+        "filter",
+        "update"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items",
+        "filter": {
+          "id": "1"
+        },
+        "update": {
+          "$set": {
+            "name": "Ada"
+          }
+        }
+      }
+    },
+    {
+      "action": "deleteMany",
+      "classification": "beginner",
+      "python": "delete_many",
+      "java": "deleteMany",
+      "required_fields": [
+        "collection",
+        "filter"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items",
+        "filter": {
+          "id": "1"
+        }
+      }
+    },
+    {
+      "action": "bulk",
+      "classification": "alias",
+      "python": "bulk_write",
+      "java": "bulkWrite",
+      "required_fields": [
+        "collection",
+        "ops"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items",
+        "ops": []
+      },
+      "alias_of": "bulkWrite"
+    },
+    {
+      "action": "bulkWrite",
+      "classification": "beginner",
+      "python": "bulk_write",
+      "java": "bulkWrite",
+      "required_fields": [
+        "collection",
+        "ops"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items",
+        "ops": []
+      }
+    },
+    {
+      "action": "opStatus",
+      "classification": "advanced",
+      "python": "admin.op_status",
+      "java": "admin.opStatus",
+      "required_fields": [
+        "opId"
+      ],
+      "scope": "principal",
+      "sample": {
+        "opId": "op-1"
+      }
+    },
+    {
+      "action": "get_metrics",
+      "classification": "advanced",
+      "python": "admin.get_metrics",
+      "java": "admin.getMetrics",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {}
+    },
+    {
+      "action": "health_check",
+      "classification": "advanced",
+      "python": "admin.health_check",
+      "java": "admin.healthCheck",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {}
+    },
+    {
+      "action": "get_cluster_status",
+      "classification": "advanced",
+      "python": "admin.get_cluster_status",
+      "java": "admin.getClusterStatus",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {}
+    },
+    {
+      "action": "split_shard",
+      "classification": "advanced",
+      "python": "admin.split_shard",
+      "java": "admin.splitShard",
+      "required_fields": [
+        "shardId",
+        "splitKey"
+      ],
+      "scope": "global",
+      "sample": {
+        "shardId": "shard-1",
+        "splitKey": "key"
+      }
+    },
+    {
+      "action": "get_shard_details",
+      "classification": "advanced",
+      "python": "admin.get_shard_details",
+      "java": "admin.getShardDetails",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {}
+    },
+    {
+      "action": "list_shards",
+      "classification": "advanced",
+      "python": "admin.list_shards",
+      "java": "admin.listShards",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {}
+    },
+    {
+      "action": "config_get",
+      "classification": "advanced",
+      "python": "admin.config_get",
+      "java": "admin.configGet",
+      "required_fields": [],
+      "scope": "global",
+      "sample": {}
+    },
+    {
+      "action": "config_set",
+      "classification": "advanced",
+      "python": "admin.config_set",
+      "java": "admin.configSet",
+      "required_fields": [
+        "key"
+      ],
+      "scope": "global",
+      "sample": {
+        "key": "example"
+      }
+    },
+    {
+      "action": "config_reload",
+      "classification": "advanced",
+      "python": "admin.config_reload",
+      "java": "admin.configReload",
+      "required_fields": [],
+      "scope": "global",
+      "sample": {}
+    },
+    {
+      "action": "config_dump",
+      "classification": "advanced",
+      "python": "admin.config_dump",
+      "java": "admin.configDump",
+      "required_fields": [],
+      "scope": "global",
+      "sample": {}
+    },
+    {
+      "action": "admin_raft_status",
+      "classification": "advanced",
+      "python": "admin.raft_status",
+      "java": "admin.raftStatus",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {}
+    },
+    {
+      "action": "admin_replication_status",
+      "classification": "alias",
+      "python": "admin.raft_status",
+      "java": "admin.raftStatus",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {},
+      "alias_of": "admin_raft_status"
+    },
+    {
+      "action": "admin_replica_digest",
+      "classification": "advanced",
+      "python": "admin.replica_digest",
+      "java": "admin.replicaDigest",
+      "required_fields": [
+        "collection",
+        "fence",
+        "maxDocs"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items",
+        "fence": 0,
+        "maxDocs": 100
+      }
+    },
+    {
+      "action": "admin_apply_status",
+      "classification": "advanced",
+      "python": "admin.apply_status",
+      "java": "admin.applyStatus",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {}
+    },
+    {
+      "action": "admin_logical_write_status",
+      "classification": "advanced",
+      "python": "admin.logical_write_status",
+      "java": "admin.logicalWriteStatus",
+      "required_fields": [
+        "collection",
+        "logicalWriteId"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items",
+        "logicalWriteId": "write-1"
+      }
+    },
+    {
+      "action": "getWriteStatus",
+      "classification": "alias",
+      "python": "admin.logical_write_status",
+      "java": "admin.logicalWriteStatus",
+      "required_fields": [
+        "collection",
+        "logicalWriteId"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items",
+        "logicalWriteId": "write-1"
+      },
+      "alias_of": "admin_logical_write_status"
+    },
+    {
+      "action": "admin_storage_visibility_check",
+      "classification": "advanced",
+      "python": "admin.storage_visibility_check",
+      "java": "admin.storageVisibilityCheck",
+      "required_fields": [
+        "collection",
+        "filter"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "items",
+        "filter": {
+          "id": "1"
+        }
+      }
+    },
+    {
+      "action": "admin_dashboard",
+      "classification": "advanced",
+      "python": "admin.dashboard",
+      "java": "admin.dashboard",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {}
+    },
+    {
+      "action": "createTenant",
+      "classification": "advanced",
+      "python": "admin.create_tenant",
+      "java": "admin.createTenant",
+      "required_fields": [
+        "tenantId",
+        "ownerPassword"
+      ],
+      "scope": "principal",
+      "sample": {
+        "tenantId": "tenant-1",
+        "ownerPassword": "private-owner-password"
+      }
+    },
+    {
+      "action": "deleteTenant",
+      "classification": "advanced",
+      "python": "admin.delete_tenant",
+      "java": "admin.deleteTenant",
+      "required_fields": [
+        "tenantId",
+        "confirmedBy"
+      ],
+      "scope": "principal",
+      "sample": {
+        "tenantId": "tenant-1",
+        "confirmedBy": "admin"
+      }
+    },
+    {
+      "action": "listTenants",
+      "classification": "advanced",
+      "python": "admin.list_tenants",
+      "java": "admin.listTenants",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {}
+    },
+    {
+      "action": "getTenant",
+      "classification": "advanced",
+      "python": "admin.get_tenant",
+      "java": "admin.getTenant",
+      "required_fields": [
+        "tenantId"
+      ],
+      "scope": "principal",
+      "sample": {
+        "tenantId": "tenant-1"
+      }
+    },
+    {
+      "action": "updateTenant",
+      "classification": "advanced",
+      "python": "admin.update_tenant",
+      "java": "admin.updateTenant",
+      "required_fields": [
+        "tenantId"
+      ],
+      "scope": "principal",
+      "sample": {
+        "tenantId": "tenant-1",
+        "updates": {}
+      }
+    },
+    {
+      "action": "createTenantUser",
+      "classification": "advanced",
+      "python": "admin.create_tenant_user",
+      "java": "admin.createTenantUser",
+      "required_fields": [
+        "tenantId",
+        "username",
+        "password",
+        "createdBy"
+      ],
+      "scope": "principal",
+      "sample": {
+        "tenantId": "tenant-1",
+        "username": "demo",
+        "password": "private-password",
+        "createdBy": "admin"
+      }
+    },
+    {
+      "action": "deleteTenantUser",
+      "classification": "advanced",
+      "python": "admin.delete_tenant_user",
+      "java": "admin.deleteTenantUser",
+      "required_fields": [
+        "tenantId",
+        "username",
+        "deletedBy"
+      ],
+      "scope": "principal",
+      "sample": {
+        "tenantId": "tenant-1",
+        "username": "demo",
+        "deletedBy": "admin"
+      }
+    },
+    {
+      "action": "updateTenantUserRole",
+      "classification": "advanced",
+      "python": "admin.update_tenant_user_role",
+      "java": "admin.updateTenantUserRole",
+      "required_fields": [
+        "tenantId",
+        "username",
+        "role",
+        "updatedBy"
+      ],
+      "scope": "principal",
+      "sample": {
+        "tenantId": "tenant-1",
+        "username": "demo",
+        "role": "admin",
+        "updatedBy": "admin"
+      }
+    },
+    {
+      "action": "updateTenantUserPassword",
+      "classification": "advanced",
+      "python": "admin.update_tenant_user_password",
+      "java": "admin.updateTenantUserPassword",
+      "required_fields": [
+        "tenantId",
+        "username",
+        "newPassword",
+        "updatedBy"
+      ],
+      "scope": "principal",
+      "sample": {
+        "tenantId": "tenant-1",
+        "username": "demo",
+        "newPassword": "private-new-password",
+        "updatedBy": "admin"
+      }
+    },
+    {
+      "action": "setTenantUserDatabaseAccess",
+      "classification": "advanced",
+      "python": "admin.set_tenant_user_database_access",
+      "java": "admin.setTenantUserDatabaseAccess",
+      "required_fields": [
+        "tenantId",
+        "username",
+        "updatedBy"
+      ],
+      "scope": "principal",
+      "sample": {
+        "tenantId": "tenant-1",
+        "username": "demo",
+        "databases": [
+          "app"
+        ],
+        "updatedBy": "admin"
+      }
+    },
+    {
+      "action": "listTenantUsers",
+      "classification": "advanced",
+      "python": "admin.list_tenant_users",
+      "java": "admin.listTenantUsers",
+      "required_fields": [
+        "tenantId"
+      ],
+      "scope": "principal",
+      "sample": {
+        "tenantId": "tenant-1"
+      }
+    },
+    {
+      "action": "tenantAuthenticate",
+      "classification": "advanced",
+      "python": "admin.tenant_authenticate",
+      "java": "admin.tenantAuthenticate",
+      "required_fields": [
+        "tenantId",
+        "username",
+        "password"
+      ],
+      "scope": "principal",
+      "sample": {
+        "tenantId": "tenant-1",
+        "username": "demo",
+        "password": "private-password"
+      }
+    },
+    {
+      "action": "tenantValidateSession",
+      "classification": "advanced",
+      "python": "admin.tenant_validate_session",
+      "java": "admin.tenantValidateSession",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {}
+    },
+    {
+      "action": "tenantRevokeSession",
+      "classification": "advanced",
+      "python": "admin.tenant_revoke_session",
+      "java": "admin.tenantRevokeSession",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {}
+    },
+    {
+      "action": "tenantCheckAccess",
+      "classification": "advanced",
+      "python": "admin.tenant_check_access",
+      "java": "admin.tenantCheckAccess",
+      "required_fields": [
+        "targetAction"
+      ],
+      "scope": "principal",
+      "sample": {
+        "targetAction": "read"
+      }
+    },
+    {
+      "action": "tenantGetStats",
+      "classification": "advanced",
+      "python": "admin.tenant_get_stats",
+      "java": "admin.tenantGetStats",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {}
+    },
+    {
+      "action": "tenantGetAuditLog",
+      "classification": "advanced",
+      "python": "admin.tenant_get_audit_log",
+      "java": "admin.tenantGetAuditLog",
+      "required_fields": [
+        "tenantId"
+      ],
+      "scope": "principal",
+      "sample": {
+        "tenantId": "tenant-1"
+      }
+    },
+    {
+      "action": "tenantCreateDatabase",
+      "classification": "advanced",
+      "python": "admin.tenant_create_database",
+      "java": "admin.tenantCreateDatabase",
+      "required_fields": [],
+      "scope": "database",
+      "sample": {}
+    },
+    {
+      "action": "tenantDropDatabase",
+      "classification": "advanced",
+      "python": "admin.tenant_drop_database",
+      "java": "admin.tenantDropDatabase",
+      "required_fields": [],
+      "scope": "database",
+      "sample": {}
+    },
+    {
+      "action": "tenantListDatabases",
+      "classification": "advanced",
+      "python": "admin.tenant_list_databases",
+      "java": "admin.tenantListDatabases",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {}
+    },
+    {
+      "action": "tenantCreateCollection",
+      "classification": "advanced",
+      "python": "admin.tenant_create_collection",
+      "java": "admin.tenantCreateCollection",
+      "required_fields": [
+        "collName"
+      ],
+      "scope": "database",
+      "sample": {
+        "collName": "items"
+      }
+    },
+    {
+      "action": "tenantDropCollection",
+      "classification": "advanced",
+      "python": "admin.tenant_drop_collection",
+      "java": "admin.tenantDropCollection",
+      "required_fields": [
+        "collName"
+      ],
+      "scope": "database",
+      "sample": {
+        "collName": "items"
+      }
+    },
+    {
+      "action": "register_node",
+      "classification": "advanced",
+      "python": "admin.register_node",
+      "java": "admin.registerNode",
+      "required_fields": [
+        "nodeId"
+      ],
+      "scope": "global",
+      "sample": {
+        "nodeId": "node-1"
+      }
+    },
+    {
+      "action": "cluster_register",
+      "classification": "alias",
+      "python": "admin.register_node",
+      "java": "admin.registerNode",
+      "required_fields": [
+        "nodeId"
+      ],
+      "scope": "global",
+      "sample": {
+        "nodeId": "node-1"
+      },
+      "alias_of": "register_node"
+    },
+    {
+      "action": "deregister_node",
+      "classification": "advanced",
+      "python": "admin.deregister_node",
+      "java": "admin.deregisterNode",
+      "required_fields": [
+        "nodeId"
+      ],
+      "scope": "global",
+      "sample": {
+        "nodeId": "node-1"
+      }
+    },
+    {
+      "action": "cluster_deregister",
+      "classification": "alias",
+      "python": "admin.deregister_node",
+      "java": "admin.deregisterNode",
+      "required_fields": [
+        "nodeId"
+      ],
+      "scope": "global",
+      "sample": {
+        "nodeId": "node-1"
+      },
+      "alias_of": "deregister_node"
+    },
+    {
+      "action": "create_shard",
+      "classification": "advanced",
+      "python": "admin.create_shard",
+      "java": "admin.createShard",
+      "required_fields": [],
+      "scope": "global",
+      "sample": {}
+    },
+    {
+      "action": "migrate_shard",
+      "classification": "advanced",
+      "python": "admin.migrate_shard",
+      "java": "admin.migrateShard",
+      "required_fields": [
+        "shardId",
+        "targetNode"
+      ],
+      "scope": "global",
+      "sample": {
+        "shardId": "shard-1",
+        "targetNode": "node-2"
+      }
+    },
+    {
+      "action": "rebalance_shards",
+      "classification": "advanced",
+      "python": "admin.rebalance_shards",
+      "java": "admin.rebalanceShards",
+      "required_fields": [],
+      "scope": "global",
+      "sample": {}
+    },
+    {
+      "action": "cluster_route",
+      "classification": "advanced",
+      "python": "admin.cluster_route",
+      "java": "admin.clusterRoute",
+      "required_fields": [
+        "key"
+      ],
+      "scope": "principal",
+      "sample": {
+        "key": "example"
+      }
+    },
+    {
+      "action": "route_key",
+      "classification": "alias",
+      "python": "admin.cluster_route",
+      "java": "admin.clusterRoute",
+      "required_fields": [
+        "key"
+      ],
+      "scope": "principal",
+      "sample": {
+        "key": "example"
+      },
+      "alias_of": "cluster_route"
+    },
+    {
+      "action": "storage_stats",
+      "classification": "advanced",
+      "python": "admin.storage_stats",
+      "java": "admin.storageStats",
+      "required_fields": [],
+      "scope": "global",
+      "sample": {}
+    },
+    {
+      "action": "wal_status",
+      "classification": "advanced",
+      "python": "admin.wal_status",
+      "java": "admin.walStatus",
+      "required_fields": [],
+      "scope": "global",
+      "sample": {}
+    },
+    {
+      "action": "admin_wal_status",
+      "classification": "alias",
+      "python": "admin.wal_status",
+      "java": "admin.walStatus",
+      "required_fields": [],
+      "scope": "global",
+      "sample": {},
+      "alias_of": "wal_status"
+    },
+    {
+      "action": "admin_lsm_status",
+      "classification": "alias",
+      "python": "admin.lsm_metrics",
+      "java": "admin.lsmMetrics",
+      "required_fields": [],
+      "scope": "global",
+      "sample": {},
+      "alias_of": "lsm_metrics"
+    },
+    {
+      "action": "admin_compaction_status",
+      "classification": "advanced",
+      "python": "admin.compaction_status",
+      "java": "admin.compactionStatus",
+      "required_fields": [],
+      "scope": "global",
+      "sample": {}
+    },
+    {
+      "action": "admin_replay_check",
+      "classification": "advanced",
+      "python": "admin.replay_check",
+      "java": "admin.replayCheck",
+      "required_fields": [],
+      "scope": "global",
+      "sample": {}
+    },
+    {
+      "action": "admin_storage_verify",
+      "classification": "alias",
+      "python": "admin.verify_integrity",
+      "java": "admin.verifyIntegrity",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {
+        "collection": "items"
+      },
+      "alias_of": "verify_integrity"
+    },
+    {
+      "action": "memtable_status",
+      "classification": "advanced",
+      "python": "admin.memtable_status",
+      "java": "admin.memtableStatus",
+      "required_fields": [],
+      "scope": "global",
+      "sample": {}
+    },
+    {
+      "action": "sst_status",
+      "classification": "advanced",
+      "python": "admin.sst_status",
+      "java": "admin.sstStatus",
+      "required_fields": [],
+      "scope": "global",
+      "sample": {}
+    },
+    {
+      "action": "storage_flush",
+      "classification": "advanced",
+      "python": "admin.storage_flush",
+      "java": "admin.storageFlush",
+      "required_fields": [],
+      "scope": "global",
+      "sample": {}
+    },
+    {
+      "action": "flush",
+      "classification": "alias",
+      "python": "admin.storage_flush",
+      "java": "admin.storageFlush",
+      "required_fields": [],
+      "scope": "global",
+      "sample": {},
+      "alias_of": "storage_flush"
+    },
+    {
+      "action": "storage_compact",
+      "classification": "advanced",
+      "python": "admin.storage_compact",
+      "java": "admin.storageCompact",
+      "required_fields": [],
+      "scope": "global",
+      "sample": {}
+    },
+    {
+      "action": "compact",
+      "classification": "alias",
+      "python": "admin.storage_compact",
+      "java": "admin.storageCompact",
+      "required_fields": [],
+      "scope": "global",
+      "sample": {},
+      "alias_of": "storage_compact"
+    },
+    {
+      "action": "storage_repair",
+      "classification": "advanced",
+      "python": "admin.storage_repair",
+      "java": "admin.storageRepair",
+      "required_fields": [],
+      "scope": "global",
+      "sample": {}
+    },
+    {
+      "action": "repair",
+      "classification": "alias",
+      "python": "admin.storage_repair",
+      "java": "admin.storageRepair",
+      "required_fields": [],
+      "scope": "global",
+      "sample": {},
+      "alias_of": "storage_repair"
+    },
+    {
+      "action": "verify_integrity",
+      "classification": "advanced",
+      "python": "admin.verify_integrity",
+      "java": "admin.verifyIntegrity",
+      "required_fields": [],
+      "scope": "principal",
+      "sample": {
+        "collection": "items"
+      }
+    },
+    {
+      "action": "lsm_metrics",
+      "classification": "advanced",
+      "python": "admin.lsm_metrics",
+      "java": "admin.lsmMetrics",
+      "required_fields": [],
+      "scope": "global",
+      "sample": {}
+    },
+    {
+      "action": "lsmProfile",
+      "classification": "alias",
+      "python": "admin.lsm_metrics",
+      "java": "admin.lsmMetrics",
+      "required_fields": [],
+      "scope": "global",
+      "sample": {},
+      "alias_of": "lsm_metrics"
+    },
+    {
+      "action": "lsm_profile",
+      "classification": "alias",
+      "python": "admin.lsm_metrics",
+      "java": "admin.lsmMetrics",
+      "required_fields": [],
+      "scope": "global",
+      "sample": {},
+      "alias_of": "lsm_metrics"
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "source_revisions": {
+    "native_and_workbench": "03289fb95999462222973e04d8869827fc1a98c7",
+    "npm_and_python_sdks": "03289fb95999462222973e04d8869827fc1a98c7",
+    "java_sdk": "9d274ee69aaf8b30f38ce566878a400cbac5f766"
+  },
+  "engine_build_identity": {
+    "engineVersion": "1.1.1",
+    "gitCommit": "03289fb95999462222973e04d8869827fc1a98c7",
+    "storageFormatVersion": "2",
+    "raftProtocolVersion": "2",
+    "buildTimestamp": "2026-10-04T09:43:09+05:30",
+    "compiler": "GNU-13.3.0"
+  },
+  "publication": "NOT_PUBLISHED",
+  "publication_reason": "Stable publication gates remain blocked; these are locally verified candidate artifacts.",
+  "artifacts": [
+    {
+      "path": "release-sdk/npm/pacificdb-client-1.1.1.tgz",
+      "size_bytes": 15133,
+      "sha256": "80a1dccd8ead55bc1a192cdbabf26a254bd22dac861f7a827f02f8b7a90d5ff9"
+    },
+    {
+      "path": "release-sdk/npm/pacificdb-cli-1.1.1.tgz",
+      "size_bytes": 64772,
+      "sha256": "d471aaf61de5731e948a84a293fadafa3e490b8dbf60efc922d734be7e094e05"
+    },
+    {
+      "path": "release-sdk/python/pacificdb-1.1.1-py3-none-any.whl",
+      "size_bytes": 22959,
+      "sha256": "231159c7a30e9ff631260eb383cba07bd055b960b6c28a74ef7a40498b798a55"
+    },
+    {
+      "path": "release-sdk/python/pacificdb-1.1.1.tar.gz",
+      "size_bytes": 33683,
+      "sha256": "c81e495529b30b7c8aff35ead93df8ecc8c46da52306e2a2afe675a6dc94081a"
+    },
+    {
+      "path": "sdk/java/target/pacificdb-client-1.1.1.jar",
+      "size_bytes": 54883,
+      "sha256": "3c58caa9b59213c9fd10888de6162877ad73f0f06cee0b668c39cf475b40d2dc"
+    },
+    {
+      "path": "sdk/java/target/pacificdb-client-1.1.1-sources.jar",
+      "size_bytes": 26362,
+      "sha256": "e03d4ce645b909929c103d45c62c3ee8264fdfa96feeb14f3bdb76095eee30ba"
+    },
+    {
+      "path": "sdk/java/target/pacificdb-client-1.1.1-javadoc.jar",
+      "size_bytes": 143223,
+      "sha256": "80e1a484ccea8d15ad53a80b9e42d3ac0fe4d19c45cd02b6711aaaa972726e3e"
+    },
+    {
+      "path": "build/db_engine",
+      "size_bytes": 5738392,
+      "sha256": "3a6643970caa5b2b254e207062a4c459fc8bea3f82abd18c7fe51a27bb51d9e0"
+    },
+    {
+      "path": "build/pacificdb",
+      "size_bytes": 869480,
+      "sha256": "df416d18df5d507d22f8b295acbde7fac626d7e95b67210e31e741e156b9dcd9"
+    },
+    {
+      "path": "pacificdb-community-1.1.1-Linux.deb",
+      "size_bytes": 2836748,
+      "sha256": "669af3d26ab17f212308bb6e09270dd4595bca92d2c5abe316b06a97d6b36387"
+    },
+    {
+      "path": "pacificdb-community-1.1.1-Linux.deb.sha256",
+      "size_bytes": 102,
+      "sha256": "914d9cedfc2c915369c037a3c0fded679f5cfb81aa412e778b6e60f373881d9e"
+    },
+    {
+      "path": "dist/desktop/PacificDB-Workbench-1.1.1-linux-amd64.deb",
+      "size_bytes": 102910808,
+      "sha256": "c5d9b199c4abdec1660260ce73b95610075e8078caaba01388b63d510de46797"
+    },
+    {
+      "path": "dist/desktop/PacificDB-Workbench-1.1.1-linux-x64.tar.gz",
+      "size_bytes": 122472717,
+      "sha256": "f68f3ef81c3da72f106286b263ca43207c3bc30b1da1465be0316e7666f5811f"
+    }
+  ]
+}

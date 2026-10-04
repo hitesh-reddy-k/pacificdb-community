@@ -5,34 +5,38 @@ launcher, and native file dialogs. The desktop installer includes the graphical
 workspace, native database engine, native CLI, and Electron runtime. End users
 do not need Node.js, npm, a browser, or a separately installed database server.
 
-## Install the Linux desktop preview (x86-64)
+## Published Linux preview and candidate status
 
-Download the public 1.0.1 Linux installer and its checksum:
+The published Workbench is a separate [1.0.1 Linux x86-64 preview](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/workbench-linux-v1.0.1), built for Ubuntu 24.04. The database-first **1.1.1 candidate is not yet published**. Engine/native installers and npm packages remain 1.0.0 until their candidate release is qualified and published.
 
-- [Workbench Linux .deb](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-linux-v1.0.1/PacificDB-Workbench-1.0.1-linux-amd64.deb)
-- [SHA256SUMS](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-linux-v1.0.1/SHA256SUMS)
-
-Open the downloaded package in your software installer, or run:
+Download the [published Debian installer](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-linux-v1.0.1/PacificDB-Workbench-1.0.1-linux-amd64.deb) and [SHA256SUMS](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-linux-v1.0.1/SHA256SUMS) into the same directory, then:
 
 ```sh
-sha256sum --ignore-missing -c SHA256SUMS
+sha256sum --check --ignore-missing SHA256SUMS
 sudo apt install ./PacificDB-Workbench-1.0.1-linux-amd64.deb
+pacificdb-workbench
 ```
 
-Then launch **PacificDB Workbench** from the Applications menu. You can also run
-`pacificdb-workbench` from a terminal. The app starts its bundled engine and
-closes that engine when you quit. Documents persist between launches. No
-external database account or internet connection is required for normal use.
+Open **PacificDB Workbench** from the Applications menu or use the terminal launcher above. The published preview uses project navigation. It has not passed the full production release qualification; see its [release notes](releases/workbench-linux-1.0.1.md).
 
-The public x86-64 installer is built and tested on Ubuntu 24.04. A locally
-built Debian 13 package was tested separately; other distributions need
-compatible native libraries.
-This public download is a preview, not a production certification. The package
-is unsigned; verify its SHA-256 checksum before installation.
+The following working-with-data sections describe the prepared 1.1.1 candidate. Build the candidate installer locally using the source steps below. Its Debian filename is `dist/desktop/PacificDB-Workbench-1.1.1-linux-amd64.deb` after the candidate package build:
 
-A portable `.tar.gz` is also produced in `dist/desktop`. Extract it and run its
-`pacificdb-workbench` executable. The `.deb` is recommended on Debian because it
-installs the desktop entry and configures the Chromium sandbox helper.
+```sh
+sudo apt install ./dist/desktop/PacificDB-Workbench-1.1.1-linux-amd64.deb
+pacificdb-workbench
+```
+
+The local Debian build targets Debian 13 x86-64 by default; Linux CI uses Ubuntu 24.04 dependencies. Other distributions require matching native libraries. The app starts its bundled engine as your normal user and closes it when you quit. Data persists between launches. Desktop mode needs no external account or internet connection for normal local use.
+
+A portable `.tar.gz` is produced by the source packaging command below. Unlike the Debian installer, unpacked Linux builds may require manual sandbox helper setup on hosts that restrict unprivileged user namespaces.
+
+## What changes from the published 1.0.1 preview
+
+- Databases appear directly in navigation; creation and selection no longer require a project. Collections sit under their database. Existing project mappings and data remain accessible without migration.
+- The connection dialog copies a selected database URL, bundled CLI command and Node.js/Python/Java examples. It omits credentials and reads `PACIFICDB_URL` for authenticated engines. Copy stays disabled until a database is selected.
+- Overview counts use one loader with at most four jobs in flight. The candidate reuses cached summaries for the database, invalidates affected summaries after mutations and displays `—` for unavailable totals. Documents, Query and Media views do not schedule a full collection count scan; switching away stops scheduling new count work.
+
+These are source-verifiable changes, not measured startup-speed improvements. Query durations include UI/server transport and engine work. See [candidate release notes](../site/release-1.1.1.html) and [package usage guides](../site/docs.html).
 
 ## Data and the included CLI
 
@@ -42,7 +46,7 @@ subfolder. On Linux this is normally:
 `~/.config/PacificDB Workbench/database`
 
 Use **File → Open data folder** to locate it. This directory is independent of
-the command-line package's `~/.local/share/pacificdb` data. Existing CLI projects
+the command-line package's `~/.local/share/pacificdb` data. Existing CLI databases
 are not moved or imported automatically.
 
 The native `pacificdb` CLI ships alongside `db_engine` inside the app's
@@ -53,28 +57,44 @@ Windows the copied command uses PowerShell syntax.
 
 ## Build the desktop app from source
 
+Run these commands from the prepared 1.1.1 candidate checkout. Cloning the public default branch does not guarantee the candidate.
+
 Development requires Node.js 22.12 or newer, CMake, a C++17 compiler, and the
 engine build dependencies described in the main README. Build both binaries:
 
 ```sh
 npm ci
-cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.0.1
+cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.1.1
 cmake --build build --target db_engine pacificdb -j2
 npm run workbench:desktop
 ```
 
-Create the Linux installer and portable archive:
+### Linux sandbox helper
+
+If the source Electron launch reports that the SUID sandbox helper is not configured correctly, set ownership and mode on the locally installed helper:
+
+```sh
+sudo chown root:root node_modules/electron/dist/chrome-sandbox
+sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
+npm run workbench:desktop
+```
+
+For a candidate unpacked build, use that build's helper path:
+
+```sh
+sudo chown root:root dist/desktop/linux-unpacked/chrome-sandbox
+sudo chmod 4755 dist/desktop/linux-unpacked/chrome-sandbox
+./dist/desktop/linux-unpacked/pacificdb-workbench
+```
+
+The Debian package configures its helper automatically: [electron-builder.cjs](../desktop/electron-builder.cjs) specifies `desktop/after-install.sh`, whose [after-install hook](../desktop/after-install.sh) sets root ownership and mode 4755 on `/opt/PacificDB Workbench/chrome-sandbox`, registers `/usr/bin/pacificdb-workbench` and refreshes the desktop database. The application and engine run as your normal user.
+
+### Create the candidate installer and portable archive
+
 
 ```sh
 ELECTRON_BUILDER_COMPRESSION_LEVEL=1 npm run desktop:build -- --linux deb tar.gz --x64
 ```
-
-For Ubuntu 24.04, set `PACIFICDB_DESKTOP_UBUNTU_24=1` for that build. If an
-earlier copy of version 1.0.1 is already installed, install the rebuilt package
-with `sudo dpkg -i dist/desktop/PacificDB-Workbench-1.0.1-linux-amd64.deb`.
-The package installs under `/opt/PacificDB-Workbench`; the app menu still shows
-**PacificDB Workbench**. Reinstalling does not remove the existing database in
-`~/.config/PacificDB Workbench`.
 
 The preparation script copies only the app sources, SDK, licenses, and native
 binaries into a staging directory. It does not include local database files,
@@ -94,7 +114,7 @@ targets Ubuntu 24.04; the local package documented above targets Debian 13.
 Windows and macOS installers have not been built or validated in this Linux
 session.
 
-For a future multi-platform release, push a `workbench-vVERSION` tag matching the CLI
+For a future public release, push a `workbench-vVERSION` tag matching the CLI
 package version. The workflow requires Windows signing secrets
 `WINDOWS_CERTIFICATE_BASE64` and `WINDOWS_CERTIFICATE_PASSWORD`; for macOS it
 requires `MAC_CSC_LINK` (Developer ID Application certificate),
@@ -102,7 +122,7 @@ requires `MAC_CSC_LINK` (Developer ID Application certificate),
 `APPLE_TEAM_ID`. It signs the bundled native binaries, notarizes the macOS app,
 verifies the packages, publishes four installer variants, and adds SHA-256
 checksums to a GitHub Release. Normal branch and pull request runs only upload
-workflow artifacts. The release step has not run yet.
+workflow artifacts. Candidate 1.1.1 release publication has not run; the separately tagged 1.0.1 Linux preview is already public.
 
 The renderer runs sandboxed with Node integration disabled. A private local
 service connects it to the bundled engine. The app denies outside navigation,
@@ -123,7 +143,7 @@ npm ci
 PATH="$PWD/build:$PATH" npm run workbench
 ```
 
-Open the printed `http://127.0.0.1:PORT/` address. To choose the browser port:
+Open the printed `http://127.0.0.1:PORT/` address in your browser. A `pacificdb://host:port/database` URL addresses the database protocol and cannot be opened as a web page. To choose the browser port:
 
 ```sh
 PATH="$PWD/build:$PATH" npm run workbench -- --ui-port 3001
@@ -138,8 +158,7 @@ npm run workbench -- --host 127.0.0.1 --port 9000 --ui-port 3001 --no-start
 
 The npm package does not contain the native engine. Automatic local startup
 requires `db_engine` on PATH, or an absolute `PACIFICDB_ENGINE` path. The
-Workbench HTTP server listens only on loopback. Its current browser interface
-has no account login or team management.
+Workbench HTTP server listens only on loopback. Its browser interface has no account login or team management. An authenticated engine can be selected using a privately configured `PACIFICDB_URL`; Workbench does not manage those credentials.
 
 Keep the terminal running while using Workbench. Ctrl+C closes the Workbench
 server. An engine started automatically continues running for other clients.
@@ -158,7 +177,7 @@ Give them both generated `.tgz` files and a compatible native PacificDB engine
 package. After installing the engine, they can install the two npm packages:
 
 ```sh
-npm install --global ./pacificdb-client-1.0.1.tgz ./pacificdb-cli-1.0.1.tgz
+npm install --global ./pacificdb-client-1.1.1.tgz ./pacificdb-cli-1.1.1.tgz
 pacificdb workbench
 ```
 
@@ -168,10 +187,10 @@ installers is a separate release step.
 
 ## Working with data
 
-1. Create or select a project, then a database, then a collection.
-   The left explorer nests databases under their project and collections under
-   their database. The Documents page shows the selected project ID in a compact
-   context strip; connection examples also include it.
+1. Choose **New database**, enter a name, then create a collection.
+   Creating or clicking a database selects it automatically. Collections are
+   nested directly under their database. Existing project-mapped databases
+   remain accessible; this workflow does not move or migrate stored data.
 2. Open **Data Explorer → Documents** and enter a JSON filter, for example
    `{"status":"active"}`. Use **Query Workbench** for a focused query and results
    view. Its **Edit in Documents** action opens the document editor.
@@ -181,18 +200,19 @@ installers is a separate release step.
    Document cards and the editor show application fields; internal engine
    bookkeeping remains in storage and is hidden from the editing view.
 5. Use Vectors for numeric embeddings and nearest-neighbor queries.
-6. Use Media to upload files up to 64 MiB and download files in the collection.
+6. Use Media to upload files up to 64 MiB and download files in the collection. Use the candidate SDK file APIs for larger files; their limits are disk, network and request bounds rather than this UI limit.
 
 The query duration displayed is browser-to-Workbench elapsed time, including
 transport and engine work. It is not an isolated engine benchmark. Documents
 are rendered one page at a time; new document/media queries abort obsolete
 browser requests. Navigation ignores responses from older selections. Overview
-counts describe the loaded projects, selected project's databases, and selected
-database's collections. The dashboard's document total and distribution use
+counts describe accessible databases and the selected database's collections. The dashboard's document total and distribution use
 actual counts for the selected database; unavailable counts display a dash.
 Engine health, memory ratio, Raft role, term, and commit index come from the
 running engine. Recent activity lists actions in the current Workbench window,
-not a database audit log. Project lists with more pages show a `+` count.
+not a database audit log. Counts load only while Overview is visible, with at
+most four jobs in flight. Documents, Query and Media do not scan all collection
+counts. Mutations invalidate affected summaries; unknown values display `—`.
 
 ## Collection indexes and document tools
 
@@ -216,15 +236,16 @@ storage. Monitoring includes the live engine Prometheus report and existing
 health/Raft values; no historical charts or estimated storage metrics are
 shown.
 
-Project, database, and collection deletion asks for confirmation. The engine
-requires a project's databases to be removed before deleting that project.
+Database and collection deletion ask for confirmation. Legacy project APIs
+remain in the SDK and raw protocol; project screens and friendly CLI commands
+are removed.
 
 ## Preferences and keyboard controls
 
 - The settings button selects light, dark, or system appearance and comfortable
   or compact density. Row count and document view also persist in this browser.
 - `/` focuses workspace navigation search. It searches the loaded navigation
-  items; load more projects to include later pages.
+  databases and the selected database’s collections.
 - Ctrl+K or Cmd+K opens the command search for navigation and collections.
 - Ctrl+Enter or Cmd+Enter runs the document filter.
 - Arrow keys navigate the collection tabs in narrow windows. Escape closes
@@ -233,12 +254,29 @@ requires a project's databases to be removed before deleting that project.
 Only display preferences are stored in browser local storage. Query text,
 documents, and credentials are not saved there by Workbench.
 
-The default appearance is dark blue. Choose **Local engine** to see the current TCP
-host and port and copy examples for the bundled CLI, Node.js client, or Java
-client. Examples include the selected project ID and database. The desktop
-engine listens on loopback and runs only while Workbench is open; the port can
-change on the next launch. PacificDB clients use a host and port rather than a
-MongoDB connection URI.
+The default appearance is dark blue. Choose **Local engine** to copy a selected
+**database URL**, bundled CLI command, or Node.js, Python or Java example.
+Copy is disabled until a database is selected. Examples connect directly using
+`pacificdb://host:port/database` (or `pacificdbs://` for verified TLS) without a
+separate database selection step. Authenticated examples read `PACIFICDB_URL`
+from the environment; Workbench never includes credentials or tokens in the
+example. The Java/Python examples require the updated SDK artifacts described
+in the package qualification evidence, not an older published package.
+
+The desktop engine listens on loopback and runs only while Workbench is open;
+its port can change on the next launch. Browser mode accepts `--url` too:
+
+```sh
+npm run workbench -- --url 'pacificdb://127.0.0.1:9000/app' --no-start
+```
+
+## Upgrade and troubleshooting
+
+Before testing candidate binaries against existing data, stop Workbench and its engine, keep the old installer, and make a verified backup or an offline copy of the entire desktop data directory. Test with a separate data root first. Set `PACIFICDB_WORKBENCH_DATA` to an absolute alternate application data directory for an isolated source launch. No project migration is needed; metadata remains stored. Do not open the same data directory from two engine processes.
+
+For sandbox startup errors use the helper setup above. If the native command rejects `workbench`, launch `pacificdb-workbench` or use this checkout's npm script. For browser connection failures, use the printed HTTP port and keep the terminal running. Database connection URLs are separate. If an application cannot connect after relaunch, copy the current connection command again because the desktop engine port may change. For Python/Java missing-method errors install the matching candidate source package; older artifacts do not contain all convenience APIs.
+
+Desktop quit stops its engine; browser Ctrl+C stops the HTTP service and leaves an automatically started engine available for other clients. Close application SDK pools with `close()`, Python `with`, or Java try-with-resources.
 
 ## Verify changes
 
@@ -257,7 +295,7 @@ directory to retain desktop and mobile screenshots. Playwright is a development
 dependency and is not included in the distributable CLI package.
 
 The desktop test opens a real Electron window with a temporary data directory,
-creates a project/database/collection and document, uploads media, verifies the
+creates a database/collection and document, uploads media, verifies the
 sandbox, quits, then reopens to verify data and preferences. To test an unpacked
 Linux package instead of the development entry point:
 

@@ -1,17 +1,15 @@
 import readline from 'node:readline/promises';
-import { appendFile, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, mkdtemp, readFile, rename, rm, writeFile, chmod } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { MediaUploadError } from '@pacificdb/client';
 
-export const SHELL_HELP = `Projects
-  create project <name>               Create project
-  list projects                       List projects
-  use project <id>                    Switch project
-  show project                        Show project
-  delete project <id>                 Delete project
+function parseJson(text) {
+  try { return JSON.parse(text); }
+  catch { throw new Error('invalid JSON'); }
+}
 
-Databases and queries
+export const SHELL_HELP = `Databases and queries
   create database <name>              Create database
   list databases                      List databases
   use <name>                          Switch database
@@ -60,7 +58,7 @@ Vectors
 System
   help [topic]                        Show help
   context show                        Show context
-  context clear                       Clear project and database context
+  context clear                       Clear database context
   status                              Show connection status
   history                             Show command history
   clear                               Clear screen
@@ -79,7 +77,7 @@ export const SHELL_BANNER = `
        ~~~~~~~~\\______/~~~~~~~~
          ~~~~~~~~~~~~~~~~~~~~
              PacificDB
-               v1.0.1
+               v1.1.1
        Documents · Vectors · Media
   Type help to see commands.\n`;
 
@@ -150,18 +148,13 @@ function jsonValues(text, count) {
       else if (character === closing && --depth === 0) { end = i + 1; break; }
     }
     if (end < 0) throw new Error('incomplete JSON value');
-    values.push(JSON.parse(rest.slice(0, end)));
+    values.push(parseJson(rest.slice(0, end)));
     rest = rest.slice(end).trim();
   }
   return { values, rest };
 }
 
-function requireProject(context) {
-  if (!context.projectId) throw new Error('select a project with: use project <id>');
-}
-
 function requireDatabase(context) {
-  requireProject(context);
   if (!context.database) throw new Error('select a database with: use <name>');
 }
 
@@ -175,9 +168,9 @@ function flag(tokens, name, fallback = undefined) {
 export function parseShellCommand(line, context = {}) {
   const text = line.trim();
   if (!text) return { kind: 'empty' };
-  if (text.startsWith('{')) return { kind: 'request', command: JSON.parse(text) };
+  if (text.startsWith('{')) return { kind: 'request', command: parseJson(text) };
   if (text.startsWith('request ')) {
-    return { kind: 'request', command: JSON.parse(text.slice(8)) };
+    return { kind: 'request', command: parseJson(text.slice(8)) };
   }
   if (text === 'exit' || text === 'quit') return { kind: 'exit' };
   if (text === 'help' || text.startsWith('help ')) return { kind: 'help' };
@@ -187,32 +180,16 @@ export function parseShellCommand(line, context = {}) {
   if (text === 'context clear') return { kind: 'contextClear' };
   if (text === 'status') return { kind: 'request', command: { action: 'ping' } };
   let match;
-  if ((match = text.match(/^create project (.+)$/)))
-    return { kind: 'request', command: { action: 'community_project_create', name: match[1] } };
-  if (text === 'list projects')
-    return { kind: 'request', command: { action: 'community_project_list' } };
-  if ((match = text.match(/^use project (\S+)$/)))
-    return { kind: 'useProject', id: match[1] };
-  if (text === 'show project') {
-    if (!context.projectId) throw new Error('no project selected');
-    return { kind: 'request', command: { action: 'community_project_get', id: context.projectId } };
+  if (/^(create|list|use|show|delete) projects?(?:\s|$)/.test(text)) {
+    throw new Error('unknown command; use databases directly or request JSON for legacy APIs');
   }
-  if ((match = text.match(/^delete project(?: (\S+))?$/))) {
-    const id = match[1] || context.projectId;
-    if (!id) throw new Error('project id required');
-    return { kind: 'request', command: { action: 'community_project_delete', id }, clearProject: id };
-  }
-
   if ((match = text.match(/^create database (\S+)$/))) {
-    requireProject(context);
     return { kind: 'createDatabase', name: match[1] };
   }
   if (text === 'list databases') {
-    requireProject(context);
-    return { kind: 'request', command: { action: 'community_database_list', project_id: context.projectId } };
+    return { kind: 'request', command: { action: 'listDatabases' } };
   }
   if ((match = text.match(/^use (\S+)$/))) {
-    requireProject(context);
     return { kind: 'useDatabase', name: match[1] };
   }
   if (text === 'show database') {
@@ -220,9 +197,7 @@ export function parseShellCommand(line, context = {}) {
     return { kind: 'showDatabase' };
   }
   if ((match = text.match(/^drop database (\S+)$/))) {
-    requireProject(context);
-    return { kind: 'request', command: { action: 'dropDatabase', dbName: match[1],
-      project_id: context.projectId }, clearDatabase: match[1] };
+    return { kind: 'request', command: { action: 'dropDatabase', dbName: match[1] }, clearDatabase: match[1] };
   }
   if ((match = text.match(/^create collection (\S+)$/))) {
     requireDatabase(context);
@@ -241,12 +216,12 @@ export function parseShellCommand(line, context = {}) {
 
   if ((match = text.match(/^insert (\S+)\s+([\s\S]+)$/))) {
     requireDatabase(context);
-    return { kind: 'request', command: { action: 'insert', collection: match[1], data: JSON.parse(match[2]) } };
+    return { kind: 'request', command: { action: 'insert', collection: match[1], data: parseJson(match[2]) } };
   }
   if ((match = text.match(/^(findOne|find|count|explain) (\S+)(?:\s+([\s\S]+))?$/))) {
     requireDatabase(context);
     const action = match[1];
-    const filter = match[3] ? JSON.parse(match[3]) : {};
+    const filter = match[3] ? parseJson(match[3]) : {};
     return { kind: 'request', command: { action: action === 'findOne' ? 'find' : action,
       collection: match[2], filter, ...(action === 'findOne' ? { limit: 1 } : {}) } };
   }
@@ -260,12 +235,12 @@ export function parseShellCommand(line, context = {}) {
   if ((match = text.match(/^delete (\S+)\s+([\s\S]+)$/))) {
     requireDatabase(context);
     return { kind: 'request', command: { action: 'deleteOne', collection: match[1],
-      filter: JSON.parse(match[2]) } };
+      filter: parseJson(match[2]) } };
   }
   if ((match = text.match(/^aggregate (\S+)\s+([\s\S]+)$/))) {
     requireDatabase(context);
     return { kind: 'request', command: { action: 'aggregate', collection: match[1],
-      pipeline: JSON.parse(match[2]) } };
+      pipeline: parseJson(match[2]) } };
   }
 
   if ((match = text.match(/^create backup(?: --name (.+))?$/)))
@@ -310,7 +285,7 @@ export function parseShellCommand(line, context = {}) {
 
   if ((match = text.match(/^put vector (\S+)\s+(\S+)\s+([\s\S]+)$/))) {
     requireDatabase(context);
-    return { kind: 'vectorPut', collection: match[1], id: match[2], vector: JSON.parse(match[3]) };
+    return { kind: 'vectorPut', collection: match[1], id: match[2], vector: parseJson(match[3]) };
   }
   if ((match = text.match(/^query vector (\S+)\s+([\s\S]+)$/))) {
     requireDatabase(context);
@@ -320,7 +295,7 @@ export function parseShellCommand(line, context = {}) {
       collection: match[1], vector: parsed.values[0],
       k: Number(flag(tokens, '--k', 10)), metric: flag(tokens, '--metric', 'cosine') } };
   }
-  throw new Error(`unknown command: ${text}`);
+  throw new Error('unknown command; type help for available commands');
 }
 
 function defaultCliHome() {
@@ -333,33 +308,42 @@ function defaultCliHome() {
 async function loadContext(home) {
   let context;
   try {
-    context = JSON.parse(await readFile(path.join(home, 'context.json'), 'utf8'));
+    context = parseJson(await readFile(path.join(home, 'context.json'), 'utf8'));
   }
   catch { return {}; }
   if (!context || Array.isArray(context) || typeof context !== 'object') return {};
-  const hadLegacyToken = Object.hasOwn(context, 'token');
-  delete context.token;
-  if (hadLegacyToken) await saveContext(home, context);
-  return context;
+  const safe = typeof context.database === 'string' && context.database &&
+    !/[\x00-\x1f\x7f]/.test(context.database) ? { database: context.database } : {};
+  if (JSON.stringify(context) !== JSON.stringify(safe)) await saveContext(home, safe);
+  else if (process.platform !== 'win32') await chmod(path.join(home, 'context.json'), 0o600);
+  return safe;
 }
 
 async function saveContext(home, context) {
   await mkdir(home, { recursive: true, mode: 0o700 });
   const file = path.join(home, 'context.json');
-  const temporary = file + '.tmp';
-  await writeFile(temporary, JSON.stringify(context, null, 2), { mode: 0o600 });
-  await rename(temporary, file);
+  const directory = await mkdtemp(path.join(home, '.context-'));
+  try {
+    const temporary = path.join(directory, 'context.json');
+    await writeFile(temporary, JSON.stringify(context.database ? { database: context.database } : {}, null, 2),
+      { mode: 0o600, flag: 'wx' });
+    await rename(temporary, file);
+  } finally { await rm(directory, { recursive: true, force: true }); }
 }
 
 function safeHistory(line) {
-  return !/(password|"token"\s*:|pdb_[0-9a-f]{12}_)/i.test(line);
+  return !/(password|\"token\"\s*:|pdb_[0-9a-f]{12}_|pacificdbs?:\/\/)/i.test(line);
 }
+
+const DATABASE_ACTIONS = new Set(['createCollection', 'listCollections', 'insert',
+  'find', 'updateOne', 'deleteOne', 'aggregate', 'count', 'explain', 'queryVector']);
 
 export async function runShell(client, streams, options = {}) {
   const home = options.cliHome || defaultCliHome();
   const context = await loadContext(home);
-  if (!context.projectId) delete context.database;
-  if (!client.database && context.database) client.database = context.database;
+  let needsValidation = !client.database && !!context.database;
+  if (client.database) context.database = client.database;
+  else if (context.database) client.database = context.database;
   const prompt = readline.createInterface(streams);
   const lines = prompt[Symbol.asyncIterator]();
   streams.output.write(SHELL_BANNER);
@@ -375,52 +359,44 @@ export async function runShell(client, streams, options = {}) {
       if (safeHistory(line)) {
         await mkdir(home, { recursive: true, mode: 0o700 });
         await appendFile(path.join(home, 'history'), line + '\n', { mode: 0o600 });
+        if (process.platform !== 'win32') await chmod(path.join(home, 'history'), 0o600);
       }
       if (options.ensureConnection && !['help', 'clear', 'history', 'contextShow',
         'contextClear'].includes(parsed.kind)) await options.ensureConnection();
+      if (needsValidation && (['showDatabase', 'mediaUpload', 'mediaDownload',
+          'mediaFind', 'vectorPut', 'vectorQuery'].includes(parsed.kind) ||
+          (DATABASE_ACTIONS.has(parsed.command?.action) && !parsed.command.dbName))) {
+        const databases = await client.request({ action: 'listDatabases' });
+        if (!Array.isArray(databases) || !databases.includes(context.database)) throw new Error('database_not_found');
+        needsValidation = false;
+      }
       if (parsed.kind === 'help') streams.output.write(SHELL_HELP);
       else if (parsed.kind === 'clear') streams.output.write('\x1b[2J\x1b[H');
       else if (parsed.kind === 'history') {
-        streams.output.write(await readFile(path.join(home, 'history'), 'utf8').catch(() => ''));
+        streams.output.write((await readFile(path.join(home, 'history'), 'utf8').catch(() => '')).split('\n').filter(safeHistory).join('\n'));
       } else if (parsed.kind === 'contextShow') {
-        printResponse(streams.output, { database: context.database || null,
-          projectId: context.projectId || null });
+        printResponse(streams.output, { database: context.database || null });
       } else if (parsed.kind === 'contextClear') {
         delete context.database;
-        delete context.projectId;
+        needsValidation = false;
         client.database = '';
         await saveContext(home, context);
         printResponse(streams.output, { status: 'ok' });
-      } else if (parsed.kind === 'useProject') {
-        const response = await client.request({ action: 'community_project_get', id: parsed.id });
-        const projectId = response?.project?.id;
-        if (typeof projectId !== 'string' || !projectId) throw new Error('project_not_found');
-        context.projectId = projectId;
-        delete context.database;
-        client.database = '';
-        await saveContext(home, context);
-        printResponse(streams.output, { status: 'ok', projectId });
       } else if (parsed.kind === 'useDatabase') {
-        const response = await client.request({ action: 'community_database_list',
-          project_id: context.projectId });
-        const databases = Array.isArray(response) ? response : response?.databases;
-        if (!Array.isArray(databases) || !databases.includes(parsed.name)) {
-          throw new Error('database_not_found');
-        }
+        const databases = await client.request({ action: 'listDatabases' });
+        if (!Array.isArray(databases) || !databases.includes(parsed.name)) throw new Error('database_not_found');
         context.database = parsed.name;
         client.database = parsed.name;
+        needsValidation = false;
         await saveContext(home, context);
         printResponse(streams.output, { status: 'ok', database: parsed.name });
       } else if (parsed.kind === 'createDatabase') {
-        if (Buffer.byteLength(parsed.name, 'utf8') > 128)
-          throw new Error('database name must be 1-128 bytes when mapped to a project');
-        const project = await client.request({ action: 'community_project_get',
-          id: context.projectId });
-        if (project?.project?.id !== context.projectId) throw new Error('project_not_found');
-        const response = await client.request({ action: 'createDatabase', dbName: parsed.name,
-          project_id: context.projectId });
-        await client.request({ action: 'community_database_map',
-          database: parsed.name, project_id: context.projectId });
+        const response = await client.request({ action: 'createDatabase', dbName: parsed.name });
+        if (response?.error) throw new Error(String(response.error));
+        context.database = parsed.name;
+        client.database = parsed.name;
+        needsValidation = false;
+        await saveContext(home, context);
         printResponse(streams.output, response, 'createDatabase');
       } else if (parsed.kind === 'showDatabase') {
         const response = await client.request({ action: 'listCollections' });
@@ -470,18 +446,8 @@ export async function runShell(client, streams, options = {}) {
           parsed.command.vector, { k: parsed.command.k, metric: parsed.command.metric }),
         'queryVector');
       } else if (parsed.kind === 'request') {
-        if (parsed.command.action === 'createCollection') {
-          const mapped = await client.request({ action: 'community_database_list',
-            project_id: context.projectId });
-          if (!mapped?.databases?.includes(context.database)) throw new Error('database_not_found');
-        }
         const response = await client.request(parsed.command);
-        if (parsed.clearProject && context.projectId === parsed.clearProject) {
-          delete context.projectId;
-          delete context.database;
-          client.database = '';
-          await saveContext(home, context);
-        }
+        if (response?.error) throw new Error(String(response.error));
         if (parsed.clearDatabase && context.database === parsed.clearDatabase) {
           delete context.database;
           client.database = '';
@@ -490,7 +456,7 @@ export async function runShell(client, streams, options = {}) {
         printResponse(streams.output, response, parsed.command.action);
       }
     } catch (error) {
-      streams.output.write('error: ' + error.message + '\n');
+      streams.output.write('error: ' + error.message.replace(/pacificdbs?:\/\/[^\s/]*@/g, 'pacificdb://[redacted]@') + '\n');
     }
   }
   prompt.close();

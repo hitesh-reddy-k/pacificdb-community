@@ -7,19 +7,41 @@
 Apache-2.0 client for the Community engine JSON protocol.
 
 ```js
-import { PacificDBClient } from '@pacificdb/client';
-const db = new PacificDBClient({ host: '127.0.0.1', port: 9000 });
-await db.createProject('demo');
-await db.createDatabase('app');
-await db.createCollection('users');
-await db.insert('users', { id: '1', name: 'Ada' });
-console.log(await db.find('users', { name: 'Ada' }));
-db.close();
+import { PacificDB } from '@pacificdb/client';
+const db = PacificDB.fromUrl('pacificdb://localhost/app');
+try {
+  await db.createDatabase('app'); // Skip this if the database exists.
+  await db.createCollection('users');
+  await db.insert('users', { id: '1', name: 'Ada' });
+  console.log(await db.find('users', { name: 'Ada' }));
+} finally {
+  db.close();
+}
 ```
 
-Database creation requires a selected project, and collection creation requires
-a database mapped to it. For existing data, call `await db.useProject(projectId)`
-and `await db.useDatabase('app')` first.
+The URL selects the database immediately. Creating a database selects it only
+after success. For an existing database, connect and start reading or writing;
+`await db.useDatabase('other')` validates and switches an existing client.
+`PacificDBClient` and its constructor options remain available.
+
+`fromUrl` connects lazily on the first request. `await PacificDB.connect(url)`
+authenticates and connects before returning. Use `pacificdbs://` for TLS with
+certificate and hostname verification. Optional query keys are `userId`,
+`timeoutMs`, `poolSize`, and TLS-only `caFile`; conflicting explicit options,
+unknown parameters, and malformed URLs fail before networking.
+
+For authenticated deployments, supply a credential-bearing URL through a
+protected environment variable instead of storing it in source or CLI history:
+
+```js
+const db = await PacificDB.connect(process.env.PACIFICDB_URL);
+try { console.log(await db.find('users', {})); }
+finally { db.close(); }
+```
+
+Legacy projects are optional. Explicit `createProject(name)`, `useProject(id)`
+or constructor `projectId` opts into validated project mapping/membership.
+Existing project metadata is preserved; ordinary clients use databases directly.
 
 The client reuses up to 16 persistent TCP/TLS connections by default. Set
 `poolSize` from 1 through 32 to tune concurrency, call `await db.connect()` to
@@ -28,6 +50,10 @@ when the client is no longer needed. Standalone and locally managed Community
 engines serve up to 10,000 sequential requests per connection by default; tune
 that lifecycle with `ENGINE_KEEPALIVE_MAX_REQUESTS` and
 `ENGINE_KEEPALIVE_IDLE_MS` when required.
+
+Requests capture their database and authentication scope when called, including
+all chunks of a file transfer. Changing selection affects subsequent operations.
+An interrupted write is never retried automatically; its outcome may be unknown.
 
 Insert a batch in one engine request and one WAL batch:
 

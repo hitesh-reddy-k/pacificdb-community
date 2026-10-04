@@ -1,0 +1,60 @@
+{
+  "source_commit": "03289fb95999462222973e04d8869827fc1a98c7",
+  "latest": [
+    {
+      "databaseId": 37176501189,
+      "workflowName": "PacificDB Workbench desktop",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/37176501189",
+      "jobs": {
+        "linux": "success",
+        "windows": "success",
+        "macos-arm64": "success",
+        "macos-x64": "success",
+        "release": "skipped"
+      },
+      "artifacts": [
+        {"id": 11293517456, "name": "workbench-macos-arm64", "size_bytes": 150067674, "digest": "sha256:773ece289471d066109beb7c5b66ea266aece63d944415f4a7c6ba8a113c00dc"},
+        {"id": 11293307278, "name": "workbench-linux-x64", "size_bytes": 232013124, "digest": "sha256:1174f4c8a4f2e02e7c7d974b654ec3a6de96806acd7d07bf137f234016c41454"},
+        {"id": 11293159621, "name": "workbench-windows-x64", "size_bytes": 135436090, "digest": "sha256:6ec1079a7d664eb44522b7a984f82f387e506f454837d46bbb2d2ef3f2f37b7f"},
+        {"id": 11293057929, "name": "workbench-macos-x64", "size_bytes": 154807994, "digest": "sha256:23fcd2fe710d57b927b15d97c7ce5b61677ca19001353563f9d388a576f38747"}
+      ]
+    },
+    {
+      "databaseId": 37176502323,
+      "workflowName": "Build release installers",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/37176502323",
+      "jobs": {
+        "linux": "success",
+        "windows": "success",
+        "macos-arm64": "success",
+        "macos-x86_64": "success",
+        "container": "success",
+        "container_publish": "skipped",
+        "release": "skipped"
+      },
+      "artifacts": [
+        {"id": 11293956685, "name": "macos-arm64", "size_bytes": 2173832, "digest": "sha256:c0a7751aae98d5b6e37c8b936db41158a711d49e086f7a69f4f3d23f52276007"},
+        {"id": 11293759302, "name": "windows-x64", "size_bytes": 5129588, "digest": "sha256:ff5f9c35615df7650e0461d5fbfe09201bcfdb19edf1afe47fcd144f2e97f92b"},
+        {"id": 11293617502, "name": "linux-amd64-container", "size_bytes": 558, "digest": "sha256:d97cf638814750b6bdfc8a77bf91a654fb6509ddccf9cfd6e95e1a2eac4cd14d"},
+        {"id": 11293153243, "name": "macos-x86_64", "size_bytes": 2337858, "digest": "sha256:037cb652f75089bde86970d3a9abb2c0ef651f7a7e681b016c1fe3ead6cd8eec"},
+        {"id": 11292868678, "name": "linux-amd64", "size_bytes": 2698537, "digest": "sha256:23557dd474d4f4780e8701500a3d9351b461c4f5b94d36c028223b7e1019d807"}
+      ],
+      "p0_evidence": "hosted-p0/",
+      "signing": "NOT_APPLICABLE for branch validation; stable release signing/notarization remains required"
+    }
+  ],
+  "sdk_qualification": {
+    "status": "NOT_RUN_HOSTED",
+    "reason": "sdk-packages.yml exists only on the release branch and GitHub workflow_dispatch returned 404 because the workflow is not registered on the default branch; local package and installed-client suites passed"
+  },
+  "historical_attempts": [
+    {"databaseId": 37135978724, "workflowName": "PacificDB Workbench desktop", "status": "completed", "conclusion": "failure", "url": "https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/37135978724"},
+    {"databaseId": 37135976530, "workflowName": "Build release installers", "status": "completed", "conclusion": "failure", "url": "https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/37135976530"},
+    {"databaseId": 37135469482, "workflowName": "PacificDB Workbench desktop", "status": "completed", "conclusion": "cancelled", "url": "https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/37135469482"},
+    {"databaseId": 37135467457, "workflowName": "Build release installers", "status": "completed", "conclusion": "failure", "url": "https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/37135467457"}
+  ]
+}
