@@ -6,7 +6,7 @@ Users should create or connect directly to a database and create collections wit
 
 All clients accept a database-specific `pacificdb://` connection URL, and Workbench exposes a copyable URL for the selected database. Java and Python must provide the same supported public Community engine capabilities as the Node client and raw protocol, organized so common database work remains beginner-friendly while advanced operational APIs remain discoverable and explicit.
 
-This is a workflow simplification and reduction of unnecessary UI/request work. It makes no database-throughput, SurrealDB-ranking or enterprise-certification claim.
+This is a workflow simplification and reduction of unnecessary UI/request work. It makes no cross-product throughput or enterprise-certification claim.
 
 ## Current behavior and evidence
 

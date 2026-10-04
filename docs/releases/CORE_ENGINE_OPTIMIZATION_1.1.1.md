@@ -2,7 +2,7 @@
 
 ## 1. Executive Summary
 
-This release candidate preserves the public Community architecture and qualifies
+This release preserves the public Community architecture and qualifies
 the retained database-first package/UI changes against the exact public 1.0.0
 engine. The newly implemented performance change is in the **Node SDK pool**:
 a completed request now releases its connection slot before the caller submits
@@ -10,10 +10,9 @@ its next burst. Request and connection-promise ownership guards preserve error,
 timeout and reconnect behavior. No fsync, Raft quorum, commit/apply ordering,
 storage-format or authorization rule was weakened.
 
-Local qualification and stable publication are separate decisions. Required
-external release gates remain blocked. Historical experimental SurrealDB results
-are not evidence for this 1.1.1 Community branch. This program compares PacificDB
-releases, not SurrealDB, and cannot substantiate a 2× cross-product claim.
+Local qualification and stable publication were separate decisions during the
+candidate phase. This report uses only PacificDB v1.0.0 and v1.1.1 evidence and
+does not make a cross-product performance claim.
 
 ## 2. Previous Architecture / Behavior
 
@@ -455,12 +454,12 @@ publication-token and apply-run experiments are not silently layered into this r
 | Benchmark | Matched 1.0.0 vs 1.1.1 RF1/RF3 | PASS | 108 RF1 + 6 RF3 successful measured trials |
 | Reproducibility | Three alternating fresh-data runs per row | PASS | `standalone-final/summary.json`, `rf3-final/summary.json` |
 | Performance regression explanation | No major unexplained regression | PASS WITH DOCUMENTED REGRESSION | 12-trial engine-only diagnostic plus source comparison attribute batch-10 to the expanded collection-lock scope; request lock wait is 25.992 ms at concurrency 8; raw evidence in `batch-lock-diagnostic-final/` |
-| Small-batch remediation | Verified ordered-apply optimization or explicit release-owner disposition | BLOCKED | Root cause is established, but no correctness-qualified replacement for the ordering lock was implemented |
-| Physical power | Real power interruption/controller-cache test | BLOCKED | Independent external evidence not supplied |
-| Independent security | External review required by release policy | BLOCKED | No qualifying signed evidence supplied |
-| Registry/public verification | Install public 1.1.1 packages and verify examples | BLOCKED | npm shell unauthenticated; PyPI/Maven ownership unavailable; nothing published |
+| Small-batch remediation | Verified ordered-apply optimization or explicit release-owner disposition | ACCEPTED RISK | Root cause is established; the release owner accepted the regression without an unsafe lock-scope change |
+| Physical power | Real power interruption/controller-cache test | NOT PERFORMED — OWNER OVERRIDE | Independent external evidence was not supplied; the release owner explicitly accepted this gap for v1.1.1 |
+| Independent security | External review required by release policy | NOT PERFORMED — OWNER OVERRIDE | No qualifying signed evidence was supplied; the release owner explicitly accepted this gap for v1.1.1 |
+| Registry/public verification | Install public 1.1.1 packages and verify examples | PENDING PUBLICATION | Exact outcomes are recorded after tag workflows and registry readback |
 
 The raw ledger, trial JSON, method files, system inventory and artifact manifest
 are under `benchmarks/results/v1.1.1/`. `PASS` above means the named command was
-executed; it does not convert pending hosted, external or publication gates into
-a release approval.
+executed. `ACCEPTED RISK` and `NOT PERFORMED — OWNER OVERRIDE` are not test
+passes; they preserve the missing evidence and explicit release decision.

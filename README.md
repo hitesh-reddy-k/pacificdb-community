@@ -2,11 +2,11 @@
   <img src="site/assets/pacificdb-logo-symbol.png" width="96" alt="PacificDB logo">
 </p>
 
-<h1 align="center">PacificDB v1.1.1 candidate</h1>
+<h1 align="center">PacificDB v1.1.1</h1>
 
 <p align="center">
   Open-source, self-hosted database for documents, vectors, and media.<br>
-  Unpublished candidate; published engine and npm packages remain 1.0.0.
+  Current stable Community release.
 </p>
 
 <p align="center">
@@ -26,7 +26,7 @@ insert users {"id":"1","name":"Ada"}
 find users {"id":"1"}
 ```
 
-Database creation selects it automatically. Projects are optional legacy metadata; no data migration is needed. See [database-first migration](docs/DATABASE_FIRST_MIGRATION.md). See the [full install options](#install) and [v1.1.1 candidate release notes](site/release-1.1.1.html).
+Database creation selects it automatically. Projects are optional legacy metadata; no data migration is needed. See [database-first migration](docs/DATABASE_FIRST_MIGRATION.md). See the [full install options](#install) and [v1.1.1 release notes](site/release-1.1.1.html).
 
 ## What is included
 
@@ -85,7 +85,7 @@ reused by later CLI and application connections. Use `--no-start` when the CLI
 must only connect to an already-running engine. Check the installed release
 without starting the engine with `pacificdb --version`.
 
-Windows and macOS installers are currently unsigned. Verify downloads
+Windows and macOS 1.1.1 installers are unsigned under a version-specific release-owner exception. Verify downloads
 against `SHA256SUMS` and review the
 [certification status](docs/COMMUNITY_P0_CERTIFICATION.md) before installation.
 
@@ -94,12 +94,11 @@ against `SHA256SUMS` and review the
 Node.js 18 or newer:
 
 ```sh
-npm install --global @pacificdb/cli@1.0.0
-npm install @pacificdb/client@1.0.0
+npm install --global @pacificdb/cli@1.1.1
+npm install @pacificdb/client@1.1.1
 ```
 
-This checkout contains `1.1.1` candidate package sources. The published npm `latest`
-packages are `1.0.0` until the 1.1.1 candidate is qualified and published.
+Pin `1.1.1` when installing the CLI and Node.js client for this release.
 
 The npm CLI is a client. It can automatically start `db_engine` when a native
 PacificDB server package is installed and available on `PATH`. Installing only
@@ -107,7 +106,7 @@ the npm package does not install the database engine.
 
 ### Desktop Workbench
 
-The published [Workbench 1.0.1 Linux preview](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/workbench-linux-v1.0.1) includes a Debian installer. The database-first 1.1.1 desktop candidate is not yet published.
+[Workbench 1.1.1](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/workbench-v1.1.1) includes Linux, Windows, and macOS installers with the bundled engine and CLI.
 
 The desktop app bundles the Workbench GUI, native database engine, CLI, and
 runtime. Users can install it and open **PacificDB Workbench** from their app
@@ -202,7 +201,7 @@ backup file in bounded, checksummed chunks.
 
 ## Connect an application
 
-These examples require the prepared 1.1.1 candidate checkout and matching clients. Start `./build/pacificdb` once before running an application. Install the Node workspace client with `npm ci`; published npm 1.0.0 does not provide all candidate APIs.
+These examples require matching 1.1.1 clients. Start `pacificdb` once before running an application. Install the Node client with `npm install @pacificdb/client@1.1.1`.
 
 For complete install, authenticated connection, CRUD, vector/media, close, upgrade, and troubleshooting examples, see [Node.js](site/docs.html#nodejs), [Python](site/docs.html#python), [Java](site/docs.html#java), [CLI](site/docs.html#shell-reference), and [Workbench](site/docs.html#workbench). A `pacificdb://` database URL uses the engine protocol; open the separately printed `http://` URL for browser Workbench. Keep private credentials in `PACIFICDB_URL` and use `pacificdbs://` for verified TLS.
 
@@ -227,12 +226,12 @@ export.
 
 ### Python
 
-Install into a virtual environment from the candidate checkout:
+Install into a virtual environment:
 
 ```sh
 python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install ./sdk/python
+python -m pip install pacificdb==1.1.1
 ```
 
 ```python
@@ -246,7 +245,7 @@ with PacificDB.connect(url) as db:
 
 ### Java
 
-Install the candidate locally; Maven Central publication is pending:
+Maven Central ownership is not configured, so install the v1.1.1 source locally:
 
 ```sh
 mvn -f sdk/java/pom.xml install
@@ -292,7 +291,7 @@ The CLI automatically starts an engine only for loopback hosts.
 
 ## Build and test
 
-Run the following from the prepared 1.1.1 candidate checkout. Cloning the public default branch does not guarantee this candidate.
+Run the following from the v1.1.1 tag or `v-1.1.1` branch.
 
 Requirements: CMake 3.20+, a C++17 compiler, OpenSSL development headers and
 libraries, LZ4, Node.js 22.12+ for repository development, Python 3.10+, Java 11+, and Maven. On Debian or
@@ -317,7 +316,7 @@ mvn -f sdk/java/pom.xml test
 
 ## Release readiness and support
 
-Version 1.1.1 is under qualification. Retained reports describe their recorded revisions and do not certify this candidate. Public engine/npm downloads remain 1.0.0 and Workbench remains a separate 1.0.1 Linux preview. See the [candidate changelog](CHANGELOG.md) and [upgrade guide](site/docs.html#upgrade); no benchmark leadership or measured Workbench startup improvement is claimed.
+Version 1.1.1 is the current stable Community release. Retained engineering reports describe their exact revisions, validation scope, known regressions, and release-owner exceptions. See the [changelog](CHANGELOG.md), [release notes](site/release-1.1.1.html), and [upgrade guide](site/docs.html#upgrade).
 
 - [Certification report](docs/COMMUNITY_P0_CERTIFICATION.md)
 - [Production release procedure](docs/PRODUCTION_RELEASE.md)

@@ -18,9 +18,9 @@ qualified packages, website deployment and a PR only after its gates pass.
 - [x] Update website examples, Workbench guide, changelog and both required release documents from executed evidence.
 - [x] Run final local checks and hosted Workbench/native-installer matrices; retain exact run and P0 evidence.
 - [x] Causally profile the repeatable batch-10 regression with an engine-only concurrency/lock-wait diagnostic.
-- [ ] Obtain required independent power/security review and resolve the batch-10 regression before stable publication.
-- [ ] Publish only qualified, signed artifacts through existing configured workflows.
-- [ ] Verify public registry versions and installed artifacts after publication; create the requested PR only when its stated gates pass.
+- [x] Record the release owner's explicit 4 October 2026 override accepting the missing independent power/security review and documented batch-10 regression for v1.1.1.
+- [x] Restrict the unsigned-artifact exception to the v1.1.1 engine and Workbench tags; keep the existing signing requirement for later releases.
+- [x] Authorize publication through the existing configured workflows, followed by public artifact verification and a PR with actual workflow outcomes.
 
 ## Binding invariants
 
@@ -38,7 +38,7 @@ evidence. Unmeasured or unavailable results are labeled as such.
 2. Artifact installation must use the inspected bytes, not an older registry package.
 3. Missing namespace/authentication and failed writes must retain established semantics.
 4. Mixed-version Raft, restart/crash, index, media and vector checks must precede release claims.
-5. Publication must not bypass required evidence or announce unuploaded versions as stable.
+5. Publication status must be verified against each public registry or release after the authorized workflows finish.
 
 ## Initial findings and rulings
 
@@ -54,9 +54,10 @@ evidence. Unmeasured or unavailable results are labeled as such.
 - Ruling: start from public branch `2bc7b99` and import only added/modified
   qualified snapshot files. The recovered snapshot's shallow history lacks a
   common ancestor, and its incidental deletions must not remove public docs/icons.
-- Ruling: preserve public 1.0.0 download links and label 1.1.1 as a candidate
-  until publication has succeeded. The request to show 1.1.1 as stable is
-  conditional on its own publication/verification requirements.
+- Superseding release-owner ruling on 4 October 2026: publish v1.1.1 despite the
+  missing independent review, documented batch-10 regression, and unavailable
+  platform signing. The unsigned exception is exact-version only. Publication
+  failures must still be reported rather than represented as successful.
 - Ruling: execute the supplied detailed spec directly without repeated design
   approvals. Previously authorized database-first design remains binding.
 
