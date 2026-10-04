@@ -144,7 +144,10 @@ jobs:
         run: |
           $env:PACIFICDB_WORKBENCH_ENGINE = "$pwd\build\Release\db_engine.exe"
           $env:ELECTRON_BUILDER_COMPRESSION_LEVEL = '1'
-          npm run desktop:build -- --win nsis --x64
+          if ($env:PACIFICDB_DESKTOP_RELEASE -ne '1') {
+            Remove-Item Env:CSC_LINK,Env:CSC_KEY_PASSWORD -ErrorAction SilentlyContinue
+          }
+          npm run desktop:build -- --win nsis --x64 --publish never
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Test packaged application
         shell: pwsh
@@ -208,7 +211,12 @@ jobs:
       - name: Package Workbench for macOS
         env:
           ELECTRON_BUILDER_COMPRESSION_LEVEL: '1'
-        run: npm run desktop:build -- --mac dmg --${{ matrix.arch }}
+        run: |
+          if [[ "$PACIFICDB_DESKTOP_RELEASE" != 1 ]]; then
+            unset CSC_LINK CSC_KEY_PASSWORD
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+          fi
+          npm run desktop:build -- --mac dmg --${{ matrix.arch }} --publish never
       - name: Test packaged application
         shell: bash
         run: |

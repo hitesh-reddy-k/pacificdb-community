@@ -206,6 +206,7 @@ async function writeMetadata(filename, metadata) {
 
 async function executableForPid(pid) {
   try {
+    if (pid === process.pid) return await realpath(process.execPath);
     if (process.platform === 'linux') {
       return await realpath(await readlink(`/proc/${pid}/exe`));
     }

@@ -196,8 +196,8 @@ nlohmann::json requestJson(const ConnectionOptions& options, const nlohmann::jso
         const int result = ::connect(socket.value, a->ai_addr, static_cast<int>(a->ai_addrlen));
         if (result != 0) {
 #ifdef _WIN32
-            const int error = WSAGetLastError();
-            const bool pending = error == WSAEWOULDBLOCK || error == WSAEINPROGRESS;
+            const int connectError = WSAGetLastError();
+            const bool pending = connectError == WSAEWOULDBLOCK || connectError == WSAEINPROGRESS;
 #else
             const bool pending = errno == EINPROGRESS || errno == EINTR;
 #endif

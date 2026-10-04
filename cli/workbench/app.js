@@ -1226,6 +1226,9 @@ for (const kind of ['database', 'collection']) click(`delete-${kind}`, () => {
     await request(`${kind}s.delete`, selected);
     if (scopeKey(selected) === scopeKey()) {
       invalidateSummary(selected);
+      state.collection = null;
+      if (kind === 'database') { state.database = null; state.collections = []; }
+      else state.collections = state.collections.filter(name => name !== selected.collection);
       invalidateSelection(); await refreshDatabases(state.navigation);
     }
     notice(`${kind[0].toUpperCase() + kind.slice(1)} deleted.`);

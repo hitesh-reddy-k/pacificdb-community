@@ -452,10 +452,18 @@ try {
   if (screenshots) await page.screenshot({ path: path.join(screenshots, 'mobile.png') });
   await page.setViewportSize({ width: 1365, height: 900 });
   await create('collection', 'do_not_choose');
+  // A list already in flight may still include the just-deleted name. A confirmed
+  // delete must clear selection without selecting it again or choosing another row.
+  await page.route('**/api/execute', async route => {
+    if (route.request().postDataJSON().op === 'collections.list') {
+      await route.fulfill({ json: { result: { collections: ['replacement', 'do_not_choose'] } } });
+    } else await route.continue();
+  });
   await page.locator('#delete-collection').click();
   await page.locator('#confirm-submit').click();
   await page.locator('#welcome-title').filter({hasText: 'Choose a collection'}).waitFor({timeout: 5000});
   assert.equal(await page.locator('#collection-name').textContent(), '');
+  await page.unrouteAll({ behavior: 'wait' });
   await create('database', 'removal_test');
   await create('collection', 'temporary');
   await page.locator('#delete-collection').click();
