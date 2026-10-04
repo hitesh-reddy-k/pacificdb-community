@@ -15,7 +15,7 @@
     <maven.compiler.release>11</maven.compiler.release>
     <central.skipPublishing>true</central.skipPublishing>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <jackson.version>2.18.11</jackson.version>
+    <jackson.version>2.22.3</jackson.version>
     <junit.version>5.11.4</junit.version>
   </properties>
   <dependencies>
