@@ -54,6 +54,14 @@ assert.ok(!index.includes('hitesh-reddy-k.github.io/pacificdb-community/docs.htm
 assert.match(index, /id=["']sdks["']/);
 assert.ok(index.includes(`release-${version}.html`));
 assert.ok(docs.includes(`release-${version}.html`));
+const workbench = index.match(/<section\b[^>]*\bid=["']workbench["'][^>]*>[\s\S]*?<\/section>/)?.[0];
+assert.ok(workbench, 'landing page must expose the Workbench section');
+assert.ok(workbench.includes('href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-v1.1.1/PacificDB-Workbench-1.1.1-win-x64.exe"'),
+  'Workbench must link the published Windows desktop installer, not the engine installer');
+assert.match(workbench, /<button\b[^>]*\bdisabled[^>]*>macOS — Coming soon<\/button>/,
+  'Workbench macOS placeholder must be visibly unavailable and disabled');
+assert.doesNotMatch(workbench, /href=["'][^"']*macos/i,
+  'Workbench macOS placeholder must not expose a download link');
 for (const heading of ['Added', 'Removed', 'Improved']) {
   assert.match(releaseNotes, new RegExp(`<h3>${heading}</h3>`));
 }

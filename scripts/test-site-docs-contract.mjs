@@ -30,6 +30,17 @@ test('website validation still rejects missing files, fragments, assets and obso
     await assert.rejects(execFileAsync(process.execPath, [script]), (error) =>
       error.code === 1 && error.stderr.includes(expected));
   }
+  for (const [changed, expected] of [
+    [index.replace('workbench-v1.1.1/PacificDB-Workbench-1.1.1-win-x64.exe',
+      'v1.1.1/pacificdb-community-1.1.1-windows-x64.exe'), 'Workbench must link the published Windows desktop installer'],
+    [index.replace('type="button" disabled>macOS', 'type="button">macOS'),
+      'Workbench macOS placeholder must be visibly unavailable and disabled'],
+  ]) {
+    assert.notEqual(changed, index, 'download regression fixture must change the rendered HTML');
+    await writeFile(indexPath, changed);
+    await assert.rejects(execFileAsync(process.execPath, [script]), (error) =>
+      error.code === 1 && error.stderr.includes(expected));
+  }
   await writeFile(indexPath, index);
   await rm(path.join(root, 'site/assets/pacificdb-logo-symbol.png'));
   await assert.rejects(execFileAsync(process.execPath, [script]), (error) =>
