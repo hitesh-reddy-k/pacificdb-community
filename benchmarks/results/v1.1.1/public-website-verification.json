@@ -1,0 +1,28 @@
+{
+  "checked_at": "2026-10-04T10:59:04+05:30",
+  "status": "CANDIDATE_SOURCE_NOT_DEPLOYED",
+  "pages": [
+    {
+      "url": "https://pacificdb.in/",
+      "http_status": 200,
+      "observed_release_versions": ["1.0.0", "1.0.1"],
+      "target_version_present": false
+    },
+    {
+      "url": "https://pacificdb.in/docs.html",
+      "http_status": 200,
+      "observed_release_versions": ["1.0.0", "1.0.1"],
+      "target_version_present": false
+    },
+    {
+      "url": "https://pacificdb.in/release-1.1.1.html",
+      "http_status": 404,
+      "target_version_present": false
+    }
+  ],
+  "candidate_source_validation": {
+    "command": "node scripts/test-site-docs.mjs",
+    "result": "PASS"
+  },
+  "disposition": "Do not promote the public website before the stable publication gates pass."
+}

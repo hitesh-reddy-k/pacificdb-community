@@ -80,6 +80,7 @@
   ],
   "release_blockers": [
     "the batch-10 regression is causally explained and integrity passes, but the execution contract still requires resolving it before stable publication",
+    "the candidate website source passes local checks, but the live 1.1.1 release page is HTTP 404 and stable pages still advertise 1.0.0/1.0.1",
     "stable registry credentials are not available in the local environment",
     "release signing and notarization credentials are unavailable",
     "required independent physical-power and security evidence is absent",

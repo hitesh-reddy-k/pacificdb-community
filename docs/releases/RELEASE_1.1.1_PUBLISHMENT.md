@@ -135,6 +135,11 @@ README links point to package and Workbench guides. Historical release pages and
 actual stable download URLs are retained. The source badge says candidate until
 publication. Static asset/anchor checks and exact complete SDK examples pass.
 The website was not deployed as stable 1.1.1.
+Fresh public verification at 10:59 IST on 4 October 2026 found HTTP 200 for the
+existing homepage and documentation, which still expose 1.0.0/1.0.1 release
+references, and HTTP 404 for `/release-1.1.1.html`. The exact results are retained
+in `public-website-verification.json`; source validation is not represented as a
+successful deployment.
 
 ## Compatibility
 
