@@ -148,6 +148,13 @@ removed comparison copy.
 
 ## Compatibility
 
+The release branch includes a separately approved post-publication diagnostic
+hardening follow-up: bounded reads from the original desktop log descriptor,
+regression-tested pathname replacement and permission compatibility, plus
+equivalent test-harness checks. It is not included in the immutable published
+Workbench artifacts. PR #31 tracks its exact-source hosted requalification; no
+public package or tag was overwritten.
+
 Storage format 2 and Raft wire protocol 2 are unchanged. This release branch does
 not contain the unreleased one-sync format-3 experiment or rejected fast paths.
 Existing SDK constructors/raw protocol methods and legacy project metadata are

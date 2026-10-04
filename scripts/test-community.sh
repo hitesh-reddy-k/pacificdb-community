@@ -44,6 +44,7 @@ python3 scripts/test-deployment-contract.py
 python3 scripts/test-native-signing-contract.py
 test -s site/assets/pacificdb-logo-symbol.png
 node scripts/test-site-docs.mjs
+node --test scripts/test-site-docs-contract.mjs
 if command -v rg >/dev/null 2>&1; then
   ! rg -n 'pacificdb-local(?:\.cmd)?' README.md cli/README.md site/index.html
 else

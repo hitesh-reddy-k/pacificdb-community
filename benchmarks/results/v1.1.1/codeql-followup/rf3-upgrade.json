@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "qualification": "mixed-version-rf3-upgrade",
+  "status": "PASS",
+  "started_at": "2026-10-04T10:35:23.327Z",
+  "steps": [
+    {
+      "step": "old-cluster-baseline",
+      "status": "PASS",
+      "term": 0,
+      "commit_index": 5,
+      "acknowledged_ids": 12
+    },
+    {
+      "step": "upgrade-follower-2",
+      "status": "PASS",
+      "term": 0,
+      "commit_index": 6,
+      "acknowledged_ids": 12
+    },
+    {
+      "step": "resume-interrupted-follower-2",
+      "status": "PASS",
+      "term": 0,
+      "commit_index": 6,
+      "acknowledged_ids": 12
+    },
+    {
+      "step": "write-after-follower-2",
+      "status": "PASS",
+      "term": 0,
+      "commit_index": 7,
+      "acknowledged_ids": 16
+    },
+    {
+      "step": "upgrade-follower-3",
+      "status": "PASS",
+      "term": 0,
+      "commit_index": 7,
+      "acknowledged_ids": 16
+    },
+    {
+      "step": "write-after-follower-3",
+      "status": "PASS",
+      "term": 0,
+      "commit_index": 8,
+      "acknowledged_ids": 20
+    },
+    {
+      "step": "upgrade-final-node-1",
+      "status": "PASS",
+      "term": 1,
+      "commit_index": 10,
+      "acknowledged_ids": 21
+    },
+    {
+      "step": "all-candidate-cluster",
+      "status": "PASS",
+      "term": 1,
+      "commit_index": 11,
+      "acknowledged_ids": 29
+    },
+    {
+      "step": "full-candidate-restart",
+      "status": "PASS",
+      "term": 1,
+      "commit_index": 11,
+      "acknowledged_ids": 29
+    }
+  ],
+  "linked_qualifications": {
+    "partition": "scripts/test-community-rf3-partition.mjs",
+    "disk_full": "scripts/test-community-disk-full.sh",
+    "note": "Reused certification harnesses; their separate exact-candidate evidence is required."
+  },
+  "rollback_policy": {
+    "interrupted_pre_format": "RESUMABLE",
+    "incompatible_format": "REJECTED_SAFE",
+    "post_format_transition": "RESTORE_REQUIRED",
+    "missing_old_artifact": "BLOCKED"
+  },
+  "artifacts": {
+    "old": {
+      "path": "/home/hitesh/pacificdb-release-1.1.1/build-baseline-installed/usr/bin/db_engine",
+      "sha256": "9fd9d6cf9c2d39dd4a9aa850a34f84987d88726f2317fa96efeea43d88218eac",
+      "version": "PacificDB Engine 1.0.0"
+    },
+    "candidate": {
+      "path": "/home/hitesh/pacificdb-release-1.1.1/build/db_engine",
+      "sha256": "3a6643970caa5b2b254e207062a4c459fc8bea3f82abd18c7fe51a27bb51d9e0",
+      "version": "PacificDB Engine 1.1.1"
+    }
+  },
+  "backup": {
+    "backup_id": "backup-20261004-160534-82694275",
+    "verified": true,
+    "isolated_restore": "/tmp/pacificdb-rf3-upgrade-cjn4Ar/node-1/restores/isolated-pre-upgrade-restore",
+    "isolated_restore_status": "PASS"
+  },
+  "interrupted_upgrade": {
+    "node": 2,
+    "signal": "SIGKILL",
+    "decision": "RESUMABLE",
+    "status": "PASS"
+  },
+  "node_upgrade_order": [
+    2,
+    3,
+    1
+  ],
+  "acknowledged_ids": [
+    "before-upgrade-0",
+    "before-upgrade-1",
+    "before-upgrade-2",
+    "before-upgrade-3",
+    "before-upgrade-4",
+    "before-upgrade-5",
+    "before-upgrade-6",
+    "before-upgrade-7",
+    "before-upgrade-8",
+    "before-upgrade-9",
+    "before-upgrade-10",
+    "before-upgrade-11",
+    "after-follower-2-0",
+    "after-follower-2-1",
+    "after-follower-2-2",
+    "after-follower-2-3",
+    "after-follower-3-0",
+    "after-follower-3-1",
+    "after-follower-3-2",
+    "after-follower-3-3",
+    "served-while-old-leader-offline",
+    "after-full-upgrade-0",
+    "after-full-upgrade-1",
+    "after-full-upgrade-2",
+    "after-full-upgrade-3",
+    "after-full-upgrade-4",
+    "after-full-upgrade-5",
+    "after-full-upgrade-6",
+    "after-full-upgrade-7"
+  ],
+  "acknowledged_count": 29,
+  "format_transition": "none_declared; see exact old/candidate artifact versions and hashes",
+  "finished_at": "2026-10-04T10:36:02.675Z"
+}

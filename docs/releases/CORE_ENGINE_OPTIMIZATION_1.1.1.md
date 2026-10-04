@@ -427,6 +427,17 @@ the audited post-tag source commit; no Java artifact was published from the tag.
 
 ## 23. Future Optimization Opportunities
 
+An approved post-publication branch follow-up hardens Workbench startup-error
+diagnostics by retaining and reading the original log descriptor, with an explicit
+position and an 8,000-byte window before the existing 2,000-string-unit tail limit.
+File/symlink replacement, Unicode tails, startup failure/timeout/cancellation,
+descriptor cleanup and write-only-log compatibility pass locally. Equivalent
+website/upgrade test checks preserve missing-file/fragment, nonexecutable and
+traverse-only-directory behavior. This is not an engine speedup, does not establish
+remote exploitability, and is not present in the immutable published Workbench.
+The separate CodeQL gate failed at `40c19b0`; PR #31 tracks the follow-up's hosted
+recheck without dismissing alerts or disabling checks.
+
 Use stable dedicated hosts and sustained/out-of-cache workloads; profile full CPU
 and waits before changing storage/replication. Investigate prewarmed pools against
 server thread capacity, batch-size/tail-latency balance and measured vector/index

@@ -1,5 +1,11 @@
 # Changelog
 
+## Post-release branch follow-up — not in the published v1.1.1 artifacts
+
+- Startup-failure diagnostics read a bounded Unicode tail from the engine's original log descriptor instead of reopening a replaceable pathname. Existing write-only logs remain supported.
+- Website and mixed-version upgrade validation remove redundant filesystem preflights while retaining missing-file, fragment, nonexecutable-artifact and traverse-only-directory checks.
+- Added deterministic file/symlink-replacement, descriptor-cleanup and permission-compatibility regression coverage. Published release tags and artifacts are unchanged; hosted requalification is tracked in PR #31.
+
 ## 1.1.1 — 2026-10-04
 
 Released from branch `v-1.1.1`. The release owner explicitly accepted the documented external-review and small-batch performance risks and authorized unsigned Windows/macOS artifacts for this version only.

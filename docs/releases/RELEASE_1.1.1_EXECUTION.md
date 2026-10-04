@@ -93,3 +93,24 @@ and the two release documents. No failed/slow completed benchmark is excluded.
 - [x] Created review PR
   [#31](https://github.com/hitesh-reddy-k/pacificdb-community/pull/31). The PR is
   intentionally not merged; its live CI conclusion is recorded in the final report.
+
+## Post-publication CodeQL follow-up
+
+At source `40c19b0801bb4d8ca3cf001535a1362e73d67011`, all production,
+SDK and desktop workflow jobs passed, but the separate CodeQL security gate
+reported four new high-severity scanner alerts. The release owner approved a
+targeted branch-only fix and CI rerun. PR #31 was converted to draft while those
+findings are requalified; no alert was dismissed and no check was disabled.
+
+The desktop now reads startup-failure diagnostics through its original descriptor,
+with positional bounded reads and final cleanup. The regression test first failed
+because a replacement pathname supplied the diagnostics, then passed after the
+fix. File/symlink replacement, Unicode tails, spawn failure, timeout, cancellation,
+descriptor cleanup and existing write-only logs are covered. Website and upgrade
+test-only preflights were simplified without losing negative checks. Review caught
+and regression tests verified the traverse-only-directory and write-only-log
+compatibility cases. A real mixed-version RF3 backup/restore/upgrade/restart check
+also passed. Final hosted results belong to the exact follow-up commit's PR checks.
+
+These changes do not modify the immutable `v1.1.1` or `workbench-v1.1.1` tags,
+replace public artifacts, or certify a hostile-local-filesystem attacker model.

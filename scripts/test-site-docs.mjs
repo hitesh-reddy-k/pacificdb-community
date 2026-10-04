@@ -25,14 +25,12 @@ async function assertLocalReferences(filename, html) {
     const targetName = relativeFile || filename;
     const targetPath = path.resolve(siteRoot, targetName);
     assert.ok(targetPath.startsWith(siteRoot + path.sep), `unsafe local reference: ${reference}`);
-    await access(targetPath);
-
     if (fragment) {
       const targetHtml = relativeFile && relativeFile !== filename
         ? await readFile(targetPath, 'utf8')
         : html;
       assert.ok(elementIds(targetHtml).has(fragment), `missing fragment target: ${reference}`);
-    }
+    } else await access(targetPath);
   }
 }
 
@@ -52,7 +50,7 @@ for (const asset of [
 
 assert.match(index, /href=["']docs\.html["'][^>]*>Documentation</);
 assert.match(index, /href=["']docs\.html#quickstart["']/);
-assert.doesNotMatch(index, /hitesh-reddy-k\.github\.io\/pacificdb-community\/docs\.html/);
+assert.ok(!index.includes('hitesh-reddy-k.github.io/pacificdb-community/docs.html'));
 assert.match(index, /id=["']sdks["']/);
 assert.ok(index.includes(`release-${version}.html`));
 assert.ok(docs.includes(`release-${version}.html`));
