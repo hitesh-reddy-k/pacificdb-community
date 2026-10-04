@@ -17,6 +17,7 @@ qualified packages, website deployment and a PR only after its gates pass.
 - [x] Build, inspect and install local npm, Python, Java, engine and Workbench artifacts.
 - [x] Update website examples, Workbench guide, changelog and both required release documents from executed evidence.
 - [x] Run final local checks and hosted Workbench/native-installer matrices; retain exact run and P0 evidence.
+- [x] Causally profile the repeatable batch-10 regression with an engine-only concurrency/lock-wait diagnostic.
 - [ ] Obtain required independent power/security review and resolve the batch-10 regression before stable publication.
 - [ ] Publish only qualified, signed artifacts through existing configured workflows.
 - [ ] Verify public registry versions and installed artifacts after publication; create the requested PR only when its stated gates pass.

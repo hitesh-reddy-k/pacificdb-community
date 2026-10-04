@@ -47,6 +47,9 @@ peer is retired; timing a delayed FIN is not a safe keepalive contract.
 5. Release validation runners had an omitted URL-fixture argument and historical
    hardcoded version expectations. These were corrected; their initial failed
    attempts are retained rather than counted as passes.
+6. The batch-10 regression persisted in every matched round. A separate engine-only
+   concurrency diagnostic now attributes it to the collection lock spanning the
+   durable WAL wait, rather than to the corrected Node connection pool.
 
 ## 4. Baseline Measurements
 
@@ -70,7 +73,7 @@ The fresh completed series belongs in `standalone-final/` and `rf3-final/`.
 |---|---|---|---|
 | Node pool dispatch | Warmed-burst RED peak 1 versus configured 4, GREEN peak 4 | Delayed slot return plus global release gate | Serializes bursts; SDK-specific, not an engine CPU share |
 | Failed connection ownership | Refused-connect and handshake RED/GREEN | Old promise/callback survives immediate handoff | Spurious queued-request failures; correctness blocker until fixed |
-| Small-batch write contention | Batch-10 loses 65.0–80.2% in all three paired rounds while the fixed pool reaches configured concurrency | Inference: removing accidental client serialization exposes ordered WAL/apply and collection-lock contention for short batches; no wait profile isolates the share | Major unresolved regression; blocks a production-ready performance PR |
+| Small-batch write contention | 12 engine-only trials: at concurrency 8, v1.1.1 median mean request lock wait is 25.992 ms versus 0.480 ms in v1.0.0; candidate throughput stays near concurrency 1 | Source comparison shows v1.1.1 holds the collection mutex across `WAL::logPutBatch` completion so concurrent requests cannot enter the WAL group together; the guard keeps WAL and memtable application order aligned | Major explained regression for short concurrent batches; retained as a correctness/performance trade-off |
 | Low-cardinality index rebuild | Audited old/new source plus dedicated rebuild benchmark | Prior repeated linear array membership scans | Hash dedup retains insertion order; transient memory trade-off |
 | Durable write path | Durable configuration and client latency counters | Sync/ordered apply/replication remain required | Per-stage causal contribution not measured in these runs |
 | Vector search | Audited search source and exact vector checks | Visibility scan/signature/rebuild work | No constant-time or unbounded-scale search claim |
@@ -174,6 +177,10 @@ manifest/SSTable checksums and checkpoint transitions are covered by existing
 crash-boundary tests. No synchronous durability setting was disabled for timing.
 There is no new compaction policy or unchecked filesystem path cache. Detailed
 compaction activity and hardware sync latency: **not measured in this series**.
+The isolated batch diagnostic measures the collection-lock effect directly; it
+does not justify moving the WAL call outside the lock because overlapping writes
+could then apply in a different order from replay unless a separately verified
+ordered-apply mechanism is introduced.
 
 ## 11. Replication Optimization
 
@@ -191,8 +198,10 @@ Each pooled connection has exactly one active request. The FIFO queue and maximu
 pool bound are retained. A ready slot is handed off immediately, with request
 ownership guards preventing old callbacks from affecting its successor. Holding
 the storage lock across `putMany` ordering improves correctness but can lengthen
-critical sections. Worker model/admission settings are fixed across compared
-artifacts; no auto-scaling feature was added.
+critical sections. The diagnostic confirms this cost: v1.1.1 concurrency-8
+request lock wait is 25.992 ms per call by median while concurrency-1 is effectively
+zero. Worker model/admission settings are fixed across compared artifacts; no
+auto-scaling feature was added.
 
 ## 13. Benchmark Environment
 
@@ -288,6 +297,22 @@ large repeatable regression, batch-1,000 is slightly slower, delete P99 rises
 1.1.1 as uniformly faster even though reads, index rebuild and vectors improve.
 No number from `standalone/`, whose status is `ABORTED_DIAGNOSTIC`, is used here.
 
+The engine-only diagnostic uses the v1.1.1 Node client for both binaries, removing
+the client-version variable from the batch result:
+
+| Engine | Concurrency | Batch-10 calls/s median | Mean latency median | Mean request lock wait median |
+|---|---:|---:|---:|---:|
+| v1.0.0 | 1 | 169.5 | 5.870 ms | 0.000 ms |
+| v1.1.1 | 1 | 210.6 | 4.720 ms | 0.000 ms |
+| v1.0.0 | 8 | 848.9 | 9.137 ms | 0.480 ms |
+| v1.1.1 | 8 | 233.7 | 33.232 ms | 25.992 ms |
+
+All four rows are medians of three alternating fresh-data trials. Each trial made
+100 `insertMany` calls containing ten 1 KiB documents with fsync enabled and
+verified the exact count before and after SIGKILL. The candidate is faster at
+concurrency 1 but does not scale the short-batch path because the collection lock
+serializes its durable WAL waits.
+
 ## 16. Reproducibility
 
 All retained rows have three independent measured rounds. Selected per-round
@@ -317,6 +342,10 @@ are retained. `summary.json` includes mean, median, min, max and sample standard
 deviation for throughput, latency, CPU and RSS. Throughput percentage is
 `100 * (new / old - 1)`; paired-change median and ratio-of-medians remain distinct.
 Finite runs on a shared laptop do not establish a universal production advantage.
+The separate `batch-lock-diagnostic-final/summary.json` contains 12 additional
+trials and exact lock-wait telemetry. Its reusable command is
+`node benchmarks/diagnose-batch-lock.mjs OLD_ENGINE NEW_ENGINE OUTPUT`; the output
+directory must be unused so earlier evidence cannot be overwritten.
 
 ## 17. Trade-Offs
 
@@ -329,14 +358,24 @@ was authorized or introduced. The measured batch-10 and mixed/delete tail-latenc
 regressions are release trade-offs, not hidden noise. Source-only architecture
 improvements are not individually assigned whole-release gains.
 
+For short concurrent batches, v1.1.1 chooses WAL/apply ordering over the baseline's
+greater overlap. The cost is the measured lock queue and lost batch throughput;
+the benefit is that live memtable order cannot diverge from durable replay order.
+A future optimization must allow concurrent WAL coalescing while enforcing ordered
+application (and prove same-key, checkpoint and crash behavior). Simply moving
+`WAL::logPutBatch` outside the lock was rejected as an unsafe benchmark-only edit.
+
 ## 18. Remaining Bottlenecks
 
-Whole-request serialization/copies, lock/admission behavior, ordered Raft apply,
-durable sync and vector visibility/signature scanning remain investigation
-candidates. Severity must be tied to measured rows rather than source intuition.
-Dedicated hardware-counter/wait profiles, device sync histograms, network bytes,
-queue depth and compaction/stall attribution remain **not measured**. The new
-full-stack comparison cannot separate client scheduling from engine contributions.
+The short-batch collection lock is a confirmed high-severity bottleneck at
+concurrency 8. Whole-request serialization/copies, other lock/admission behavior,
+ordered Raft apply, durable sync and vector visibility/signature scanning remain
+investigation candidates. Severity must be tied to measured rows rather than
+source intuition. Hardware-counter profiles, device sync histograms, network
+bytes, queue depth and compaction/stall attribution remain **not measured**. The
+main full-stack comparison cannot separate client scheduling from engine
+contributions; the narrow batch diagnostic does isolate the engine and lock wait
+for that one workload.
 
 ## 19. Failure Testing
 
@@ -380,6 +419,12 @@ platform results and local Linux qualification must not be conflated. Build iden
 is checked against metadata, not manufactured to match an unrelated binary.
 No arbitrary source edit is justified solely to reach a benchmark target.
 
+The release branch remediates all three Jackson advisories reported for the Java
+SDK by resolving Jackson 2.18.10. Maven's 29-test package build, dependency tree,
+the exact packaged-client suite and release examples pass. The alerts still appear
+against the default branch until the remediation commit is merged; this is a
+repository-state distinction, not an unresolved dependency in the candidate JAR.
+
 ## 23. Future Optimization Opportunities
 
 Use stable dedicated hosts and sustained/out-of-cache workloads; profile full CPU
@@ -403,12 +448,14 @@ publication-token and apply-run experiments are not silently layered into this r
 | Binary/media | small/large chunked transfer, checksums, resume and recovery | PASS | catalog/media tests; cross-SDK 700,000-byte exact files |
 | Authentication/RBAC | TCP/TLS login, invalid/missing credentials, API keys and scope | PASS | engine auth boundary and cross-SDK authenticated suite |
 | SDK | Node, Python and Java tests plus named operation coverage | PASS | Node 31/31; CLI 27/27; Python-inclusive suite 133/133; 135 dispatch bindings |
+| Java dependency remediation | Jackson 2.18.10 resolution, package and installed consumer | PASS (release branch) | `security-advisories.json`; Maven 29/29; exact packaged TCP/TLS/recovery suite |
 | Workbench | Browser CRUD/UI and desktop bundled-engine lifecycle | PASS (local + hosted) | local browser/desktop checks; hosted Linux/Windows/macOS run `37176501189` |
 | Hosted platform build | Workbench Linux/macOS/Windows workflow after final fixes | PASS | run `37176501189`, exact source `03289fb95999462222973e04d8869827fc1a98c7` |
 | Hosted native installers | Linux/Windows/macOS installers and container P0 | PASS | run `37176502323`; downloaded evidence under `hosted-p0/` |
 | Benchmark | Matched 1.0.0 vs 1.1.1 RF1/RF3 | PASS | 108 RF1 + 6 RF3 successful measured trials |
 | Reproducibility | Three alternating fresh-data runs per row | PASS | `standalone-final/summary.json`, `rf3-final/summary.json` |
-| Performance PR gate | No major unexplained regression | BLOCKED | batch-10 median throughput 756.8 → 237.5 calls/s; causal profiling not established |
+| Performance regression explanation | No major unexplained regression | PASS WITH DOCUMENTED REGRESSION | 12-trial engine-only diagnostic plus source comparison attribute batch-10 to the expanded collection-lock scope; request lock wait is 25.992 ms at concurrency 8; raw evidence in `batch-lock-diagnostic-final/` |
+| Small-batch remediation | Verified ordered-apply optimization or explicit release-owner disposition | BLOCKED | Root cause is established, but no correctness-qualified replacement for the ordering lock was implemented |
 | Physical power | Real power interruption/controller-cache test | BLOCKED | Independent external evidence not supplied |
 | Independent security | External review required by release policy | BLOCKED | No qualifying signed evidence supplied |
 | Registry/public verification | Install public 1.1.1 packages and verify examples | BLOCKED | npm shell unauthenticated; PyPI/Maven ownership unavailable; nothing published |

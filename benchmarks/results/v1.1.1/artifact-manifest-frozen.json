@@ -1,5 +1,9 @@
 {
-  "source_commit": "03289fb95999462222973e04d8869827fc1a98c7",
+  "source_revisions": {
+    "native_and_workbench": "03289fb95999462222973e04d8869827fc1a98c7",
+    "npm_and_python_sdks": "03289fb95999462222973e04d8869827fc1a98c7",
+    "java_sdk": "9d274ee69aaf8b30f38ce566878a400cbac5f766"
+  },
   "engine_build_identity": {
     "engineVersion": "1.1.1",
     "gitCommit": "03289fb95999462222973e04d8869827fc1a98c7",
@@ -34,17 +38,17 @@
     {
       "path": "sdk/java/target/pacificdb-client-1.1.1.jar",
       "size_bytes": 54883,
-      "sha256": "dbd610a5f0db4d3e797c7d9397919d3cd9f444589d64164353e5c2f06fdba107"
+      "sha256": "3c58caa9b59213c9fd10888de6162877ad73f0f06cee0b668c39cf475b40d2dc"
     },
     {
       "path": "sdk/java/target/pacificdb-client-1.1.1-sources.jar",
       "size_bytes": 26362,
-      "sha256": "e4e7e9059e76db33fad5b17454f68a50a930ce63c0b049f12ced9c96f213a7d2"
+      "sha256": "e03d4ce645b909929c103d45c62c3ee8264fdfa96feeb14f3bdb76095eee30ba"
     },
     {
       "path": "sdk/java/target/pacificdb-client-1.1.1-javadoc.jar",
-      "size_bytes": 143235,
-      "sha256": "185fd84389b6689116462b8ebd478c481d2cc8c916e2b48ea4a126a1299196c3"
+      "size_bytes": 143223,
+      "sha256": "80e1a484ccea8d15ad53a80b9e42d3ac0fe4d19c45cd02b6711aaaa972726e3e"
     },
     {
       "path": "build/db_engine",

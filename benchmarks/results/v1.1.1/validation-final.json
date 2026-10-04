@@ -1,12 +1,16 @@
 {
-  "source_commit": "03289fb95999462222973e04d8869827fc1a98c7",
+  "source_revisions": {
+    "native_and_workbench": "03289fb95999462222973e04d8869827fc1a98c7",
+    "java_sdk": "9d274ee69aaf8b30f38ce566878a400cbac5f766"
+  },
   "status": "PASS_WITH_EXTERNAL_RELEASE_BLOCKERS",
   "executed": [
     {
       "command": "scripts/test-community.sh build",
       "result": "PASS",
       "evidence": "community-final.log",
-      "evidence_sha256": "49de760a8f5aec76f3a69c93760496cd4dbc05d10c11d800be346d931504d986"
+      "evidence_sha256": "49de760a8f5aec76f3a69c93760496cd4dbc05d10c11d800be346d931504d986",
+      "fresh_rerun_after_java_remediation": "PASS on 2026-10-04; ended with 'PacificDB Community checks passed'"
     },
     {
       "command": "scripts/test-native-package.sh pacificdb-community-1.1.1-Linux.deb 1.1.1",
@@ -23,6 +27,21 @@
       "evidence": "clean npm tarball and Python wheel installs plus Node/Python/Java CRUD, vector, media and close checks"
     },
     {
+      "command": "mvn -B -f sdk/java/pom.xml test package",
+      "result": "PASS",
+      "evidence": "29 tests passed; main, sources and javadoc JARs rebuilt with Jackson 2.18.10"
+    },
+    {
+      "command": "mvn -B -f sdk/java/pom.xml dependency:tree -Dincludes=com.fasterxml.jackson.core",
+      "result": "PASS",
+      "evidence": "jackson-databind, jackson-annotations and jackson-core all resolve to 2.18.10"
+    },
+    {
+      "command": "PACIFICDB_TEST_ENGINE_BUILD=$PWD/build scripts/test-java-installed-client.sh",
+      "result": "PASS",
+      "evidence": "exact packaged Java consumer over authenticated TCP/TLS, 160 documents, 700000-byte media and SIGKILL recovery"
+    },
+    {
       "command": "python3 benchmarks/summarize-release.py --results benchmarks/results/v1.1.1/standalone-final",
       "result": "PASS",
       "complete_trials": 108
@@ -31,6 +50,13 @@
       "command": "python3 benchmarks/summarize-release.py --results benchmarks/results/v1.1.1/rf3-final",
       "result": "PASS",
       "complete_trials": 6
+    },
+    {
+      "command": "node benchmarks/diagnose-batch-lock.mjs build-baseline-installed/usr/bin/db_engine build/db_engine benchmarks/results/v1.1.1/batch-lock-diagnostic-final",
+      "result": "PASS",
+      "complete_trials": 12,
+      "evidence": "batch-lock-diagnostic-final/summary.json; exact document count before and after SIGKILL in every trial",
+      "finding": "At concurrency 8, candidate mean request lock-wait telemetry was 25.992 ms median versus 0.480 ms in the baseline; candidate throughput remained near its concurrency-1 rate. Source comparison identifies the per-collection lock newly spanning durable WAL completion to preserve WAL/apply order."
     },
     {
       "command": "GitHub Actions run 37176501189",
@@ -53,7 +79,7 @@
     }
   ],
   "release_blockers": [
-    "repeatable batch-10 throughput regression lacks causal profiling and blocks a production-ready performance PR",
+    "the batch-10 regression is causally explained and integrity passes, but the execution contract still requires resolving it before stable publication",
     "stable registry credentials are not available in the local environment",
     "release signing and notarization credentials are unavailable",
     "required independent physical-power and security evidence is absent",

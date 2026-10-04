@@ -172,15 +172,29 @@ platform signing/publisher setup and repository controls. The default branch was
 not protected; secret scanning/push protection were reported disabled. Full npm
 build-tool audit has an unpatched `http-cache-semantics` advisory propagated
 through the Electron build dependency chain; runtime-only npm audit has zero
-reported advisories. GitHub also warns that the pinned `actions/checkout@v4`,
+reported advisories. The release branch updates the Java SDK from Jackson 2.18.9
+to the first patched version, 2.18.10, and the rebuilt package/installed-client
+suites pass. GitHub's three Jackson alerts remain open against the default branch
+until that fix is merged; `security-advisories.json` records the alerts and exact
+verification. GitHub also warns that the pinned `actions/checkout@v4`,
 `actions/upload-artifact@v4` and container build actions target deprecated
 Node.js 20; the hosted runner forced Node.js 24 and the jobs passed. Do not
 describe those as eight unrelated runtime CVEs.
 See the retained raw audit JSON for precise dependency data. A shared laptop and
 finite datasets limit any performance generalization. Missing measurements are
 listed in the engineering report. The repeatable batch-10 throughput regression
-(756.8 → 237.5 calls/s by median) does not yet have causal profiling evidence;
-it blocks a production-ready performance PR even though correctness tests pass.
+(756.8 → 237.5 calls/s by median) is now causally profiled. A separate 12-trial,
+engine-only diagnostic used the same candidate client for both engines. At
+concurrency 8, v1.1.1 reported 25.992 ms mean request lock wait per call by
+median versus 0.480 ms in 1.0.0 and stayed near its concurrency-1 throughput.
+Source comparison identifies the material lock-scope difference: v1.1.1
+deliberately holds the per-collection lock across
+durable WAL completion to keep WAL and in-memory apply order aligned. Removing
+the ordering guard without an independently verified ordered-apply replacement
+would trade correctness for a benchmark number, so the regression remains a
+documented release trade-off rather than an unexplained result.
+The execution contract still requires a verified ordered-apply optimization or
+an explicit release-owner disposition before stable publication.
 
 ## Validation
 
@@ -193,6 +207,12 @@ throughput was 3,850.9 → 19,990.6 calls/s and low-cardinality index rebuild wa
 paired change was +4.82%, but a severe baseline outlier makes that too variable
 for a headline RF3 performance claim.
 
+The batch-lock diagnostic adds 12 fresh-data trials (two engines, concurrency 1
+and 8, three alternating runs), using 100 calls of ten 1 KiB documents per
+trial with fsync enabled. Every trial verified the exact count before and after
+SIGKILL. Raw responses, engine logs and `summary.json` are retained under
+`batch-lock-diagnostic-final/`.
+
 The local Linux build, 58-case comprehensive engine suite, WAL/checkpoint crash
 tests, authenticated E2E, RF3 partition/quorum/recovery, mixed-version upgrade,
 Node/Python/Java SDKs, browser Workbench and packaged desktop lifecycle have
@@ -201,6 +221,10 @@ hosted platform CI, unavailable external certification and public artifact
 verification. A passing build is not publication. Previous failed attempts and
 their corrections remain in the evidence trail, including SDK pool races, runner
 fixtures, build identity and hosted Windows/macOS/browser failures.
+
+After the dependency review, the Java SDK was rebuilt with Jackson 2.18.10:
+29 Maven tests passed, all three Jackson modules resolve to 2.18.10, and the
+packaged Java consumer plus the cross-package release examples passed again.
 
 The corrected Workbench workflow passed Linux, Windows, macOS ARM64 and macOS
 Intel at source `03289fb95999462222973e04d8869827fc1a98c7` in hosted run

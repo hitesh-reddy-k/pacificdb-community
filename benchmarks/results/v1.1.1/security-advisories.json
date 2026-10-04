@@ -1,0 +1,59 @@
+{
+  "checked_at": "2026-10-04",
+  "repository": "hitesh-reddy-k/pacificdb-community",
+  "release_branch_commit": "9d274ee69aaf8b30f38ce566878a400cbac5f766",
+  "manifest": "sdk/java/pom.xml",
+  "dependency": "com.fasterxml.jackson.core:jackson-databind",
+  "previous_resolved_version": "2.18.9",
+  "remediated_resolved_version": "2.18.10",
+  "release_branch_status": "REMEDIATED_AND_LOCALLY_VERIFIED",
+  "default_branch_status": "ALERTS_REMAIN_OPEN_UNTIL_FIX_IS_MERGED",
+  "alerts": [
+    {
+      "number": 1,
+      "ghsa_id": "GHSA-q4xh-88c3-wmh7",
+      "severity": "high",
+      "summary": "jackson-databind: Duration XMLGregorianCalendar Unbounded Number Parse DoS",
+      "vulnerable_range": ">= 2.14.0, < 2.18.10",
+      "first_patched_version": "2.18.10"
+    },
+    {
+      "number": 2,
+      "ghsa_id": "GHSA-gx83-3vf8-gh7j",
+      "severity": "medium",
+      "summary": "jackson-databind: Comparable missing from DefaultBaseTypeLimitingValidator's unsafe base types (incomplete PolymorphicTypeValidator denylist)",
+      "vulnerable_range": ">= 2.11.0, < 2.18.10",
+      "first_patched_version": "2.18.10"
+    },
+    {
+      "number": 3,
+      "ghsa_id": "GHSA-wjgm-6hv5-3cvf",
+      "severity": "medium",
+      "summary": "jackson-databind: Path Deserialization Missing Scheme Allowlist for FileSystemProvider Resolution",
+      "vulnerable_range": ">= 2.8.0, < 2.18.10",
+      "first_patched_version": "2.18.10"
+    }
+  ],
+  "validation": [
+    {
+      "command": "mvn -B -q -f sdk/java/pom.xml help:evaluate -Dexpression=jackson.version -DforceStdout",
+      "result": "2.18.10"
+    },
+    {
+      "command": "mvn -B -f sdk/java/pom.xml test package",
+      "result": "PASS (29 tests, 0 failures, 0 errors)"
+    },
+    {
+      "command": "mvn -B -f sdk/java/pom.xml dependency:tree -Dincludes=com.fasterxml.jackson.core",
+      "result": "PASS (databind, annotations and core resolve to 2.18.10)"
+    },
+    {
+      "command": "PACIFICDB_TEST_ENGINE_BUILD=$PWD/build scripts/test-java-installed-client.sh",
+      "result": "PASS"
+    },
+    {
+      "command": "node scripts/test-release-examples.mjs build",
+      "result": "PASS"
+    }
+  ]
+}

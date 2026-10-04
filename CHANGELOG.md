@@ -27,12 +27,14 @@ Publication and release qualification are pending. Public engine/native installe
 - Preserved request ownership after refused connections and TLS-handshake timeouts so an old socket callback cannot reject a queued successor.
 - Preserved explicit source identity in archive/container builds instead of silently embedding `unknown`.
 - Corrected native CLI socket-error handling for Windows and normalized executable names ending in `.exe`.
+- Updated the Java SDK's Jackson runtime from 2.18.9 to 2.18.10, the first patched version for the three Dependabot advisories reported against the release manifest.
 
 ### Performance
 
 - Fixed Node.js pool scheduling after sequential warmup: completed slots return before caller promises settle, allowing a concurrent burst to use the configured bounded pool.
 - In three matched runs against public 1.0.0, read median throughput changed from 3,850.9 to 19,990.6 calls/s and low-cardinality index rebuild from 4.9 to 21.6 calls/s.
 - Retained regressions are explicit: batch-10 changed from 756.8 to 237.5 calls/s, batch-1,000 from 35.7 to 32.4 calls/s, and mixed/delete tail latency increased. This candidate is not uniformly faster.
+- A separate 12-trial engine-only diagnostic attributes the batch-10 regression to the v1.1.1 per-collection lock spanning durable WAL completion: at concurrency 8, median mean request lock wait was 25.992 ms versus 0.480 ms in 1.0.0. The ordering guard was not removed merely to improve a benchmark.
 
 ### Workbench
 
@@ -44,6 +46,7 @@ Publication and release qualification are pending. Public engine/native installe
 
 - Added database-first Node.js, Python and Java connection helpers while retaining raw/legacy APIs.
 - Verified exact document and 700,000-byte media recovery across authenticated TCP/TLS Python and Java clients.
+- Rebuilt and retested the Java main, sources and javadoc JARs with Jackson 2.18.10; all three Jackson components resolve to that version.
 
 ### Documentation
 
@@ -53,6 +56,7 @@ Publication and release qualification are pending. Public engine/native installe
 
 - Stable publication is blocked by missing independent physical-power/security evidence, platform signing, Python/Maven publisher ownership and failing repository protection/scanning controls.
 - The Electron build dependency chain retains a recorded `http-cache-semantics` advisory; runtime-only npm audit reports zero advisories.
+- GitHub's default branch still reports the three Jackson alerts until the 2.18.10 release-branch fix is merged; the candidate branch itself resolves the patched version and passes the Java package and installed-client suites.
 
 Project metadata and legacy SDK/raw APIs remain compatible; no storage-format migration is required. The measurements are finite same-host PacificDB comparisons, not cross-product rankings or service-level guarantees.
 
