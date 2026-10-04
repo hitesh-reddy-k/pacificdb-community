@@ -8,7 +8,11 @@ from pacificdb import PacificDB, PacificDBClient, PacificDBError
 from pacificdb.connection import parse_connection_url
 from test_transport import peer
 
-FIXTURES = json.loads((Path(__file__).parents[2] / 'contracts/connection-urls.json').read_text())
+FIXTURES = json.loads(
+    (Path(__file__).parents[2] / 'contracts/connection-urls.json').read_text(
+        encoding='utf-8'
+    )
+)
 
 def python_options(values):
     names = {'tls': 'use_tls', 'userId': 'user_id', 'poolSize': 'pool_size', 'caFile': 'ca_file', 'timeoutMs': 'timeout'}

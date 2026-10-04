@@ -14,6 +14,9 @@ on:
         default: ''
 permissions:
   contents: read
+env:
+  # Keep fixture and source decoding deterministic on Windows runners.
+  PYTHONUTF8: '1'
 jobs:
   supported-runtimes:
     strategy:

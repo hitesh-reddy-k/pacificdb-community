@@ -19,7 +19,9 @@ def validate(matrix, implementations=True):
     rows = matrix['actions']
     names = [row['action'] for row in rows]
     if len(names) != len(set(names)): raise ValueError('Duplicate capability action')
-    dispatched = dispatched_actions((ROOT / 'engine/src/server.cpp').read_text())
+    dispatched = dispatched_actions(
+        (ROOT / 'engine/src/server.cpp').read_text(encoding='utf-8')
+    )
     if set(names) != dispatched:
         raise ValueError(f'Dispatch mismatch: missing {sorted(dispatched-set(names))}; extra {sorted(set(names)-dispatched)}')
     by_action = {row['action']: row for row in rows}
@@ -43,12 +45,20 @@ def validate(matrix, implementations=True):
                 obj = db
                 for part in row['python'].split('.'): obj = getattr(obj,part)
                 if not callable(obj): raise ValueError('Python API is not callable')
-        java = (ROOT/'sdk/java/src/main/java/io/pacificdb/PacificDBClient.java').read_text() + (ROOT/'sdk/java/src/main/java/io/pacificdb/Operations.java').read_text()
+        java = (
+            ROOT / 'sdk/java/src/main/java/io/pacificdb/PacificDBClient.java'
+        ).read_text(encoding='utf-8') + (
+            ROOT / 'sdk/java/src/main/java/io/pacificdb/Operations.java'
+        ).read_text(encoding='utf-8')
         for row in rows:
             if row['classification'] != 'internal' and not re.search(r'\b'+re.escape(row['java'].split('.')[-1])+r'\s*\(',java): raise ValueError('Missing Java API')
     return len(rows)
 
 
 if __name__ == '__main__':
-    matrix = json.loads((ROOT/'sdk/contracts/community-capabilities.json').read_text())
+    matrix = json.loads(
+        (ROOT / 'sdk/contracts/community-capabilities.json').read_text(
+            encoding='utf-8'
+        )
+    )
     print(f'PASS: {validate(matrix)} Community dispatches have checked named SDK bindings')

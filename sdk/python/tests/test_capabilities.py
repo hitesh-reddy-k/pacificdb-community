@@ -8,7 +8,11 @@ from pacificdb import PacificDB, PacificDBError
 from test_transport import peer
 
 ROOT = Path(__file__).resolve().parents[3]
-MATRIX = json.loads((ROOT/'sdk/contracts/community-capabilities.json').read_text())
+MATRIX = json.loads(
+    (ROOT / 'sdk/contracts/community-capabilities.json').read_text(
+        encoding='utf-8'
+    )
+)
 spec = importlib.util.spec_from_file_location('validator', ROOT/'scripts/test-sdk-capability-matrix.py')
 validator = importlib.util.module_from_spec(spec); spec.loader.exec_module(validator)
 
