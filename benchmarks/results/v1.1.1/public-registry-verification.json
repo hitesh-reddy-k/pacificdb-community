@@ -1,7 +1,8 @@
 {
-  "checked_at": "2026-10-04T10:03:44+05:30",
+  "checked_at": "2026-10-04T10:58:16+05:30",
   "target_version": "1.1.1",
   "status": "NOT_PUBLISHED",
+  "local_npm_authentication": "E401 Unauthorized from npm whoami",
   "checks": [
     {
       "coordinate": "npm:@pacificdb/client",
@@ -21,6 +22,7 @@
     {
       "coordinate": "maven:io.pacificdb:pacificdb-client:1.1.1",
       "http_status": 404,
+      "search_maven_num_found": 0,
       "target_present": false
     },
     {
