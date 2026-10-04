@@ -1,28 +1,38 @@
 {
-  "checked_at": "2026-10-04T10:59:04+05:30",
-  "status": "CANDIDATE_SOURCE_NOT_DEPLOYED",
+  "checked_at": "2026-10-04T15:10:55+05:30",
+  "status": "DEPLOYED_VERIFIED",
+  "workflow": {
+    "run_id": 37192873112,
+    "source_revision": "7dc6dc0215d717a9d52a6a977309a002d1ec921c",
+    "conclusion": "success",
+    "url": "https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/37192873112"
+  },
   "pages": [
     {
       "url": "https://pacificdb.in/",
       "http_status": 200,
-      "observed_release_versions": ["1.0.0", "1.0.1"],
-      "target_version_present": false
+      "target_version_present": true,
+      "removed_comparison_present": false
     },
     {
       "url": "https://pacificdb.in/docs.html",
       "http_status": 200,
-      "observed_release_versions": ["1.0.0", "1.0.1"],
-      "target_version_present": false
+      "target_version_present": true,
+      "removed_comparison_present": false
     },
     {
       "url": "https://pacificdb.in/release-1.1.1.html",
-      "http_status": 404,
-      "target_version_present": false
+      "http_status": 200,
+      "target_version_present": true,
+      "removed_comparison_present": false
     }
   ],
-  "candidate_source_validation": {
-    "command": "node scripts/test-site-docs.mjs",
+  "source_validation": {
+    "commands": [
+      "node scripts/test-site-docs.mjs",
+      "python3 scripts/test-release-consistency.py",
+      "repository-wide removed-product-comparison scan"
+    ],
     "result": "PASS"
-  },
-  "disposition": "Do not promote the public website before the stable publication gates pass."
+  }
 }
