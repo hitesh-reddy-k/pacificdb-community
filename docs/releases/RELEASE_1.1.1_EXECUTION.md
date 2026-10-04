@@ -86,4 +86,6 @@ and the two release documents. No failed/slow completed benchmark is excluded.
 - [x] Published Workbench in run `37191983730`; all platform jobs passed, every
   public asset matches `SHA256SUMS`, and the extracted Debian package plus bundled
   engine/CLI report 1.1.1.
-- [ ] Create the review PR and record its URL/CI conclusion.
+- [x] Created review PR
+  [#31](https://github.com/hitesh-reddy-k/pacificdb-community/pull/31). The PR is
+  intentionally not merged; its live CI conclusion is recorded in the final report.
