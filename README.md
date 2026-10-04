@@ -249,9 +249,11 @@ with PacificDB.connect(url) as db:
 
 ### Java
 
-Maven Central ownership is not configured, so install the v1.1.1 source locally:
+Maven Central ownership is not configured. The release tag predates the final
+Jackson 2.18.11 security update, so install the audited release-branch revision:
 
 ```sh
+git checkout 25fb81d413973b6779eaf71a26bedb42f6d79be3
 mvn -f sdk/java/pom.xml install
 ```
 

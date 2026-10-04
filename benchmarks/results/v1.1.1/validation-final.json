@@ -1,7 +1,7 @@
 {
   "source_revisions": {
     "native_and_workbench": "03289fb95999462222973e04d8869827fc1a98c7",
-    "java_sdk": "9d274ee69aaf8b30f38ce566878a400cbac5f766"
+    "java_sdk": "25fb81d413973b6779eaf71a26bedb42f6d79be3"
   },
   "status": "PASS_WITH_EXTERNAL_RELEASE_BLOCKERS",
   "executed": [
@@ -29,12 +29,12 @@
     {
       "command": "mvn -B -f sdk/java/pom.xml test package",
       "result": "PASS",
-      "evidence": "29 tests passed; main, sources and javadoc JARs rebuilt with Jackson 2.18.10"
+      "evidence": "29 tests passed; main, sources and javadoc JARs rebuilt with Jackson 2.18.11"
     },
     {
       "command": "mvn -B -f sdk/java/pom.xml dependency:tree -Dincludes=com.fasterxml.jackson.core",
       "result": "PASS",
-      "evidence": "jackson-databind, jackson-annotations and jackson-core all resolve to 2.18.10"
+      "evidence": "jackson-databind, jackson-annotations and jackson-core all resolve to 2.18.11"
     },
     {
       "command": "PACIFICDB_TEST_ENGINE_BUILD=$PWD/build scripts/test-java-installed-client.sh",

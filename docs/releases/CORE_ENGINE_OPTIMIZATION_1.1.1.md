@@ -418,11 +418,12 @@ platform results and local Linux qualification must not be conflated. Build iden
 is checked against metadata, not manufactured to match an unrelated binary.
 No arbitrary source edit is justified solely to reach a benchmark target.
 
-The release branch remediates all three Jackson advisories reported for the Java
-SDK by resolving Jackson 2.18.10. Maven's 29-test package build, dependency tree,
-the exact packaged-client suite and release examples pass. The alerts still appear
-against the default branch until the remediation commit is merged; this is a
-repository-state distinction, not an unresolved dependency in the candidate JAR.
+The release branch remediates all five Jackson advisories reported for the Java
+SDK by resolving Jackson 2.18.11. Post-tag dependency review identified two
+additional high-severity advisories in 2.18.10. Maven's 29-test package build,
+dependency tree, exact packaged-client suite and release examples pass. The
+immutable release tag contains the earlier Java dependency, so the website pins
+the audited post-tag source commit; no Java artifact was published from the tag.
 
 ## 23. Future Optimization Opportunities
 
@@ -447,7 +448,7 @@ publication-token and apply-run experiments are not silently layered into this r
 | Binary/media | small/large chunked transfer, checksums, resume and recovery | PASS | catalog/media tests; cross-SDK 700,000-byte exact files |
 | Authentication/RBAC | TCP/TLS login, invalid/missing credentials, API keys and scope | PASS | engine auth boundary and cross-SDK authenticated suite |
 | SDK | Node, Python and Java tests plus named operation coverage | PASS | Node 31/31; CLI 27/27; Python-inclusive suite 133/133; 135 dispatch bindings |
-| Java dependency remediation | Jackson 2.18.10 resolution, package and installed consumer | PASS (release branch) | `security-advisories.json`; Maven 29/29; exact packaged TCP/TLS/recovery suite |
+| Java dependency remediation | Jackson 2.18.11 resolution, package and installed consumer | PASS (release branch) | `security-advisories.json`; Maven 29/29; exact packaged TCP/TLS/recovery suite; release examples pass |
 | Workbench | Browser CRUD/UI and desktop bundled-engine lifecycle | PASS (local + hosted + public) | local browser/desktop checks; hosted matrix `37176501189`; exact-tag publication run `37191983730`; public checksums and bundled versions verified |
 | Hosted platform build | Workbench Linux/macOS/Windows workflow after final fixes | PASS | run `37176501189`, exact source `03289fb95999462222973e04d8869827fc1a98c7` |
 | Hosted native installers | Linux/Windows/macOS installers and container P0 | PASS | run `37176502323`; downloaded evidence under `hosted-p0/` |

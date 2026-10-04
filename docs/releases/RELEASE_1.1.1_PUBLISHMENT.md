@@ -27,7 +27,7 @@ state on 4 October 2026.
 | Node SDK `@pacificdb/client` | 1.0.0 | 1.1.1 | npm | Published as `latest`; clean install and real CRUD verified |
 | Node CLI `@pacificdb/cli` | 1.0.0 | 1.1.1 | npm | Published as `latest`; clean install and `--version` verified |
 | Python `pacificdb` | No public version verified | 1.1.1 | PyPI / tagged source | PyPI not published: run `37191728049` passed qualification but failed OIDC with `invalid-publisher`; tagged-source install verified |
-| Java `io.pacificdb:pacificdb-client` | No public version verified | 1.1.1 | Maven Central / tagged source | Central not published: run `37191730662` passed qualification but release credentials were absent |
+| Java `io.pacificdb:pacificdb-client` | No public version verified | 1.1.1 | Maven Central / audited branch source | Central not published: run `37191730662` passed tag qualification but release credentials were absent; use patched commit `25fb81d413973b6779eaf71a26bedb42f6d79be3` |
 | PacificDB Workbench | Linux 1.0.1 prerelease | 1.1.1 | [GitHub desktop release](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/workbench-v1.1.1) | Published; all five checksums and bundled engine/CLI versions verified |
 | Helm deployment chart | Published chart version not independently verified | 1.1.1 | Repository chart | Lint, schema and fail-closed production checks pass |
 | Website | Public stable 1.0.0 links | 1.1.1 pages | [pacificdb.in](https://pacificdb.in/) | Published; homepage, docs and release page return HTTP 200 |
@@ -55,6 +55,8 @@ find and close against the downloaded 1.1.1 release engine. The public Python ta
 install reports version 1.1.1. The exact website-example harness also installs the
 qualified Python wheel and compiles Java with `--release 11` against the release
 JAR, but those local artifacts are not represented as public registry packages.
+The Java source install must use patched commit
+`25fb81d413973b6779eaf71a26bedb42f6d79be3`, not the immutable release tag.
 
 Native package extraction/install checks are performed by
 `scripts/test-native-package.sh` and `scripts/test-debian-container-install.sh`.
@@ -186,9 +188,12 @@ protected; secret scanning/push protection were reported disabled. Full npm
 build-tool audit has an unpatched `http-cache-semantics` advisory propagated
 through the Electron build dependency chain; runtime-only npm audit has zero
 reported advisories. The release branch updates the Java SDK from Jackson 2.18.9
-to the first patched version, 2.18.10, and the rebuilt package/installed-client
-suites pass. GitHub's three Jackson alerts remain open against the default branch
-until that fix is merged; `security-advisories.json` records the alerts and exact
+to 2.18.11. Post-tag dependency review found two additional high-severity
+advisories in 2.18.10; 2.18.11 is the first patched 2.18.x release for all five
+recorded advisories. The rebuilt package/installed-client suites pass. The Java
+guide pins commit `25fb81d413973b6779eaf71a26bedb42f6d79be3` because the
+immutable `v1.1.1` tag contains the earlier Java dependency; no Java package was
+published from that tag. `security-advisories.json` records the advisories and
 verification. GitHub also warns that the pinned `actions/checkout@v4`,
 `actions/upload-artifact@v4` and container build actions target deprecated
 Node.js 20; the hosted runner forced Node.js 24 and the jobs passed. Do not
@@ -236,8 +241,8 @@ verification. A passing build is not publication. Previous failed attempts and
 their corrections remain in the evidence trail, including SDK pool races, runner
 fixtures, build identity and hosted Windows/macOS/browser failures.
 
-After the dependency review, the Java SDK was rebuilt with Jackson 2.18.10:
-29 Maven tests passed, all three Jackson modules resolve to 2.18.10, and the
+After the final dependency review, the Java SDK was rebuilt with Jackson 2.18.11:
+29 Maven tests passed, all three Jackson modules resolve to 2.18.11, and the
 packaged Java consumer plus the cross-package release examples passed again.
 
 The corrected Workbench workflow passed Linux, Windows, macOS ARM64 and macOS

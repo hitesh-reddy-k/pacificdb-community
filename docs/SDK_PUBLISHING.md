@@ -7,6 +7,10 @@ matching trusted publisher is registered; Maven Central validation/publication
 still requires the configured owner credentials and explicit portal action.
 Neither coordinate is publicly available as 1.1.1. Never overwrite or claim
 ownership without release-owner verification and a coordinated version.
+The audited Java source is commit
+`25fb81d413973b6779eaf71a26bedb42f6d79be3`, which resolves Jackson 2.18.11;
+the immutable release tag contains the earlier 2.18.10 dependency and must not
+be used to install the Java client.
 
 Build and inspect locally:
 

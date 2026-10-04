@@ -3,8 +3,8 @@
 This change is included in the public v1.1.1 native, npm, and Workbench release
 artifacts. PyPI publication is blocked on trusted-publisher registration, and
 Maven Central publication remains an explicit release-owner action after
-validation, so use the documented tagged-source/local Maven installs for those
-two SDKs.
+validation, so use the documented Python tag and audited Java commit/local Maven
+installs for those two SDKs.
 
 Create data directly in either updated CLI:
 

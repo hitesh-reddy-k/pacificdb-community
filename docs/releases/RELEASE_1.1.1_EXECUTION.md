@@ -86,6 +86,10 @@ and the two release documents. No failed/slow completed benchmark is excluded.
 - [x] Published Workbench in run `37191983730`; all platform jobs passed, every
   public asset matches `SHA256SUMS`, and the extracted Debian package plus bundled
   engine/CLI report 1.1.1.
+- [x] Responded to the PR dependency-review failure by updating the unpublished
+  Java client to Jackson 2.18.11 at commit
+  `25fb81d413973b6779eaf71a26bedb42f6d79be3`; 29 tests, the dependency tree,
+  installed consumer, authenticated TCP/TLS recovery and release examples pass.
 - [x] Created review PR
   [#31](https://github.com/hitesh-reddy-k/pacificdb-community/pull/31). The PR is
   intentionally not merged; its live CI conclusion is recorded in the final report.

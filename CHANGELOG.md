@@ -27,7 +27,7 @@ Released from branch `v-1.1.1`. The release owner explicitly accepted the docume
 - Preserved request ownership after refused connections and TLS-handshake timeouts so an old socket callback cannot reject a queued successor.
 - Preserved explicit source identity in archive/container builds instead of silently embedding `unknown`.
 - Corrected native CLI socket-error handling for Windows and normalized executable names ending in `.exe`.
-- Updated the Java SDK's Jackson runtime from 2.18.9 to 2.18.10, the first patched version for the three Dependabot advisories reported against the release manifest.
+- Updated the Java SDK's Jackson runtime from 2.18.9 to 2.18.11. Post-tag dependency review found two additional high-severity advisories affecting 2.18.10; 2.18.11 is the first patched 2.18.x release for all five advisories recorded against this branch.
 
 ### Performance
 
@@ -46,7 +46,7 @@ Released from branch `v-1.1.1`. The release owner explicitly accepted the docume
 
 - Added database-first Node.js, Python and Java connection helpers while retaining raw/legacy APIs.
 - Verified exact document and 700,000-byte media recovery across authenticated TCP/TLS Python and Java clients.
-- Rebuilt and retested the Java main, sources and javadoc JARs with Jackson 2.18.10; all three Jackson components resolve to that version.
+- Rebuilt and retested the Java main, sources and javadoc JARs with Jackson 2.18.11; all three Jackson components resolve to that version.
 
 ### Documentation
 
@@ -58,7 +58,7 @@ Released from branch `v-1.1.1`. The release owner explicitly accepted the docume
 - Windows and macOS artifacts are unsigned. The exception is restricted to the 1.1.1 engine and Workbench tags.
 - Maven Central publisher ownership remains unavailable; use the verified source-install path for the Java SDK.
 - The Electron build dependency chain retains a recorded `http-cache-semantics` advisory; runtime-only npm audit reports zero advisories.
-- GitHub's default branch can continue reporting the three Jackson alerts until the 2.18.10 release fix is merged; branch `v-1.1.1` resolves the patched version and passes the Java package and installed-client suites.
+- GitHub's default branch can continue reporting Jackson alerts until the 2.18.11 release fix is merged. The `v1.1.1` tag contains the earlier 2.18.10 Java source, so the public Java source-install guide pins audited commit `25fb81d413973b6779eaf71a26bedb42f6d79be3`; no Java artifact was published from the tag.
 
 Project metadata and legacy SDK/raw APIs remain compatible; no storage-format migration is required. The measurements are finite same-host PacificDB comparisons, not cross-product rankings or service-level guarantees.
 

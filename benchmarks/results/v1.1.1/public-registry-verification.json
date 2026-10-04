@@ -37,8 +37,11 @@
       "search_maven_num_found": 0,
       "target_present": false,
       "workflow_run": 37191730662,
-      "qualification": "PASS",
-      "publication": "NOT ATTEMPTED: owner GPG identity and Central token absent"
+      "qualification": "PASS at the immutable tag; later PR dependency review found two additional advisories in Jackson 2.18.10",
+      "publication": "NOT ATTEMPTED: owner GPG identity and Central token absent",
+      "patched_source_commit": "25fb81d413973b6779eaf71a26bedb42f6d79be3",
+      "patched_dependency": "com.fasterxml.jackson.core:jackson-databind:2.18.11",
+      "patched_source_validation": "PASS: 29 tests, dependency tree, installed consumer, TCP/TLS/SIGKILL recovery and release examples"
     },
     {
       "coordinate": "github-release:v1.1.1",
