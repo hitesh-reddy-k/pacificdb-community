@@ -1,0 +1,195 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "@electron/get": {
+      "name": "@electron/get",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "got"
+      ],
+      "effects": [
+        "app-builder-lib"
+      ],
+      "range": "<=4.0.3",
+      "nodes": [
+        "node_modules/app-builder-lib/node_modules/@electron/get"
+      ],
+      "fixAvailable": {
+        "name": "electron-builder",
+        "version": "26.5.0",
+        "isSemVerMajor": true
+      }
+    },
+    "app-builder-lib": {
+      "name": "app-builder-lib",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "@electron/get",
+        "dmg-builder",
+        "electron-builder-squirrel-windows"
+      ],
+      "effects": [
+        "dmg-builder",
+        "electron-builder",
+        "electron-builder-squirrel-windows"
+      ],
+      "range": "26.6.0 - 27.0.0-alpha.2",
+      "nodes": [
+        "node_modules/app-builder-lib"
+      ],
+      "fixAvailable": {
+        "name": "electron-builder",
+        "version": "26.5.0",
+        "isSemVerMajor": true
+      }
+    },
+    "cacheable-request": {
+      "name": "cacheable-request",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "http-cache-semantics"
+      ],
+      "effects": [
+        "got"
+      ],
+      "range": ">=0.1.0",
+      "nodes": [
+        "node_modules/cacheable-request"
+      ],
+      "fixAvailable": {
+        "name": "electron-builder",
+        "version": "26.5.0",
+        "isSemVerMajor": true
+      }
+    },
+    "dmg-builder": {
+      "name": "dmg-builder",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "app-builder-lib"
+      ],
+      "effects": [
+        "electron-builder"
+      ],
+      "range": "26.6.0 - 27.0.0-alpha.2",
+      "nodes": [
+        "node_modules/dmg-builder"
+      ],
+      "fixAvailable": {
+        "name": "electron-builder",
+        "version": "26.5.0",
+        "isSemVerMajor": true
+      }
+    },
+    "electron-builder": {
+      "name": "electron-builder",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        "app-builder-lib",
+        "dmg-builder"
+      ],
+      "effects": [],
+      "range": "19.25.0 || 26.6.0 - 27.0.0-alpha.2",
+      "nodes": [
+        "node_modules/electron-builder"
+      ],
+      "fixAvailable": {
+        "name": "electron-builder",
+        "version": "26.5.0",
+        "isSemVerMajor": true
+      }
+    },
+    "electron-builder-squirrel-windows": {
+      "name": "electron-builder-squirrel-windows",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "app-builder-lib"
+      ],
+      "effects": [],
+      "range": "26.6.0 - 27.0.0-alpha.2",
+      "nodes": [
+        "node_modules/electron-builder-squirrel-windows"
+      ],
+      "fixAvailable": true
+    },
+    "got": {
+      "name": "got",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        "cacheable-request"
+      ],
+      "effects": [
+        "@electron/get"
+      ],
+      "range": ">=8.0.0",
+      "nodes": [
+        "node_modules/got"
+      ],
+      "fixAvailable": {
+        "name": "electron-builder",
+        "version": "26.5.0",
+        "isSemVerMajor": true
+      }
+    },
+    "http-cache-semantics": {
+      "name": "http-cache-semantics",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1240991,
+          "name": "http-cache-semantics",
+          "dependency": "http-cache-semantics",
+          "title": "http-cache-semantics max-stale handling can disclose cross-user cached responses",
+          "url": "https://github.com/advisories/GHSA-ch52-4w7c-c8xp",
+          "severity": "high",
+          "cwe": [
+            "CWE-524"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"
+          },
+          "range": "<=4.2.0"
+        }
+      ],
+      "effects": [
+        "cacheable-request"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/http-cache-semantics"
+      ],
+      "fixAvailable": {
+        "name": "electron-builder",
+        "version": "26.5.0",
+        "isSemVerMajor": true
+      }
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 8,
+      "critical": 0,
+      "total": 8
+    },
+    "dependencies": {
+      "prod": 5,
+      "dev": 286,
+      "optional": 23,
+      "peer": 13,
+      "peerOptional": 0,
+      "total": 290
+    }
+  }
+}

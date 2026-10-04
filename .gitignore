@@ -16,6 +16,7 @@
 *.token
 *.secret
 *.log
+!benchmarks/results/**/*.log
 *.pid
 *.bin
 .DS_Store

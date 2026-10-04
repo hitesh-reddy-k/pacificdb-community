@@ -8,15 +8,17 @@ qualified packages, website deployment and a PR only after its gates pass.
 
 - [x] Discover public engine/package/Workbench baselines and distribution workflows.
 - [x] Create an isolated release checkout rooted in the public default branch.
-- [ ] Import the previously qualified database-first CLI/Workbench/SDK changes without deleting unrelated public files.
-- [ ] Align current component metadata to 1.1.1; preserve historical evidence and actual public download versions.
-- [ ] Map engine/storage/transport/replication APIs and audit retained optimization changes.
-- [ ] Build a clean candidate and execute relevant Community, SDK, browser and desktop checks.
-- [ ] Acquire the exact v1.0.0 baseline artifact; validate identity and perform repeated, matched benchmarks.
-- [ ] Retain raw measurements, configuration, resource counters, integrity results, and summarize variance/latency/regressions.
-- [ ] Build, inspect and install local npm, Python, Java, engine and Workbench artifacts.
-- [ ] Update website examples, Workbench guide, changelog and both required release documents from executed evidence.
-- [ ] Run final checks and independent review; publish only qualified artifacts through existing configured workflows.
+- [x] Import the previously qualified database-first CLI/Workbench/SDK changes without deleting unrelated public files.
+- [x] Align current component metadata to 1.1.1; preserve historical evidence and actual public download versions.
+- [x] Map engine/storage/transport/replication APIs and audit retained optimization changes.
+- [x] Build a candidate and execute relevant Community, SDK, browser and desktop checks.
+- [x] Acquire the exact v1.0.0 baseline artifact; validate identity and perform repeated, matched benchmarks.
+- [x] Retain raw measurements, configuration, resource counters, integrity results, and summarize variance/latency/regressions.
+- [x] Build, inspect and install local npm, Python, Java, engine and Workbench artifacts.
+- [x] Update website examples, Workbench guide, changelog and both required release documents from executed evidence.
+- [x] Run final local checks and hosted Workbench/native-installer matrices; retain exact run and P0 evidence.
+- [ ] Obtain required independent power/security review and resolve the batch-10 regression before stable publication.
+- [ ] Publish only qualified, signed artifacts through existing configured workflows.
 - [ ] Verify public registry versions and installed artifacts after publication; create the requested PR only when its stated gates pass.
 
 ## Binding invariants

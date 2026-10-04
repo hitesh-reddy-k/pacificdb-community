@@ -1,0 +1,12 @@
+{
+  "status": "PASS",
+  "image": "pacificdb-local:1.1.1",
+  "image_id": "sha256:71818cb81c2fcef6357db709319c69166e7c6685d3647529a954b8bf0537390f",
+  "version": "1.1.1",
+  "revision": "2e01b09581fd987afc2bb18ee506b5bc60d2cde0",
+  "registry_digest": "",
+  "non_root": true,
+  "read_only_root": true,
+  "application_ping": true,
+  "write_read": true
+}

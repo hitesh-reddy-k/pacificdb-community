@@ -1,0 +1,62 @@
+{
+  "source_commit": "03289fb95999462222973e04d8869827fc1a98c7",
+  "status": "PASS_WITH_EXTERNAL_RELEASE_BLOCKERS",
+  "executed": [
+    {
+      "command": "scripts/test-community.sh build",
+      "result": "PASS",
+      "evidence": "community-final.log",
+      "evidence_sha256": "49de760a8f5aec76f3a69c93760496cd4dbc05d10c11d800be346d931504d986"
+    },
+    {
+      "command": "scripts/test-native-package.sh pacificdb-community-1.1.1-Linux.deb 1.1.1",
+      "result": "PASS"
+    },
+    {
+      "command": "PACIFICDB_TEST_DESKTOP=dist/desktop/linux-unpacked/pacificdb-workbench npm run test:workbench:desktop",
+      "result": "PASS",
+      "evidence": "native window, sandbox, bundled engine, CRUD, media, shutdown/restart persistence"
+    },
+    {
+      "command": "node scripts/test-release-examples.mjs build",
+      "result": "PASS",
+      "evidence": "clean npm tarball and Python wheel installs plus Node/Python/Java CRUD, vector, media and close checks"
+    },
+    {
+      "command": "python3 benchmarks/summarize-release.py --results benchmarks/results/v1.1.1/standalone-final",
+      "result": "PASS",
+      "complete_trials": 108
+    },
+    {
+      "command": "python3 benchmarks/summarize-release.py --results benchmarks/results/v1.1.1/rf3-final",
+      "result": "PASS",
+      "complete_trials": 6
+    },
+    {
+      "command": "GitHub Actions run 37176501189",
+      "result": "PASS",
+      "evidence": "Workbench packaged and tested on Linux, Windows, macOS ARM64 and macOS x64"
+    },
+    {
+      "command": "GitHub Actions run 37176502323",
+      "result": "PASS",
+      "evidence": "native installers/P0 on Linux, Windows, macOS ARM64 and macOS x86_64; non-root read-only container smoke",
+      "raw_evidence": "hosted-p0/"
+    }
+  ],
+  "not_executed_in_final_aggregate": [
+    {
+      "test": "mixed-version RF3",
+      "reason": "aggregate command requires PACIFICDB_OLD_BUILD",
+      "separate_evidence": "rf3-upgrade-final.json",
+      "separate_result": "PASS"
+    }
+  ],
+  "release_blockers": [
+    "repeatable batch-10 throughput regression lacks causal profiling and blocks a production-ready performance PR",
+    "stable registry credentials are not available in the local environment",
+    "release signing and notarization credentials are unavailable",
+    "required independent physical-power and security evidence is absent",
+    "repository control audit is not passing"
+  ]
+}

@@ -1,0 +1,209 @@
+{
+  "round": 3,
+  "artifact": {
+    "label": "v1.1.1",
+    "binary": "/home/hitesh/pacificdb-release-1.1.1/build/db_engine",
+    "sha256": "517e12b7e821a11abe000eb0b204759220634c87e2c57f12bdb574a00b24513b",
+    "version": "PacificDB Engine 1.1.1",
+    "build_info": {
+      "product": "PacificDB Engine",
+      "engineVersion": "1.1.1",
+      "gitCommit": "2d751c0d907b8479e1d58bf8d6570a475d2966a3",
+      "storageFormatVersion": "2",
+      "raftProtocolVersion": "2",
+      "buildTimestamp": "2026-10-03T21:37:57+05:30",
+      "compiler": "GNU-13.3.0"
+    }
+  },
+  "workload": {
+    "name": "rf3-insert",
+    "operation": "insert",
+    "calls": 500,
+    "concurrency": 8,
+    "pool": 8
+  },
+  "calls": 500,
+  "successful_calls": 500,
+  "errors": [],
+  "elapsed_ms": 710.3292199999851,
+  "attempted_calls_per_second": 703.8989611042757,
+  "documents_per_second": 703.8989611042757,
+  "latency_ms": {
+    "mean": 11.3197692339996,
+    "p50": 11.343661999999313,
+    "p95": 17.41033700000844,
+    "p99": 23.62917900001048
+  },
+  "resources": {
+    "before": {
+      "cpu_seconds": 1.41,
+      "rss_kib": 45024,
+      "peak_rss_kib": 45024,
+      "threads": 204,
+      "read_bytes": 0,
+      "write_bytes": 1933312
+    },
+    "after": {
+      "cpu_seconds": 3.23,
+      "rss_kib": 57876,
+      "peak_rss_kib": 57876,
+      "threads": 206,
+      "read_bytes": 4096,
+      "write_bytes": 8007680
+    },
+    "sampled_peak_rss_kib": 57876,
+    "delta": {
+      "cpu_seconds": 1.82,
+      "read_bytes": 4096,
+      "write_bytes": 6074368
+    }
+  },
+  "integrity": "PASS: every expected field on all three nodes, follower catch-up and all-node SIGKILL/restart",
+  "after_timing": {
+    "milliseconds": 101.42447999998694,
+    "pings": [
+      {
+        "commit_index": 602,
+        "consistency_mode": "EVENTUAL",
+        "consistency_semantics": "eventual",
+        "edition": "community",
+        "isLeader": true,
+        "last_applied": 602,
+        "leader_term": 0,
+        "requestId": "eng_req_709",
+        "status": "pong",
+        "term": 0,
+        "trace_id": "eng_709"
+      },
+      {
+        "_debug_metrics": {
+          "lease_epoch": 0,
+          "raft_apply_queue_depth": 0,
+          "raft_commit_index": 602,
+          "raft_current_term": 0,
+          "raft_last_applied": 602,
+          "read_barrier_wait_ms": 0,
+          "wal_flush_latency": 0
+        },
+        "_engineTrace": {
+          "action": "ping",
+          "lifecycle_us": {
+            "request_dequeued_us": 91800412477,
+            "request_received_us": 91800412477
+          },
+          "node_role": "follower",
+          "request_id": "eng_req_100",
+          "timings_ms": {
+            "exec": 0.022665,
+            "parse": 0.01231,
+            "queue": 0,
+            "read": 100.626332
+          },
+          "timings_us": {
+            "accept_wait": 0,
+            "auth": 0,
+            "conn_pool_wait": 0,
+            "db_queue_wait": 0,
+            "lock_wait": 0,
+            "memtable_insert": 0,
+            "parse": 12,
+            "queue_wait": 0,
+            "replication": 0,
+            "response_send": 0,
+            "wal_append": 0,
+            "wal_encode_crc": 0,
+            "wal_fdatasync": 0,
+            "wal_fsync": 0,
+            "wal_queue_wait": 0,
+            "wal_write": 0
+          },
+          "trace_id": "eng_100"
+        },
+        "_raft": {
+          "apply_queue_depth": 0,
+          "commit_index": 602,
+          "is_leader": false,
+          "last_applied": 602,
+          "last_index": 602,
+          "term": 0
+        },
+        "commit_index": 602,
+        "consistency_mode": "EVENTUAL",
+        "consistency_semantics": "eventual",
+        "edition": "community",
+        "isLeader": false,
+        "last_applied": 602,
+        "leader_term": 0,
+        "requestId": "eng_req_100",
+        "status": "pong",
+        "term": 0,
+        "trace_id": "eng_100"
+      },
+      {
+        "_debug_metrics": {
+          "lease_epoch": 0,
+          "raft_apply_queue_depth": 0,
+          "raft_commit_index": 602,
+          "raft_current_term": 0,
+          "raft_last_applied": 602,
+          "read_barrier_wait_ms": 0,
+          "wal_flush_latency": 0
+        },
+        "_engineTrace": {
+          "action": "ping",
+          "lifecycle_us": {
+            "request_dequeued_us": 91800412468,
+            "request_received_us": 91800412468
+          },
+          "node_role": "follower",
+          "request_id": "eng_req_100",
+          "timings_ms": {
+            "exec": 0.027995,
+            "parse": 0.018203,
+            "queue": 0,
+            "read": 100.578912
+          },
+          "timings_us": {
+            "accept_wait": 0,
+            "auth": 0,
+            "conn_pool_wait": 0,
+            "db_queue_wait": 0,
+            "lock_wait": 0,
+            "memtable_insert": 0,
+            "parse": 18,
+            "queue_wait": 0,
+            "replication": 0,
+            "response_send": 0,
+            "wal_append": 0,
+            "wal_encode_crc": 0,
+            "wal_fdatasync": 0,
+            "wal_fsync": 0,
+            "wal_queue_wait": 0,
+            "wal_write": 0
+          },
+          "trace_id": "eng_100"
+        },
+        "_raft": {
+          "apply_queue_depth": 0,
+          "commit_index": 602,
+          "is_leader": false,
+          "last_applied": 602,
+          "last_index": 602,
+          "term": 0
+        },
+        "commit_index": 602,
+        "consistency_mode": "EVENTUAL",
+        "consistency_semantics": "eventual",
+        "edition": "community",
+        "isLeader": false,
+        "last_applied": 602,
+        "leader_term": 0,
+        "requestId": "eng_req_100",
+        "status": "pong",
+        "term": 0,
+        "trace_id": "eng_100"
+      }
+    ]
+  },
+  "follower_restart_and_catchup_ms": 307.65546000000904
+}

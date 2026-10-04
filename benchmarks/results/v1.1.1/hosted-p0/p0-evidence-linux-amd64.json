@@ -1,0 +1,50 @@
+{
+  "schema": "pacificdb.p0-evidence.v1",
+  "platform": "linux",
+  "architecture": "x64",
+  "package_root": "/home/runner/work/_temp/p0-installed/usr",
+  "binary_root": "/home/runner/work/_temp/p0-installed/usr/bin",
+  "executable": "/home/runner/work/_temp/p0-installed/usr/bin/pacificdb",
+  "started_at": "2026-10-04T04:20:46.411Z",
+  "tests": [
+    {
+      "name": "protocol",
+      "exit_code": 0,
+      "elapsed_ms": 2054,
+      "result": "{\"status\":\"PASS\",\"cases\":6,\"port\":37489}"
+    },
+    {
+      "name": "discovery",
+      "exit_code": 0,
+      "elapsed_ms": 2374,
+      "result": "{\"status\":\"PASS\",\"launchers\":8,\"scenarios\":[\"no_start\",\"concurrent_start\",\"healthy_existing\",\"stale_pid\",\"reused_pid\",\"early_exit\",\"data_root_in_use\",\"unrelated_port\"],\"engine_pid\":4408}"
+    },
+    {
+      "name": "lifecycle",
+      "exit_code": 0,
+      "elapsed_ms": 8168,
+      "result": "{\"status\":\"PASS\",\"cycles\":5,\"clients_per_cycle\":16,\"writes\":10000,\"acknowledged\":9960,\"pid\":4958}"
+    },
+    {
+      "name": "load",
+      "exit_code": 0,
+      "elapsed_ms": 10097,
+      "result": "{\"status\":\"PASS\",\"writes\":10000,\"retained_records\":10000,\"clients\":8,\"acknowledged\":10000,\"elapsed_ms\":8302,\"initial_pid\":5032,\"recovery_pid\":5092,\"data_root_fingerprint\":\"sha256:7082beaaef2bb5f1bb2078e061c09e3281344c43bf703ae41905e7877cef5393\"}"
+    },
+    {
+      "name": "media",
+      "exit_code": 0,
+      "elapsed_ms": 14082,
+      "result": "{\"status\":\"PASS\",\"accepted_cases\":11,\"rejected_empty\":1,\"maximum_bytes\":104857600,\"restart\":\"abrupt\",\"filenames\":5}"
+    },
+    {
+      "name": "soak",
+      "exit_code": 0,
+      "elapsed_ms": 56134,
+      "result": "{\"status\":\"PASS\",\"writes\":100000,\"retained_records\":256,\"clients\":16,\"acknowledged\":100000,\"elapsed_ms\":55194,\"initial_pid\":5503,\"recovery_pid\":5572,\"data_root_fingerprint\":\"sha256:3e260d66f81498380ef3d9d9330bc54e4999c44bebf47b43fb3f868d9aec4cac\"}"
+    }
+  ],
+  "version": "PacificDB 1.1.1",
+  "status": "PASS",
+  "completed_at": "2026-10-04T04:22:19.325Z"
+}

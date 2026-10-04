@@ -20,10 +20,40 @@ Publication and release qualification are pending. Public engine/native installe
 
 - Creation selects a database only after success; switching validates the accessible database catalog.
 - Java/Python pooled connection lifecycle, request scope capture, typed errors and explicit close behavior.
-- Fixed Node.js pool scheduling after sequential warmup: completed slots return to the pool before caller promises settle, so a concurrent burst can use the configured connections instead of queuing behind one warm slot. The peer regression verifies four concurrent requests with a four-connection pool.
 - Verified media downloads replace destinations after checksum validation; interrupted writes are never automatically retried.
-- Workbench Overview count loading uses a single loader with at most four jobs in flight, cached database scope, mutation invalidation and unknown-value placeholders. Other views do not schedule full count scans.
 
-Project metadata and legacy SDK/raw APIs remain compatible; no data migration is required. Candidate qualification must verify package installs, upgrade/restore, authentication, security, retained tests and release artifacts. No candidate benchmark ranking or measured startup-speed improvement is claimed.
+### Fixed
+
+- Preserved request ownership after refused connections and TLS-handshake timeouts so an old socket callback cannot reject a queued successor.
+- Preserved explicit source identity in archive/container builds instead of silently embedding `unknown`.
+- Corrected native CLI socket-error handling for Windows and normalized executable names ending in `.exe`.
+
+### Performance
+
+- Fixed Node.js pool scheduling after sequential warmup: completed slots return before caller promises settle, allowing a concurrent burst to use the configured bounded pool.
+- In three matched runs against public 1.0.0, read median throughput changed from 3,850.9 to 19,990.6 calls/s and low-cardinality index rebuild from 4.9 to 21.6 calls/s.
+- Retained regressions are explicit: batch-10 changed from 756.8 to 237.5 calls/s, batch-1,000 from 35.7 to 32.4 calls/s, and mixed/delete tail latency increased. This candidate is not uniformly faster.
+
+### Workbench
+
+- Replaced mandatory project selection with direct database and collection navigation while retaining legacy stored project metadata.
+- Overview count loading uses one loader with at most four jobs in flight, cached database scope, mutation invalidation and unknown-value placeholders. Other views do not schedule full count scans.
+- Local Linux browser/packaged-desktop checks and hosted Linux/Windows/macOS Workbench builds pass; signing/notarization and stable publication remain pending.
+
+### SDKs
+
+- Added database-first Node.js, Python and Java connection helpers while retaining raw/legacy APIs.
+- Verified exact document and 700,000-byte media recovery across authenticated TCP/TLS Python and Java clients.
+
+### Documentation
+
+- Added tested package examples, Workbench operation/troubleshooting guidance, upgrade notes, reproducible benchmark scripts/raw evidence and the two v1.1.1 release reports.
+
+### Known Issues
+
+- Stable publication is blocked by missing independent physical-power/security evidence, platform signing, Python/Maven publisher ownership and failing repository protection/scanning controls.
+- The Electron build dependency chain retains a recorded `http-cache-semantics` advisory; runtime-only npm audit reports zero advisories.
+
+Project metadata and legacy SDK/raw APIs remain compatible; no storage-format migration is required. The measurements are finite same-host PacificDB comparisons, not cross-product rankings or service-level guarantees.
 
 See [candidate release notes](site/release-1.1.1.html), [usage and upgrade documentation](site/docs.html), and [historical 1.0.1 source notes](site/release-1.0.1.html).

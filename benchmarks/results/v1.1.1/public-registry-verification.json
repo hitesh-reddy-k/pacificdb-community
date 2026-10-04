@@ -1,0 +1,32 @@
+{
+  "checked_at": "2026-10-04T10:03:44+05:30",
+  "target_version": "1.1.1",
+  "status": "NOT_PUBLISHED",
+  "checks": [
+    {
+      "coordinate": "npm:@pacificdb/client",
+      "latest_verified_version": "1.0.0",
+      "target_present": false
+    },
+    {
+      "coordinate": "npm:@pacificdb/cli",
+      "latest_verified_version": "1.0.0",
+      "target_present": false
+    },
+    {
+      "coordinate": "pypi:pacificdb/1.1.1",
+      "http_status": 404,
+      "target_present": false
+    },
+    {
+      "coordinate": "maven:io.pacificdb:pacificdb-client:1.1.1",
+      "http_status": 404,
+      "target_present": false
+    },
+    {
+      "coordinate": "github-release:v1.1.1",
+      "result": "release not found",
+      "target_present": false
+    }
+  ]
+}

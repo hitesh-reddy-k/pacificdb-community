@@ -1,0 +1,59 @@
+{
+  "schema": "pacificdb.p0-evidence.v1",
+  "platform": "darwin",
+  "architecture": "x64",
+  "package_root": "/usr/local",
+  "binary_root": "/usr/local/bin",
+  "executable": "/usr/local/bin/pacificdb",
+  "started_at": "2026-10-04T04:22:42.843Z",
+  "tests": [
+    {
+      "name": "protocol",
+      "exit_code": 0,
+      "elapsed_ms": 2482,
+      "result": "{\"status\":\"PASS\",\"cases\":6,\"port\":49192}"
+    },
+    {
+      "name": "discovery",
+      "exit_code": 0,
+      "elapsed_ms": 3103,
+      "result": "{\"status\":\"PASS\",\"launchers\":8,\"scenarios\":[\"no_start\",\"concurrent_start\",\"healthy_existing\",\"stale_pid\",\"reused_pid\",\"early_exit\",\"data_root_in_use\",\"unrelated_port\"],\"engine_pid\":8032}"
+    },
+    {
+      "name": "lifecycle",
+      "exit_code": 0,
+      "elapsed_ms": 31985,
+      "result": "{\"status\":\"PASS\",\"cycles\":5,\"clients_per_cycle\":16,\"writes\":10000,\"acknowledged\":9960,\"pid\":8062}"
+    },
+    {
+      "name": "load",
+      "exit_code": 0,
+      "elapsed_ms": 29406,
+      "result": "{\"status\":\"PASS\",\"writes\":10000,\"retained_records\":10000,\"clients\":8,\"acknowledged\":10000,\"elapsed_ms\":27796,\"initial_pid\":8683,\"recovery_pid\":9142,\"data_root_fingerprint\":\"sha256:d19f17db6da944ac99b3994aa0bb93e14580c595cff9b2d998c2f0043b68fe02\"}"
+    },
+    {
+      "name": "media",
+      "exit_code": 0,
+      "elapsed_ms": 64033,
+      "result": "{\"status\":\"PASS\",\"accepted_cases\":11,\"rejected_empty\":1,\"maximum_bytes\":104857600,\"restart\":\"abrupt\",\"filenames\":5}"
+    },
+    {
+      "name": "soak",
+      "exit_code": 0,
+      "elapsed_ms": 234756,
+      "result": "{\"status\":\"PASS\",\"writes\":100000,\"retained_records\":256,\"clients\":16,\"acknowledged\":100000,\"elapsed_ms\":232290,\"initial_pid\":10564,\"recovery_pid\":15360,\"data_root_fingerprint\":\"sha256:d90d1c9f4cef2237d4c80a76a57324a99a9dd5546963dd3438210afdff278abe\"}"
+    }
+  ],
+  "version": "PacificDB 1.1.1",
+  "status": "PASS",
+  "completed_at": "2026-10-04T04:28:48.642Z",
+  "revision": "03289fb95999462222973e04d8869827fc1a98c7",
+  "release_architecture": "x86_64",
+  "macos_signing": {
+    "status": "NOT_APPLICABLE",
+    "signature": "NOT_APPLICABLE",
+    "notarization": "NOT_APPLICABLE",
+    "stapling": "NOT_APPLICABLE",
+    "gatekeeper": "NOT_APPLICABLE"
+  }
+}
