@@ -49,7 +49,7 @@ jobs:
   linux:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ env.WORKBENCH_RELEASE_TAG || github.ref }}
       - uses: actions/setup-node@v4
@@ -98,7 +98,7 @@ jobs:
       CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
       PACIFICDB_DESKTOP_RELEASE: ${{ (startsWith(github.ref, 'refs/tags/workbench-v') || startsWith(inputs.release_tag, 'workbench-v')) && '1' || '0' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ env.WORKBENCH_RELEASE_TAG || github.ref }}
       - uses: actions/setup-node@v4
@@ -193,7 +193,7 @@ jobs:
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       PACIFICDB_DESKTOP_RELEASE: ${{ (startsWith(github.ref, 'refs/tags/workbench-v') || startsWith(inputs.release_tag, 'workbench-v')) && '1' || '0' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ env.WORKBENCH_RELEASE_TAG || github.ref }}
       - uses: actions/setup-node@v4
@@ -262,7 +262,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ env.WORKBENCH_RELEASE_TAG }}
       - uses: actions/setup-node@v4
