@@ -302,3 +302,19 @@ Linux package instead of the development entry point:
 ```sh
 PACIFICDB_TEST_DESKTOP="$PWD/dist/desktop/linux-unpacked/pacificdb-workbench" npm run test:workbench:desktop
 ```
+
+For an upgrade check, provide the previous installed executable separately and
+use a caller-owned temporary data directory:
+
+```sh
+PACIFICDB_TEST_DESKTOP_PREVIOUS=/path/to/previous/pacificdb-workbench \
+PACIFICDB_TEST_DESKTOP=/path/to/candidate/pacificdb-workbench \
+PACIFICDB_TEST_DESKTOP_DATA=/absolute/temporary/workbench-data \
+npm run test:workbench:desktop
+```
+
+The previous executable creates the fixture and the candidate verifies it,
+restarts, and exercises the bundled CLI's backup verification and restore
+history. Restore writes a separately validated restore directory; it does not
+replace the live desktop database. A caller-owned test directory is never
+removed by the test, so installer-uninstall checks can assert that data remains.
