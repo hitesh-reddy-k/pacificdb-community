@@ -124,12 +124,21 @@ require(
     "$env:PACIFICDB_DESKTOP_RELEASE = '0'",
     'if [[ "$WORKBENCH_RELEASE_TAG" == workbench-v1.1.1 ]]',
     "export PACIFICDB_DESKTOP_RELEASE=0",
+    "workbench_release_qualification.py platform",
+    "workbench_release_qualification.py aggregate",
+    "WORKBENCH_PHYSICAL_POWER_EVIDENCE_BASE64",
+    "WORKBENCH_SECURITY_REVIEW_EVIDENCE_BASE64",
+    "WORKBENCH_LOAD_EVIDENCE_BASE64",
+    "if: always()",
     'gh release create "$WORKBENCH_RELEASE_TAG"',
 )
 forbid(
     ".github/workflows/workbench-desktop.yml",
     "-DPACIFICDB_ENGINE_VERSION=1.1.1",
     'test "$version" = "$(node -p "require(\'./cli/package.json\').version")"',
+    "linux-unpacked",
+    "win-unpacked",
+    "dist/desktop/PacificDB-Workbench-*.tar.gz",
 )
 require_flat_release_uploads()
 require(

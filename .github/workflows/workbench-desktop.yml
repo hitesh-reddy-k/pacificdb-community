@@ -84,17 +84,50 @@ jobs:
           PACIFICDB_DESKTOP_UBUNTU_24: '1'
           ELECTRON_BUILDER_COMPRESSION_LEVEL: '1'
         run: npm run desktop:build -- --linux deb tar.gz --x64
-      - name: Test packaged application
+      - name: Download and install previous Workbench Debian
+        shell: bash
         run: |
-          PACIFICDB_TEST_DESKTOP="$PWD/dist/desktop/linux-unpacked/pacificdb-workbench" \
+          set -euo pipefail
+          previous="$RUNNER_TEMP/PacificDB-Workbench-1.1.1-linux-amd64.deb"
+          curl -fL --retry 3 \
+            "https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-v1.1.1/PacificDB-Workbench-1.1.1-linux-amd64.deb" \
+            -o "$previous"
+          sudo apt-get install -y "$previous"
+          sudo cp -a "/opt/PacificDB Workbench" "$RUNNER_TEMP/workbench-previous-linux"
+      - name: Remove previous Workbench Debian
+        run: sudo apt-get remove -y pacificdb-workbench
+      - name: Install and test candidate Workbench Debian
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate="$PWD/dist/desktop/PacificDB-Workbench-${WORKBENCH_VERSION}-linux-amd64.deb"
+          test -f "$candidate"
+          sudo apt-get install -y "$candidate"
+          mkdir -p "$RUNNER_TEMP/workbench-data-linux"
+          PACIFICDB_TEST_DESKTOP_PREVIOUS="$RUNNER_TEMP/workbench-previous-linux/pacificdb-workbench" \
+            PACIFICDB_TEST_DESKTOP="/opt/PacificDB Workbench/pacificdb-workbench" \
+            PACIFICDB_TEST_DESKTOP_DATA="$RUNNER_TEMP/workbench-data-linux" \
             xvfb-run -a npm run test:workbench:desktop
+      - name: Remove candidate Workbench Debian and verify data preservation
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get remove -y pacificdb-workbench
+          test -d "$RUNNER_TEMP/workbench-data-linux/database"
+      - name: Record Linux platform evidence
+        run: |
+          python3 scripts/workbench_release_qualification.py platform \
+            --name linux-x64 --version "$WORKBENCH_VERSION" \
+            --artifact "dist/desktop/PacificDB-Workbench-${WORKBENCH_VERSION}-linux-amd64.deb" \
+            --output build/workbench-linux-x64.json
+          mkdir -p build/workbench-upload
+          cp "dist/desktop/PacificDB-Workbench-${WORKBENCH_VERSION}-linux-amd64.deb" \
+            build/workbench-linux-x64.json build/workbench-upload/
       - uses: actions/upload-artifact@v4
         with:
           name: workbench-linux-x64
           if-no-files-found: error
-          path: |
-            dist/desktop/PacificDB-Workbench-*.deb
-            dist/desktop/PacificDB-Workbench-*.tar.gz
+          path: build/workbench-upload/*
 
   windows:
     runs-on: windows-2025
@@ -173,17 +206,66 @@ jobs:
           }
           npm run desktop:build -- --win nsis --x64 --publish never
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Test packaged application
+      - name: Download and install previous Workbench NSIS
         shell: pwsh
         run: |
-          $env:PACIFICDB_TEST_DESKTOP = "$pwd\dist\desktop\win-unpacked\PacificDB Workbench.exe"
+          $previous = "$env:RUNNER_TEMP\PacificDB-Workbench-1.1.1-win-x64.exe"
+          $installed = "$env:RUNNER_TEMP\workbench-previous-installed"
+          $fixture = "$env:RUNNER_TEMP\workbench-previous-fixture"
+          Invoke-WebRequest `
+            -Uri 'https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-v1.1.1/PacificDB-Workbench-1.1.1-win-x64.exe' `
+            -OutFile $previous
+          $process = Start-Process -FilePath $previous -ArgumentList @('/S', "/D=$installed") -Wait -PassThru
+          if ($process.ExitCode -ne 0) { exit $process.ExitCode }
+          New-Item -ItemType Directory -Force -Path $fixture | Out-Null
+          Copy-Item -Path "$installed\*" -Destination $fixture -Recurse
+      - name: Uninstall previous Workbench NSIS
+        shell: pwsh
+        run: |
+          $uninstaller = Get-ChildItem "$env:RUNNER_TEMP\workbench-previous-installed" -Filter 'Uninstall*.exe' | Select-Object -First 1
+          if (-not $uninstaller) { throw 'Previous Workbench uninstaller was not found.' }
+          $process = Start-Process -FilePath $uninstaller.FullName -ArgumentList '/S' -Wait -PassThru
+          if ($process.ExitCode -ne 0) { exit $process.ExitCode }
+      - name: Install and test candidate Workbench NSIS
+        shell: pwsh
+        run: |
+          $candidate = Get-Item "$pwd\dist\desktop\PacificDB-Workbench-$env:WORKBENCH_VERSION-win-x64.exe"
+          $installed = "$env:RUNNER_TEMP\workbench-candidate-installed"
+          $data = "$env:RUNNER_TEMP\workbench-data-windows"
+          $process = Start-Process -FilePath $candidate.FullName -ArgumentList @('/S', "/D=$installed") -Wait -PassThru
+          if ($process.ExitCode -ne 0) { exit $process.ExitCode }
+          New-Item -ItemType Directory -Force -Path $data | Out-Null
+          $env:PACIFICDB_TEST_DESKTOP_PREVIOUS = "$env:RUNNER_TEMP\workbench-previous-fixture\PacificDB Workbench.exe"
+          $env:PACIFICDB_TEST_DESKTOP = "$installed\PacificDB Workbench.exe"
+          $env:PACIFICDB_TEST_DESKTOP_DATA = $data
           npm run test:workbench:desktop
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Uninstall candidate Workbench NSIS and verify data preservation
+        shell: pwsh
+        run: |
+          $uninstaller = Get-ChildItem "$env:RUNNER_TEMP\workbench-candidate-installed" -Filter 'Uninstall*.exe' | Select-Object -First 1
+          if (-not $uninstaller) { throw 'Candidate Workbench uninstaller was not found.' }
+          $process = Start-Process -FilePath $uninstaller.FullName -ArgumentList '/S' -Wait -PassThru
+          if ($process.ExitCode -ne 0) { exit $process.ExitCode }
+          if (-not (Test-Path "$env:RUNNER_TEMP\workbench-data-windows\database" -PathType Container)) {
+            throw 'Workbench data directory was removed by uninstall.'
+          }
+      - name: Record Windows platform evidence
+        shell: pwsh
+        run: |
+          python scripts/workbench_release_qualification.py platform `
+            --name windows-x64 --version $env:WORKBENCH_VERSION `
+            --artifact "dist/desktop/PacificDB-Workbench-$env:WORKBENCH_VERSION-win-x64.exe" `
+            --output build/workbench-windows-x64.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Force -Path build/workbench-upload | Out-Null
+          Copy-Item "dist/desktop/PacificDB-Workbench-$env:WORKBENCH_VERSION-win-x64.exe", `
+            build/workbench-windows-x64.json -Destination build/workbench-upload
       - uses: actions/upload-artifact@v4
         with:
           name: workbench-windows-x64
           if-no-files-found: error
-          path: dist/desktop/PacificDB-Workbench-*.exe
+          path: build/workbench-upload/*
 
   macos:
     strategy:
@@ -250,24 +332,67 @@ jobs:
             export CSC_IDENTITY_AUTO_DISCOVERY=false
           fi
           npm run desktop:build -- --mac dmg --${{ matrix.arch }} --publish never
-      - name: Test packaged application
+      - name: Mount and copy previous Workbench DMG
         shell: bash
         run: |
           set -euo pipefail
-          executable=$(find dist/desktop -path '*/Contents/MacOS/PacificDB Workbench' -type f -print -quit)
-          test -n "$executable"
-          PACIFICDB_TEST_DESKTOP="$PWD/$executable" npm run test:workbench:desktop
+          previous="$RUNNER_TEMP/PacificDB-Workbench-1.1.1-mac-${{ matrix.arch }}.dmg"
+          mount="$RUNNER_TEMP/workbench-previous-mount"
+          curl -fL --retry 3 \
+            "https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-v1.1.1/PacificDB-Workbench-1.1.1-mac-${{ matrix.arch }}.dmg" \
+            -o "$previous"
+          mkdir -p "$mount" "$RUNNER_TEMP/workbench-previous-installed" \
+            "$RUNNER_TEMP/workbench-previous-fixture"
+          hdiutil attach "$previous" -mountpoint "$mount" -nobrowse
+          ditto "$mount/PacificDB Workbench.app" \
+            "$RUNNER_TEMP/workbench-previous-installed/PacificDB Workbench.app"
+          hdiutil detach "$mount"
+          ditto "$RUNNER_TEMP/workbench-previous-installed/PacificDB Workbench.app" \
+            "$RUNNER_TEMP/workbench-previous-fixture/PacificDB Workbench.app"
+      - name: Remove previous Workbench application
+        run: rm -rf "$RUNNER_TEMP/workbench-previous-installed"
+      - name: Mount and test candidate Workbench DMG
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate="$PWD/dist/desktop/PacificDB-Workbench-${WORKBENCH_VERSION}-mac-${{ matrix.arch }}.dmg"
+          mount="$RUNNER_TEMP/workbench-candidate-mount"
+          installed="$RUNNER_TEMP/workbench-candidate/PacificDB Workbench.app"
+          mkdir -p "$mount" "$RUNNER_TEMP/workbench-candidate" "$RUNNER_TEMP/workbench-data-macos"
+          hdiutil attach "$candidate" -mountpoint "$mount" -nobrowse
+          ditto "$mount/PacificDB Workbench.app" "$installed"
+          hdiutil detach "$mount"
+          executable="$installed/Contents/MacOS/PacificDB Workbench"
+          PACIFICDB_TEST_DESKTOP_PREVIOUS="$RUNNER_TEMP/workbench-previous-fixture/PacificDB Workbench.app/Contents/MacOS/PacificDB Workbench" \
+            PACIFICDB_TEST_DESKTOP="$executable" \
+            PACIFICDB_TEST_DESKTOP_DATA="$RUNNER_TEMP/workbench-data-macos" \
+            npm run test:workbench:desktop
           if [[ "$PACIFICDB_DESKTOP_RELEASE" == 1 && "$WORKBENCH_RELEASE_TAG" != workbench-v1.1.1 ]]; then
-            contents=$(dirname "$(dirname "$executable")")
-            codesign --verify --deep --strict --verbose=2 "$(dirname "$contents")"
+            contents="$installed/Contents"
+            codesign --verify --deep --strict --verbose=2 "$installed"
             codesign --verify --strict "$contents/Resources/engine/db_engine"
             codesign --verify --strict "$contents/Resources/engine/pacificdb"
           fi
+      - name: Remove candidate Workbench application and verify data preservation
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf "$RUNNER_TEMP/workbench-candidate"
+          test -d "$RUNNER_TEMP/workbench-data-macos/database"
+      - name: Record macOS platform evidence
+        run: |
+          python3 scripts/workbench_release_qualification.py platform \
+            --name macos-${{ matrix.arch }} --version "$WORKBENCH_VERSION" \
+            --artifact "dist/desktop/PacificDB-Workbench-${WORKBENCH_VERSION}-mac-${{ matrix.arch }}.dmg" \
+            --output "build/workbench-macos-${{ matrix.arch }}.json"
+          mkdir -p build/workbench-upload
+          cp "dist/desktop/PacificDB-Workbench-${WORKBENCH_VERSION}-mac-${{ matrix.arch }}.dmg" \
+            "build/workbench-macos-${{ matrix.arch }}.json" build/workbench-upload/
       - uses: actions/upload-artifact@v4
         with:
           name: workbench-macos-${{ matrix.arch }}
           if-no-files-found: error
-          path: dist/desktop/PacificDB-Workbench-*.dmg
+          path: build/workbench-upload/*
 
   release:
     if: startsWith(github.ref, 'refs/tags/workbench-v') || startsWith(inputs.release_tag, 'workbench-v')
@@ -298,19 +423,77 @@ jobs:
           pattern: workbench-*
           path: dist/desktop
           merge-multiple: true
+      - name: Decode external qualification evidence
+        shell: bash
+        env:
+          WORKBENCH_PHYSICAL_POWER_EVIDENCE_BASE64: ${{ secrets.WORKBENCH_PHYSICAL_POWER_EVIDENCE_BASE64 }}
+          WORKBENCH_SECURITY_REVIEW_EVIDENCE_BASE64: ${{ secrets.WORKBENCH_SECURITY_REVIEW_EVIDENCE_BASE64 }}
+          WORKBENCH_LOAD_EVIDENCE_BASE64: ${{ secrets.WORKBENCH_LOAD_EVIDENCE_BASE64 }}
+        run: |
+          set -euo pipefail
+          mkdir -p build/external
+          if [[ -n "$WORKBENCH_PHYSICAL_POWER_EVIDENCE_BASE64" ]]; then
+            printf '%s' "$WORKBENCH_PHYSICAL_POWER_EVIDENCE_BASE64" | \
+              base64 --decode > build/external/physical-power-result.json
+          fi
+          if [[ -n "$WORKBENCH_SECURITY_REVIEW_EVIDENCE_BASE64" ]]; then
+            printf '%s' "$WORKBENCH_SECURITY_REVIEW_EVIDENCE_BASE64" | \
+              base64 --decode > build/external/security-review.tar.gz
+            mkdir -p build/external/security-review
+            tar -xzf build/external/security-review.tar.gz \
+              -C build/external/security-review
+          fi
+          if [[ -n "$WORKBENCH_LOAD_EVIDENCE_BASE64" ]]; then
+            printf '%s' "$WORKBENCH_LOAD_EVIDENCE_BASE64" | \
+              base64 --decode > build/external/workbench-load-result.json
+          fi
+      - name: Aggregate Workbench qualification
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm audit --omit=dev --json > build/npm-audit.json || true
+          args=(
+            --version "$WORKBENCH_VERSION"
+            --artifact "dist/desktop/PacificDB-Workbench-${WORKBENCH_VERSION}-linux-amd64.deb"
+            --artifact "dist/desktop/PacificDB-Workbench-${WORKBENCH_VERSION}-win-x64.exe"
+            --artifact "dist/desktop/PacificDB-Workbench-${WORKBENCH_VERSION}-mac-arm64.dmg"
+            --artifact "dist/desktop/PacificDB-Workbench-${WORKBENCH_VERSION}-mac-x64.dmg"
+            --platform-result dist/desktop/workbench-linux-x64.json
+            --platform-result dist/desktop/workbench-windows-x64.json
+            --platform-result dist/desktop/workbench-macos-arm64.json
+            --platform-result dist/desktop/workbench-macos-x64.json
+            --audit-report build/npm-audit.json
+            --output build/workbench-release-evidence.json
+          )
+          [[ ! -f build/external/physical-power-result.json ]] || \
+            args+=(--physical-power-evidence build/external/physical-power-result.json)
+          if [[ -f build/external/security-review/bundle-manifest.json && \
+                -f build/external/security-review/review-result.json ]]; then
+            args+=(--security-bundle build/external/security-review \
+              --security-review build/external/security-review/review-result.json)
+          fi
+          [[ ! -f build/external/workbench-load-result.json ]] || \
+            args+=(--load-evidence build/external/workbench-load-result.json)
+          python3 scripts/workbench_release_qualification.py aggregate "${args[@]}"
+      - name: Upload Workbench qualification report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workbench-release-qualification
+          if-no-files-found: error
+          path: build/workbench-release-evidence.json
       - name: Generate checksums
         shell: bash
         run: |
           set -euo pipefail
           cd dist/desktop
-          sha256sum PacificDB-Workbench-*.deb PacificDB-Workbench-*.tar.gz \
-            PacificDB-Workbench-*.exe PacificDB-Workbench-*.dmg > SHA256SUMS
+          sha256sum PacificDB-Workbench-*.deb PacificDB-Workbench-*.exe \
+            PacificDB-Workbench-*.dmg > SHA256SUMS
       - name: Publish verified installers
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$WORKBENCH_RELEASE_TAG" dist/desktop/PacificDB-Workbench-*.deb \
-            dist/desktop/PacificDB-Workbench-*.tar.gz \
             dist/desktop/PacificDB-Workbench-*.exe \
             dist/desktop/PacificDB-Workbench-*.dmg dist/desktop/SHA256SUMS \
             --title "PacificDB Workbench ${WORKBENCH_RELEASE_TAG#workbench-v}" \
