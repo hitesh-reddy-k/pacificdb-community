@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pacificdb.example/schemas/workbench-load-result.schema.json",
+  "title": "PacificDB Workbench long-duration load evidence",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version", "revision", "status", "duration_seconds", "records",
+    "operations", "errors", "peak_resident_bytes"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "status": {"const": "PASS"},
+    "duration_seconds": {"type": "integer", "minimum": 28800},
+    "records": {"type": "integer", "minimum": 500000},
+    "operations": {"type": "integer", "minimum": 1},
+    "errors": {"const": 0},
+    "peak_resident_bytes": {"type": "integer", "minimum": 1}
+  }
+}

@@ -52,3 +52,52 @@ These scoped checks do not waive the required external gates above. No package,
 release tag or installer was published or deployed. Registry ownership/protected
 publisher setup, supported-platform execution, and release-owner approval remain
 separate prerequisites; see [publication instructions](SDK_PUBLISHING.md).
+
+## Workbench installer qualification
+
+Workbench releases use a separate fail-closed report. Each supported runner
+records the installer it actually tested:
+
+```sh
+python3 scripts/workbench_release_qualification.py platform \
+  --name linux-x64 \
+  --version 1.1.2 \
+  --artifact dist/PacificDB-Workbench-1.1.2-linux-amd64.deb \
+  --output build/workbench-linux-x64.json
+```
+
+Valid platform names are `linux-x64`, `windows-x64`, `macos-arm64`, and
+`macos-x64`. Aggregate all four results with the exact installer files and the
+external evidence bound to the same clean Git revision:
+
+```sh
+python3 scripts/workbench_release_qualification.py aggregate \
+  --version 1.1.2 \
+  --artifact dist/PacificDB-Workbench-1.1.2-linux-amd64.deb \
+  --artifact dist/PacificDB-Workbench-Setup-1.1.2.exe \
+  --artifact dist/PacificDB-Workbench-1.1.2-mac-arm64.dmg \
+  --artifact dist/PacificDB-Workbench-1.1.2-mac-x64.dmg \
+  --platform-result build/workbench-linux-x64.json \
+  --platform-result build/workbench-windows-x64.json \
+  --platform-result build/workbench-macos-arm64.json \
+  --platform-result build/workbench-macos-x64.json \
+  --physical-power-evidence build/physical-power-result.json \
+  --security-bundle build/security-review \
+  --security-review build/security-review/review-result.json \
+  --load-evidence build/workbench-load-result.json \
+  --audit-report build/npm-audit.json \
+  --output build/workbench-release-evidence.json
+```
+
+The load record must satisfy
+[`workbench-load-result.schema.json`](schemas/workbench-load-result.schema.json):
+at least eight hours, 500,000 records, one operation, zero errors, and a
+positive peak resident-memory measurement. The runtime audit report is the JSON
+output of `npm audit --omit=dev --json` and must contain zero vulnerabilities.
+
+`PASS` requires a clean source tree, all four exact installer digests, valid
+physical power-loss and independent security-review evidence, the load
+threshold, and a clean runtime dependency audit. Missing evidence is
+`BLOCKED`; conflicting revisions, digests, failed external evidence, load
+errors, or runtime advisories are `FAIL`. Neither status may be published as a
+stable Workbench release.
