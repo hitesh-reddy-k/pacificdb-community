@@ -2964,6 +2964,16 @@ bool RaftCore::replicateAndApply(const json& inputEntry, OperationPriority prior
             return false;
         }
 
+        // The single-node quorum is not durable until its Raft record is on disk.
+        // persistProgress() fsyncs a different file, so doing it first can leave a
+        // committed watermark ahead of a lost log tail after physical power loss.
+        raftLogAppendSeqBump(index);
+        {
+            std::string base = dataRoot();
+            if (base.back() != '/' && base.back() != '\\') base += "/";
+            raftGroupLogFsync(base + "raft/log.bin", index);
+        }
+
         // A single-node group reaches quorum with its own durable log append.
         // Publish commit before applying so lastApplied can never move ahead of
         // commitIndex, matching the replicated path's safety invariant.

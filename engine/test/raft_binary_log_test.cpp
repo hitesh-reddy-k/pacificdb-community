@@ -170,6 +170,12 @@ int writePhase(const fs::path& root) {
     if (fs::exists(root / "raft/raft_log.jsonl")) {
         throw std::runtime_error("legacy Raft JSON log was written");
     }
+    const auto durabilityMetrics = raft.getWriteReplicationMetrics();
+    if (durabilityMetrics.value("raftLogFsyncCount", 0LL) +
+            durabilityMetrics.value("raftLogFsyncBypassCount", 0LL) < 6) {
+        throw std::runtime_error(
+            "single-node acknowledgements did not pass through Raft log fsync");
+    }
 
     // Simulate a crash: the durable Raft log must be sufficient even though no
     // graceful LSM flush or applied-progress checkpoint runs.
