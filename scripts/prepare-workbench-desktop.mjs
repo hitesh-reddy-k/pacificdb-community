@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const workspace = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
 const cli = JSON.parse(await readFile(path.join(root, 'cli/package.json'), 'utf8'));
 const executableName = process.platform === 'win32' ? 'db_engine.exe' : 'db_engine';
 const executable = path.resolve(process.env.PACIFICDB_WORKBENCH_ENGINE || path.join(root, 'build', executableName));
@@ -40,10 +41,10 @@ if (process.env.PACIFICDB_WORKBENCH_ENGINE_LIBS) {
   await cp(path.resolve(process.env.PACIFICDB_WORKBENCH_ENGINE_LIBS), path.join(resources, 'engine'), { recursive: true });
 }
 await writeFile(path.join(stage, 'package.json'), JSON.stringify({
-  name: 'pacificdb-workbench', version: cli.version, private: true, type: 'module',
+  name: 'pacificdb-workbench', version: workspace.version, private: true, type: 'module',
   desktopName: 'pacificdb-workbench.desktop',
   description: 'PacificDB desktop database workspace', main: 'desktop/main.mjs',
   author: 'PacificDB Community', homepage: 'https://pacificdb.in',
   license: 'AGPL-3.0', dependencies: { '@pacificdb/client': cli.version },
 }, null, 2) + '\n');
-console.log(`Prepared desktop ${cli.version} with ${executable}`);
+console.log(`Prepared desktop ${workspace.version} with PacificDB ${cli.version} from ${executable}`);

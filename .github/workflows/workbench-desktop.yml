@@ -56,6 +56,10 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - name: Resolve Workbench and component versions
+        run: |
+          echo "WORKBENCH_VERSION=$(node -p 'require("./package.json").version')" >> "$GITHUB_ENV"
+          echo "PACIFICDB_COMPONENT_VERSION=$(node -p 'require("./cli/package.json").version')" >> "$GITHUB_ENV"
       - name: Install native and GUI dependencies
         run: |
           sudo apt-get update
@@ -65,7 +69,8 @@ jobs:
       - run: npm run test:npm
       - name: Build native engine and CLI
         run: |
-          cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.1.1
+          cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release \
+            -DPACIFICDB_ENGINE_VERSION="$PACIFICDB_COMPONENT_VERSION"
           cmake --build build --target db_engine pacificdb -j2
       - run: node scripts/test-workbench-e2e.mjs build
       - run: node scripts/test-desktop-engine.mjs build
@@ -105,6 +110,11 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - name: Resolve Workbench and component versions
+        shell: pwsh
+        run: |
+          "WORKBENCH_VERSION=$(node -p 'require("./package.json").version')" >> $env:GITHUB_ENV
+          "PACIFICDB_COMPONENT_VERSION=$(node -p 'require("./cli/package.json").version')" >> $env:GITHUB_ENV
       - run: npm ci --no-audit --no-fund
       - run: npm run test:npm
       - name: Build static native binaries
@@ -117,7 +127,7 @@ jobs:
             -DVCPKG_TARGET_TRIPLET=x64-windows-static `
             -DVCPKG_INSTALLED_DIR="$pwd/vcpkg_installed" `
             -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded `
-            -DPACIFICDB_ENGINE_VERSION=1.1.1
+            -DPACIFICDB_ENGINE_VERSION="$env:PACIFICDB_COMPONENT_VERSION"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cmake --build build --config Release --target db_engine pacificdb
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -200,6 +210,10 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - name: Resolve Workbench and component versions
+        run: |
+          echo "WORKBENCH_VERSION=$(node -p 'require("./package.json").version')" >> "$GITHUB_ENV"
+          echo "PACIFICDB_COMPONENT_VERSION=$(node -p 'require("./cli/package.json").version')" >> "$GITHUB_ENV"
       - run: brew install cmake lz4 openssl@3
       - run: npm ci --no-audit --no-fund
       - run: npm run test:npm
@@ -211,7 +225,7 @@ jobs:
             -DOPENSSL_ROOT_DIR="$(brew --prefix openssl@3)" \
             -DOPENSSL_USE_STATIC_LIBS=TRUE \
             -DLZ4_LIBRARY="$(brew --prefix lz4)/lib/liblz4.a" \
-            -DPACIFICDB_ENGINE_VERSION=1.1.1
+            -DPACIFICDB_ENGINE_VERSION="$PACIFICDB_COMPONENT_VERSION"
           cmake --build build --target db_engine pacificdb -j2
           if otool -L build/db_engine build/pacificdb | grep -E '/(opt/homebrew|usr/local)/(opt|Cellar)/'; then
             echo 'Native binaries must not depend on Homebrew libraries at runtime.' >&2
@@ -268,13 +282,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Resolve Workbench and component versions
+        run: |
+          echo "WORKBENCH_VERSION=$(node -p 'require("./package.json").version')" >> "$GITHUB_ENV"
+          echo "PACIFICDB_COMPONENT_VERSION=$(node -p 'require("./cli/package.json").version')" >> "$GITHUB_ENV"
       - name: Check release version
         shell: bash
         run: |
           set -euo pipefail
           version="${WORKBENCH_RELEASE_TAG#workbench-v}"
           test "$WORKBENCH_RELEASE_TAG" = "workbench-v$version"
-          test "$version" = "$(node -p "require('./cli/package.json').version")"
+          test "$version" = "$WORKBENCH_VERSION"
       - uses: actions/download-artifact@v4
         with:
           pattern: workbench-*
