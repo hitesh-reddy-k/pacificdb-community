@@ -5,45 +5,62 @@ launcher, and native file dialogs. The desktop installer includes the graphical
 workspace, native database engine, native CLI, and Electron runtime. End users
 do not need Node.js, npm, a browser, or a separately installed database server.
 
-## Published Linux preview and candidate status
+## Release and support status
 
-The published Workbench is a separate [1.0.1 Linux x86-64 preview](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/workbench-linux-v1.0.1), built for Ubuntu 24.04. The database-first **1.1.1 candidate is not yet published**. Engine/native installers and npm packages remain 1.0.0 until their candidate release is qualified and published.
+[Workbench 1.1.1](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/workbench-v1.1.1)
+is the published desktop release. Workbench 1.1.2 is an unpublished
+production-readiness candidate on this branch; its [candidate status](WORKBENCH_PRODUCTION_READINESS.md)
+must reach `PASS` before anyone creates a public release. It changes only the
+desktop application version and continues to bundle PacificDB engine, CLI, and
+Node client 1.1.1.
 
-Download the [published Debian installer](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-linux-v1.0.1/PacificDB-Workbench-1.0.1-linux-amd64.deb) and [SHA256SUMS](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-linux-v1.0.1/SHA256SUMS) into the same directory, then:
+The packaged and hosted-test targets are Ubuntu 24.04/Debian-compatible Linux
+x64 (Debian package), Windows x64 (NSIS), macOS arm64, and macOS x64 (DMG).
+Other distributions and architectures are not release-qualified. The app runs
+the bundled engine as the signed-in user, binds it to loopback, and closes it
+when Workbench quits. Normal desktop use needs no account or internet access.
 
-```sh
-sha256sum --check --ignore-missing SHA256SUMS
-sudo apt install ./PacificDB-Workbench-1.0.1-linux-amd64.deb
-pacificdb-workbench
-```
+### Install and remove
 
-Open **PacificDB Workbench** from the Applications menu or use the terminal launcher above. The published preview uses project navigation. It has not passed the full production release qualification; see its [release notes](releases/workbench-linux-1.0.1.md).
+Always verify the release `SHA256SUMS` before installation. Candidate 1.1.2
+artifacts built from source are named:
 
-The following working-with-data sections describe the prepared 1.1.1 candidate. Build the candidate installer locally using the source steps below. Its Debian filename is `dist/desktop/PacificDB-Workbench-1.1.1-linux-amd64.deb` after the candidate package build:
+- Linux: `PacificDB-Workbench-1.1.2-linux-amd64.deb`; install with
+  `sudo apt install ./PacificDB-Workbench-1.1.2-linux-amd64.deb`, launch with
+  `pacificdb-workbench`, and remove with `sudo apt remove pacificdb-workbench`.
+- Windows: `PacificDB-Workbench-1.1.2-win-x64.exe`; run the installer, launch
+  **PacificDB Workbench** from the Start menu, and remove it from **Installed
+  apps** or with the installation directory's `Uninstall PacificDB Workbench.exe`.
+- macOS: `PacificDB-Workbench-1.1.2-mac-arm64.dmg` or
+  `PacificDB-Workbench-1.1.2-mac-x64.dmg`; mount it, copy **PacificDB
+  Workbench.app** to Applications, and remove the app from Applications to
+  uninstall it.
 
-```sh
-sudo apt install ./dist/desktop/PacificDB-Workbench-1.1.1-linux-amd64.deb
-pacificdb-workbench
-```
+Uninstalling removes the application, not its database directory. Delete data
+only as a separate, deliberate operation after verifying a backup. Workbench
+1.1.2 has no auto-updater: upgrades and rollback are manual.
 
-The local Debian build targets Debian 13 x86-64 by default; Linux CI uses Ubuntu 24.04 dependencies. Other distributions require matching native libraries. The app starts its bundled engine as your normal user and closes it when you quit. Data persists between launches. Desktop mode needs no external account or internet connection for normal local use.
-
-A portable `.tar.gz` is produced by the source packaging command below. Unlike the Debian installer, unpacked Linux builds may require manual sandbox helper setup on hosts that restrict unprivileged user namespaces.
-
-## What changes from the published 1.0.1 preview
+## Workbench capabilities in this candidate
 
 - Databases appear directly in navigation; creation and selection no longer require a project. Collections sit under their database. Existing project mappings and data remain accessible without migration.
 - The connection dialog copies a selected database URL, bundled CLI command and Node.js/Python/Java examples. It omits credentials and reads `PACIFICDB_URL` for authenticated engines. Copy stays disabled until a database is selected.
 - Overview counts use one loader with at most four jobs in flight. The candidate reuses cached summaries for the database, invalidates affected summaries after mutations and displays `—` for unavailable totals. Documents, Query and Media views do not schedule a full collection count scan; switching away stops scheduling new count work.
 
-These are source-verifiable changes, not measured startup-speed improvements. Query durations include UI/server transport and engine work. See [candidate release notes](../site/release-1.1.1.html) and [package usage guides](../site/docs.html).
+These are source-verifiable changes, not measured startup-speed improvements.
+Query durations include UI/server transport and engine work. See the
+[1.1.2 candidate notes](releases/workbench-1.1.2.md) and
+[package usage guides](../site/docs.html).
 
 ## Data and the included CLI
 
 Desktop data lives under the application data directory, in its `database`
-subfolder. On Linux this is normally:
+subfolder:
 
-`~/.config/PacificDB Workbench/database`
+| Platform | Default application data | Engine log |
+| --- | --- | --- |
+| Linux | `~/.config/PacificDB Workbench` | `database/engine.log` |
+| Windows | `%APPDATA%\PacificDB Workbench` | `database\engine.log` |
+| macOS | `~/Library/Application Support/PacificDB Workbench` | `database/engine.log` |
 
 Use **File → Open data folder** to locate it. This directory is independent of
 the command-line package's `~/.local/share/pacificdb` data. Existing CLI databases
@@ -57,7 +74,9 @@ Windows the copied command uses PowerShell syntax.
 
 ## Build the desktop app from source
 
-Run these commands from the prepared 1.1.1 candidate checkout. Cloning the public default branch does not guarantee the candidate.
+Run these commands from the prepared Workbench 1.1.2 candidate checkout.
+Cloning the public default branch does not guarantee the candidate. The native
+components deliberately remain version 1.1.1.
 
 Development requires Node.js 22.12 or newer, CMake, a C++17 compiler, and the
 engine build dependencies described in the main README. Build both binaries:
@@ -111,18 +130,18 @@ workflow in `.github/workflows/workbench-desktop.yml` builds and launches Linux
 x64, Windows x64, macOS Apple silicon, and macOS Intel packages on their native
 runners, then uploads installers as workflow artifacts. Its Linux CI package
 targets Ubuntu 24.04; the local package documented above targets Debian 13.
-Windows and macOS installers have not been built or validated in this Linux
-session.
+Windows and macOS installers cannot be validated from a Linux session.
 
-For a future public release, push a `workbench-vVERSION` tag matching the CLI
-package version. The workflow requires Windows signing secrets
+For a future public release, push a `workbench-vVERSION` tag matching the root
+Workbench package version. The workflow requires Windows signing secrets
 `WINDOWS_CERTIFICATE_BASE64` and `WINDOWS_CERTIFICATE_PASSWORD`; for macOS it
 requires `MAC_CSC_LINK` (Developer ID Application certificate),
 `MAC_CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and
 `APPLE_TEAM_ID`. It signs the bundled native binaries, notarizes the macOS app,
-verifies the packages, publishes four installer variants, and adds SHA-256
-checksums to a GitHub Release. Normal branch and pull request runs only upload
-workflow artifacts. Candidate 1.1.1 release publication has not run; the separately tagged 1.0.1 Linux preview is already public.
+verifies installed packages, aggregates exact-revision qualification, publishes
+four installer variants only on `PASS`, and adds SHA-256 checksums to a GitHub
+Release. Normal branch and pull request runs only upload workflow artifacts.
+Candidate 1.1.2 has not been published.
 
 The renderer runs sandboxed with Node integration disabled. A private local
 service connects it to the bundled engine. The app denies outside navigation,
@@ -272,11 +291,49 @@ npm run workbench -- --url 'pacificdb://127.0.0.1:9000/app' --no-start
 
 ## Upgrade and troubleshooting
 
-Before testing candidate binaries against existing data, stop Workbench and its engine, keep the old installer, and make a verified backup or an offline copy of the entire desktop data directory. Test with a separate data root first. Set `PACIFICDB_WORKBENCH_DATA` to an absolute alternate application data directory for an isolated source launch. No project migration is needed; metadata remains stored. Do not open the same data directory from two engine processes.
+Before every upgrade:
 
-For sandbox startup errors use the helper setup above. If the native command rejects `workbench`, launch `pacificdb-workbench` or use this checkout's npm script. For browser connection failures, use the printed HTTP port and keep the terminal running. Database connection URLs are separate. If an application cannot connect after relaunch, copy the current connection command again because the desktop engine port may change. For Python/Java missing-method errors install the matching candidate source package; older artifacts do not contain all convenience APIs.
+1. Keep the previous installer and its `SHA256SUMS`.
+2. Open Workbench and choose **File → Copy CLI connection command**. Run the
+   copied command in a terminal, then create, verify, and export a backup to a
+   location outside the Workbench data directory:
 
-Desktop quit stops its engine; browser Ctrl+C stops the HTTP service and leaves an automatically started engine available for other clients. Close application SDK pools with `close()`, Python `with`, or Java try-with-resources.
+   ```text
+   create backup --name before-workbench-1.1.2
+   backup verify backup_...
+   backup export backup_... /external/path/workbench-before-1.1.2.json
+   quit
+   ```
+
+3. Quit Workbench and confirm its engine has stopped. Make an offline copy of
+   the whole platform application-data directory. Do not copy it while the app
+   is running and never open one data directory from two engine processes.
+4. Install the candidate over the application. Launch it, verify important
+   records, create another backup, and keep the external export until the
+   upgrade has been accepted.
+
+`restore backup backup_...` verifies an internal backup and writes a separate
+restore directory recorded by `list restores`; it does not overwrite the live
+database. For a full rollback, quit Workbench, uninstall the candidate without
+deleting application data, reinstall the retained 1.1.1 installer, and reopen
+the unchanged data. If 1.1.1 cannot open it, quit immediately and restore the
+offline pre-upgrade directory copy before retrying. Never merge two data
+directories.
+
+If a candidate fails to launch, leave the data directory untouched. Check
+`database/engine.log` under the platform data path above; startup dialogs also
+name the active log file. Reinstall 1.1.1 and use the offline copy if necessary.
+For Linux sandbox errors, use the helper setup above. On any platform, confirm
+that antivirus or filesystem permissions did not quarantine the bundled
+`resources/engine` binaries.
+
+Set `PACIFICDB_WORKBENCH_DATA` to an absolute alternate directory only for an
+isolated source or qualification run. If the native command rejects
+`workbench`, launch the installed desktop app instead; browser Workbench is the
+npm CLI feature. A desktop engine port can change on relaunch, so copy a fresh
+CLI connection command. Desktop quit stops its owned engine. Browser Ctrl+C
+stops the HTTP service but may leave an automatically started engine available
+to other clients.
 
 ## Verify changes
 

@@ -108,6 +108,13 @@ the npm package does not install the database engine.
 
 [Workbench 1.1.1](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/workbench-v1.1.1) includes Linux, Windows, and macOS installers with the bundled engine and CLI.
 
+Workbench 1.1.2 is an unpublished desktop-only production-readiness candidate;
+the engine, CLI, SDKs, and main Community release remain 1.1.1. See the
+[Workbench operations guide](docs/WORKBENCH.md),
+[candidate readiness checklist](docs/WORKBENCH_PRODUCTION_READINESS.md), and
+[candidate notes](docs/releases/workbench-1.1.2.md). Missing hosted or external
+evidence blocks publication.
+
 The desktop app bundles the Workbench GUI, native database engine, CLI, and
 runtime. Users can install it and open **PacificDB Workbench** from their app
 menu. It starts and stops its own local engine and retains data between launches.
