@@ -118,6 +118,8 @@ require(
     "PACIFICDB_COMPONENT_VERSION=$(node -p",
     '-DPACIFICDB_ENGINE_VERSION="$PACIFICDB_COMPONENT_VERSION"',
     '-DPACIFICDB_ENGINE_VERSION="$env:PACIFICDB_COMPONENT_VERSION"',
+    '--x-install-root="$pwd/build/vcpkg_installed"',
+    '-DVCPKG_INSTALLED_DIR="$pwd/build/vcpkg_installed"',
     'test "$version" = "$WORKBENCH_VERSION"',
     "ref: ${{ env.WORKBENCH_RELEASE_TAG || github.ref }}",
     "if ($env:WORKBENCH_RELEASE_TAG -eq 'workbench-v1.1.1')",
@@ -139,6 +141,7 @@ forbid(
     "linux-unpacked",
     "win-unpacked",
     "dist/desktop/PacificDB-Workbench-*.tar.gz",
+    '-DVCPKG_INSTALLED_DIR="$pwd/vcpkg_installed"',
 )
 require_flat_release_uploads()
 require(

@@ -24,6 +24,8 @@ def ordered(text: str, *needles: str) -> None:
 
 
 linux = section("linux", "windows")
+if "if: inputs.release_tag == ''" not in linux:
+    raise AssertionError("dispatch retries must reuse the original Linux artifact")
 ordered(linux,
     "Package Workbench for Ubuntu 24.04",
     "Download and install previous Workbench Debian",
@@ -36,6 +38,8 @@ ordered(linux,
     "name: workbench-linux-x64")
 
 windows = section("windows", "macos")
+if "if: inputs.release_tag == ''" not in windows:
+    raise AssertionError("dispatch retries must reuse the original Windows artifact")
 ordered(windows,
     "Package Workbench for Windows x64",
     "Download and install previous Workbench NSIS",
@@ -48,6 +52,8 @@ ordered(windows,
     "name: workbench-windows-x64")
 
 macos = section("macos", "release")
+if "if: inputs.release_tag == ''" not in macos:
+    raise AssertionError("dispatch retries must reuse the original macOS artifacts")
 ordered(macos,
     "Package Workbench for macOS",
     "Mount and copy previous Workbench DMG",
@@ -67,7 +73,9 @@ if WORKFLOW.count("workbench-data-") < 6 or WORKFLOW.count("/database") < 2 or "
 
 release = section("release", None)
 ordered(release,
-    "actions/download-artifact@v4",
+    "Download installers from tag build",
+    "Download immutable tag-build installers for retry",
+    "gh run download",
     "Decode external qualification evidence",
     "npm audit --omit=dev --json",
     "workbench_release_qualification.py aggregate",

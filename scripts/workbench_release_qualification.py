@@ -9,13 +9,22 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
-from scripts.power_loss_harness import validate_evidence as validate_power_evidence
-from scripts.release_qualification import (
-    collect_artifact,
-    collect_repository_state,
-    write_json_atomic,
-)
-from scripts.security_review import validate_review
+if __package__:
+    from .power_loss_harness import validate_evidence as validate_power_evidence
+    from .release_qualification import (
+        collect_artifact,
+        collect_repository_state,
+        write_json_atomic,
+    )
+    from .security_review import validate_review
+else:
+    from power_loss_harness import validate_evidence as validate_power_evidence
+    from release_qualification import (
+        collect_artifact,
+        collect_repository_state,
+        write_json_atomic,
+    )
+    from security_review import validate_review
 
 
 PLATFORMS = frozenset({"linux-x64", "windows-x64", "macos-arm64", "macos-x64"})
@@ -34,6 +43,8 @@ def validate_load_evidence(evidence: dict | None, revision: str) -> dict:
         return {"status": "BLOCKED", "reasons": ["load_evidence_missing"]}
     failed: list[str] = []
     blocked: list[str] = []
+    if evidence.get("schema_version") != 1:
+        blocked.append("load_schema_version_invalid")
     if evidence.get("revision") != revision:
         failed.append("load_revision_mismatch")
     if evidence.get("status") != "PASS":
@@ -93,6 +104,12 @@ def _validate_platforms(results: Sequence[dict], revision: str, version: str,
             duplicate.add(str(name))
         by_name[str(name)] = result
     artifact_by_path = {item["path"]: item for item in artifacts}
+    artifact_use: dict[str, int] = {}
+    for result in results:
+        supplied = result.get("artifact") if isinstance(result, dict) else None
+        if isinstance(supplied, dict) and isinstance(supplied.get("path"), str):
+            path = supplied["path"]
+            artifact_use[path] = artifact_use.get(path, 0) + 1
     gates = []
     for name in sorted(PLATFORMS):
         result = by_name.get(name)
@@ -107,11 +124,17 @@ def _validate_platforms(results: Sequence[dict], revision: str, version: str,
         if result.get("revision") != revision:
             status = "FAIL"
             reasons.append("platform_revision_mismatch")
+        if result.get("schema_version") != 1:
+            status = "FAIL"
+            reasons.append("platform_schema_version_invalid")
         if result.get("version") != version:
             status = "FAIL"
             reasons.append("platform_version_mismatch")
         supplied = result.get("artifact") if isinstance(result.get("artifact"), dict) else {}
         actual = artifact_by_path.get(supplied.get("path"))
+        if artifact_use.get(supplied.get("path"), 0) > 1:
+            status = "FAIL"
+            reasons.append("duplicate_platform_artifact")
         if actual is None:
             status = "FAIL"
             reasons.append("platform_artifact_missing")
@@ -153,6 +176,18 @@ def aggregate_evidence(*, repo: Path | str, version: str,
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             if manifest.get("revision") != state["revision"]:
                 security = {"status": "FAIL", "reasons": ["security_bundle_revision_mismatch"]}
+            manifest_digests = {item.get("sha256") for item in manifest.get("artifacts", [])
+                if isinstance(item, dict) and isinstance(item.get("sha256"), str)}
+            review_digests = {value for value in
+                security_review.get("artifact_digests", {}).values()
+                if isinstance(value, str)} \
+                if isinstance(security_review, dict) and \
+                isinstance(security_review.get("artifact_digests"), dict) else set()
+            if any(item["sha256"] not in manifest_digests & review_digests
+                   for item in artifact_records):
+                status = "BLOCKED" if security["status"] == "PASS" else security["status"]
+                security = {"status": status, "reasons": security.get("reasons", []) +
+                    ["security_candidate_artifact_missing"]}
     gates.append(_gate("security_review", security["status"], security.get("reasons")))
 
     load = validate_load_evidence(load_evidence, state["revision"])
@@ -167,7 +202,12 @@ def aggregate_evidence(*, repo: Path | str, version: str,
 
 
 def _json(path: Path | None) -> dict | None:
-    return json.loads(path.read_text(encoding="utf-8")) if path else None
+    if path is None:
+        return None
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError(f"{path} must contain a JSON object")
+    return value
 
 
 def parser() -> argparse.ArgumentParser:

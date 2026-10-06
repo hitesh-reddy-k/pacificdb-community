@@ -14,7 +14,7 @@ Community product version solely for desktop release engineering.
 | --- | --- | --- |
 | npm SDK and CLI suites | PASS | 58 tests |
 | Desktop persistence, sandbox, bundled CLI backup verification, and restore history | PASS | Local Linux Electron run with caller-owned temporary data |
-| Exact-revision qualification validators | PASS | 44 release, power, security, and Workbench evidence tests |
+| Exact-revision qualification validators | PASS | 47 release, power, security, and Workbench evidence tests |
 | Installer workflow contracts | PASS | Debian, NSIS, and both DMG architectures are required; unpacked directories are rejected as release evidence |
 | Runtime dependency audit | PASS | `npm audit --omit=dev` reports zero advisories |
 | Linux candidate packaging | PASS | Local 1.1.2 Debian and tar.gz build; Debian metadata and installed executable path inspected |

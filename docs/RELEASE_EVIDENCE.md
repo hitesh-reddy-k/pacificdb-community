@@ -62,7 +62,7 @@ records the installer it actually tested:
 python3 scripts/workbench_release_qualification.py platform \
   --name linux-x64 \
   --version 1.1.2 \
-  --artifact dist/PacificDB-Workbench-1.1.2-linux-amd64.deb \
+  --artifact dist/desktop/PacificDB-Workbench-1.1.2-linux-amd64.deb \
   --output build/workbench-linux-x64.json
 ```
 
@@ -73,10 +73,10 @@ external evidence bound to the same clean Git revision:
 ```sh
 python3 scripts/workbench_release_qualification.py aggregate \
   --version 1.1.2 \
-  --artifact dist/PacificDB-Workbench-1.1.2-linux-amd64.deb \
-  --artifact dist/PacificDB-Workbench-Setup-1.1.2.exe \
-  --artifact dist/PacificDB-Workbench-1.1.2-mac-arm64.dmg \
-  --artifact dist/PacificDB-Workbench-1.1.2-mac-x64.dmg \
+  --artifact dist/desktop/PacificDB-Workbench-1.1.2-linux-amd64.deb \
+  --artifact dist/desktop/PacificDB-Workbench-1.1.2-win-x64.exe \
+  --artifact dist/desktop/PacificDB-Workbench-1.1.2-mac-arm64.dmg \
+  --artifact dist/desktop/PacificDB-Workbench-1.1.2-mac-x64.dmg \
   --platform-result build/workbench-linux-x64.json \
   --platform-result build/workbench-windows-x64.json \
   --platform-result build/workbench-macos-arm64.json \
@@ -94,6 +94,8 @@ The load record must satisfy
 at least eight hours, 500,000 records, one operation, zero errors, and a
 positive peak resident-memory measurement. The runtime audit report is the JSON
 output of `npm audit --omit=dev --json` and must contain zero vulnerabilities.
+The security bundle and review must include all four candidate installer
+digests, not only the source revision.
 
 `PASS` requires a clean source tree, all four exact installer digests, valid
 physical power-loss and independent security-review evidence, the load
@@ -101,3 +103,9 @@ threshold, and a clean runtime dependency audit. Missing evidence is
 `BLOCKED`; conflicting revisions, digests, failed external evidence, load
 errors, or runtime advisories are `FAIL`. Neither status may be published as a
 stable Workbench release.
+
+If the first tag run blocks for missing external evidence, retain its workflow
+artifacts, attach evidence for those exact digests, then dispatch the workflow
+with `release_tag` set to that immutable tag. The retry skips package builds and
+downloads the original tag-run installers; rebuilding signed installers would
+change their bytes and invalidate the review.

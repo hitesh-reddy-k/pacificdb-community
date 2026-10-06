@@ -47,6 +47,7 @@ concurrency:
 
 jobs:
   linux:
+    if: inputs.release_tag == ''
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -130,6 +131,7 @@ jobs:
           path: build/workbench-upload/*
 
   windows:
+    if: inputs.release_tag == ''
     runs-on: windows-2025
     env:
       CSC_LINK: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
@@ -153,12 +155,13 @@ jobs:
       - name: Build static native binaries
         shell: pwsh
         run: |
-          vcpkg install --triplet x64-windows-static
+          vcpkg install --triplet x64-windows-static `
+            --x-install-root="$pwd/build/vcpkg_installed"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cmake -S engine -B build -A x64 `
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
             -DVCPKG_TARGET_TRIPLET=x64-windows-static `
-            -DVCPKG_INSTALLED_DIR="$pwd/vcpkg_installed" `
+            -DVCPKG_INSTALLED_DIR="$pwd/build/vcpkg_installed" `
             -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded `
             -DPACIFICDB_ENGINE_VERSION="$env:PACIFICDB_COMPONENT_VERSION"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -268,6 +271,7 @@ jobs:
           path: build/workbench-upload/*
 
   macos:
+    if: inputs.release_tag == ''
     strategy:
       fail-fast: false
       matrix:
@@ -395,10 +399,15 @@ jobs:
           path: build/workbench-upload/*
 
   release:
-    if: startsWith(github.ref, 'refs/tags/workbench-v') || startsWith(inputs.release_tag, 'workbench-v')
+    if: >-
+      always() &&
+      (startsWith(github.ref, 'refs/tags/workbench-v') || startsWith(inputs.release_tag, 'workbench-v')) &&
+      (inputs.release_tag != '' ||
+        (needs.linux.result == 'success' && needs.windows.result == 'success' && needs.macos.result == 'success'))
     needs: [linux, windows, macos]
     runs-on: ubuntu-24.04
     permissions:
+      actions: read
       contents: write
     steps:
       - uses: actions/checkout@v7
@@ -418,11 +427,38 @@ jobs:
           version="${WORKBENCH_RELEASE_TAG#workbench-v}"
           test "$WORKBENCH_RELEASE_TAG" = "workbench-v$version"
           test "$version" = "$WORKBENCH_VERSION"
-      - uses: actions/download-artifact@v4
+      - name: Download installers from tag build
+        if: inputs.release_tag == ''
+        uses: actions/download-artifact@v4
         with:
           pattern: workbench-*
           path: dist/desktop
           merge-multiple: true
+      - name: Download immutable tag-build installers for retry
+        if: inputs.release_tag != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          head_sha=$(git rev-parse HEAD)
+          gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/workbench-desktop.yml/runs?event=push&head_sha=$head_sha&per_page=100" \
+            > "$RUNNER_TEMP/workbench-tag-runs.json"
+          run_id=$(python3 - "$RUNNER_TEMP/workbench-tag-runs.json" "$WORKBENCH_RELEASE_TAG" <<'PY'
+          import json
+          import sys
+          runs = json.load(open(sys.argv[1], encoding="utf-8"))["workflow_runs"]
+          matches = [run for run in runs if run["head_branch"] == sys.argv[2]]
+          if not matches:
+              raise SystemExit("No completed tag build supplies immutable Workbench artifacts")
+          print(max(matches, key=lambda run: run["created_at"])["id"])
+          PY
+          )
+          mkdir -p dist/desktop
+          for name in workbench-linux-x64 workbench-windows-x64 \
+            workbench-macos-arm64 workbench-macos-x64; do
+            gh run download "$run_id" --name "$name" --dir dist/desktop
+          done
       - name: Decode external qualification evidence
         shell: bash
         env:

@@ -8,7 +8,9 @@ import { startDesktopEngine } from '../desktop/engine.mjs';
 
 const build = path.resolve(process.argv[2] || 'build');
 const root = await mkdtemp(path.join(os.tmpdir(), 'pacificdb-index-scale-'));
-const records = 50000;
+const records = Number(process.argv[3] || 50000);
+assert.ok(Number.isSafeInteger(records) && records > 0 && records % 1000 === 0,
+  'record count must be a positive multiple of 1000');
 let engine, client;
 try {
   engine = await startDesktopEngine({ executable: path.join(build,

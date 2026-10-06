@@ -1,6 +1,7 @@
 import hashlib
 import json
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -75,14 +76,22 @@ class WorkbenchReleaseQualificationTests(unittest.TestCase):
         report.write_text("independent review", encoding="utf-8")
         candidate_digest = self.digest(candidate)
         report_digest = self.digest(report)
+        artifacts = [{"path": "candidate.bin", "sha256": candidate_digest}]
+        artifact_digests = {"candidate.bin": candidate_digest}
+        for source in self.artifacts:
+            target = bundle / source.name
+            target.write_bytes(source.read_bytes())
+            digest = self.digest(target)
+            artifacts.append({"path": source.name, "sha256": digest})
+            artifact_digests[source.name] = digest
         manifest = {"revision": self.revision, "secret_scan": {"status": "PASS"},
-            "artifacts": [{"path": "candidate.bin", "sha256": candidate_digest}]}
+            "artifacts": artifacts}
         (bundle / "bundle-manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
         review = {"schema_version": 1,
             "reviewer": {"name": "Reviewer", "organization": "Independent", "independent": True},
             "review_date": "2026-10-06", "reviewed_revision": self.revision,
             "report": {"path": "report.txt", "sha256": report_digest},
-            "artifact_digests": {"candidate.bin": candidate_digest}, "findings": []}
+            "artifact_digests": artifact_digests, "findings": []}
         return bundle, review
 
     def audit(self, total=0):
@@ -103,6 +112,14 @@ class WorkbenchReleaseQualificationTests(unittest.TestCase):
     def test_complete_exact_revision_evidence_passes(self):
         self.assertEqual("PASS", self.aggregate()["decision"])
 
+    def test_command_can_run_from_its_script_path(self):
+        result = subprocess.run(
+            [sys.executable, qualification.__file__, "--help"],
+            cwd=Path(qualification.__file__).resolve().parents[1],
+            capture_output=True, text=True,
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+
     def test_dirty_revision_blocks(self):
         (self.repo / "tracked.txt").write_text("dirty\n", encoding="utf-8")
         self.assertEqual("BLOCKED", self.aggregate()["decision"])
@@ -116,6 +133,11 @@ class WorkbenchReleaseQualificationTests(unittest.TestCase):
         results[0]["artifact"]["sha256"] = "0" * 64
         self.assertEqual("FAIL", self.aggregate(platform_results=results)["decision"])
 
+    def test_each_platform_must_reference_a_distinct_artifact(self):
+        results = self.platform_results()
+        results[1]["artifact"] = results[0]["artifact"]
+        self.assertEqual("FAIL", self.aggregate(platform_results=results)["decision"])
+
     def test_physical_revision_mismatch_fails(self):
         self.assertEqual("FAIL", self.aggregate(
             physical_evidence=self.physical("f" * 40))["decision"])
@@ -125,6 +147,20 @@ class WorkbenchReleaseQualificationTests(unittest.TestCase):
         review["artifact_digests"] = {}
         result = self.aggregate(security_bundle=bundle, security_review=review)
         self.assertEqual("BLOCKED", result["decision"])
+
+    def test_security_review_must_cover_current_installer_digests(self):
+        bundle, review = self.security()
+        manifest_path = bundle / "bundle-manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        omitted = self.artifacts[0].name
+        manifest["artifacts"] = [item for item in manifest["artifacts"]
+            if item["path"] != omitted]
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+        review["artifact_digests"].pop(omitted)
+        result = self.aggregate(security_bundle=bundle, security_review=review)
+        self.assertEqual("BLOCKED", result["decision"])
+        self.assertIn("security_candidate_artifact_missing",
+            next(g for g in result["gates"] if g["name"] == "security_review")["reasons"])
 
     def test_open_high_security_finding_blocks(self):
         bundle, review = self.security()
