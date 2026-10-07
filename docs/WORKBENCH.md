@@ -10,9 +10,9 @@ do not need Node.js, npm, a browser, or a separately installed database server.
 [Workbench 1.1.1](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/workbench-v1.1.1)
 is the published desktop release. Workbench 1.1.2 is an unpublished
 production-readiness candidate on this branch; its [candidate status](WORKBENCH_PRODUCTION_READINESS.md)
-must reach `PASS` before anyone creates a public release. It changes only the
-desktop application version and continues to bundle PacificDB engine, CLI, and
-Node client 1.1.1.
+must reach `PASS` before anyone creates a public release. It is now part of the
+Community 1.1.2 security patch and bundles the matching 1.1.2 engine, CLI and
+Node client. See the [patch notes and readiness statement](releases/1.1.2.md).
 
 The packaged and hosted-test targets are Ubuntu 24.04/Debian-compatible Linux
 x64 (Debian package), Windows x64 (NSIS), macOS arm64, and macOS x64 (DMG).
@@ -75,15 +75,15 @@ Windows the copied command uses PowerShell syntax.
 ## Build the desktop app from source
 
 Run these commands from the prepared Workbench 1.1.2 candidate checkout.
-Cloning the public default branch does not guarantee the candidate. The native
-components deliberately remain version 1.1.1.
+Cloning the public default branch does not guarantee the candidate. Native
+components and SDK source versions align at 1.1.2.
 
 Development requires Node.js 22.12 or newer, CMake, a C++17 compiler, and the
 engine build dependencies described in the main README. Build both binaries:
 
 ```sh
 npm ci
-cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.1.1
+cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.1.2
 cmake --build build --target db_engine pacificdb -j2
 npm run workbench:desktop
 ```
@@ -196,7 +196,7 @@ Give them both generated `.tgz` files and a compatible native PacificDB engine
 package. After installing the engine, they can install the two npm packages:
 
 ```sh
-npm install --global ./pacificdb-client-1.1.1.tgz ./pacificdb-cli-1.1.1.tgz
+npm install --global ./pacificdb-client-1.1.2.tgz ./pacificdb-cli-1.1.2.tgz
 pacificdb workbench
 ```
 
