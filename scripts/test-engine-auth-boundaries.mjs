@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { createWriteStream } from 'node:fs';
-import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -16,6 +16,7 @@ const engineBinary = path.join(buildRoot,
   process.platform === 'win32' ? 'db_engine.exe' : 'db_engine');
 const root = await mkdtemp(path.join(os.tmpdir(), 'pacificdb-auth-boundary-'));
 const adminPassword = 'auth-boundary-secret-value-9283';
+const accountPassword = 'account-boundary-secret-value-4917';
 
 async function freePort() {
   const listener = net.createServer();
@@ -35,6 +36,14 @@ async function startEngine(name, bindHost) {
   const restoreRoot = path.join(home, 'restore');
   await Promise.all([dataRoot, backupRoot, restoreRoot].map((directory) =>
     mkdir(directory, { recursive: true, mode: 0o700 })));
+  const accountsFile = path.join(home, 'accounts.json');
+  await writeFile(accountsFile, JSON.stringify([
+    { username: 'alice', password: accountPassword, role: 'ADMIN' },
+    { username: 'bob', password: accountPassword, role: 'ADMIN' },
+    { username: 'reader', password: accountPassword, role: 'READ_ONLY' },
+    { username: 'writer', password: accountPassword, role: 'WRITE' },
+    { username: 'outsider', password: accountPassword, role: 'WRITE' },
+  ]), { mode: 0o600 });
   const [port, raftPort] = await Promise.all([freePort(), freePort()]);
   const logPath = path.join(home, 'engine.log');
   const log = createWriteStream(logPath, { mode: 0o600 });
@@ -52,6 +61,7 @@ async function startEngine(name, bindHost) {
       ENGINE_AUTH_REQUIRED: '1',
       PACIFICDB_ENGINE_ADMIN_USERNAME: 'admin',
       PACIFICDB_ENGINE_ADMIN_PASSWORD: adminPassword,
+      PACIFICDB_ENGINE_ACCOUNTS_FILE: accountsFile,
       DETERMINISTIC_OP_LOG: path.join(home, 'requests.jsonl'),
       RAFT_CLUSTER_ID: `auth-boundary-${name}`,
       RAFT_NODE_ID: 'node-1',
@@ -59,10 +69,10 @@ async function startEngine(name, bindHost) {
       RAFT_IS_LEADER: '1',
       MIN_QUORUM_SIZE: '1',
       ENGINE_CPU_CORES: '2',
-      CONN_MIN_THREADS: '2',
-      CONN_MAX_THREADS: '4',
-      CONN_MAX_QUEUE: '32',
-      MAX_CONNECTIONS: '16',
+      CONN_MIN_THREADS: '12',
+      CONN_MAX_THREADS: '12',
+      CONN_MAX_QUEUE: '64',
+      MAX_CONNECTIONS: '32',
       ADAPTIVE_ADMISSION: '0',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -114,6 +124,7 @@ try {
   const admin = new PacificDBClient({ port: active.port, poolSize: 1 });
   let reader;
   let writer;
+  const extraClients = [];
   try {
     const login = await admin.authenticate('admin', adminPassword);
     assert.equal(login.role, 'superadmin');
@@ -187,11 +198,132 @@ try {
       term: before.currentTerm });
     assert.equal(adminObserved.status, 'ok');
     assert.equal(adminObserved.current_term, before.currentTerm);
+    anonymous.close();
+    reader.close();
+    writer.close();
+
+    const clientFor = async (username, userId, database = '') => {
+      const client = new PacificDBClient({ port: active.port, userId, database, poolSize: 1 });
+      await client.authenticate(username, accountPassword);
+      extraClients.push(client);
+      return client;
+    };
+    const alice = await clientFor('alice', 'tenant-a');
+    const bob = await clientFor('bob', 'tenant-b');
+    const aclReader = await clientFor('reader', 'tenant-a', 'shared');
+    const aclWriter = await clientFor('writer', 'tenant-a', 'shared');
+    const outsider = await clientFor('outsider', 'tenant-a', 'shared');
+
+    await alice.createDatabase('shared');
+    await alice.createCollection('docs');
+    await alice.request({ action: 'insert', collection: 'docs',
+      data: { id: 'alice-row', owner: 'alice' } });
+    await bob.createDatabase('shared');
+    await bob.createCollection('docs');
+    await bob.request({ action: 'insert', collection: 'docs',
+      data: { id: 'bob-row', owner: 'bob' } });
+
+    await assert.rejects(alice.request({ action: 'find', userId: 'tenant-b',
+      dbName: 'shared', collection: 'docs', filter: {} }), /permission_denied/);
+    await assert.rejects(alice.request({ action: 'find', userId: 'tenant-b',
+      dbName: '', database: 'shared', collection: 'docs', filter: {} }),
+    /permission_denied/, 'the database alias must not bypass scope authorization');
+    await assert.rejects(alice.request({ action: 'find', dbName: 'shared',
+      database: 'different', collection: 'docs', filter: {} }),
+    /permission_denied/, 'conflicting database aliases must fail closed');
+    await assert.rejects(outsider.request({ action: 'find', collection: 'docs', filter: {} }),
+      /permission_denied/);
+
+    await alice.request({ action: 'security_database_acl_grant', dbName: 'shared',
+      principal: 'reader', level: 'read-write' });
+    await alice.request({ action: 'security_database_acl_grant', dbName: 'shared',
+      principal: 'writer', level: 'read-only' });
+    assert.equal((await aclReader.request({ action: 'find', collection: 'docs', filter: {} })).data.length, 1);
+    await assert.rejects(aclReader.request({ action: 'insert', collection: 'docs',
+      data: { id: 'reader-write' } }), /permission_denied/,
+    'a database grant must not exceed the account role');
+    assert.equal((await aclWriter.request({ action: 'find', collection: 'docs', filter: {} })).data.length, 1);
+    await assert.rejects(aclWriter.request({ action: 'insert', collection: 'docs',
+      data: { id: 'writer-before-upgrade' } }), /permission_denied/,
+    'the global role must not exceed a read-only database grant');
+    await alice.request({ action: 'security_database_acl_grant', dbName: 'shared',
+      principal: 'writer', level: 'read-write' });
+    assert.equal((await aclWriter.request({ action: 'insert', collection: 'docs',
+      data: { id: 'writer-after-upgrade' } })).status, 'ok');
+    await alice.request({ action: 'security_database_acl_grant', dbName: 'shared',
+      principal: 'bob', level: 'owner' });
+    await bob.request({ action: 'security_database_acl_grant', userId: 'tenant-a',
+      dbName: 'shared', principal: 'outsider', level: 'read-only' });
+    assert.equal((await outsider.request({ action: 'find', collection: 'docs',
+      filter: {} })).data.length, 2);
+    await alice.request({ action: 'security_database_acl_revoke', dbName: 'shared',
+      principal: 'outsider' });
+    await alice.request({ action: 'security_database_acl_revoke', dbName: 'shared',
+      principal: 'bob' });
+    await assert.rejects(alice.request({ action: 'security_database_acl_revoke',
+      dbName: 'shared', principal: 'alice' }), /invalid_database_acl/,
+    'the final owner must not be removable');
+
+    const aliceReadKey = await alice.request({ action: 'api_key_create',
+      name: 'alice-read', role: 'read' });
+    const aliceWriteKey = await alice.request({ action: 'api_key_create',
+      name: 'alice-write', role: 'readwrite' });
+    const aliceKeyReader = new PacificDBClient({ port: active.port, userId: 'tenant-a',
+      database: 'shared', token: aliceReadKey.key, poolSize: 1 });
+    const aliceKeyWriter = new PacificDBClient({ port: active.port, userId: 'tenant-a',
+      database: 'shared', token: aliceWriteKey.key, poolSize: 1 });
+    extraClients.push(aliceKeyReader, aliceKeyWriter);
+    assert.equal((await aliceKeyReader.request({ action: 'find', collection: 'docs',
+      filter: {} })).data.length, 2);
+    await assert.rejects(aliceKeyReader.request({ action: 'insert', collection: 'docs',
+      data: { id: 'read-key-write' } }), /permission_denied/);
+    assert.equal((await aliceKeyWriter.request({ action: 'insert', collection: 'docs',
+      data: { id: 'write-key-row' } })).status, 'ok');
+
+    await assert.rejects(alice.request({ action: 'bulk', dbName: 'shared', collection: 'docs',
+      ops: [
+        { action: 'insertOne', data: { id: 'must-not-commit' } },
+        { action: 'deleteOne', userId: 'tenant-b', dbName: 'shared',
+          collection: 'docs', filter: { id: 'bob-row' } },
+      ] }), /permission_denied/);
+    assert.equal((await alice.request({ action: 'find', dbName: 'shared', collection: 'docs',
+      filter: { id: 'must-not-commit' } })).data.length, 0,
+    'bulk authorization must finish before its first mutation');
+
+    const foreignList = await alice.request({ action: 'listDatabases', userId: 'tenant-b',
+      dbName: '' });
+    assert.deepEqual(foreignList, [], 'database listing must hide foreign ownership');
+
+    const unassigned = await admin.request({ action: 'security_database_unassigned_list',
+      userId: 'system' });
+    assert.ok(unassigned.databases.some((entry) => entry.userId === 'system' &&
+      entry.dbName === 'system'), 'legacy database must be listed for migration');
+    await admin.request({ action: 'security_database_owner_assign', userId: 'system',
+      dbName: 'system', principal: 'alice' });
+    const assigned = await alice.request({ action: 'security_database_acl_get',
+      userId: 'system', dbName: 'system' });
+    assert.deepEqual(assigned.security.owners, ['alice']);
+
+    await alice.request({ action: 'createDatabase', userId: 'tenant-a', dbName: 'transfer' });
+    await alice.request({ action: 'security_database_owner_transfer', userId: 'tenant-a',
+      dbName: 'transfer', principal: 'bob' });
+    await assert.rejects(alice.request({ action: 'security_database_acl_get',
+      userId: 'tenant-a', dbName: 'transfer' }), /permission_denied/);
+    const bobTransferred = await bob.request({ action: 'security_database_acl_get',
+      userId: 'tenant-a', dbName: 'transfer' });
+    assert.deepEqual(bobTransferred.security.owners, ['bob']);
+
+    assert.equal((await admin.request({ action: 'insert', userId: 'tenant-b',
+      dbName: 'shared', collection: 'docs', data: { id: 'superadmin-recovery' } })).status, 'ok');
+    const audit = await readFile(path.join(root, 'valid-host', 'data', 'security', 'audit.log'), 'utf8');
+    assert.match(audit, /SUPERADMIN_OVERRIDE/);
+    assert.match(audit, /tenant-b\/shared/);
   } finally {
     anonymous.close();
     admin.close();
     reader?.close();
     writer?.close();
+    for (const client of extraClients) client.close();
   }
   await stopEngine(active);
   const deterministicLog = await readFile(path.join(root, 'valid-host', 'requests.jsonl'), 'utf8');

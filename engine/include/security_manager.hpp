@@ -324,6 +324,7 @@ public:
                      const std::string& database, const std::string& collection);
     Role getTokenRole(const std::string& token);
     std::string getTokenUsername(const std::string& token);
+    bool hasSuperadmin();
 
     // Local Community API keys. The full key is returned once by create only.
     json createApiKey(const std::string& name, const std::string& role,

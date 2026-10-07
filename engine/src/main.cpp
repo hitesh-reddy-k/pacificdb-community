@@ -527,6 +527,18 @@ static int runEngine(int argc, char** argv) {
 
     // Initialize engine-level security (optional enforcement via ENGINE_AUTH_REQUIRED=1)
     pacificdb::security::SecurityManager::instance().initialize(dataRoot);
+    std::string securityEnvironment =
+        EnvConfig::getString("PACIFICDB_ENVIRONMENT", "development");
+    std::transform(securityEnvironment.begin(), securityEnvironment.end(),
+                   securityEnvironment.begin(), [](unsigned char c) {
+                       return static_cast<char>(std::tolower(c));
+                   });
+    if (securityEnvironment == "production" &&
+        !pacificdb::security::SecurityManager::instance().hasSuperadmin()) {
+        std::cerr << "[MAIN] SECURITY_CONFIGURATION_REFUSED: production requires "
+                     "an existing or operator-bootstrapped superadmin\n";
+        return 78;
+    }
 
     // Provision least-privilege service accounts from an operator-owned file.
     // This keeps credentials out of unit files, process arguments and logs.

@@ -449,7 +449,7 @@ export class PacificDBClient {
     if (!project.project?.id) throw new Error('project_not_found');
     const response = await request({ action: 'createDatabase', dbName: name,
       dbType, project_id: projectId });
-    await request({ action: 'community_database_map', database: name,
+    await request({ action: 'community_database_map', dbName: name, database: name,
       project_id: projectId });
     this.database = name;
     return response;

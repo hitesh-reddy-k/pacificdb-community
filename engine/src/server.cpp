@@ -1117,6 +1117,103 @@ static pacificdb::security::Permission permissionForAction(const std::string& ac
     return Permission::ADMIN;
 }
 
+static bool isDatabaseAclAction(const std::string& action) {
+    return action == "security_database_unassigned_list" ||
+           action == "security_database_acl_get" ||
+           action == "security_database_owner_assign" ||
+           action == "security_database_acl_grant" ||
+           action == "security_database_acl_revoke" ||
+           action == "security_database_owner_transfer";
+}
+
+static std::string requestDatabaseScope(const json& request, bool* conflict = nullptr) {
+    std::string selected;
+    bool mismatch = false;
+    for (const char* key : {"dbName", "db", "database"}) {
+        if (!request.contains(key)) continue;
+        if (!request[key].is_string()) {
+            mismatch = true;
+            continue;
+        }
+        const std::string value = request[key].get<std::string>();
+        if (value.empty()) continue;
+        if (selected.empty()) selected = value;
+        else if (selected != value) mismatch = true;
+    }
+    if (conflict) *conflict = mismatch;
+    return selected;
+}
+
+static bool databasePermissionAllows(const std::string& token,
+                                     pacificdb::security::Permission permission,
+                                     const std::string& userId,
+                                     const std::string& database,
+                                     const std::string& action,
+                                     bool auditOverride = true) {
+    using pacificdb::security::Permission;
+    using pacificdb::security::Role;
+    auto& security = pacificdb::security::SecurityManager::instance();
+    if (!security.hasPermission(token, permission, database)) return false;
+    if (database.empty()) return true;
+    const std::string principal = security.getTokenUsername(token);
+    if (principal.empty()) return false;
+    if (security.getTokenRole(token) == Role::SUPERADMIN) {
+        if (auditOverride) {
+            security.logAudit(principal, "", pacificdb::security::AuditAction::CONFIG_CHANGED,
+                              userId + "/" + database,
+                              "SUPERADMIN_OVERRIDE action=" + action, true);
+        }
+        return true;
+    }
+    if (!DatabaseEngine::databaseExists(userId, database)) {
+        return action == "createDatabase";
+    }
+    const json acl = DatabaseEngine::getDatabaseSecurity(userId, database);
+    const auto& owners = acl.value("owners", json::array());
+    if (std::find(owners.begin(), owners.end(), principal) != owners.end()) return true;
+    const auto& grants = acl.value("grants", json::object());
+    if (!grants.contains(principal) || !grants[principal].is_string()) return false;
+    const std::string level = grants[principal].get<std::string>();
+    if (permission == Permission::READ) return true;
+    return level == "read-write" &&
+           (permission == Permission::WRITE || permission == Permission::DELETE ||
+            permission == Permission::CREATE_COLLECTION ||
+            permission == Permission::DROP_COLLECTION);
+}
+
+static bool canManageDatabaseAcl(const std::string& token,
+                                 const std::string& userId,
+                                 const std::string& database,
+                                 const std::string& action) {
+    using pacificdb::security::Role;
+    auto& security = pacificdb::security::SecurityManager::instance();
+    const std::string principal = security.getTokenUsername(token);
+    if (principal.empty() || !DatabaseEngine::databaseExists(userId, database)) return false;
+    if (security.getTokenRole(token) == Role::SUPERADMIN) {
+        security.logAudit(principal, "", pacificdb::security::AuditAction::CONFIG_CHANGED,
+                          userId + "/" + database,
+                          "SUPERADMIN_OVERRIDE action=" + action, true);
+        return true;
+    }
+    const auto owners = DatabaseEngine::getDatabaseSecurity(userId, database)
+                            .value("owners", json::array());
+    return std::find(owners.begin(), owners.end(), principal) != owners.end();
+}
+
+static bool commitDatabaseSecurity(const std::string& userId,
+                                   const std::string& database,
+                                   const json& security,
+                                   const std::string& requestId) {
+    json entry = {{"action", "setDatabaseSecurity"},
+                  {"op", "SET_DATABASE_SECURITY"},
+                  {"legacyOp", "SET_DATABASE_SECURITY"},
+                  {"userId", userId}, {"db", database},
+                  {"security", security}, {"requestId", requestId}};
+    return RaftCore::instance().isEnabled()
+        ? RaftCore::instance().replicateAndApply(entry, OperationPriority::HIGH, 15000)
+        : DatabaseEngine::setDatabaseSecurity(userId, database, security);
+}
+
 static std::string extractTraceId(const json& req, unsigned long long reqId) {
     if (req.contains("trace_id") && req["trace_id"].is_string()) {
         return req["trace_id"].get<std::string>();
@@ -2576,8 +2673,45 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                 authRejected = true;
             } else {
                 const auto perm = permissionForAction(action);
-                std::string dbForAuth = req.value("dbName", req.value("db", std::string("")));
-                if (!pacificdb::security::SecurityManager::instance().hasPermission(token, perm, dbForAuth)) {
+                const std::string userForAuth = req.value("userId", "system");
+                bool conflictingScope = false;
+                const std::string dbForAuth = requestDatabaseScope(
+                    req, &conflictingScope);
+                bool allowed = !conflictingScope;
+                if (!isDatabaseAclAction(action)) {
+                    if (action == "listDatabases") {
+                        allowed = allowed &&
+                            pacificdb::security::SecurityManager::instance()
+                                .hasPermission(token, perm);
+                    } else if (action == "bulk" || action == "bulkWrite") {
+                        const auto ops = req.value("ops", json::array());
+                        allowed = allowed && ops.is_array();
+                        for (const auto& op : ops) {
+                            if (!op.is_object()) {
+                                allowed = false;
+                                break;
+                            }
+                            std::string nestedAction = op.value("action", "");
+                            if (nestedAction == "insertOne") nestedAction = "insert";
+                            const std::string nestedUser = op.value("userId", userForAuth);
+                            bool nestedConflict = false;
+                            std::string nestedDatabase = requestDatabaseScope(
+                                op, &nestedConflict);
+                            if (nestedDatabase.empty()) nestedDatabase = dbForAuth;
+                            if (nestedAction.empty() || nestedConflict ||
+                                !databasePermissionAllows(
+                                    token, permissionForAction(nestedAction), nestedUser,
+                                    nestedDatabase, nestedAction)) {
+                                allowed = false;
+                                break;
+                            }
+                        }
+                    } else {
+                        allowed = allowed && databasePermissionAllows(
+                            token, perm, userForAuth, dbForAuth, action);
+                    }
+                }
+                if (!allowed) {
                     res = {
                         {"error", "permission_denied"},
                         {"action", action}
@@ -2594,7 +2728,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
         if (!res.is_null()) {
             // Auth/RBAC rejected the request.
         }
-        else if (!isCommunityAction(action) &&
+        else if (!isCommunityAction(action) && !isDatabaseAclAction(action) &&
                  pacificdb::community::isReservedDatabase(
                      req.value("dbName", req.value("db", std::string()))) &&
                  !mayAccessReservedNamespace(req)) {
@@ -2676,11 +2810,23 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
             res = {{"status", "ok"}};
         }
         else if (action == "community_database_list") {
-            res = {{"status", "ok"},
-                   {"databases", pacificdb::community::CommunityCatalog::instance()
-                                     .listProjectDatabases(
-                                         req.value("userId", "system"),
-                                         req.value("project_id", ""))}};
+            const std::string userId = req.value("userId", "system");
+            auto databases = pacificdb::community::CommunityCatalog::instance()
+                                 .listProjectDatabases(
+                                     userId, req.value("project_id", ""));
+            if (engineAuthEnabled()) {
+                const std::string token = req.value("token", "");
+                databases.erase(std::remove_if(
+                    databases.begin(), databases.end(), [&](const json& item) {
+                        const std::string name = item.is_string()
+                            ? item.get<std::string>()
+                            : item.value("database", item.value("dbName", ""));
+                        return name.empty() || !databasePermissionAllows(
+                            token, pacificdb::security::Permission::READ,
+                            userId, name, action);
+                    }), databases.end());
+            }
+            res = {{"status", "ok"}, {"databases", std::move(databases)}};
         }
         else if (action == "community_database_project") {
             const auto mapping = pacificdb::community::CommunityCatalog::instance()
@@ -2825,6 +2971,122 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                        {"username", security.getTokenUsername(token)},
                        {"role", pacificdb::security::roleToString(
                                     security.getTokenRole(token))}};
+            }
+        }
+
+        // ---------------- ENGINE SECURITY: DATABASE OWNERSHIP ----------------
+        else if (isDatabaseAclAction(action)) {
+            using pacificdb::security::AuditAction;
+            using pacificdb::security::Role;
+            // ponytail: ACL changes are rare; one lock prevents lost read-modify-write
+            // updates. Shard by database only if this becomes an observed bottleneck.
+            static std::mutex databaseAclMutex;
+            std::lock_guard<std::mutex> databaseAclLock(databaseAclMutex);
+            const std::string token = req.value("token", "");
+            const std::string userId = req.value("userId", "system");
+            const std::string database = req.value(
+                "dbName", req.value("db", std::string("")));
+            auto& securityManager = pacificdb::security::SecurityManager::instance();
+            const std::string actor = securityManager.getTokenUsername(token);
+            const bool superadmin = securityManager.getTokenRole(token) == Role::SUPERADMIN;
+            auto auditAcl = [&](const std::string& operation,
+                                const std::string& principal,
+                                bool success) {
+                securityManager.logAudit(
+                    actor, "", AuditAction::CONFIG_CHANGED,
+                    userId + "/" + database,
+                    "DATABASE_ACL operation=" + operation +
+                        " target=" + principal,
+                    success);
+            };
+
+            if (action == "security_database_unassigned_list") {
+                if (!superadmin) {
+                    res = {{"error", "permission_denied"}};
+                    authRejected = true;
+                } else {
+                    securityManager.logAudit(
+                        actor, "", AuditAction::CONFIG_CHANGED, userId,
+                        "SUPERADMIN_OVERRIDE action=" + action, true);
+                    json databases = json::array();
+                    for (const auto& name : DatabaseEngine::listDatabases(userId)) {
+                        if (DatabaseEngine::getDatabaseSecurity(userId, name)
+                                .value("owners", json::array()).empty()) {
+                            databases.push_back({{"userId", userId}, {"dbName", name}});
+                        }
+                    }
+                    res = {{"status", "ok"}, {"databases", std::move(databases)}};
+                }
+            } else if (database.empty() ||
+                       !DatabaseEngine::databaseExists(userId, database)) {
+                res = {{"error", "database_not_found"}};
+            } else if (action == "security_database_owner_assign") {
+                const std::string principal = req.value("principal", "");
+                json acl = DatabaseEngine::getDatabaseSecurity(userId, database);
+                const bool allowed = superadmin && acl.value("owners", json::array()).empty();
+                if (superadmin) {
+                    securityManager.logAudit(
+                        actor, "", AuditAction::CONFIG_CHANGED,
+                        userId + "/" + database,
+                        "SUPERADMIN_OVERRIDE action=" + action, true);
+                }
+                const bool committed = allowed && !principal.empty() &&
+                    commitDatabaseSecurity(
+                        userId, database,
+                        {{"version", 1}, {"owners", json::array({principal})},
+                         {"grants", json::object()}},
+                        requestId);
+                auditAcl("assign-owner", principal, committed);
+                if (!allowed) {
+                    res = {{"error", "permission_denied"}};
+                    authRejected = true;
+                } else if (!committed) {
+                    res = {{"error", "invalid_database_acl"}};
+                } else {
+                    res = {{"status", "ok"}};
+                }
+            } else if (!canManageDatabaseAcl(token, userId, database, action)) {
+                auditAcl(action, req.value("principal", ""), false);
+                res = {{"error", "permission_denied"}};
+                authRejected = true;
+            } else if (action == "security_database_acl_get") {
+                res = {{"status", "ok"},
+                       {"security", DatabaseEngine::getDatabaseSecurity(
+                                        userId, database)}};
+            } else {
+                const std::string principal = req.value("principal", "");
+                json acl = DatabaseEngine::getDatabaseSecurity(userId, database);
+                auto& owners = acl["owners"];
+                auto& grants = acl["grants"];
+                bool valid = !principal.empty();
+                if (action == "security_database_acl_grant") {
+                    const std::string level = req.value("level", "");
+                    if (level == "owner") {
+                        if (std::find(owners.begin(), owners.end(), principal) == owners.end())
+                            owners.push_back(principal);
+                        grants.erase(principal);
+                    } else if ((level == "read-only" || level == "read-write") &&
+                               std::find(owners.begin(), owners.end(), principal) == owners.end()) {
+                        grants[principal] = level;
+                    } else {
+                        valid = false;
+                    }
+                } else if (action == "security_database_acl_revoke") {
+                    const auto owner = std::find(owners.begin(), owners.end(), principal);
+                    if (owner != owners.end()) {
+                        if (owners.size() == 1) valid = false;
+                        else owners.erase(owner);
+                    }
+                    grants.erase(principal);
+                } else if (action == "security_database_owner_transfer") {
+                    owners = json::array({principal});
+                    grants.erase(principal);
+                }
+                const bool committed = valid && commitDatabaseSecurity(
+                    userId, database, acl, requestId);
+                auditAcl(action, principal, committed);
+                res = committed ? json{{"status", "ok"}, {"security", acl}}
+                                : json{{"error", "invalid_database_acl"}};
             }
         }
 
@@ -3025,6 +3287,18 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                 validateStorageIdentifier(userId, "userId");
                 validateStorageIdentifier(dbName, "databaseName");
                 validateDatabaseStorageBeforeReplication(userId, dbName);
+                const bool databaseAlreadyExists =
+                    DatabaseEngine::databaseExists(userId, dbName);
+                json databaseSecurity = json::object();
+                if (engineAuthEnabled() && !databaseAlreadyExists) {
+                    const std::string creator =
+                        pacificdb::security::SecurityManager::instance()
+                            .getTokenUsername(req.value("token", ""));
+                    if (creator.empty()) throw std::runtime_error("authenticated creator required");
+                    databaseSecurity = {{"version", 1},
+                                        {"owners", json::array({creator})},
+                                        {"grants", json::object()}};
+                }
 
                 const std::string projectId = req.value("project_id", "");
                 if (!projectId.empty()) {
@@ -3066,6 +3340,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                         {"database", dbName},
                         {"dbType", dbType},
                         {"type", dbType},
+                        {"security", databaseSecurity},
                         {"requestId", requestId},
                         {"trace_id", traceId},
                         {"traceparent", traceParent}
@@ -3086,7 +3361,8 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                         pacificdb::timing::recordStage(pacificdb::timing::Stage::Replication,
                             static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(replicationEnd - replicationStart).count()));
                     } else {
-                        committed = DatabaseEngine::createDatabase(userId, dbName, dbType);
+                        committed = DatabaseEngine::createDatabase(
+                            userId, dbName, dbType, databaseSecurity);
                     }
 
                     if (!committed) {
@@ -3500,6 +3776,15 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
             }
             if (res.is_null()) {
                 auto dbs = DatabaseEngine::listDatabases(userId);
+                if (engineAuthEnabled()) {
+                    const std::string token = req.value("token", "");
+                    dbs.erase(std::remove_if(
+                        dbs.begin(), dbs.end(), [&](const std::string& database) {
+                            return !databasePermissionAllows(
+                                token, pacificdb::security::Permission::READ,
+                                userId, database, action);
+                        }), dbs.end());
+                }
                 if (!mayAccessReservedNamespace(req))
                     dbs.erase(std::remove_if(dbs.begin(), dbs.end(),
                         pacificdb::community::isReservedDatabase), dbs.end());

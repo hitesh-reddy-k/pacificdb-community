@@ -761,6 +761,13 @@ std::string SecurityManager::getTokenUsername(const std::string& token) {
     return "";
 }
 
+bool SecurityManager::hasSuperadmin() {
+    std::lock_guard<std::mutex> lock(userMutex_);
+    return std::any_of(users_.begin(), users_.end(), [](const auto& entry) {
+        return entry.second.isActive && entry.second.role == Role::SUPERADMIN;
+    });
+}
+
 // ============================================================================
 // AUDIT LOGGING
 // ============================================================================
