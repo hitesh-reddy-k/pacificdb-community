@@ -4,6 +4,31 @@ This document distinguishes what PacificDB guarantees, what a specific test
 observed, what each operator must choose, and what remains blocked. It is not a
 universal SLA or an unlimited-capacity claim.
 
+## Security audit failure policy
+
+Authorization refusals are recorded once at the engine request boundary with
+the authenticated principal (or `anonymous`), socket-derived client IP, action,
+namespace/database scope and outcome. Credentials and document payloads are not
+included. Direct SecurityManager permission checks also record refusals unless
+their caller explicitly owns the request-level event.
+
+Audit append and archive writes check open, write, flush and close results.
+`security_metrics` exposes `auditHealthy`, cumulative `auditWriteFailures` and
+`auditBufferEvictions`. The engine emits structured stderr events
+`audit_write_failed` and `audit_write_recovered` on health transitions, rather
+than flooding stderr for every failed write. Operators must ship these events
+and alert on unhealthy status or increasing counters; stderr emission does not
+prove external alert delivery.
+
+An audit sink failure does not change the authorization decision or turn an
+already-completed database operation into an apparent failure. Operations
+continue with visibly degraded auditing. The memory buffer remains bounded at
+10,000 events; evictions during a failed archive are counted. Recovery means
+new audit writes work, not that missing historical events were replayed.
+Stream flush/close checks do not certify power-loss durability. Deployments
+requiring uninterrupted durable audit trails must suspend traffic on this
+health signal and verify their external append-only collector and storage.
+
 <!-- operations-contract:start -->
 {
   "schema_version": 1,

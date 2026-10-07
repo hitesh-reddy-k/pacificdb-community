@@ -1,5 +1,6 @@
 #include "security_manager.hpp"
 #include "storage_path.hpp"
+#include "structured_event.hpp"
 
 #ifdef HAS_OPENSSL
 #include <openssl/crypto.h>
@@ -18,11 +19,27 @@
 #include <cstdlib>
 #include <limits>
 #include <stdexcept>
+#include <iostream>
 
 namespace pacificdb {
 namespace security {
 
 namespace fs = std::filesystem;
+
+template <typename Write>
+static bool writeAuditFile(const fs::path& root, const fs::path& file, Write write) {
+    try {
+        std::ofstream output(validateContainedStoragePath(root, file), std::ios::app);
+        if (!output) return false;
+        write(output);
+        output.flush();
+        const bool written = output.good();
+        output.close();
+        return written && !output.fail();
+    } catch (const std::exception&) {
+        return false;
+    }
+}
 
 // ============================================================================
 // SHA-256 IMPLEMENTATION (standalone, no OpenSSL required)
@@ -213,10 +230,8 @@ void SecurityManager::initialize(const std::string& configPath) {
 
     // Initialize audit log file
     fs::path auditFile = securityDir / "audit.log";
-    if (!fs::exists(auditFile)) {
-        std::ofstream f(auditFile);
-        f.close();
-    }
+    std::lock_guard<std::mutex> auditLock(auditMutex_);
+    recordAuditWriteResult(writeAuditFile(configPath_, auditFile, [](auto&) {}));
 }
 
 void SecurityManager::initializeDefaultAdmin() {
@@ -677,13 +692,22 @@ void SecurityManager::revokeAllTokens(const std::string& username) {
 // ============================================================================
 
 bool SecurityManager::hasPermission(const std::string& token, Permission perm) {
+    return hasPermissionImpl(token, perm, true);
+}
+
+bool SecurityManager::hasPermissionImpl(const std::string& token, Permission perm,
+                                        bool auditDenial) {
     if (!validateToken(token)) {
         permissionDenials_++;
+        if (auditDenial) logAudit("anonymous", "", AuditAction::PERMISSION_DENIED,
+                                 "", "Invalid credential", false);
         return false;
     }
 
     if (getPermissionsForRole(getTokenRole(token)).count(perm) == 0) {
         permissionDenials_++;
+        if (auditDenial) logAudit(getTokenUsername(token), "", AuditAction::PERMISSION_DENIED,
+                                 "", "Role permission denied", false);
         return false;
     }
 
@@ -693,14 +717,16 @@ bool SecurityManager::hasPermission(const std::string& token, Permission perm) {
     if (user == users_.end() || !user->second.isActive ||
         getPermissionsForRole(user->second.role).count(perm) == 0) {
         permissionDenials_++;
+        if (auditDenial) logAudit(username, "", AuditAction::PERMISSION_DENIED,
+                                 "", "Current account permission denied", false);
         return false;
     }
     return true;
 }
 
 bool SecurityManager::hasPermission(const std::string& token, Permission perm,
-                                     const std::string& database) {
-    if (!hasPermission(token, perm)) {
+                                     const std::string& database, bool auditDenial) {
+    if (!hasPermissionImpl(token, perm, auditDenial)) {
         return false;
     }
 
@@ -726,7 +752,7 @@ bool SecurityManager::hasPermission(const std::string& token, Permission perm,
 
     if (!hasAccess) {
         permissionDenials_++;
-        logAudit(tokenUsername, "", AuditAction::PERMISSION_DENIED,
+        if (auditDenial) logAudit(tokenUsername, "", AuditAction::PERMISSION_DENIED,
                  database, "Database access denied", false);
     }
 
@@ -810,22 +836,20 @@ void SecurityManager::logAudit(const std::string& username, const std::string& c
     entry.details = details;
     entry.success = success;
 
-    {
-        std::lock_guard<std::mutex> lock(auditMutex_);
-        auditLog_.push_back(entry);
-
-        // Keep only last 10000 entries in memory
-        if (auditLog_.size() > 10000) {
-            rotateAuditLog();
-        }
+    // Serialize append and rotation so concurrent events stay complete JSONL.
+    std::lock_guard<std::mutex> lock(auditMutex_);
+    auditLog_.push_back(entry);
+    const bool appended = !configPath_.empty() && writeAuditFile(
+        configPath_, fs::path(configPath_) / "security" / "audit.log",
+        [&](auto& output) { output << entry.toJson().dump() << '\n'; });
+    const bool rotated = (auditLog_.size() <= 10000 && auditHealthy_.load()) ||
+                         rotateAuditLogLocked();
+    if (auditLog_.size() > 10000) {
+        const auto evicted = auditLog_.size() - 10000;
+        auditBufferEvictions_ += evicted;
+        auditLog_.erase(auditLog_.begin(), auditLog_.begin() + evicted);
     }
-
-    // Also write to file
-    if (!configPath_.empty()) {
-        fs::path auditFile = fs::path(configPath_) / "security" / "audit.log";
-        std::ofstream f(auditFile, std::ios::app);
-        f << entry.toJson().dump() << "\n";
-    }
+    recordAuditWriteResult(appended && rotated);
 }
 
 std::vector<AuditLogEntry> SecurityManager::getAuditLog(int limit,
@@ -854,26 +878,39 @@ std::vector<AuditLogEntry> SecurityManager::getAuditLog(int limit,
 }
 
 void SecurityManager::rotateAuditLog() {
-    // Archive old entries
-    if (!configPath_.empty()) {
-        auto now = std::chrono::system_clock::now();
-        auto time = std::chrono::system_clock::to_time_t(now);
-        std::stringstream ss;
-        ss << std::put_time(std::gmtime(&time), "%Y%m%d%H%M%S");
+    std::lock_guard<std::mutex> lock(auditMutex_);
+    if (auditLog_.size() <= 5000) return; // No write: do not falsely clear a sink failure.
+    const bool appended = !configPath_.empty() && writeAuditFile(
+        configPath_, fs::path(configPath_) / "security" / "audit.log", [](auto&) {});
+    const bool rotated = rotateAuditLogLocked();
+    recordAuditWriteResult(appended && rotated);
+}
 
-        fs::path archiveFile = fs::path(configPath_) / "security" /
-                               ("audit_archive_" + ss.str() + ".log");
+bool SecurityManager::rotateAuditLogLocked() {
+    if (auditLog_.size() <= 5000) return true;
+    const auto timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    const auto archive = fs::path(configPath_) / "security" /
+        ("audit_archive_" + std::to_string(timestamp) + ".log");
+    const auto count = auditLog_.size() - 5000;
+    if (configPath_.empty() || !writeAuditFile(configPath_, archive, [&](auto& output) {
+        for (size_t i = 0; i < count; ++i) output << auditLog_[i].toJson().dump() << '\n';
+    })) return false;
+    auditLog_.erase(auditLog_.begin(), auditLog_.begin() + count);
+    return true;
+}
 
-        std::ofstream f(archiveFile);
-        for (size_t i = 0; i < auditLog_.size() - 5000; ++i) {
-            f << auditLog_[i].toJson().dump() << "\n";
-        }
-    }
-
-    // Keep only recent entries
-    if (auditLog_.size() > 5000) {
-        auditLog_.erase(auditLog_.begin(), auditLog_.begin() + (auditLog_.size() - 5000));
-    }
+void SecurityManager::recordAuditWriteResult(bool success) {
+    if (!success) ++auditWriteFailures_;
+    const bool previous = auditHealthy_.exchange(success);
+    if (previous == success) return; // Alert on transitions, not on every denied request.
+    pacificdb::observability::emitStructuredEvent(std::cerr, {
+        success ? "info" : "error", "security",
+        success ? "audit_write_recovered" : "audit_write_failed", "",
+        success ? "Audit sink writable again; prior missing events are not replayed"
+                : "Audit persistence unavailable; operations continue with degraded auditing",
+        {{"failures", auditWriteFailures_.load()}},
+    });
 }
 
 // ============================================================================
@@ -881,12 +918,15 @@ void SecurityManager::rotateAuditLog() {
 // ============================================================================
 
 json SecurityManager::getSecurityMetrics() {
-    std::lock_guard<std::mutex> lock(tokenMutex_);
+    std::scoped_lock lock(tokenMutex_, userMutex_);
 
     return {
         {"totalLogins", totalLogins_.load()},
         {"failedLogins", failedLogins_.load()},
         {"permissionDenials", permissionDenials_.load()},
+        {"auditHealthy", auditHealthy_.load()},
+        {"auditWriteFailures", auditWriteFailures_.load()},
+        {"auditBufferEvictions", auditBufferEvictions_.load()},
         {"activeTokens", activeTokens_.size()},
         {"revokedTokens", revokedTokens_.size()},
         {"totalUsers", users_.size()},

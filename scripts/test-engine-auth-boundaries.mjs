@@ -261,13 +261,30 @@ try {
     await alice.request({ action: 'security_database_acl_grant', dbName: 'shared',
       principal: 'writer', level: 'read-only' });
     assert.equal((await aclReader.request({ action: 'find', collection: 'docs', filter: {} })).data.length, 1);
+    const auditFile = path.join(root, 'valid-host', 'data', 'security', 'audit.log');
+    const auditEntries = async () => (await readFile(auditFile, 'utf8')).trim()
+      .split('\n').filter(Boolean).map(line => JSON.parse(line));
+    const denialCountBefore = (await auditEntries()).filter(entry =>
+      entry.action === 'PERMISSION_DENIED').length;
     await assert.rejects(aclReader.request({ action: 'insert', collection: 'docs',
+      clientIP: 'spoofed-client', password: 'must-not-reach-audit',
       data: { id: 'reader-write' } }), /permission_denied/,
     'a database grant must not exceed the account role');
+    const deniedEntries = (await auditEntries()).filter(entry => entry.action === 'PERMISSION_DENIED');
+    assert.equal(deniedEntries.length, denialCountBefore + 1, 'exactly one denial event per request');
+    assert.equal(deniedEntries.at(-1).username, 'reader');
+    assert.equal(deniedEntries.at(-1).resource, 'tenant-a/shared');
+    assert.equal(deniedEntries.at(-1).clientIP, '127.0.0.1');
+    assert.match(deniedEntries.at(-1).details, /action=insert/);
+    assert.doesNotMatch(JSON.stringify(deniedEntries), /must-not-reach-audit|spoofed-client/);
     assert.equal((await aclWriter.request({ action: 'find', collection: 'docs', filter: {} })).data.length, 1);
     await assert.rejects(aclWriter.request({ action: 'insert', collection: 'docs',
       data: { id: 'writer-before-upgrade' } }), /permission_denied/,
     'the global role must not exceed a read-only database grant');
+    const aclDenials = (await auditEntries()).filter(entry => entry.action === 'PERMISSION_DENIED');
+    assert.equal(aclDenials.length, deniedEntries.length + 1);
+    assert.equal(aclDenials.at(-1).username, 'writer');
+    assert.equal(aclDenials.at(-1).resource, 'tenant-a/shared');
     await alice.request({ action: 'security_database_acl_grant', dbName: 'shared',
       principal: 'writer', level: 'read-write' });
     assert.equal((await aclWriter.request({ action: 'insert', collection: 'docs',
@@ -344,9 +361,16 @@ try {
       ['community_media_delete', { media_id: bobReady.id }],
       ['community_media_cleanup', { media_id: bobIncomplete.id }],
     ]) {
+      const beforeMediaDenials = (await auditEntries()).filter(entry =>
+        entry.action === 'PERMISSION_DENIED').length;
       await assert.rejects(alice.request({ action, userId: 'tenant-a',
         dbName: 'shared', ...fields }), /media_(?:chunk_)?not_found/,
       `${action} must hide a foreign media id`);
+      const mediaDenials = (await auditEntries()).filter(entry => entry.action === 'PERMISSION_DENIED');
+      assert.equal(mediaDenials.length, beforeMediaDenials + 1);
+      assert.equal(mediaDenials.at(-1).username, 'alice');
+      assert.equal(mediaDenials.at(-1).resource, 'tenant-a/foreign',
+        'audit must use the owning manifest, not the allowed database claim');
     }
     await assert.rejects(alice.request({ action: 'community_media_begin',
       userId: 'tenant-a', dbName: 'shared', collection: 'docs', filename: 'bob.bin',
@@ -395,6 +419,9 @@ try {
         { action: 'deleteOne', userId: 'tenant-b', dbName: 'shared',
           collection: 'docs', filter: { id: 'bob-row' } },
       ] }), /permission_denied/);
+    const bulkDenial = (await auditEntries()).filter(entry => entry.action === 'PERMISSION_DENIED').at(-1);
+    assert.equal(bulkDenial.username, 'alice');
+    assert.equal(bulkDenial.resource, 'tenant-b/shared');
     assert.equal((await alice.request({ action: 'find', dbName: 'shared', collection: 'docs',
       filter: { id: 'must-not-commit' } })).data.length, 0,
     'bulk authorization must finish before its first mutation');

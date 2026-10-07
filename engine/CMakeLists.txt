@@ -363,6 +363,8 @@ add_pacificdb_engine_test(db_engine_security_manager_lockout_test
     test/security_manager_lockout_test.cpp)
 add_test(NAME db_engine_security_manager_lockout_test
     COMMAND db_engine_security_manager_lockout_test)
+add_pacificdb_engine_test(db_engine_security_audit_test test/security_audit_test.cpp)
+add_test(NAME db_engine_security_audit_test COMMAND db_engine_security_audit_test)
 add_pacificdb_engine_test(db_engine_community_query_test
     test/community_query_test.cpp)
 add_test(NAME db_engine_community_query_test COMMAND db_engine_community_query_test)

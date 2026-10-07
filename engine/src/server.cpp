@@ -1020,7 +1020,7 @@ static bool mayAccessReservedNamespace(const json& req) {
     return !token.empty() &&
            security.getTokenRole(token) == pacificdb::security::Role::SUPERADMIN &&
            security.hasPermission(token, pacificdb::security::Permission::ADMIN,
-                                  "pacificdb_meta");
+                                  "pacificdb_meta", false);
 }
 
 static bool isAuthExemptAction(const std::string& action) {
@@ -1180,7 +1180,7 @@ static bool databasePermissionAllows(const std::string& token,
     using pacificdb::security::Permission;
     using pacificdb::security::Role;
     auto& security = pacificdb::security::SecurityManager::instance();
-    if (!security.hasPermission(token, permission, database)) return false;
+    if (!security.hasPermission(token, permission, database, false)) return false;
     if (database.empty()) return true;
     const std::string principal = security.getTokenUsername(token);
     if (principal.empty()) return false;
@@ -2121,6 +2121,17 @@ static std::vector<std::array<std::string, 3>> discoverIndexValidationTargets(
 
 void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
     SOCKET sock = (SOCKET)clientSocket;
+    sockaddr_in peer{};
+#ifdef _WIN32
+    int peerLength = sizeof(peer);
+#else
+    socklen_t peerLength = sizeof(peer);
+#endif
+    char peerAddress[INET_ADDRSTRLEN]{};
+    const std::string clientAddress = getpeername(sock,
+        reinterpret_cast<sockaddr*>(&peer), &peerLength) == 0 &&
+        inet_ntop(AF_INET, &peer.sin_addr, peerAddress, sizeof(peerAddress))
+        ? peerAddress : "unknown";
     unsigned long long reqId = ++g_reqIdCounter;
     struct ClientSocketGuard {
         SOCKET sock;
@@ -2674,6 +2685,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
     std::string sstVisibilitySource;
     // Refused requests must not receive cluster or tracing telemetry.
     bool authRejected = false;
+    std::string deniedResourceScope;
     bool minimalProtocolError = false;
     auto execStart = std::chrono::steady_clock::now();
     if (hardReqLog) {
@@ -2713,6 +2725,8 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                     const auto scope =
                         pacificdb::community::CommunityCatalog::instance()
                             .mediaScope(userForAuth, mediaId);
+                    if (!scope.is_null()) deniedResourceScope =
+                        userForAuth + "/" + scope.value("database", std::string());
                     allowed = !scope.is_null() && databasePermissionAllows(
                         token, perm, userForAuth,
                         scope.value("database", std::string()), action);
@@ -2726,11 +2740,11 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                         allowed = allowed &&
                             principal.has_value() &&
                             principal->role == pacificdb::security::Role::SUPERADMIN &&
-                            security.hasPermission(token, perm);
+                            security.hasPermission(token, perm, std::string(), false);
                     } else if (action == "listDatabases") {
                         allowed = allowed &&
                             pacificdb::security::SecurityManager::instance()
-                                .hasPermission(token, perm);
+                                .hasPermission(token, perm, std::string(), false);
                     } else if (action == "bulk" || action == "bulkWrite") {
                         const auto ops = req.value("ops", json::array());
                         allowed = allowed && ops.is_array();
@@ -2750,6 +2764,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                                 !databasePermissionAllows(
                                     token, permissionForAction(nestedAction), nestedUser,
                                     nestedDatabase, nestedAction)) {
+                                deniedResourceScope = nestedUser + "/" + nestedDatabase;
                                 allowed = false;
                                 break;
                             }
@@ -2761,7 +2776,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                         // The dispatch guard below performs the internalAdmin check.
                         allowed = allowed &&
                             pacificdb::security::SecurityManager::instance()
-                                .hasPermission(token, perm, dbForAuth);
+                                .hasPermission(token, perm, dbForAuth, false);
                     } else {
                         allowed = allowed && databasePermissionAllows(
                             token, perm, userForAuth, dbForAuth, action);
@@ -3018,7 +3033,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
         else if (action == "security_authenticate") {
             std::string username = req.value("username", "");
             std::string password = req.value("password", "");
-            std::string clientIP = req.value("clientIP", "unknown");
+            std::string clientIP = clientAddress;
 
             if (username.empty() || password.empty()) {
                 res = {{"error", "username and password required"}};
@@ -3190,7 +3205,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
         else if (action == "api_key_create") {
             const std::string token = req.value("token", "");
             auto& security = pacificdb::security::SecurityManager::instance();
-            if (!security.hasPermission(token, pacificdb::security::Permission::ADMIN)) {
+            if (!security.hasPermission(token, pacificdb::security::Permission::ADMIN, std::string(), false)) {
                 res = {{"error", "permission_denied"}};
                 authRejected = true;
             } else {
@@ -3217,7 +3232,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
         else if (action == "api_key_revoke") {
             const std::string token = req.value("token", "");
             auto& security = pacificdb::security::SecurityManager::instance();
-            if (!security.hasPermission(token, pacificdb::security::Permission::ADMIN)) {
+            if (!security.hasPermission(token, pacificdb::security::Permission::ADMIN, std::string(), false)) {
                 res = {{"error", "permission_denied"}};
                 authRejected = true;
             } else if (!security.revokeApiKey(req.value("id", ""),
@@ -6725,6 +6740,24 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
         std::cout << "[EXEC END] " << reqId << " status="
                   << (res.contains("error") ? "error" : "ok")
                   << " exec_ms=" << execMs << std::endl;
+    }
+
+    if (authRejected || (res.is_object() && res.value("error", std::string()) == "reserved_namespace")) {
+        auto field = [&](const char* key, const std::string& fallback = "") {
+            if (!req.is_object() || !req.contains(key) || !req[key].is_string()) return fallback;
+            return req[key].get<std::string>().substr(0, 256);
+        };
+        auto& security = pacificdb::security::SecurityManager::instance();
+        const auto credential = field("token");
+        const std::string principal = security.validateToken(credential)
+            ? security.getTokenUsername(credential) : "anonymous";
+        security.logAudit(principal, clientAddress,
+            pacificdb::security::AuditAction::PERMISSION_DENIED,
+            deniedResourceScope.empty()
+                ? field("userId", "system") + "/" + field("dbName", field("db", field("database")))
+                : deniedResourceScope.substr(0, 513),
+            "action=" + action.substr(0, 64) + " reason=" +
+                res.value("error", std::string("denied")).substr(0, 64), false);
     }
 
     if (!authRejected && res.is_object()) {

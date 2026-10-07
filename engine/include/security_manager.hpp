@@ -322,7 +322,7 @@ public:
     // Authorization
     bool hasPermission(const std::string& token, Permission perm);
     bool hasPermission(const std::string& token, Permission perm,
-                       const std::string& database);
+                       const std::string& database, bool auditDenial = true);
     bool checkAccess(const std::string& token, const std::string& action,
                      const std::string& database, const std::string& collection);
     Role getTokenRole(const std::string& token);
@@ -369,6 +369,9 @@ private:
     bool unlockAccountIfExpired(User& user);
     void loadApiKeys();
     void saveApiKeysLocked();
+    bool hasPermissionImpl(const std::string& token, Permission perm, bool auditDenial);
+    bool rotateAuditLogLocked();
+    void recordAuditWriteResult(bool success);
 
     std::unordered_map<std::string, User> users_;
     std::unordered_map<std::string, JWTToken> activeTokens_;
@@ -391,6 +394,9 @@ private:
     std::atomic<uint64_t> totalLogins_{0};
     std::atomic<uint64_t> failedLogins_{0};
     std::atomic<uint64_t> permissionDenials_{0};
+    std::atomic<uint64_t> auditWriteFailures_{0};
+    std::atomic<uint64_t> auditBufferEvictions_{0};
+    std::atomic<bool> auditHealthy_{true};
 };
 
 } // namespace security
