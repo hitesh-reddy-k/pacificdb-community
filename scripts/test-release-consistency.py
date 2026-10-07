@@ -120,7 +120,8 @@ def main() -> None:
     if lock["packages"]["cli"]["dependencies"]["@pacificdb/client"] != engine_version:
         raise AssertionError("lockfile CLI dependency must match the patch")
     require_text("README.md", f"PacificDB Community v{engine_version}")
-    require_text("cli/src/shell.js", f"v{engine_version}")
+    require_text("cli/src/shell.js", "v${shellVersion}")
+    require_text("engine/src/shell.cpp", '"               v" PACIFICDB_ENGINE_VERSION')
 
     print("RELEASE_CONSISTENCY_PASS")
 

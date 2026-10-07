@@ -4,6 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { MediaUploadError } from '@pacificdb/client';
 
+const shellVersion = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version;
+
 function parseJson(text) {
   try { return JSON.parse(text); }
   catch { throw new Error('invalid JSON'); }
@@ -77,7 +79,7 @@ export const SHELL_BANNER = `
        ~~~~~~~~\\______/~~~~~~~~
          ~~~~~~~~~~~~~~~~~~~~
              PacificDB
-               v1.1.2
+               v${shellVersion}
        Documents · Vectors · Media
   Type help to see commands.\n`;
 

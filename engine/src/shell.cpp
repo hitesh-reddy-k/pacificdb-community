@@ -956,7 +956,7 @@ int main(int argc, char** argv) {
                          "       ~~~~~~~~\\______/~~~~~~~~\n"
                          "         ~~~~~~~~~~~~~~~~~~~~\n"
                          "             PacificDB\n"
-                         "               v1.1.1\n"
+                         "               v" PACIFICDB_ENGINE_VERSION "\n"
                          "       Documents · Vectors · Media\n"
                          "  Type help to see commands.\n";
             for (std::string line;
