@@ -77,7 +77,7 @@ export const SHELL_BANNER = `
        ~~~~~~~~\\______/~~~~~~~~
          ~~~~~~~~~~~~~~~~~~~~
              PacificDB
-               v1.1.1
+               v1.1.2
        Documents · Vectors · Media
   Type help to see commands.\n`;
 

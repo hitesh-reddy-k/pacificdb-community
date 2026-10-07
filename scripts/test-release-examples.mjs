@@ -28,20 +28,20 @@ async function run(command, args, env = {}, cwd = root) {
 let engine;
 try {
   await run('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund',
-    path.join(repository, 'release-sdk/npm/pacificdb-client-1.1.1.tgz'),
-    path.join(repository, 'release-sdk/npm/pacificdb-cli-1.1.1.tgz')]);
+    path.join(repository, 'release-sdk/npm/pacificdb-client-1.1.2.tgz'),
+    path.join(repository, 'release-sdk/npm/pacificdb-cli-1.1.2.tgz')]);
   await run('node', [path.join(root, 'node_modules/@pacificdb/cli/bin/pacificdb.js'), '--version']);
   await run('python3', ['-m', 'venv', path.join(root, 'venv')]);
   const python = path.join(root, 'venv/bin/python');
-  await run(python, ['-m', 'pip', 'install', '--no-deps', path.join(repository, 'release-sdk/python/pacificdb-1.1.1-py3-none-any.whl')]);
+  await run(python, ['-m', 'pip', 'install', '--no-deps', path.join(repository, 'release-sdk/python/pacificdb-1.1.2-py3-none-any.whl')]);
   await writeFile(path.join(root, 'hello.mjs'), example('node-code'));
   await writeFile(path.join(root, 'hello.py'), example('python-code'));
   await writeFile(path.join(root, 'Hello.java'), example('java-code'));
   // Arbitrary nonempty bytes are valid for the file-transfer API, regardless of extension.
-  const media = Buffer.from('PacificDB 1.1.1 website transfer fixture\n'.repeat(100));
+  const media = Buffer.from('PacificDB 1.1.2 website transfer fixture\n'.repeat(100));
   await writeFile(path.join(root, 'demo.mp4'), media);
   await run('mvn', ['-B', '-q', '-f', path.join(repository, 'sdk/java/pom.xml'), 'dependency:build-classpath', `-Dmdep.outputFile=${path.join(root, 'classpath.txt')}`]);
-  const classpath = path.join(repository, 'sdk/java/target/pacificdb-client-1.1.1.jar') + path.delimiter + (await readFile(path.join(root, 'classpath.txt'), 'utf8')).trim();
+  const classpath = path.join(repository, 'sdk/java/target/pacificdb-client-1.1.2.jar') + path.delimiter + (await readFile(path.join(root, 'classpath.txt'), 'utf8')).trim();
   await mkdir(path.join(root, 'classes'));
   await run('javac', ['--release', '11', '-cp', classpath, '-d', path.join(root, 'classes'), path.join(root, 'Hello.java')]);
   engine = await startDesktopEngine({ executable: path.join(build, 'db_engine'), directory: path.join(root, 'engine') });
@@ -53,7 +53,7 @@ try {
     await run(command, args, { PACIFICDB_URL: `pacificdb://127.0.0.1:${engine.port}/${language}_demo` });
     assert.deepEqual(await readFile(path.join(root, `downloaded-${language}.mp4`)), media);
   }
-  console.log(JSON.stringify({ status: 'PASS', version: '1.1.1', npm: 'installed exact local tarballs',
+  console.log(JSON.stringify({ status: 'PASS', version: '1.1.2', npm: 'installed exact local tarballs',
     python: 'installed exact local wheel', java: 'compiled against exact local packaged JAR',
     examples: ['Node CRUD/vector/media/close', 'Python CRUD/vector/media/close', 'Java CRUD/vector/media/close'], media: 'byte-for-byte equality' }));
 } finally { await engine?.stop(); await rm(root, { recursive: true, force: true }); }

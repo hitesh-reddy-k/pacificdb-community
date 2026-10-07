@@ -73,7 +73,7 @@ jobs:
           python -m pip install build==1.2.2.post1 twine==6.1.0 setuptools==80.9.0 pytest==8.3.5
       - name: Build engine for installed-artifact qualification
         run: |
-          cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.1.1
+          cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.1.2
           cmake --build build -j2
           node scripts/test-cross-sdk-e2e.mjs build
       - name: Build and test Python distributions
@@ -95,7 +95,7 @@ jobs:
           gpg --batch --pinentry-mode loopback --passphrase '' --quick-generate-key 'Local pipeline test ONLY <local-test@example.invalid>' rsa2048 sign 1d
           fingerprint=$(gpg --batch --with-colons --list-secret-keys | awk -F: '$1 == "fpr" {print $10; exit}')
           mkdir -p sdk/java/target/central-publishing
-          cp sdk/java/pom.xml sdk/java/target/pacificdb-client-1.1.1.pom
+          cp sdk/java/pom.xml sdk/java/target/pacificdb-client-1.1.2.pom
           python scripts/pack-java-sdk.py --target sdk/java/target --output sdk/java/target/central-publishing/central-bundle.zip --fingerprint "$fingerprint" --sign
           gpg --armor --export > sdk/java/target/local-test-public.asc
       - name: Inspect exact distributions and stage tested bytes
@@ -103,7 +103,7 @@ jobs:
           mkdir -p release-sdk/python release-sdk/java/central-publishing
           python scripts/verify-sdk-packages.py --python-dist sdk/python/dist --java-target sdk/java/target --output release-sdk/inspection.json
           cp sdk/python/dist/* release-sdk/python/
-          cp sdk/java/target/pacificdb-client-1.1.1*.jar sdk/java/target/pacificdb-client-1.1.1.pom sdk/java/target/local-test-public.asc release-sdk/java/
+          cp sdk/java/target/pacificdb-client-1.1.2*.jar sdk/java/target/pacificdb-client-1.1.2.pom sdk/java/target/local-test-public.asc release-sdk/java/
           cp sdk/java/target/central-publishing/central-bundle.zip release-sdk/java/central-publishing/
       - uses: actions/upload-artifact@v4
         with:

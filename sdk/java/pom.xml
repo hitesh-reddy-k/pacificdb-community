@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.pacificdb</groupId>
   <artifactId>pacificdb-client</artifactId>
-  <version>1.1.1</version>
+  <version>1.1.2</version>
   <name>PacificDB Community Java client</name>
   <description>Database-first PacificDB Community client with verified pooled connections and streaming transfers</description>
   <url>https://github.com/hitesh-reddy-k/pacificdb-community</url>

@@ -6,7 +6,7 @@ public final class InstalledClient {
     public static void main(String[] args)throws Exception {
         try(var db=PacificDB.fromUrl("pacificdb://localhost:9000/app")) {
             if(!db.getDatabase().equals("app")||db.media()==null||db.backups()==null||db.indexes()==null||db.security()==null)throw new AssertionError();
-            if(!PacificDBClient.class.getProtectionDomain().getCodeSource().getLocation().toString().endsWith("pacificdb-client-1.1.1.jar"))throw new AssertionError("Source classes used instead of installed JAR");
+            if(!PacificDBClient.class.getProtectionDomain().getCodeSource().getLocation().toString().endsWith("pacificdb-client-1.1.2.jar"))throw new AssertionError("Source classes used instead of installed JAR");
         }
         if(System.getenv("PACIFICDB_URL")!=null)try(var db=PacificDB.connect(System.getenv("PACIFICDB_URL"))) {
             db.createDatabase();db.createCollection("users");db.insert("users",Map.of("id","1","name","Ada"));

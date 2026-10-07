@@ -1,4 +1,4 @@
-# PacificDB Community v1.0 scope
+# PacificDB Community 1.1.2 scope
 
 ## Implemented in this repository
 
@@ -32,7 +32,7 @@
 These items are omitted rather than represented by placeholders. Add them only
 with executable behavior, documentation, and a focused correctness test.
 
-## v1.0 certification status
+## Certification and real-data readiness
 
 The qualified Linux baseline passed three sustained RF3 runs at both 64 and 128 clients,
 acknowledged-write verification, replica convergence, failover, manual
@@ -40,9 +40,11 @@ backup/restore, genuine disk-full injection, and Debian package installation.
 See [docs/COMMUNITY_P0_CERTIFICATION.md](docs/COMMUNITY_P0_CERTIFICATION.md) for
 the measured results.
 
-Physical power-controller testing, mixed-version rolling upgrades, an
-independent security review, Windows signing, and macOS signing and notarization
-remain open before a broader production-readiness claim.
+Historical power-cut and eight-hour evidence remain bound to their original
+revision, not automatically to 1.1.2. The maintainer reports verification
+complete, but exact-release external review, deployment, native-platform and
+signing evidence must be attached and validated before independently certified
+production readiness is claimed. See the [1.1.2 readiness statement](docs/releases/1.1.2.md#production-readiness-statement).
 
 ## Community operational boundary
 

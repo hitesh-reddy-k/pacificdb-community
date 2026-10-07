@@ -13,9 +13,9 @@ const [root, cli, client, stage] = await Promise.all([
   manifest('desktop/stage/package.json'),
 ]);
 
-assert.equal(root.version, '1.1.2', 'root manifest is the Workbench version');
-assert.equal(cli.version, '1.1.1', 'bundled CLI component version stays released');
-assert.equal(client.version, '1.1.1', 'bundled client component version stays released');
+assert.equal(root.version, '1.1.2', 'root manifest is the patch version');
+assert.equal(cli.version, root.version, 'bundled CLI must match the patch');
+assert.equal(client.version, root.version, 'bundled client must match the patch');
 assert.equal(cli.dependencies['@pacificdb/client'], client.version,
   'CLI must depend on the exact bundled client');
 assert.equal(stage.version, root.version, 'staged desktop must use the Workbench version');

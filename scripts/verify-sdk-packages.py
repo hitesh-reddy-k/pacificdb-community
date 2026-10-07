@@ -124,7 +124,7 @@ def java_artifacts(target,version):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--python-dist',type=Path);parser.add_argument('--java-target',type=Path)
-    parser.add_argument('--version',default='1.1.1');parser.add_argument('--output',type=Path,required=True)
+    parser.add_argument('--version',default='1.1.2');parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--hash-manifest',type=Path)
     args=parser.parse_args();artifacts=[]
     if args.python_dist:

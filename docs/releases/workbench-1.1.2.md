@@ -6,9 +6,9 @@ or checksums exist.
 
 ## Version boundary
 
-The desktop application advances independently to 1.1.2. Its bundled database
-engine, native CLI, and Node client remain the released PacificDB 1.1.1
-components. The main Community release identity remains 1.1.1.
+Workbench now shares the Community 1.1.2 patch version with its bundled engine,
+native/npm CLI and SDKs. These are the security-remediated source components,
+not unchanged public 1.1.1 binaries. See the [complete Community patch notes](1.1.2.md).
 
 ## Candidate changes
 

@@ -4,9 +4,10 @@
 hosted, external, and signing row below has evidence for the exact release
 revision and installer digests.** No release was published by this work.
 
-Workbench uses its own 1.1.2 application version while bundling the released
-PacificDB engine, CLI, and Node client 1.1.1. This avoids changing the stable
-Community product version solely for desktop release engineering.
+Workbench, engine, CLI and SDK source versions now align at 1.1.2 for the
+Community security patch. Earlier local installer results below describe
+their original candidate, not newly qualified 1.1.2 engine artifacts. See the
+[patch notes and current readiness statement](releases/1.1.2.md).
 
 ## Locally verified on this branch
 

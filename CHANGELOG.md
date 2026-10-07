@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.1.2 — security and reliability patch (publication pending)
+
+- Align Community engine, native/npm CLI, Node/Python/Java SDKs, Workbench and Helm source metadata at 1.1.2.
+- Enforce database owners and explicit read-only/read-write/co-owner grants, role ceilings, namespace/database identity, nested bulk scope and audited superadmin recovery.
+- Authorize media by the stored owning database; bound cleanup/reconciliation by actual stored chunks rather than sparse declared counts.
+- Bind managed-local engine and Raft listeners to loopback; reject invalid binds and use the same resolved configuration for validation and listeners.
+- Reject invalid/oversized Raft frames before allocation and bound Node response buffering before decoding.
+- Persist account lockout expiry; use bounded RE2 query matching instead of uninterruptible backtracking.
+- Attribute authorization denials and superadmin actions; expose audit persistence failure, eviction and recovery without leaking credentials.
+- Add persisted metrics-only API keys that cannot read/write documents; verified-mTLS pod-IP readiness rejects disabled/unhealthy audit logging without creating liveness restart loops.
+- Add a restricted audit-monitor timer, alert rules and real engine-to-Alertmanager-to-receiver failure/retry/recovery verification.
+- Pin the container base digest; preserve fail-closed deployment and publication controls.
+- Verify packaged native revision/hash manifests, sandbox, CRUD/media, backup/restore and restart persistence; reject reviewed build-tool dependencies in runtime payloads.
+- Document the exact-version build-only advisory exception through 2026-11-06; CI rejects new/runtime/unreviewed/expired findings. These advisories are accepted, not patched.
+- Retain post-1.1.1 log-descriptor and lifecycle diagnostics fixes described below.
+
+See [complete patch notes, migration requirements and readiness limits](docs/releases/1.1.2.md).
+Maintainer-reported verification is not an independent certificate; historical
+eight-hour/power results keep their original revision identities.
+
 ## Post-release branch follow-up — not in the published v1.1.1 artifacts
 
 - Startup-failure diagnostics read a bounded Unicode tail from the engine's original log descriptor instead of reopening a replaceable pathname. Existing write-only logs leave their contents untouched and use a new, exclusive readable log whose path is reported to the caller.

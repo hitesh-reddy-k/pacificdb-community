@@ -78,6 +78,7 @@ def main() -> None:
     )
 
     expected = {
+        "package.json": json.loads((ROOT / "package.json").read_text())["version"],
         "cli/package.json": cli["version"],
         "sdk/node/package.json": node["version"],
         "vcpkg.json": json.loads(
@@ -111,6 +112,15 @@ def main() -> None:
         )
     if cli["dependencies"]["@pacificdb/client"] != engine_version:
         raise AssertionError("CLI dependency must exactly match the Node client version")
+
+    lock = json.loads((ROOT / "package-lock.json").read_text())
+    for workspace in ("", "cli", "sdk/node"):
+        if lock["packages"][workspace]["version"] != engine_version:
+            raise AssertionError(f"lockfile workspace version mismatch: {workspace}")
+    if lock["packages"]["cli"]["dependencies"]["@pacificdb/client"] != engine_version:
+        raise AssertionError("lockfile CLI dependency must match the patch")
+    require_text("README.md", f"PacificDB Community v{engine_version}")
+    require_text("cli/src/shell.js", f"v{engine_version}")
 
     print("RELEASE_CONSISTENCY_PASS")
 

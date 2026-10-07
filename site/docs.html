@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="PacificDB Community v1.1.1 documentation: installation, shell commands, Node.js, Python and Java SDKs, backups, API keys, media, vectors, security, and troubleshooting.">
+<meta name="description" content="PacificDB Community 1.1.2 patch and published 1.1.1 documentation: installation, shell commands, Node.js, Python and Java SDKs, backups, API keys, media, vectors, security, and troubleshooting.">
 <meta name="theme-color" content="#000311"><link rel="icon" href="assets/pacificdb-logo-symbol.png"><title>Documentation · PacificDB Community</title>
 <style>
 :root{--bg:#050b18;--bg2:#08152b;--panel:#0a1730;--panel2:#0d1d39;--line:#18345f;--line2:#21477b;--text:#eaf2ff;--muted:#95a9ce;--dim:#7188ad;--blue:#4572af;--cyan:#74b6d3;--violet:#6f8de0;--warn:#f2c879;--max:1320px;--content:820px;--ease:cubic-bezier(.22,.8,.2,1)}
@@ -31,7 +31,7 @@ section{scroll-margin-top:110px;padding:58px 0;border-top:1px solid #14305a}sect
 <nav class="nav-links" aria-label="Main navigation"><a href="index.html">Home</a><a href="docs.html" aria-current="page">Documentation</a><a href="index.html#downloads">Downloads</a><a href="index.html#sdks">SDKs</a></nav>
 <a class="nav-cta" href="https://github.com/hitesh-reddy-k/pacificdb-community">GitHub ↗</a></div></header>
 <div class="progress" aria-hidden="true"><i id="scrollProgress"></i></div>
-<div class="versionbar"><div class="wrap version-in"><span>PacificDB Community documentation</span><span class="version-badge">v1.1.1</span><span class="status available">Current stable release</span><a href="release-1.1.1.html">What's new in 1.1.1 ↗</a></div></div>
+<div class="versionbar"><div class="wrap version-in"><span>PacificDB Community documentation</span><span class="version-badge">v1.1.2</span><span class="status available">Patch prepared; publication pending</span><a href="release-1.1.2.html">What's new in 1.1.2 ↗</a></div></div>
 <div class="wrap docs-layout">
 <aside class="sidebar" aria-label="Documentation navigation"><div class="search-wrap"><label class="search-label" for="docs-search">Search documentation</label><input class="search" id="docs-search" type="search" placeholder="Try “backup” or “vector”" autocomplete="off" data-doc-search><span class="shortcut">/</span></div>
 <details class="nav-shell" open><summary>On this page</summary><nav class="docs-nav">
@@ -43,6 +43,7 @@ section{scroll-margin-top:110px;padding:58px 0;border-top:1px solid #14305a}sect
 </nav></details><p class="empty" data-doc-empty hidden>No documentation found.</p></aside>
 <main id="main" class="content">
 <header class="intro"><p class="eyebrow"><span class="dot"></span>PACIFICDB v1.1.1 DOCUMENTATION</p><h1>Build with PacificDB.</h1><p>Install a self-hosted database, work in its interactive shell, connect Node.js, Python, and Java applications, and use the same documentation surface for documents, vectors, media, backups, security, and operations.</p><div class="intro-actions"><a class="button primary" href="#quickstart">Start the quickstart</a><a class="button" href="#shell-reference">Browse commands</a></div><aside class="callout warning"><strong>Before critical use</strong><p>Windows and macOS 1.1.1 artifacts are unsigned under a version-specific release-owner exception. Verify <code>SHA256SUMS</code>, test backups, and review the <a href="https://github.com/hitesh-reddy-k/pacificdb-community/blob/v1.1.1/docs/COMMUNITY_P0_CERTIFICATION.md">certification report</a> before storing critical data.</p></aside></header>
+<aside class="callout warning"><strong>Community 1.1.2 security patch</strong><p>The prepared source patch aligns engine, CLI, SDKs and Workbench at 1.1.2. The installation examples below still identify published 1.1.1 artifacts, which do not contain the new fixes. Read the <a href="release-1.1.2.html">complete patch and production-readiness statement</a> before using real data. Maintainer-reported verification is not independent certification.</p></aside>
 
 <section id="install" data-doc-section><p class="kicker">START HERE</p><h2>Install PacificDB</h2><p>The native packages include the database engine and native CLI. Choose the package matching your operating system and processor.</p>
 <h3>Linux: Ubuntu and Debian</h3><p>Download the x86-64 <code>.deb</code> from the v1.1.1 release, then install it with APT.</p><div class="codebox"><div class="codehead"><span>Terminal</span><button class="copy" data-copy="install-linux">Copy</button></div><pre><code id="install-linux">sudo apt install ./pacificdb-community-1.1.1-linux-amd64.deb

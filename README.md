@@ -2,11 +2,11 @@
   <img src="site/assets/pacificdb-logo-symbol.png" width="96" alt="PacificDB logo">
 </p>
 
-<h1 align="center">PacificDB v1.1.1</h1>
+<h1 align="center">PacificDB Community v1.1.2</h1>
 
 <p align="center">
   Open-source, self-hosted database for documents, vectors, and media.<br>
-  Current stable Community release.
+  Security and reliability patch — source prepared; publication pending.
 </p>
 
 <p align="center">
@@ -26,7 +26,21 @@ insert users {"id":"1","name":"Ada"}
 find users {"id":"1"}
 ```
 
-Database creation selects it automatically. Projects are optional legacy metadata; no data migration is needed. See [database-first migration](docs/DATABASE_FIRST_MIGRATION.md). See the [full install options](#install) and [v1.1.1 release notes](site/release-1.1.1.html).
+Database creation selects it automatically. Projects are optional legacy metadata. See [database-first migration](docs/DATABASE_FIRST_MIGRATION.md), the [full install options](#install), and the [1.1.2 security patch notes and upgrade requirements](docs/releases/1.1.2.md).
+
+### 1.1.2 security and real-data readiness
+
+This open-source Community patch adds database ownership and explicit grants,
+resource-derived media authorization, local-only managed listeners, bounded
+protocol/regex work, persisted lockout, attributable audit events and verified
+audit alerts. The maintainer reports completing verification. Retained tests
+have explicit revision/platform boundaries; that statement is not independent
+certification or a guarantee against vulnerabilities or data loss. Before
+using real data, follow the [readiness and backup checklist](docs/releases/1.1.2.md#production-readiness-statement).
+
+The download and registry instructions below still identify published 1.1.1
+artifacts. They do not contain the 1.1.2 security fixes. Build this patch from
+source until matching 1.1.2 artifacts are published and verified.
 
 ## What is included
 
@@ -98,7 +112,9 @@ npm install --global @pacificdb/cli@1.1.1
 npm install @pacificdb/client@1.1.1
 ```
 
-Pin `1.1.1` when installing the CLI and Node.js client for this release.
+These commands install the previous published release. The source versions of
+the CLI and Node.js client in this patch are `1.1.2`; matching registry packages
+must be published before using `@1.1.2` install commands.
 
 The npm CLI is a client. It can automatically start `db_engine` when a native
 PacificDB server package is installed and available on `PATH`. Installing only
@@ -108,8 +124,8 @@ the npm package does not install the database engine.
 
 [Workbench 1.1.1](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/workbench-v1.1.1) includes Linux, Windows, and macOS installers with the bundled engine and CLI.
 
-Workbench 1.1.2 is an unpublished desktop-only production-readiness candidate;
-the engine, CLI, SDKs, and main Community release remain 1.1.1. See the
+Workbench, engine, CLI and SDK source versions are aligned at 1.1.2 for this
+Community security patch. Public 1.1.2 publication is still pending. See the
 [Workbench operations guide](docs/WORKBENCH.md),
 [candidate readiness checklist](docs/WORKBENCH_PRODUCTION_READINESS.md), and
 [candidate notes](docs/releases/workbench-1.1.2.md). Missing hosted or external
@@ -304,15 +320,16 @@ The CLI automatically starts an engine only for loopback hosts.
 
 ## Build and test
 
-Run the following from the v1.1.1 tag or `v-1.1.1` branch.
+Run the following from the 1.1.2 patch checkout. The public `v1.1.2` tag is not
+claimed to exist until the release workflow publishes the reviewed revision.
 
 Requirements: CMake 3.20+, a C++17 compiler, OpenSSL development headers and
-libraries, LZ4, Node.js 22.12+ for repository development, Python 3.10+, Java 11+, and Maven. On Debian or
-Ubuntu, install `libssl-dev` before configuring the engine; the `openssl`
+libraries, LZ4, RE2, Node.js 22.12+ for repository development, Python 3.10+, Java 11+, and Maven. On Debian or
+Ubuntu, install `libssl-dev`, `liblz4-dev` and `libre2-dev` before configuring the engine; the `openssl`
 command alone does not include the files CMake needs.
 
 ```sh
-cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.1.1
+cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.1.2
 cmake --build build -j2
 scripts/test-community.sh build
 ```
@@ -329,7 +346,7 @@ mvn -f sdk/java/pom.xml test
 
 ## Release readiness and support
 
-Version 1.1.1 is the current stable Community release. Retained engineering reports describe their exact revisions, validation scope, known regressions, and release-owner exceptions. See the [changelog](CHANGELOG.md), [release notes](site/release-1.1.1.html), and [upgrade guide](site/docs.html#upgrade).
+Version 1.1.2 is the prepared Community security patch; public artifact publication and exact-release external qualification are separate gates. Retained engineering reports describe their exact revisions, validation scope, known regressions, and release-owner exceptions. See the [changelog](CHANGELOG.md), [patch notes and readiness statement](docs/releases/1.1.2.md), and [upgrade guide](site/docs.html#upgrade). Historical 1.1.1 exceptions do not automatically authorize this patch.
 
 - [Certification report](docs/COMMUNITY_P0_CERTIFICATION.md)
 - [Production release procedure](docs/PRODUCTION_RELEASE.md)

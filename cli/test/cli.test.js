@@ -93,7 +93,8 @@ test('plain pacificdb opens the branded shell', async () => {
   input.write('help\n');
   input.end('quit\n');
   await running;
-  assert.match(text, /PacificDB[\s\S]*v1\.1\.1/);
+  const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.match(text, new RegExp(`PacificDB[\\s\\S]*v${packageJson.version.replaceAll('.', '\\.')}`));
   assert.match(text, /Documents · Vectors · Media/);
 });
 

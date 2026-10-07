@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pacificdb"
-version = "1.1.1"
+version = "1.1.2"
 description = "Database-first PacificDB Community client with verified pooled connections and streaming transfers"
 readme = "README.md"
 requires-python = ">=3.10"
