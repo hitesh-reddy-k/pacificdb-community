@@ -30,7 +30,8 @@ async function freePort() {
   return port;
 }
 
-async function startEngine(name, bindHost) {
+async function startEngine(name, bindHost = '127.0.0.1',
+  raftBindHost = '127.0.0.1', fileOnly = false) {
   const home = path.join(root, name);
   const dataRoot = path.join(home, 'data');
   const backupRoot = path.join(home, 'backup');
@@ -48,18 +49,14 @@ async function startEngine(name, bindHost) {
   const [port, raftPort] = await Promise.all([freePort(), freePort()]);
   const logPath = path.join(home, 'engine.log');
   const log = createWriteStream(logPath, { mode: 0o600 });
-  const child = spawn(engineBinary, [], {
-    cwd: repositoryRoot,
-    env: {
+  const env = {
       ...process.env,
       PACIFICDB_ENVIRONMENT: 'development',
       PACIFICDB_HOME: home,
       DATA_ROOT: dataRoot,
       BACKUP_ROOT: backupRoot,
       RESTORE_DIR: restoreRoot,
-      ENGINE_BIND_HOST: bindHost,
       ENGINE_PORT: String(port),
-      ENGINE_AUTH_REQUIRED: '1',
       PACIFICDB_ENGINE_ADMIN_USERNAME: 'admin',
       PACIFICDB_ENGINE_ADMIN_PASSWORD: adminPassword,
       PACIFICDB_ENGINE_ACCOUNTS_FILE: accountsFile,
@@ -76,7 +73,23 @@ async function startEngine(name, bindHost) {
       MAX_CONNECTIONS: '32',
       ADAPTIVE_ADMISSION: '0',
       PACIFICDB_MEDIA_UPLOAD_LEASE_MS: '50',
-    },
+  };
+  if (fileOnly) {
+    delete env.ENGINE_BIND_HOST;
+    delete env.RAFT_BIND_HOST;
+    delete env.ENGINE_AUTH_REQUIRED;
+    const configPath = path.join(home, 'engine.env');
+    await writeFile(configPath, `ENGINE_BIND_HOST=${bindHost}\nRAFT_BIND_HOST=${raftBindHost}\nENGINE_AUTH_REQUIRED=1\n`,
+      { mode: 0o600 });
+    env.PACIFICDB_ENV_FILE = configPath;
+  } else {
+    env.ENGINE_BIND_HOST = bindHost;
+    env.RAFT_BIND_HOST = raftBindHost;
+    env.ENGINE_AUTH_REQUIRED = '1';
+  }
+  const child = spawn(engineBinary, [], {
+    cwd: repositoryRoot,
+    env,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   child.stdout.pipe(log, { end: false });
@@ -393,6 +406,34 @@ try {
   }
   active = undefined;
 
+  const fileOnly = await startEngine('file-only', '127.0.0.1', '127.0.0.1', true);
+  active = fileOnly;
+  await waitReady(fileOnly);
+  const fileAdmin = new PacificDBClient({ port: fileOnly.port, poolSize: 1 });
+  const fileAnonymous = new PacificDBClient({ port: fileOnly.port, poolSize: 1 });
+  try {
+    await assert.rejects(fileAnonymous.request({ action: 'listDatabases' }),
+      /unauthorized/);
+    await fileAdmin.authenticate('admin', adminPassword);
+    const beforeReload = await fileAdmin.request({ action: 'admin_raft_status' });
+    assert.equal(beforeReload.engineBindHost, '127.0.0.1');
+    assert.equal(beforeReload.raftBindHost, '127.0.0.1');
+    await writeFile(path.join(root, 'file-only', 'engine.env'),
+      'ENGINE_BIND_HOST=127.0.0.2\nRAFT_BIND_HOST=127.0.0.2\nENGINE_AUTH_REQUIRED=0\n',
+      { mode: 0o600 });
+    await fileAdmin.request({ action: 'config_reload' });
+    const afterReload = await fileAdmin.request({ action: 'admin_raft_status' });
+    assert.equal(afterReload.engineBindHost, '127.0.0.1');
+    assert.equal(afterReload.raftBindHost, '127.0.0.1');
+    await assert.rejects(fileAnonymous.request({ action: 'listDatabases' }),
+      /unauthorized/);
+  } finally {
+    fileAdmin.close();
+    fileAnonymous.close();
+  }
+  await stopEngine(fileOnly);
+  active = undefined;
+
   const invalid = await startEngine('invalid-host', 'not-a-valid-ip-address');
   active = invalid;
   const exited = await Promise.race([
@@ -406,6 +447,23 @@ try {
   const invalidLog = await readFile(invalid.logPath, 'utf8');
   assert.match(invalidLog, /FATAL: Invalid ENGINE_BIND_HOST=not-a-valid-ip-address/);
   assert.doesNotMatch(invalidLog, /Listening on/);
+
+  const invalidRaft = await startEngine('invalid-raft-host', '127.0.0.1',
+    'not-a-valid-ip-address');
+  active = invalidRaft;
+  const raftExited = await Promise.race([
+    once(invalidRaft.child, 'exit').then(() => true),
+    new Promise((resolve) => setTimeout(() => resolve(false), 15000)),
+  ]);
+  assert.equal(raftExited, true, 'invalid Raft bind host must refuse startup');
+  await stopEngine(invalidRaft);
+  active = undefined;
+  assert.equal(invalidRaft.child.exitCode, 78,
+    'invalid Raft bind host must return a startup refusal');
+  const invalidRaftLog = await readFile(invalidRaft.logPath, 'utf8');
+  assert.match(invalidRaftLog,
+    /FATAL: Invalid RAFT_BIND_HOST=not-a-valid-ip-address/);
+  assert.doesNotMatch(invalidRaftLog, /\[SERVER\] Listening on/);
 
   console.log('engine auth boundary and bind-host checks passed');
 } finally {

@@ -46,7 +46,7 @@ export async function startDesktopEngine({ executable, directory, signal, timeou
       DATA_ROOT: path.join(directory, 'data'), BACKUP_ROOT: path.join(directory, 'backup'),
       RESTORE_DIR: path.join(directory, 'restore'), ENGINE_BIND_HOST: '127.0.0.1',
       ENGINE_PORT: String(port), ENGINE_AUTH_REQUIRED: '0',
-      TLS_ENABLED: '0', RAFT_PEERS: '',
+      TLS_ENABLED: '0', RAFT_PEERS: '', RAFT_BIND_HOST: '127.0.0.1',
       RAFT_LISTEN_PORT: String(raftPort), RAFT_CLUSTER_ID: 'pacificdb-desktop',
       RAFT_NODE_ID: 'desktop-1', RAFT_IS_LEADER: '1', MIN_QUORUM_SIZE: '1',
       ENGINE_CPU_CORES: '2', ENGINE_KEEPALIVE_MAX_REQUESTS: '10000',

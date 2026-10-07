@@ -132,6 +132,8 @@ volatile std::sig_atomic_t g_serverLifecycleStarted = 0;
 volatile std::sig_atomic_t g_serverReady = 0;
 volatile std::sig_atomic_t g_serverStartupFailed = 0;
 volatile std::sig_atomic_t g_serverListener = INVALID_SOCKET;
+std::string g_effectiveEngineBindHost = "0.0.0.0";
+std::string g_effectiveRaftBindHost = "0.0.0.0";
 std::mutex g_clientSocketMutex;
 std::set<SOCKET> g_clientSockets;
 std::mutex g_clientTlsMutex;
@@ -914,12 +916,8 @@ static void appendDeterministicLog(const json& entry) {
 }
 
 static bool engineAuthEnabled() {
-    static const bool enabled = [] {
-        const char* v = std::getenv("ENGINE_AUTH_REQUIRED");
-        if (!v) return false;
-        const std::string s(v);
-        return s == "1" || s == "true" || s == "TRUE";
-    }();
+    static const bool enabled =
+        EnvConfig::getBool("ENGINE_AUTH_REQUIRED", false);
     return enabled;
 }
 
@@ -5505,10 +5503,12 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
             res["action"] = action;
             res["nodeId"] = RaftCore::instance().getNodeId();
             res["role"] = RaftCore::instance().getRole();
-            res["engineBindHost"] = std::getenv("ENGINE_BIND_HOST") ? std::getenv("ENGINE_BIND_HOST") : "0.0.0.0";
-            res["raftBindHost"] = std::getenv("RAFT_BIND_HOST") ? std::getenv("RAFT_BIND_HOST") : "0.0.0.0";
-            res["engineAdvertiseHost"] = std::getenv("ENGINE_ADVERTISE_HOST") ? std::getenv("ENGINE_ADVERTISE_HOST") : "";
-            res["raftAdvertiseHost"] = std::getenv("RAFT_ADVERTISE_HOST") ? std::getenv("RAFT_ADVERTISE_HOST") : "";
+            res["engineBindHost"] = g_effectiveEngineBindHost;
+            res["raftBindHost"] = g_effectiveRaftBindHost;
+            res["engineAdvertiseHost"] =
+                EnvConfig::getString("ENGINE_ADVERTISE_HOST", "");
+            res["raftAdvertiseHost"] =
+                EnvConfig::getString("RAFT_ADVERTISE_HOST", "");
             res["isLeader"] = isLeader;
             res["leaderEligible"] = RaftCore::instance().isLeaderEligible();
             res["currentTerm"] = RaftCore::instance().getCurrentTerm();
@@ -7122,19 +7122,16 @@ void startServer() {
     setsockopt(server, SOL_SOCKET, SO_REUSEADDR,
                reinterpret_cast<const char*>(&optval), sizeof(optval));
 
-    // Read ENGINE_PORT from environment (default 9000)
-    int enginePort = 9000;
-    if (char* e = getenv("ENGINE_PORT")) {
-        try { enginePort = std::stoi(e); } catch (...) {}
-    }
+    const int enginePort = EnvConfig::getInt("ENGINE_PORT", 9000);
 
     sockaddr_in addr{};
     addr.sin_family = AF_INET;
     addr.sin_port = htons(enginePort);
-    std::string engineBindHost = "0.0.0.0";
-    if (const char* bindEnv = std::getenv("ENGINE_BIND_HOST")) {
-        engineBindHost = bindEnv;
-    }
+    const std::string engineBindHost =
+        EnvConfig::getString("ENGINE_BIND_HOST", "0.0.0.0");
+    g_effectiveEngineBindHost = engineBindHost;
+    g_effectiveRaftBindHost =
+        EnvConfig::getString("RAFT_BIND_HOST", "0.0.0.0");
     if (engineBindHost == "0.0.0.0" || engineBindHost == "*") {
         addr.sin_addr.s_addr = INADDR_ANY;
     } else if (inet_pton(AF_INET, engineBindHost.c_str(), &addr.sin_addr) != 1) {

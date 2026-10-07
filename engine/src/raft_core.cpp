@@ -1,5 +1,6 @@
 #include "raft_core.hpp"
 #include "database_engine.hpp"
+#include "env_config.hpp"
 #include "metrics_exporter.hpp"
 #include "wal.hpp"
 #include "lsm.hpp"
@@ -5709,16 +5710,20 @@ void RaftCore::runListener() {
     sockaddr_in addr{};
     addr.sin_family = AF_INET;
     addr.sin_port = htons(listenPort_);
-    std::string raftBindHost = "0.0.0.0";
-    if (const char* bindEnv = std::getenv("RAFT_BIND_HOST")) {
-        if (*bindEnv) raftBindHost = bindEnv;
-    }
+    const std::string raftBindHost =
+        EnvConfig::getString("RAFT_BIND_HOST", "0.0.0.0");
     if (raftBindHost == "0.0.0.0" || raftBindHost == "*") {
         addr.sin_addr.s_addr = INADDR_ANY;
     } else if (inet_pton(AF_INET, raftBindHost.c_str(), &addr.sin_addr) != 1) {
-        std::cerr << "[RAFTCORE] Listener invalid RAFT_BIND_HOST=" << raftBindHost
-                  << "; falling back to 0.0.0.0" << std::endl;
-        addr.sin_addr.s_addr = INADDR_ANY;
+        std::cerr << "[RAFTCORE] FATAL: Invalid RAFT_BIND_HOST="
+                  << raftBindHost << std::endl;
+#ifdef _WIN32
+        closesocket(server);
+#else
+        close(server);
+#endif
+        raftListenerRunning_.store(false);
+        return;
     }
     if (bind(server, (sockaddr*)&addr, sizeof(addr)) < 0) {
         std::cerr << "[RAFTCORE] Listener bind failed on " << raftBindHost << ":" << listenPort_

@@ -14,6 +14,9 @@ try {
   for (const name of names) process.env[name] = path.join(root, 'external', name);
   engine = await startDesktopEngine({ executable: path.join(build,
     process.platform === 'win32' ? 'db_engine.exe' : 'db_engine'), directory: path.join(root, 'desktop') });
+  const startupLog = await readFile(engine.logPath, 'utf8');
+  assert.match(startupLog, /\[SERVER\] Listening on 127\.0\.0\.1:/);
+  assert.match(startupLog, /\[RAFTCORE\] Listener ready on 127\.0\.0\.1:/);
   await engine.stop();
   assert.match(await readFile(engine.logPath, 'utf8'), /Clean shutdown marker v2 written/);
   assert.ok(!(await readdir(root)).includes('external'), 'desktop must not write inherited engine paths');

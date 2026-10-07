@@ -1121,6 +1121,7 @@ LocalEngineResult ensureLocalEngine(
     setDefaultEnvironment("BACKUP_ROOT", backup.u8string());
     setDefaultEnvironment("RESTORE_DIR", restore.u8string());
     setEnvironment("ENGINE_BIND_HOST", "127.0.0.1");
+    setEnvironment("RAFT_BIND_HOST", "127.0.0.1");
     setDefaultEnvironment("ENGINE_AUTH_REQUIRED", "0");
     setEnvironment("ENGINE_PORT", std::to_string(options.port));
     setDefaultEnvironment("RAFT_LISTEN_PORT", std::to_string(raftPort));

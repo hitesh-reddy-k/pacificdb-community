@@ -41,9 +41,12 @@
 #include <exception>
 
 #ifndef _WIN32
+#include <arpa/inet.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #else
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #include <windows.h>
 #endif
 
@@ -57,6 +60,12 @@ static SnapshotManager* g_snapshotManager = nullptr;
 static GarbageCollector* g_garbageCollector = nullptr;
 static volatile std::sig_atomic_t g_terminationSignal = 0;
 static std::atomic<const char*> g_enginePhase{"entry"};
+
+static bool validIpv4BindHost(const std::string& host) {
+    if (host == "0.0.0.0" || host == "*") return true;
+    in_addr address{};
+    return inet_pton(AF_INET, host.c_str(), &address) == 1;
+}
 
 static void handleTerminationSignal(int signalNumber) {
     g_terminationSignal = signalNumber;
@@ -331,6 +340,14 @@ static int runEngine(int argc, char** argv) {
     EnvConfig::load();
     if (EnvConfig::getBool("ENGINE_VERBOSE", false)) {
         EnvConfig::dump();
+    }
+    for (const char* bindKey : {"ENGINE_BIND_HOST", "RAFT_BIND_HOST"}) {
+        const std::string value = EnvConfig::getString(bindKey, "0.0.0.0");
+        if (!validIpv4BindHost(value)) {
+            std::cerr << "[MAIN] FATAL: Invalid " << bindKey << "="
+                      << value << "\n";
+            return 78;
+        }
     }
     try {
         validateProductionConfiguration();

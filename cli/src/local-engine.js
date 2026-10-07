@@ -131,6 +131,7 @@ function localEnvironment(home, port, identity) {
     BACKUP_ROOT: process.env.BACKUP_ROOT || path.join(home, 'backup'),
     RESTORE_DIR: process.env.RESTORE_DIR || path.join(home, 'restore'),
     ENGINE_BIND_HOST: '127.0.0.1',
+    RAFT_BIND_HOST: '127.0.0.1',
     ENGINE_AUTH_REQUIRED: process.env.ENGINE_AUTH_REQUIRED || '0',
     ENGINE_PORT: String(port),
     RAFT_LISTEN_PORT: process.env.RAFT_LISTEN_PORT || String(raftPort),
