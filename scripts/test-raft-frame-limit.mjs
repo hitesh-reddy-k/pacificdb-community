@@ -53,6 +53,7 @@ const engine = spawn(engineBinary, [], {
     RAFT_IS_LEADER: '1', MIN_QUORUM_SIZE: '1', ENGINE_CPU_CORES: '2',
     CONN_MIN_THREADS: '2', CONN_MAX_THREADS: '4', MAX_CONNECTIONS: '16',
     ADAPTIVE_ADMISSION: '0', RAFT_INBOUND_IDLE_TIMEOUT_MS: '1000',
+    RAFT_INBOUND_MAX_INFLIGHT_BYTES: String(64 * 1024 * 1024),
   },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
@@ -129,6 +130,28 @@ try {
     assert.ok(peak - before < 16 * 1024,
       `oversized header increased RSS by ${peak - before} KiB`);
   }
+
+  const holder = net.createConnection({ host: '127.0.0.1', port: raftPort });
+  holder.on('error', () => {});
+  await once(holder, 'connect');
+  const maximumHeader = Buffer.alloc(4);
+  maximumHeader.writeUInt32LE(64 * 1024 * 1024);
+  holder.write(maximumHeader);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  const competing = net.createConnection({ host: '127.0.0.1', port: raftPort });
+  competing.on('error', () => {});
+  await once(competing, 'connect');
+  const smallHeader = Buffer.alloc(4);
+  smallHeader.writeUInt32LE(1);
+  const budgetStarted = Date.now();
+  competing.write(smallHeader);
+  await Promise.race([
+    once(competing, 'close'),
+    new Promise((_, reject) => setTimeout(() => reject(
+      new Error('aggregate Raft payload budget was not enforced')), 750)),
+  ]);
+  assert.ok(Date.now() - budgetStarted < 750);
+  holder.destroy();
   assert.equal((await client.request({ action: 'ping' })).status, 'pong');
 } finally {
   client.close();

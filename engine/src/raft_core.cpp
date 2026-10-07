@@ -67,6 +67,28 @@ constexpr std::uint32_t kMaxRaftPayloadBytes = 64U * 1024U * 1024U;
 constexpr std::size_t kRaftFrameReserveBytes = 64U * 1024U;
 constexpr std::size_t kRaftRecordHeaderBytes =
     sizeof(kRaftRecordMagic) + 1 + 2 * sizeof(std::uint32_t);
+std::atomic<std::uint64_t> g_raftInboundPayloadBytes{0};
+
+std::uint64_t raftInboundPayloadBudget() {
+    static const std::uint64_t value = [] {
+        constexpr std::uint64_t fallback =
+            4ULL * static_cast<std::uint64_t>(kMaxRaftPayloadBytes);
+        const char* raw = std::getenv("RAFT_INBOUND_MAX_INFLIGHT_BYTES");
+        if (!raw || !*raw) return fallback;
+        try {
+            const std::string configured(raw);
+            if (configured.front() == '-') return fallback;
+            std::size_t consumed = 0;
+            const auto parsed = std::stoull(configured, &consumed);
+            if (consumed != configured.size()) return fallback;
+            return std::max<std::uint64_t>(kMaxRaftPayloadBytes,
+                                            parsed);
+        } catch (...) {
+            return fallback;
+        }
+    }();
+    return value;
+}
 
 void appendU32Le(std::string& out, std::uint32_t value) {
     for (int shift = 0; shift < 32; shift += 8) {
@@ -7007,6 +7029,28 @@ void RaftCore::handleFollowerConn(int clientSock, const std::atomic<size_t>& pen
                       << std::endl;
             break;
         }
+        const auto budget = raftInboundPayloadBudget();
+        auto inFlight = g_raftInboundPayloadBytes.load(std::memory_order_relaxed);
+        bool reserved = false;
+        while (inFlight <= budget - len) {
+            if (g_raftInboundPayloadBytes.compare_exchange_weak(
+                    inFlight, inFlight + len, std::memory_order_relaxed)) {
+                reserved = true;
+                break;
+            }
+        }
+        if (!reserved) {
+            std::cerr << "[RAFTCORE] Rejected frame beyond inbound byte budget"
+                      << std::endl;
+            break;
+        }
+        struct PayloadReservation {
+            std::uint64_t bytes;
+            ~PayloadReservation() {
+                g_raftInboundPayloadBytes.fetch_sub(bytes,
+                    std::memory_order_relaxed);
+            }
+        } payloadReservation{len};
         std::string payload(len, '\0');
         if (!receiveExact(payload.data(), len)) break;
         RAFT_DLOG("[RAFTCORE] Received replicated payload (" << len << " bytes)" << std::endl);

@@ -2735,6 +2735,14 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                                 break;
                             }
                         }
+                    } else if (!isCommunityAction(action) &&
+                               pacificdb::community::isReservedDatabase(dbForAuth)) {
+                        // Preserve the reserved-namespace boundary response while
+                        // still requiring a valid token and sufficient global role.
+                        // The dispatch guard below performs the internalAdmin check.
+                        allowed = allowed &&
+                            pacificdb::security::SecurityManager::instance()
+                                .hasPermission(token, perm, dbForAuth);
                     } else {
                         allowed = allowed && databasePermissionAllows(
                             token, perm, userForAuth, dbForAuth, action);

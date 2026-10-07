@@ -7,6 +7,7 @@
 #include <nlohmann/json.hpp>
 
 using pacificdb::security::Role;
+using pacificdb::security::Permission;
 using pacificdb::security::SecurityManager;
 
 int main() {
@@ -69,4 +70,15 @@ int main() {
     assert(!security.authenticate("legacy", "correct", "127.0.0.1"));
     assert(security.updateUserPassword("legacy", "reset", "admin"));
     assert(security.authenticate("legacy", "reset", "127.0.0.1"));
+
+    assert(security.createUser("key-owner", "correct", Role::ADMIN, "test"));
+    const auto key = security.createApiKey("role-ceiling", "readwrite", "key-owner")
+                         .at("key").get<std::string>();
+    assert(security.hasPermission(key, Permission::READ));
+    assert(security.hasPermission(key, Permission::WRITE));
+    assert(security.updateUserRole("key-owner", Role::READ_ONLY, "admin"));
+    assert(security.hasPermission(key, Permission::READ));
+    assert(!security.hasPermission(key, Permission::WRITE));
+    assert(security.deleteUser("key-owner", "admin"));
+    assert(!security.hasPermission(key, Permission::READ));
 }

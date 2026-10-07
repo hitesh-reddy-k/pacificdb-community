@@ -682,8 +682,20 @@ bool SecurityManager::hasPermission(const std::string& token, Permission perm) {
         return false;
     }
 
-    const auto perms = getPermissionsForRole(getTokenRole(token));
-    return perms.count(perm) > 0;
+    if (getPermissionsForRole(getTokenRole(token)).count(perm) == 0) {
+        permissionDenials_++;
+        return false;
+    }
+
+    const std::string username = getTokenUsername(token);
+    std::lock_guard<std::mutex> userLock(userMutex_);
+    const auto user = users_.find(username);
+    if (user == users_.end() || !user->second.isActive ||
+        getPermissionsForRole(user->second.role).count(perm) == 0) {
+        permissionDenials_++;
+        return false;
+    }
+    return true;
 }
 
 bool SecurityManager::hasPermission(const std::string& token, Permission perm,

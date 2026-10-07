@@ -9,6 +9,8 @@ int main() {
     const OwnedTestRoot root("community-api-keys");
     auto& security = pacificdb::security::SecurityManager::instance();
     security.initialize(root.dataRoot().string());
+    assert(security.createUser("admin", "test-password",
+                               pacificdb::security::Role::ADMIN, "test"));
 
     const auto created = security.createApiKey("ci", "readwrite", "admin");
     const std::string key = created.at("key");
