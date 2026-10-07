@@ -32,6 +32,9 @@
 #include <set>
 #include <unordered_set>
 #include <cstdlib>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 // Engine debug logging — off by default for throughput, enable with ENGINE_DEBUG_LOG=1
 static bool g_engineDebug = (std::getenv("ENGINE_DEBUG_LOG") && std::string(std::getenv("ENGINE_DEBUG_LOG")) == "1");
@@ -43,6 +46,9 @@ using json = nlohmann::json;
 using pacificdb::durability::ChecksumCalculator;
 
 static std::mutex g_findLogMutex;
+// ponytail: one metadata lock keeps db.meta updates atomic; shard per database
+// only if catalog mutation throughput becomes measurable.
+static std::mutex g_databaseMetadataMutex;
 // Version ordering must survive an engine restart: SST reconciliation chooses
 // the document with the greatest _mvcc_version. A process-local counter that
 // starts at one can make a newly acknowledged update lose to an older SST.
@@ -546,18 +552,25 @@ bool DatabaseEngine::applyReplicatedEntry(const nlohmann::json& entry) {
             action == "dropCollection" || legacyOp == "DROP_COLLECTION") {
             op = "DROP_COLLECTION";
         }
+        if (op == "SETDATABASESECURITY" || op == "SET_DATABASE_SECURITY" ||
+            action == "setDatabaseSecurity" ||
+            legacyOp == "SET_DATABASE_SECURITY") {
+            op = "SET_DATABASE_SECURITY";
+        }
         if (op == "CREATEINDEX" || op == "CREATE_INDEX" || action == "createIndex" || legacyOp == "CREATE_INDEX") op = "CREATE_INDEX";
         if (op == "DROPINDEX" || op == "DROP_INDEX" || action == "dropIndex" || legacyOp == "DROP_INDEX") op = "DROP_INDEX";
         if (op == "REBUILDINDEX" || op == "REBUILD_INDEX" || action == "rebuildIndex" || action == "indexRebuild" || legacyOp == "REBUILD_INDEX") op = "REBUILD_INDEX";
 
         // For CREATE_DB, collection/data are not required
-        if (op != "CREATE_DB" && op != "DROP_DB") {
+        if (op != "CREATE_DB" && op != "DROP_DB" &&
+            op != "SET_DATABASE_SECURITY") {
             if (!entry.contains("collection")) {
                 std::cerr << "[ENGINE][APPLY] Missing collection" << std::endl;
                 return false;
             }
         }
         if (op != "CREATE_DB" && op != "CREATE_COLLECTION" && op != "DROP_DB" && op != "DROP_COLLECTION" &&
+            op != "SET_DATABASE_SECURITY" &&
             op != "CREATE_INDEX" && op != "DROP_INDEX" && op != "REBUILD_INDEX") {
             if (!entry.contains("data") && !entry.contains("doc")) {
                 std::cerr << "[ENGINE][APPLY] Missing data/doc" << std::endl;
@@ -598,9 +611,17 @@ bool DatabaseEngine::applyReplicatedEntry(const nlohmann::json& entry) {
                       << " user=" << userId << " db=" << dbName
                       << " type=" << dbType << std::endl;
             ELOG("[ENGINE][APPLY] Creating DB on follower: user=" << userId << " db=" << dbName << " type=" << dbType << std::endl);
-            if (!DatabaseEngine::createDatabase(userId, dbName, dbType)) {
+            if (!DatabaseEngine::createDatabase(
+                    userId, dbName, dbType,
+                    entry.value("security", json::object()))) {
                 std::cerr << "[ENGINE][APPLY] CREATE_DB failed user=" << userId
                           << " db=" << dbName << std::endl;
+                return false;
+            }
+        } else if (op == "SET_DATABASE_SECURITY") {
+            if (!entry.contains("security") ||
+                !DatabaseEngine::setDatabaseSecurity(
+                    userId, dbName, entry["security"])) {
                 return false;
             }
         } else if (op == "DROP_DB") {
@@ -853,6 +874,84 @@ static fs::path userRootPath(const std::string& userId) {
         fs::path(DATA_ROOT) / userId);
 }
 
+static json unassignedDatabaseSecurity() {
+    return {{"version", 1}, {"owners", json::array()},
+            {"grants", json::object()}};
+}
+
+static bool validSecurityPrincipal(const std::string& principal) {
+    if (principal.empty() || principal.size() > 255) return false;
+    return std::none_of(principal.begin(), principal.end(), [](unsigned char c) {
+        return c < 0x20 || c == 0x7f;
+    });
+}
+
+static bool validDatabaseSecurity(const json& security, bool requireOwner) {
+    if (!security.is_object() ||
+        !security.contains("version") ||
+        !security["version"].is_number_integer() ||
+        security["version"].get<int>() != 1 ||
+        !security.contains("owners") || !security["owners"].is_array() ||
+        !security.contains("grants") || !security["grants"].is_object()) {
+        return false;
+    }
+    std::unordered_set<std::string> owners;
+    for (const auto& owner : security["owners"]) {
+        if (!owner.is_string()) return false;
+        const std::string principal = owner.get<std::string>();
+        if (!validSecurityPrincipal(principal) || !owners.insert(principal).second) {
+            return false;
+        }
+    }
+    if (requireOwner && owners.empty()) return false;
+    for (const auto& [principal, level] : security["grants"].items()) {
+        if (!validSecurityPrincipal(principal) || !level.is_string()) return false;
+        const std::string value = level.get<std::string>();
+        if (value != "read-only" && value != "read-write") return false;
+    }
+    return true;
+}
+
+static json readDatabaseMetadataFile(const fs::path& metaFile) {
+    std::ifstream input(metaFile);
+    if (!input) return json();
+    json meta = json::parse(input, nullptr, false);
+    return meta.is_object() ? meta : json();
+}
+
+static bool replaceDatabaseMetadata(const fs::path& metaFile, const json& meta) {
+    const fs::path temporary = metaFile.string() + ".security.tmp";
+    {
+        std::ofstream output(temporary, std::ios::trunc);
+        if (!output) return false;
+        output << meta.dump(2);
+        output.flush();
+        if (!output.good()) {
+            output.close();
+            std::error_code removeError;
+            fs::remove(temporary, removeError);
+            return false;
+        }
+    }
+#ifdef _WIN32
+    if (!MoveFileExW(temporary.c_str(), metaFile.c_str(),
+                     MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+        std::error_code removeError;
+        fs::remove(temporary, removeError);
+        return false;
+    }
+#else
+    std::error_code renameError;
+    fs::rename(temporary, metaFile, renameError);
+    if (renameError) {
+        std::error_code removeError;
+        fs::remove(temporary, removeError);
+        return false;
+    }
+#endif
+    return true;
+}
+
 static void clearReadFencesWithPrefix(const std::string& prefix) {
     std::lock_guard<std::mutex> lock(g_readFenceMutex);
     for (auto it = g_readFence.begin(); it != g_readFence.end();) {
@@ -1083,9 +1182,11 @@ void DatabaseEngine::ensureUserRoot(const std::string& userId) {
 /* ---------------- DATABASE WITH TYPE SUPPORT ----------------*/
 bool DatabaseEngine::createDatabase(const std::string& userId,
                                     const std::string& dbName,
-                                    const std::string& dbType) {
+                                    const std::string& dbType,
+                                    const json& security) {
 
     requireStorageNamespace(userId, dbName);
+    if (!security.empty() && !validDatabaseSecurity(security, true)) return false;
 
     fs::path userRoot = userRootPath(userId);
 
@@ -1095,6 +1196,7 @@ bool DatabaseEngine::createDatabase(const std::string& userId,
     ensureUserRoot(userId);
     fs::path base = basePath(userId, dbName);
     fs::path metaFile = base / "db.meta";
+    std::lock_guard<std::mutex> metadataLock(g_databaseMetadataMutex);
 
     std::cerr << "[DLOG][CREATE_DB][PATH] user=" << userId
               << " db=" << dbName
@@ -1134,6 +1236,7 @@ bool DatabaseEngine::createDatabase(const std::string& userId,
         {"created", std::time(nullptr)},
         {"collections", json::array()}
     };
+    if (!security.empty()) dbMeta["security"] = security;
 
     std::ofstream metaOut(metaFile);
     if (!metaOut) {
@@ -1152,6 +1255,7 @@ bool DatabaseEngine::createDatabase(const std::string& userId,
 json DatabaseEngine::getDatabaseMetadata(const std::string& userId, const std::string& dbName) {
     requireStorageNamespace(userId, dbName);
     fs::path metaFile = basePath(userId, dbName) / "db.meta";
+    std::lock_guard<std::mutex> metadataLock(g_databaseMetadataMutex);
 
     if (!fs::exists(metaFile)) {
         return {
@@ -1184,11 +1288,38 @@ json DatabaseEngine::getDatabaseMetadata(const std::string& userId, const std::s
     return meta;
 }
 
+json DatabaseEngine::getDatabaseSecurity(const std::string& userId,
+                                         const std::string& dbName) {
+    requireStorageNamespace(userId, dbName);
+    const fs::path metaFile = basePath(userId, dbName) / "db.meta";
+    std::lock_guard<std::mutex> metadataLock(g_databaseMetadataMutex);
+    const json meta = readDatabaseMetadataFile(metaFile);
+    if (!meta.contains("security") ||
+        !validDatabaseSecurity(meta["security"], false)) {
+        return unassignedDatabaseSecurity();
+    }
+    return meta["security"];
+}
+
+bool DatabaseEngine::setDatabaseSecurity(const std::string& userId,
+                                         const std::string& dbName,
+                                         const json& security) {
+    requireStorageNamespace(userId, dbName);
+    if (!validDatabaseSecurity(security, true)) return false;
+    const fs::path metaFile = basePath(userId, dbName) / "db.meta";
+    std::lock_guard<std::mutex> metadataLock(g_databaseMetadataMutex);
+    json meta = readDatabaseMetadataFile(metaFile);
+    if (meta.is_null() || meta.empty()) return false;
+    meta["security"] = security;
+    return replaceDatabaseMetadata(metaFile, meta);
+}
+
 /* ---------------- COLLECTION ---------------- */
 std::string DatabaseEngine::createCollection(const std::string& userId,
                                              const std::string& dbName,
                                              const std::string& collection) {
     requireStorageNamespace(userId, dbName, collection);
+    std::lock_guard<std::mutex> metadataLock(g_databaseMetadataMutex);
     fs::path dbRoot = basePath(userId, dbName);
 
     // Guard: database must exist
@@ -1304,6 +1435,7 @@ bool DatabaseEngine::dropCollection(const std::string& userId,
     if (ec) return false;
 
     const fs::path metaFile = dbRoot / "db.meta";
+    std::lock_guard<std::mutex> metadataLock(g_databaseMetadataMutex);
     if (fs::exists(metaFile)) {
         std::ifstream input(metaFile);
         json meta = json::parse(input, nullptr, false);

@@ -21,7 +21,9 @@ public:
     static void init(const std::string& rootPath, bool restoreWal = true);
     static void ensureUserRoot(const std::string& userId);
     // Returns true on success (created or already exists), false on failure
-    static bool createDatabase(const std::string& userId, const std::string& dbName, const std::string& dbType = "binary");
+    static bool createDatabase(const std::string& userId, const std::string& dbName,
+                               const std::string& dbType = "binary",
+                               const json& security = json::object());
     // Returns true on success (created or already exists), false on failure
     // Returns the generated collection id on success, or empty string on failure
     static std::string createCollection(const std::string& userId, const std::string& dbName, const std::string& collection);
@@ -29,6 +31,11 @@ public:
     static bool dropDatabase(const std::string& userId, const std::string& dbName);
     static std::vector<std::string> listDatabases(const std::string& userId);
     static json getDatabaseMetadata(const std::string& userId, const std::string& dbName);
+    static json getDatabaseSecurity(const std::string& userId,
+                                    const std::string& dbName);
+    static bool setDatabaseSecurity(const std::string& userId,
+                                    const std::string& dbName,
+                                    const json& security);
     static void insert(const std::string& userId, const std::string& dbName, const std::string& collection, json doc, const json& raftMeta = json::object());
     static json insertMany(const std::string& userId, const std::string& dbName, const std::string& collection, std::vector<json> docs, const json& raftMeta = json::object());
     static void insertVector(const std::string& userId, const std::string& dbName, const std::string& collection, const json& doc, const json& raftMeta = json::object());

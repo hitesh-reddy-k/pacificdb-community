@@ -343,6 +343,8 @@ add_pacificdb_engine_test(db_engine_community_manual_operations_test
     test/community_manual_operations_test.cpp)
 add_pacificdb_engine_test(db_engine_community_catalog_test
     test/community_catalog_test.cpp)
+add_pacificdb_engine_test(db_engine_database_access_test
+    test/database_access_test.cpp)
 add_pacificdb_engine_test(db_engine_community_api_key_test
     test/community_api_key_test.cpp)
 add_pacificdb_engine_test(db_engine_community_query_test

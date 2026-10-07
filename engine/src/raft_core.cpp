@@ -1088,12 +1088,16 @@ static bool isSchemaEntry(const json& entry) {
     std::string legacy = entry.value("legacyOp", "");
     return action == "createDatabase" || action == "createCollection" ||
            action == "dropDatabase" || action == "dropCollection" ||
+           action == "setDatabaseSecurity" ||
            op == "createDatabase" || op == "createCollection" ||
            op == "dropDatabase" || op == "dropCollection" ||
+           op == "setDatabaseSecurity" ||
            op == "CREATE_DB" || op == "CREATE_COLLECTION" ||
            op == "DROP_DB" || op == "DROP_COLLECTION" ||
+           op == "SET_DATABASE_SECURITY" ||
            legacy == "CREATE_DB" || legacy == "CREATE_COLLECTION" ||
-           legacy == "DROP_DB" || legacy == "DROP_COLLECTION";
+           legacy == "DROP_DB" || legacy == "DROP_COLLECTION" ||
+           legacy == "SET_DATABASE_SECURITY";
 }
 
 static std::string schemaTraceId(const json& entry) {
@@ -1465,7 +1469,9 @@ static bool raftPayloadNeedsVisibilityCheck(const json& payload) {
     std::string upper = action;
     std::transform(upper.begin(), upper.end(), upper.begin(), [](unsigned char c){ return std::toupper(c); });
     if (upper == "CREATE_DB" || upper == "CREATEDATABASE" ||
-        upper == "CREATE_COLLECTION" || upper == "CREATECOLLECTION") {
+        upper == "CREATE_COLLECTION" || upper == "CREATECOLLECTION" ||
+        upper == "SET_DATABASE_SECURITY" ||
+        upper == "SETDATABASESECURITY") {
         return false;
     }
     json data = json::object();
