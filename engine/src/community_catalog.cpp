@@ -511,6 +511,18 @@ json CommunityCatalog::beginMedia(const std::string& userId,
     return manifest;
 }
 
+json CommunityCatalog::mediaScope(const std::string& userId,
+                                  const std::string& mediaId) {
+    if (!DatabaseEngine::databaseExists(userId, kDatabase)) return json();
+    std::lock_guard<std::mutex> lock(mediaMutex(userId, mediaId));
+    const auto manifest = rawMedia(userId, mediaId);
+    if (manifest.is_null()) return json();
+    const std::string database = manifest.value("database", std::string());
+    if (database.empty()) return json();
+    return {{"database", database},
+            {"collection", manifest.value("collection", std::string())}};
+}
+
 json CommunityCatalog::putMediaChunk(const std::string& userId,
                                      const std::string& mediaId,
                                      long long index,
@@ -698,7 +710,9 @@ json CommunityCatalog::listMedia(const std::string& userId,
                                  bool includeIncomplete,
                                  const std::string& databaseName,
                                  const std::string& collection,
-                                 long long limit, long long offset) {
+                                 long long limit, long long offset,
+                                 const std::function<bool(const std::string&)>&
+                                     authorizeDatabase) {
     initialize(userId);
     if (limit <= 0 || limit > 1001 || offset < 0) {
         throw std::invalid_argument("invalid media page");
@@ -707,16 +721,31 @@ json CommunityCatalog::listMedia(const std::string& userId,
     if (!includeIncomplete) filter["status"] = "ready";
     if (!databaseName.empty()) filter["database"] = databaseName;
     if (!collection.empty()) filter["collection"] = collection;
-    auto rows = DatabaseEngine::find(userId, kDatabase, kMediaManifests,
-                                     filter, limit, offset);
     json result = json::array();
-    for (auto& row : rows) {
-        auto manifest = publicDocument(std::move(row));
-        const auto id = manifest.value("id", std::string());
-        result.push_back(decorateMedia(
-            std::move(manifest),
-            rawMediaChunks(userId, id),
-            nowMs()));
+    long long scanOffset = authorizeDatabase ? 0 : offset;
+    long long authorizedOffset = 0;
+    const long long pageSize = authorizeDatabase
+        ? static_cast<long long>(std::max<std::size_t>(
+              1, std::min<std::size_t>(100, QueryLimiter::getMaxResultDocs())))
+        : limit;
+    while (static_cast<long long>(result.size()) < limit) {
+        auto rows = DatabaseEngine::find(userId, kDatabase, kMediaManifests,
+                                         filter, pageSize, scanOffset);
+        if (rows.empty()) break;
+        scanOffset += static_cast<long long>(rows.size());
+        for (auto& row : rows) {
+            auto manifest = publicDocument(std::move(row));
+            if (authorizeDatabase &&
+                !authorizeDatabase(manifest.value("database", std::string()))) {
+                continue;
+            }
+            if (authorizeDatabase && authorizedOffset++ < offset) continue;
+            const auto id = manifest.value("id", std::string());
+            result.push_back(decorateMedia(
+                std::move(manifest), rawMediaChunks(userId, id), nowMs()));
+            if (static_cast<long long>(result.size()) == limit) break;
+        }
+        if (static_cast<long long>(rows.size()) < pageSize) break;
     }
     return result;
 }
@@ -754,10 +783,12 @@ bool CommunityCatalog::deleteMedia(const std::string& userId,
 }
 
 long long CommunityCatalog::cleanupMedia(const std::string& userId,
-                                         const std::string& mediaId) {
+                                         const std::string& mediaId,
+                                         const std::function<bool(const std::string&)>&
+                                             authorizeDatabase) {
     initialize(userId);
     if (mediaId.empty()) {
-        const auto result = reconcileMedia(userId);
+        const auto result = reconcileMedia(userId, {}, authorizeDatabase);
         return result.value("expired_uploads", 0LL) +
                result.value("removed_orphans", 0LL);
     }
@@ -783,7 +814,8 @@ long long CommunityCatalog::cleanupMedia(const std::string& userId,
 
 json CommunityCatalog::reconcileMedia(
     const std::string& userId,
-    const std::string& mediaId) {
+    const std::string& mediaId,
+    const std::function<bool(const std::string&)>& authorizeDatabase) {
     initialize(userId);
     json result{
         {"repaired_progress", 0}, {"reset_verifying", 0},
@@ -801,12 +833,21 @@ json CommunityCatalog::reconcileMedia(
             if (page.empty()) break;
             for (const auto& manifest : page) {
                 const auto id = manifest.value("id", std::string());
-                if (!id.empty()) manifestIds.push_back(id);
+                if (!id.empty() &&
+                    (!authorizeDatabase || authorizeDatabase(
+                        manifest.value("database", std::string())))) {
+                    manifestIds.push_back(id);
+                }
             }
             offset += static_cast<long long>(page.size());
         }
-    } else if (!rawMedia(userId, mediaId).is_null()) {
-        manifestIds.push_back(mediaId);
+    } else {
+        const auto manifest = rawMedia(userId, mediaId);
+        if (!manifest.is_null() &&
+            (!authorizeDatabase || authorizeDatabase(
+                manifest.value("database", std::string())))) {
+            manifestIds.push_back(mediaId);
+        }
     }
     std::unordered_set<std::string> knownMedia;
     const long long timestamp = nowMs();
@@ -862,7 +903,7 @@ json CommunityCatalog::reconcileMedia(
         }
     }
 
-    if (mediaId.empty()) {
+    if (mediaId.empty() && !authorizeDatabase) {
         // Gather only orphan IDs before deleting. Deleting while advancing an
         // offset would shift later rows and skip some orphans. A small page
         // keeps base64 payloads below the read result ceiling.

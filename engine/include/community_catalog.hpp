@@ -3,6 +3,7 @@
 #include <nlohmann/json.hpp>
 
 #include <array>
+#include <functional>
 #include <mutex>
 #include <set>
 #include <string>
@@ -38,6 +39,7 @@ public:
                     const std::string& contentType, long long sizeBytes,
                     long long chunkCount, const std::string& sha256,
                     const std::string& resumeId = {});
+    json mediaScope(const std::string& userId, const std::string& mediaId);
     json putMediaChunk(const std::string& userId, const std::string& mediaId,
                        long long index, const std::string& dataBase64,
                        long long sizeBytes, const std::string& sha256);
@@ -45,16 +47,22 @@ public:
     json listMedia(const std::string& userId, bool includeIncomplete,
                    const std::string& databaseName = {},
                    const std::string& collection = {},
-                   long long limit = 100, long long offset = 0);
+                   long long limit = 100, long long offset = 0,
+                   const std::function<bool(const std::string&)>&
+                       authorizeDatabase = {});
     json getMedia(const std::string& userId, const std::string& mediaId);
     json getMediaChunk(const std::string& userId, const std::string& mediaId,
                        long long index);
     bool deleteMedia(const std::string& userId, const std::string& mediaId,
                      bool allowReady = true);
     long long cleanupMedia(const std::string& userId,
-                           const std::string& mediaId = {});
+                           const std::string& mediaId = {},
+                           const std::function<bool(const std::string&)>&
+                               authorizeDatabase = {});
     json reconcileMedia(const std::string& userId,
-                        const std::string& mediaId = {});
+                        const std::string& mediaId = {},
+                        const std::function<bool(const std::string&)>&
+                            authorizeDatabase = {});
     json recordRestore(const std::string& userId, const std::string& backupId,
                        const std::string& targetDirectory, bool success,
                        const std::string& error);

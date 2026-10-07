@@ -1144,6 +1144,25 @@ static std::string requestDatabaseScope(const json& request, bool* conflict = nu
     return selected;
 }
 
+static bool isMediaResourceAction(const std::string& action,
+                                  const json& request) {
+    if (action == "community_media_begin") {
+        return !request.value("resume_id", std::string()).empty();
+    }
+    return action == "community_media_put_chunk" ||
+           action == "community_media_finalize" ||
+           action == "community_media_get" ||
+           action == "community_media_get_chunk" ||
+           action == "community_media_delete" ||
+           (action == "community_media_cleanup" &&
+            !request.value("media_id", std::string()).empty());
+}
+
+static std::string mediaNotFoundCode(const std::string& action) {
+    return action == "community_media_get_chunk"
+        ? "media_chunk_not_found" : "media_not_found";
+}
+
 static bool databasePermissionAllows(const std::string& token,
                                      pacificdb::security::Permission permission,
                                      const std::string& userId,
@@ -2678,7 +2697,19 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                 const std::string dbForAuth = requestDatabaseScope(
                     req, &conflictingScope);
                 bool allowed = !conflictingScope;
-                if (!isDatabaseAclAction(action)) {
+                bool hideMediaResource = false;
+                if (isMediaResourceAction(action, req)) {
+                    const std::string mediaId = action == "community_media_begin"
+                        ? req.value("resume_id", std::string())
+                        : req.value("media_id", std::string());
+                    const auto scope =
+                        pacificdb::community::CommunityCatalog::instance()
+                            .mediaScope(userForAuth, mediaId);
+                    allowed = !scope.is_null() && databasePermissionAllows(
+                        token, perm, userForAuth,
+                        scope.value("database", std::string()), action);
+                    hideMediaResource = !allowed;
+                } else if (!isDatabaseAclAction(action)) {
                     if (action == "listDatabases") {
                         allowed = allowed &&
                             pacificdb::security::SecurityManager::instance()
@@ -2711,7 +2742,10 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                             token, perm, userForAuth, dbForAuth, action);
                     }
                 }
-                if (!allowed) {
+                if (hideMediaResource) {
+                    res = {{"error", mediaNotFoundCode(action)}};
+                    authRejected = true;
+                } else if (!allowed) {
                     res = {
                         {"error", "permission_denied"},
                         {"action", action}
@@ -2837,7 +2871,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
         }
         else if (action == "community_media_begin") {
             const auto media = pacificdb::community::CommunityCatalog::instance().beginMedia(
-                req.value("userId", "system"), req.value("dbName", ""),
+                req.value("userId", "system"), requestDatabaseScope(req),
                 req.value("collection", ""), req.value("filename", ""),
                 req.value("content_type", "application/octet-stream"),
                 req.value("size_bytes", -1LL), req.value("chunk_count", 0LL),
@@ -2863,10 +2897,30 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
             if (limit <= 0 || limit > 1000 || offset < 0) {
                 throw std::invalid_argument("invalid media page");
             }
-            auto media = pacificdb::community::CommunityCatalog::instance().listMedia(
-                req.value("userId", "system"), req.value("all", false),
-                req.value("dbName", ""), req.value("collection", ""),
-                limit + 1, offset);
+            const std::string userId = req.value("userId", "system");
+            const std::string token = req.value("token", "");
+            auto authorizeDatabase = [&](const std::string& database) {
+                return !database.empty() && (!engineAuthEnabled() || databasePermissionAllows(
+                    token, pacificdb::security::Permission::READ,
+                    userId, database, action));
+            };
+            const std::string requestedDatabase = requestDatabaseScope(req);
+            bool mayTouchNamespace = !engineAuthEnabled() ||
+                                     !requestedDatabase.empty();
+            if (!mayTouchNamespace) {
+                for (const auto& database : DatabaseEngine::listDatabases(userId)) {
+                    if (authorizeDatabase(database)) {
+                        mayTouchNamespace = true;
+                        break;
+                    }
+                }
+            }
+            auto media = mayTouchNamespace
+                ? pacificdb::community::CommunityCatalog::instance().listMedia(
+                      userId, req.value("all", false), requestedDatabase,
+                      req.value("collection", ""), limit + 1, offset,
+                      authorizeDatabase)
+                : json::array();
             const bool hasMore = media.size() > static_cast<std::size_t>(limit);
             if (hasMore) media.erase(--media.end());
             res = {{"status", "ok"}, {"media", std::move(media)},
@@ -2894,9 +2948,26 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
         }
         else if (action == "community_media_cleanup") {
             const auto mediaId = req.value("media_id", std::string());
-            const auto deleted =
-                pacificdb::community::CommunityCatalog::instance().cleanupMedia(
-                    req.value("userId", "system"), mediaId);
+            const std::string userId = req.value("userId", "system");
+            const std::string token = req.value("token", "");
+            auto authorizeDatabase = [&](const std::string& database) {
+                return !database.empty() && (!engineAuthEnabled() || databasePermissionAllows(
+                    token, pacificdb::security::Permission::DELETE,
+                    userId, database, action));
+            };
+            bool mayTouchNamespace = !engineAuthEnabled() || !mediaId.empty();
+            if (!mayTouchNamespace) {
+                for (const auto& database : DatabaseEngine::listDatabases(userId)) {
+                    if (authorizeDatabase(database)) {
+                        mayTouchNamespace = true;
+                        break;
+                    }
+                }
+            }
+            const auto deleted = mayTouchNamespace
+                ? pacificdb::community::CommunityCatalog::instance().cleanupMedia(
+                      userId, mediaId, authorizeDatabase)
+                : 0LL;
             res = {{"status", "ok"}, {"deleted", deleted}};
             if (!mediaId.empty()) res["already_clean"] = deleted == 0;
         }

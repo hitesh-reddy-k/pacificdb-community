@@ -5,6 +5,7 @@
 
 #include <openssl/evp.h>
 
+#include <algorithm>
 #include <cassert>
 #include <chrono>
 #include <cstdlib>
@@ -107,12 +108,38 @@ int main() {
         "system", "app", "photos", "movie.mp4", "video/mp4", 4, 1,
         "63c1dd951ffedf6f7fd968ad4efa39b8ed584f162f46e715114ee184f8de"
         "9201");
+    assert(catalog.mediaScope("system", upload.at("id")) ==
+           nlohmann::json({{"database", "app"}, {"collection", "photos"}}));
+    assert(!DatabaseEngine::userExists("missing-media-namespace"));
+    assert(catalog.mediaScope("missing-media-namespace", "unknown").is_null());
+    assert(!DatabaseEngine::userExists("missing-media-namespace"));
     assert(upload.at("status") == "uploading");
     assert(upload.at("state_version") == 2);
     assert(upload.at("received_chunks") == 0);
     assert(upload.at("received_bytes") == 0);
     assert(upload.at("next_chunk") == 0);
     assert(upload.at("resumable") == true);
+
+    const auto foreignUpload = catalog.beginMedia(
+        "system", "other-db", "photos", "foreign.bin",
+        "application/octet-stream", 3, 1, sha256("AAA"));
+    auto authorizedMedia = catalog.listMedia(
+        "system", true, {}, {}, 100, 0,
+        [](const std::string& database) { return database == "app"; });
+    assert(std::none_of(authorizedMedia.begin(), authorizedMedia.end(),
+                        [&](const auto& item) {
+                            return item.at("id") == foreignUpload.at("id");
+                        }));
+    DatabaseEngine::updateOne("system", "pacificdb_meta", "media_manifests",
+                              {{"id", foreignUpload.at("id")}},
+                              {{"$set", {{"lease_expires_at_ms", nowMs() - 1}}}});
+    assert(catalog.cleanupMedia(
+               "system", {}, [](const std::string& database) {
+                   return database == "app";
+               }) == 0);
+    assert(catalog.getMedia("system", foreignUpload.at("id")).at("status") ==
+           "uploading");
+    assert(catalog.cleanupMedia("system", foreignUpload.at("id")) == 1);
     assert(catalog.putMediaChunk(
                       "system", upload.at("id"), 0, "QUFBQQ==", 4,
                       "63c1dd951ffedf6f7fd968ad4efa39b8ed584f162f46e715114ee184f8de"

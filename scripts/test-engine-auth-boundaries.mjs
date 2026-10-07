@@ -5,6 +5,7 @@ import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { createWriteStream } from 'node:fs';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -74,6 +75,7 @@ async function startEngine(name, bindHost) {
       CONN_MAX_QUEUE: '64',
       MAX_CONNECTIONS: '32',
       ADAPTIVE_ADMISSION: '0',
+      PACIFICDB_MEDIA_UPLOAD_LEASE_MS: '50',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -263,6 +265,63 @@ try {
     await assert.rejects(alice.request({ action: 'security_database_acl_revoke',
       dbName: 'shared', principal: 'alice' }), /invalid_database_acl/,
     'the final owner must not be removable');
+
+    const chunkSha = createHash('sha256').update('AAA').digest('hex');
+    await bob.request({ action: 'createDatabase', userId: 'tenant-a', dbName: 'foreign' });
+    await bob.request({ action: 'createCollection', userId: 'tenant-a',
+      dbName: 'foreign', collection: 'docs' });
+    const bobReady = (await bob.request({ action: 'community_media_begin',
+      userId: 'tenant-a', dbName: 'foreign', collection: 'docs', filename: 'bob.bin',
+      size_bytes: 3, chunk_count: 1, sha256: chunkSha })).media;
+    await bob.request({ action: 'community_media_put_chunk', userId: 'tenant-a',
+      dbName: 'foreign', media_id: bobReady.id, index: 0, data: 'QUFB',
+      size_bytes: 3, sha256: chunkSha });
+    await bob.request({ action: 'community_media_finalize', userId: 'tenant-a',
+      dbName: 'foreign', media_id: bobReady.id });
+    const bobIncomplete = (await bob.request({ action: 'community_media_begin',
+      userId: 'tenant-a', dbName: 'foreign', collection: 'docs', filename: 'pending.bin',
+      size_bytes: 3, chunk_count: 1, sha256: chunkSha })).media;
+    const aliceMedia = (await alice.request({ action: 'community_media_begin',
+      dbName: 'shared', collection: 'docs', filename: 'alice.bin', size_bytes: 3,
+      chunk_count: 1, sha256: chunkSha })).media;
+
+    for (const [action, fields] of [
+      ['community_media_get', { media_id: bobReady.id }],
+      ['community_media_get_chunk', { media_id: bobReady.id, index: 0 }],
+      ['community_media_put_chunk', { media_id: bobIncomplete.id, index: 0,
+        data: 'QUFB', size_bytes: 3, sha256: chunkSha }],
+      ['community_media_finalize', { media_id: bobIncomplete.id }],
+      ['community_media_delete', { media_id: bobReady.id }],
+      ['community_media_cleanup', { media_id: bobIncomplete.id }],
+    ]) {
+      await assert.rejects(alice.request({ action, userId: 'tenant-a',
+        dbName: 'shared', ...fields }), /media_(?:chunk_)?not_found/,
+      `${action} must hide a foreign media id`);
+    }
+    await assert.rejects(alice.request({ action: 'community_media_begin',
+      userId: 'tenant-a', dbName: 'shared', collection: 'docs', filename: 'bob.bin',
+      size_bytes: 3, chunk_count: 1, sha256: chunkSha, resume_id: bobReady.id }),
+    /media_not_found/, 'ready resume must authorize the stored database');
+
+    const aliasList = await alice.request({ action: 'community_media_list',
+      userId: 'tenant-a', dbName: '', db: 'shared', all: true });
+    assert.deepEqual(aliasList.media.map((item) => item.id), [aliceMedia.id]);
+    const globalList = await alice.request({ action: 'community_media_list',
+      userId: 'tenant-a', dbName: '', all: true });
+    assert.deepEqual(globalList.media.map((item) => item.id), [aliceMedia.id]);
+    assert.deepEqual((await alice.request({ action: 'community_media_list',
+      userId: 'untouched-namespace', dbName: '', all: true })).media, []);
+    assert.deepEqual((await admin.request({ action: 'security_database_unassigned_list',
+      userId: 'untouched-namespace' })).databases, [],
+    'an unauthorized media listing must not initialize foreign storage');
+
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    await alice.request({ action: 'community_media_cleanup', userId: 'tenant-a',
+      dbName: '' });
+    const foreignAfterCleanup = await bob.request({ action: 'community_media_get',
+      userId: 'tenant-a', dbName: 'foreign', media_id: bobIncomplete.id });
+    assert.equal(foreignAfterCleanup.media.status, 'uploading',
+      'namespace cleanup must not mutate foreign media');
 
     const aliceReadKey = await alice.request({ action: 'api_key_create',
       name: 'alice-read', role: 'read' });
