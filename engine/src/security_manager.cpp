@@ -990,20 +990,31 @@ std::optional<ApiKeyRecord> SecurityManager::validateApiKey(
     const std::string secret = key.substr(separator + 1);
     if (id.size() != 12 || secret.empty()) return std::nullopt;
 
-    std::lock_guard<std::mutex> lock(apiKeyMutex_);
-    const auto found = apiKeys_.find(id);
-    if (found == apiKeys_.end() || found->second.revokedAt != 0 ||
-        !constantTimeEqual(sha256(secret), found->second.secretHash)) {
-        return std::nullopt;
+    ApiKeyRecord record;
+    {
+        std::lock_guard<std::mutex> lock(apiKeyMutex_);
+        const auto found = apiKeys_.find(id);
+        if (found == apiKeys_.end() || found->second.revokedAt != 0 ||
+            !constantTimeEqual(sha256(secret), found->second.secretHash)) {
+            return std::nullopt;
+        }
+        const long long now = std::chrono::duration_cast<std::chrono::seconds>(
+                                  std::chrono::system_clock::now().time_since_epoch())
+                                  .count();
+        if (now - found->second.lastUsedAt >= 60) {
+            found->second.lastUsedAt = now;
+            saveApiKeysLocked();
+        }
+        record = found->second;
     }
-    const long long now = std::chrono::duration_cast<std::chrono::seconds>(
-                              std::chrono::system_clock::now().time_since_epoch())
-                              .count();
-    if (now - found->second.lastUsedAt >= 60) {
-        found->second.lastUsedAt = now;
-        saveApiKeysLocked();
+    {
+        std::lock_guard<std::mutex> lock(userMutex_);
+        const auto owner = users_.find(record.createdBy);
+        if (owner == users_.end() || !owner->second.isActive) {
+            return std::nullopt;
+        }
     }
-    return found->second;
+    return record;
 }
 
 std::string SecurityManager::generateSalt() {

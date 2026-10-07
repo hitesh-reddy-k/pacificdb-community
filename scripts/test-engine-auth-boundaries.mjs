@@ -238,6 +238,13 @@ try {
     await bob.request({ action: 'insert', collection: 'docs',
       data: { id: 'bob-row', owner: 'bob' } });
 
+    await assert.rejects(alice.request({ action: 'create_backup' }),
+      /permission_denied/, 'ordinary database admins must not create full-engine backups');
+    const fullBackup = await admin.request({ action: 'create_backup' });
+    await assert.rejects(alice.request({ action: 'export_backup_manifest',
+      backup_id: fullBackup.backup_id }), /permission_denied/,
+    'ordinary database admins must not export full-engine backups');
+
     await assert.rejects(alice.request({ action: 'find', userId: 'tenant-b',
       dbName: 'shared', collection: 'docs', filter: {} }), /permission_denied/);
     await assert.rejects(alice.request({ action: 'find', userId: 'tenant-b',
@@ -299,6 +306,36 @@ try {
       chunk_count: 1, sha256: chunkSha })).media;
 
     for (const [action, fields] of [
+      ['find', { filter: {} }],
+      ['updateOne', { filter: { id: bobReady.id }, update: { database: 'shared' } }],
+    ]) {
+      await assert.rejects(alice.request({ action, userId: 'tenant-a',
+        dbName: 'pacificdb_meta', collection: action === 'find'
+          ? 'media_chunks' : 'media_manifests', internalAdmin: true, ...fields }),
+      /reserved_namespace|permission_denied/,
+      `${action} must not expose the raw media catalog to an ordinary admin`);
+    }
+
+    const aliasBulk = await alice.request({ action: 'bulk', userId: 'tenant-a',
+      dbName: 'foreign', collection: 'docs', ops: [
+        { action: 'insertOne', db: 'shared', data: { id: 'bulk-alias-row' } },
+      ] });
+    assert.equal(aliasBulk.status, 'ok');
+    assert.equal((await bob.request({ action: 'find', userId: 'tenant-a',
+      dbName: 'foreign', collection: 'docs', filter: { id: 'bulk-alias-row' } }))
+      .data.length, 0, 'bulk dispatch must use the database scope it authorized');
+    assert.equal((await alice.request({ action: 'find', dbName: 'shared',
+      collection: 'docs', filter: { id: 'bulk-alias-row' } })).data.length, 1);
+
+    const inheritedBulk = await alice.request({ action: 'bulk', userId: 'tenant-a',
+      database: 'shared', collection: 'docs', ops: [
+        { action: 'insertOne', data: { id: 'bulk-inherited-alias-row' } },
+      ] });
+    assert.equal(inheritedBulk.status, 'ok');
+    assert.equal((await alice.request({ action: 'find', dbName: 'shared',
+      collection: 'docs', filter: { id: 'bulk-inherited-alias-row' } })).data.length, 1);
+
+    for (const [action, fields] of [
       ['community_media_get', { media_id: bobReady.id }],
       ['community_media_get_chunk', { media_id: bobReady.id, index: 0 }],
       ['community_media_put_chunk', { media_id: bobIncomplete.id, index: 0,
@@ -346,7 +383,7 @@ try {
       database: 'shared', token: aliceWriteKey.key, poolSize: 1 });
     extraClients.push(aliceKeyReader, aliceKeyWriter);
     assert.equal((await aliceKeyReader.request({ action: 'find', collection: 'docs',
-      filter: {} })).data.length, 2);
+      filter: { id: 'alice-row' } })).data.length, 1);
     await assert.rejects(aliceKeyReader.request({ action: 'insert', collection: 'docs',
       data: { id: 'read-key-write' } }), /permission_denied/);
     assert.equal((await aliceKeyWriter.request({ action: 'insert', collection: 'docs',

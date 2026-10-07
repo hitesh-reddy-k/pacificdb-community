@@ -80,5 +80,6 @@ int main() {
     assert(security.hasPermission(key, Permission::READ));
     assert(!security.hasPermission(key, Permission::WRITE));
     assert(security.deleteUser("key-owner", "admin"));
+    assert(!security.validateToken(key));
     assert(!security.hasPermission(key, Permission::READ));
 }

@@ -1005,12 +1005,22 @@ static bool isCommunityAction(const std::string& action) {
     return action.rfind("community_", 0) == 0;
 }
 
+static bool isGlobalBackupAction(const std::string& action) {
+    return action == "create_backup" || action == "list_backups" ||
+           action == "get_backup" || action == "verify_backup" ||
+           action == "delete_backup" || action == "export_backup_manifest" ||
+           action == "export_backup_file_chunk" || action == "restore_backup" ||
+           action == "list_restores";
+}
+
 static bool mayAccessReservedNamespace(const json& req) {
     if (!req.value("internalAdmin", false)) return false;
     const std::string token = req.value("token", "");
+    auto& security = pacificdb::security::SecurityManager::instance();
     return !token.empty() &&
-           pacificdb::security::SecurityManager::instance().hasPermission(
-               token, pacificdb::security::Permission::ADMIN, "pacificdb_meta");
+           security.getTokenRole(token) == pacificdb::security::Role::SUPERADMIN &&
+           security.hasPermission(token, pacificdb::security::Permission::ADMIN,
+                                  "pacificdb_meta");
 }
 
 static bool isAuthExemptAction(const std::string& action) {
@@ -2708,7 +2718,16 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                         scope.value("database", std::string()), action);
                     hideMediaResource = !allowed;
                 } else if (!isDatabaseAclAction(action)) {
-                    if (action == "listDatabases") {
+                    if (isGlobalBackupAction(action)) {
+                        auto& security =
+                            pacificdb::security::SecurityManager::instance();
+                        const auto principal = security.getUser(
+                            security.getTokenUsername(token));
+                        allowed = allowed &&
+                            principal.has_value() &&
+                            principal->role == pacificdb::security::Role::SUPERADMIN &&
+                            security.hasPermission(token, perm);
+                    } else if (action == "listDatabases") {
                         allowed = allowed &&
                             pacificdb::security::SecurityManager::instance()
                                 .hasPermission(token, perm);
@@ -5038,10 +5057,15 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                 errors.push_back({{"index", index}, {"error", message}});
             };
 
+            auto bulkDatabase = [&](const json& op) {
+                std::string database = requestDatabaseScope(op);
+                return database.empty() ? requestDatabaseScope(req) : database;
+            };
+
             auto runInsert = [&](const json& op, size_t index) {
                 try {
                     std::string uid = op.value("userId", req.value("userId", "system"));
-                    std::string db = op.value("dbName", req.value("dbName", ""));
+                    std::string db = bulkDatabase(op);
                     std::string coll = op.value("collection", req.value("collection", ""));
                     json data = op.contains("data") ? op["data"] : (op.contains("document") ? op["document"] : json::object());
                     if (db.empty() || coll.empty() || !data.is_object()) {
@@ -5061,7 +5085,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
             auto runUpdateOne = [&](const json& op, size_t index) {
                 try {
                     std::string uid = op.value("userId", req.value("userId", "system"));
-                    std::string db = op.value("dbName", req.value("dbName", ""));
+                    std::string db = bulkDatabase(op);
                     std::string coll = op.value("collection", req.value("collection", ""));
                     json filter = op.value("filter", json::object());
                     json upd = op.value("update", json::object());
@@ -5081,7 +5105,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
             auto runDeleteOne = [&](const json& op, size_t index) {
                 try {
                     std::string uid = op.value("userId", req.value("userId", "system"));
-                    std::string db = op.value("dbName", req.value("dbName", ""));
+                    std::string db = bulkDatabase(op);
                     std::string coll = op.value("collection", req.value("collection", ""));
                     json filter = op.value("filter", json::object());
                     if (db.empty() || coll.empty()) {
@@ -5105,7 +5129,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
             auto runUpdateMany = [&](const json& op, size_t index) {
                 try {
                     std::string uid = op.value("userId", req.value("userId", "system"));
-                    std::string db = op.value("dbName", req.value("dbName", ""));
+                    std::string db = bulkDatabase(op);
                     std::string coll = op.value("collection", req.value("collection", ""));
                     json filter = op.value("filter", json::object());
                     json upd = op.value("update", json::object());
@@ -5133,7 +5157,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
             auto runDeleteMany = [&](const json& op, size_t index) {
                 try {
                     std::string uid = op.value("userId", req.value("userId", "system"));
-                    std::string db = op.value("dbName", req.value("dbName", ""));
+                    std::string db = bulkDatabase(op);
                     std::string coll = op.value("collection", req.value("collection", ""));
                     json filter = op.value("filter", json::object());
                     if (db.empty() || coll.empty()) {
@@ -5182,7 +5206,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                     res = { {"error", "insertMany data array required"} };
                 } else {
                     std::string uid = req.value("userId", "system");
-                    std::string db = req.value("dbName", "");
+                    std::string db = requestDatabaseScope(req);
                     std::string coll = req.value("collection", "");
                     if (db.empty() || coll.empty()) {
                         res = { {"error", "insertMany requires dbName and collection"} };
@@ -5213,7 +5237,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                 json op = {
                     {"action", "updateMany"},
                     {"userId", req.value("userId", "system")},
-                    {"dbName", req.value("dbName", "")},
+                    {"dbName", requestDatabaseScope(req)},
                     {"collection", req.value("collection", "")},
                     {"filter", req.value("filter", json::object())},
                     {"update", req.value("update", json::object())}
@@ -5232,7 +5256,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                 json op = {
                     {"action", "deleteMany"},
                     {"userId", req.value("userId", "system")},
-                    {"dbName", req.value("dbName", "")},
+                    {"dbName", requestDatabaseScope(req)},
                     {"collection", req.value("collection", "")},
                     {"filter", req.value("filter", json::object())}
                 };

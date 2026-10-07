@@ -40,6 +40,10 @@ int main() {
         names, json::array({{{"$match", {{"name", {{"$regex", "ada lovelace"},
                                                      {"$options", "i"}}}}}}}));
     assert(insensitive.at("documents").size() == 1);
+    const auto compound = pacificdb::community::aggregateDocuments(
+        names, json::array({{{"$match", {{"name", {{"$regex", "Ada"},
+                                                     {"$ne", "Adam"}}}}}}}));
+    assert(compound.at("documents").size() == 1);
 
     const auto started = std::chrono::steady_clock::now();
     const json adversarial = {{{"value", std::string(4096, 'a') + "!"}}};

@@ -260,10 +260,22 @@ QueryNode parseQuery(const json& filter) {
 
     // $options belongs to $regex; do not split it into an implicit AND.
     if (vobj.contains("$regex")) {
-        if (vobj.size() > (vobj.contains("$options") ? 2U : 1U) ||
-            !vobj["$regex"].is_string() ||
+        if (!vobj["$regex"].is_string() ||
             (vobj.contains("$options") && !vobj["$options"].is_string())) {
             throw std::invalid_argument("invalid $regex expression");
+        }
+        const std::size_t regexFields = vobj.contains("$options") ? 2U : 1U;
+        if (vobj.size() > regexFields) {
+            node.type = QueryNode::Type::AND;
+            json regexObject = {{"$regex", vobj["$regex"]}};
+            if (vobj.contains("$options")) regexObject["$options"] = vobj["$options"];
+            node.children.push_back(parseQuery({{node.field, std::move(regexObject)}}));
+            for (auto oit = vobj.begin(); oit != vobj.end(); ++oit) {
+                if (oit.key() == "$regex" || oit.key() == "$options") continue;
+                node.children.push_back(parseQuery(
+                    {{node.field, {{oit.key(), oit.value()}}}}));
+            }
+            return node;
         }
         node.type = QueryNode::Type::REGEX;
         node.regexPattern = vobj["$regex"].get<std::string>();

@@ -21,6 +21,8 @@ for test in \
 done
 "$BUILD_DIR/db_engine_community_catalog_test"
 "$BUILD_DIR/db_engine_community_api_key_test"
+"$BUILD_DIR/db_engine_database_access_test"
+"$BUILD_DIR/db_engine_security_manager_lockout_test"
 "$BUILD_DIR/db_engine_community_query_test"
 "$BUILD_DIR/db_engine_native_shell_parser_test"
 "$BUILD_DIR/db_engine_socket_runtime_test"
