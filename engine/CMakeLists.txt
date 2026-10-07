@@ -347,6 +347,10 @@ add_pacificdb_engine_test(db_engine_database_access_test
     test/database_access_test.cpp)
 add_pacificdb_engine_test(db_engine_community_api_key_test
     test/community_api_key_test.cpp)
+add_pacificdb_engine_test(db_engine_security_manager_lockout_test
+    test/security_manager_lockout_test.cpp)
+add_test(NAME db_engine_security_manager_lockout_test
+    COMMAND db_engine_security_manager_lockout_test)
 add_pacificdb_engine_test(db_engine_community_query_test
     test/community_query_test.cpp)
 add_executable(db_engine_native_shell_parser_test

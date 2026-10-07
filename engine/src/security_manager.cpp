@@ -237,6 +237,7 @@ void SecurityManager::initializeDefaultAdmin() {
         admin.lastLogin = std::chrono::system_clock::time_point{};
         admin.failedLoginAttempts = 0;
         admin.isLocked = false;
+        admin.lockedUntil = 0;
 
         users_[admin.username] = admin;
 
@@ -373,6 +374,7 @@ bool SecurityManager::createUser(const std::string& username, const std::string&
     user.lastLogin = std::chrono::system_clock::time_point{};
     user.failedLoginAttempts = 0;
     user.isLocked = false;
+    user.lockedUntil = 0;
 
     users_[username] = user;
     saveUsersLocked();
@@ -441,6 +443,7 @@ bool SecurityManager::updateUserPassword(const std::string& username,
     it->second.passwordHash = hashPassword(newPassword, it->second.salt);
     it->second.failedLoginAttempts = 0;
     it->second.isLocked = false;
+    it->second.lockedUntil = 0;
     saveUsersLocked();
 
     logAudit(updatedBy, "", AuditAction::UPDATE_USER, username,
@@ -523,6 +526,7 @@ std::optional<JWTToken> SecurityManager::authenticate(const std::string& usernam
                      "Account locked", false);
             return std::nullopt;
         }
+        saveUsersLocked();
     }
 
     // Check if user is active
@@ -537,8 +541,14 @@ std::optional<JWTToken> SecurityManager::authenticate(const std::string& usernam
         user.failedLoginAttempts++;
         failedLogins_++;
 
-        if (user.failedLoginAttempts >= maxLoginAttempts_) {
+        if (user.failedLoginAttempts >= maxLoginAttempts_ && !user.isLocked) {
             user.isLocked = true;
+            const long long now = std::chrono::duration_cast<std::chrono::seconds>(
+                std::chrono::system_clock::now().time_since_epoch()).count();
+            const long long duration =
+                std::max(0, lockoutDurationMinutes_) * 60LL;
+            user.lockedUntil = duration > std::numeric_limits<long long>::max() - now
+                ? std::numeric_limits<long long>::max() : now + duration;
             logAudit(username, clientIP, AuditAction::ACCOUNT_LOCKED, "",
                      "Max login attempts exceeded", true);
         }
@@ -554,6 +564,8 @@ std::optional<JWTToken> SecurityManager::authenticate(const std::string& usernam
         user.passwordHash = hashPassword(password, user.salt);
     }
     user.failedLoginAttempts = 0;
+    user.isLocked = false;
+    user.lockedUntil = 0;
     user.lastLogin = std::chrono::system_clock::now();
     saveUsersLocked();
 
@@ -1028,20 +1040,14 @@ std::string SecurityManager::generateSessionId() {
 }
 
 bool SecurityManager::unlockAccountIfExpired(User& user) {
-    // Check if lockout duration has passed
-    auto now = std::chrono::system_clock::now();
-    auto lockoutDuration = std::chrono::minutes(lockoutDurationMinutes_);
-
-    // Simple heuristic: check if enough time has passed since last failed attempt
-    // In production, you'd store the lockout timestamp
-    if (user.isLocked && user.failedLoginAttempts > 0) {
-        // For now, unlock after the duration
-        user.isLocked = false;
-        user.failedLoginAttempts = 0;
-        return true;
-    }
-
-    return false;
+    if (!user.isLocked || user.lockedUntil <= 0) return false;
+    const long long now = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    if (now < user.lockedUntil) return false;
+    user.isLocked = false;
+    user.failedLoginAttempts = 0;
+    user.lockedUntil = 0;
+    return true;
 }
 
 } // namespace security

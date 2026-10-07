@@ -123,6 +123,7 @@ struct User {
     std::chrono::system_clock::time_point lastLogin;
     int failedLoginAttempts;
     bool isLocked;
+    long long lockedUntil{0};
 
     json toJson() const {
         return {
@@ -137,7 +138,8 @@ struct User {
             {"lastLogin", std::chrono::duration_cast<std::chrono::seconds>(
                 lastLogin.time_since_epoch()).count()},
             {"failedLoginAttempts", failedLoginAttempts},
-            {"isLocked", isLocked}
+            {"isLocked", isLocked},
+            {"lockedUntil", lockedUntil}
         };
     }
 
@@ -155,6 +157,7 @@ struct User {
             std::chrono::seconds(j.value("lastLogin", 0L)));
         u.failedLoginAttempts = j.value("failedLoginAttempts", 0);
         u.isLocked = j.value("isLocked", false);
+        u.lockedUntil = j.value("lockedUntil", 0LL);
         return u;
     }
 };
