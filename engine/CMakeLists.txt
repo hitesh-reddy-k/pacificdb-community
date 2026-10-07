@@ -181,6 +181,16 @@ set(COMMUNITY_FEATURES
 # depend on which executable happened to compile a source first.
 find_package(OpenSSL REQUIRED)
 find_library(LZ4_LIBRARY NAMES lz4 liblz4.so.1 REQUIRED)
+find_package(re2 CONFIG QUIET)
+if(NOT TARGET re2::re2)
+    find_path(RE2_INCLUDE_DIR re2/re2.h REQUIRED)
+    find_library(RE2_LIBRARY NAMES re2 REQUIRED)
+    add_library(pacificdb_re2 UNKNOWN IMPORTED)
+    set_target_properties(pacificdb_re2 PROPERTIES
+        IMPORTED_LOCATION "${RE2_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${RE2_INCLUDE_DIR}")
+    add_library(re2::re2 ALIAS pacificdb_re2)
+endif()
 add_compile_definitions(HAS_OPENSSL)
 
 add_library(pacificdb_socket_runtime STATIC src/socket_runtime.cpp)
@@ -215,6 +225,7 @@ add_library(pacificdb_engine_core STATIC
     ${ENGINE_CORE}
     ${COMMUNITY_FEATURES}
 )
+target_link_libraries(pacificdb_engine_core PUBLIC re2::re2)
 
 # Keep destructive failpoints out of production binaries while allowing the
 # crash-consistency driver to exercise the real LSM implementation.  The
@@ -353,6 +364,9 @@ add_test(NAME db_engine_security_manager_lockout_test
     COMMAND db_engine_security_manager_lockout_test)
 add_pacificdb_engine_test(db_engine_community_query_test
     test/community_query_test.cpp)
+add_test(NAME db_engine_community_query_test COMMAND db_engine_community_query_test)
+add_test(NAME db_engine_query_limit_test COMMAND db_engine_query_limit_test)
+add_test(NAME db_engine_timeout_test COMMAND db_engine_timeout_test)
 add_executable(db_engine_native_shell_parser_test
     test/native_shell_parser_test.cpp src/community_shell.cpp)
 if(MSVC)

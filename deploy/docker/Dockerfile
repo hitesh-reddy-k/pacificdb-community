@@ -8,7 +8,7 @@ ARG PACIFICDB_SOURCE_URL=https://github.com/hitesh-reddy-k/pacificdb-community
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       ca-certificates cmake g++ liblz4-dev libssl-dev make \
+       ca-certificates cmake g++ liblz4-dev libre2-dev libssl-dev make \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 COPY LICENSE ./LICENSE
@@ -41,7 +41,7 @@ LABEL org.opencontainers.image.title="PacificDB Engine" \
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       ca-certificates liblz4-1 libssl3 netcat-openbsd openssl \
+       ca-certificates liblz4-1 libre2-9 libssl3 netcat-openbsd openssl \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system --gid 10001 pacificdb \
     && useradd --system --uid 10001 --gid pacificdb \

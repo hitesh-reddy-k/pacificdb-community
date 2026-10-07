@@ -64,7 +64,7 @@ jobs:
       - name: Install native and GUI dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake g++ liblz4-dev libssl-dev xvfb \
+          sudo apt-get install -y cmake g++ liblz4-dev libre2-dev libssl-dev xvfb \
             xauth libgtk-3-0t64 libnss3 libasound2t64 libgbm1 libxss1
       - run: npm ci --no-audit --no-fund
       - run: npm run test:npm
@@ -300,17 +300,19 @@ jobs:
         run: |
           echo "WORKBENCH_VERSION=$(node -p 'require("./package.json").version')" >> "$GITHUB_ENV"
           echo "PACIFICDB_COMPONENT_VERSION=$(node -p 'require("./cli/package.json").version')" >> "$GITHUB_ENV"
-      - run: brew install cmake lz4 openssl@3
+      - run: brew install cmake vcpkg
       - run: npm ci --no-audit --no-fund
       - run: npm run test:npm
       - name: Build native engine and CLI
         shell: bash
         run: |
           set -euo pipefail
+          vcpkg install --triplet arm64-osx \
+            --x-install-root="$PWD/build/vcpkg_installed"
           cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release \
-            -DOPENSSL_ROOT_DIR="$(brew --prefix openssl@3)" \
-            -DOPENSSL_USE_STATIC_LIBS=TRUE \
-            -DLZ4_LIBRARY="$(brew --prefix lz4)/lib/liblz4.a" \
+            -DCMAKE_TOOLCHAIN_FILE="$(brew --prefix vcpkg)/libexec/scripts/buildsystems/vcpkg.cmake" \
+            -DVCPKG_TARGET_TRIPLET=arm64-osx \
+            -DVCPKG_INSTALLED_DIR="$PWD/build/vcpkg_installed" \
             -DPACIFICDB_ENGINE_VERSION="$PACIFICDB_COMPONENT_VERSION"
           cmake --build build --target db_engine pacificdb -j2
           if otool -L build/db_engine build/pacificdb | grep -E '/(opt/homebrew|usr/local)/(opt|Cellar)/'; then

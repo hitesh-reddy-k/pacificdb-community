@@ -24,7 +24,7 @@ jobs:
       - name: Install C++ dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake g++ liblz4-dev libssl-dev
+          sudo apt-get install -y cmake g++ liblz4-dev libre2-dev libssl-dev
       - uses: github/codeql-action/init@v3
         with:
           languages: cpp,javascript-typescript

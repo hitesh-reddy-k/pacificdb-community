@@ -2,7 +2,6 @@
 #include <nlohmann/json.hpp>
 #include <vector>
 #include <string>
-#include <regex>
 
 /**
  * @file query.hpp
@@ -66,7 +65,7 @@ struct QueryNode {
 
     // Regex options for $regex operator
     std::string regexPattern;
-    std::string regexOptions;  // i=case-insensitive, m=multiline, s=dotall
+    std::string regexOptions;  // i=case-insensitive
 
     // Vector search params
     std::vector<double> queryVector;

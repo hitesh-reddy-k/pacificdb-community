@@ -17,6 +17,7 @@
  */
 
 #include "query.hpp"
+#include <re2/re2.h>
 #include <iostream>
 #include <algorithm>
 #include <cmath>
@@ -24,17 +25,26 @@
 #include <unordered_map>
 #include <mutex>
 #include <functional>
+#include <memory>
 
 using json = nlohmann::json;
 
 // ============================================================================
 // REGEX CACHE FOR PERFORMANCE
 // ============================================================================
-static std::unordered_map<std::string, std::regex> regexCache;
+static std::unordered_map<std::string, std::shared_ptr<const RE2>> regexCache;
 static std::mutex regexCacheMutex;
 static const size_t MAX_REGEX_CACHE = 100;
+static const size_t MAX_REGEX_PATTERN_BYTES = 4096;
 
-static std::regex getOrCompileRegex(const std::string& pattern, const std::string& options) {
+static std::shared_ptr<const RE2> getOrCompileRegex(
+    const std::string& pattern, const std::string& options) {
+    if (pattern.size() > MAX_REGEX_PATTERN_BYTES) {
+        throw std::invalid_argument("$regex pattern exceeds 4096 bytes");
+    }
+    if (options != "" && options != "i") {
+        throw std::invalid_argument("$regex supports only the i option");
+    }
     std::string cacheKey = pattern + "|" + options;
 
     std::lock_guard<std::mutex> lock(regexCacheMutex);
@@ -43,25 +53,16 @@ static std::regex getOrCompileRegex(const std::string& pattern, const std::strin
         return it->second;
     }
 
-    // Build regex flags
-    std::regex::flag_type flags = std::regex::ECMAScript;
-    if (options.find('i') != std::string::npos) {
-        flags |= std::regex::icase;
+    RE2::Options re2Options;
+    re2Options.set_log_errors(false);
+    re2Options.set_case_sensitive(options.empty());
+    auto compiled = std::make_shared<const RE2>(pattern, re2Options);
+    if (!compiled->ok()) {
+        throw std::invalid_argument("invalid $regex pattern: " + compiled->error());
     }
-
-    try {
-        std::regex compiled(pattern, flags);
-
-        // Cache management - evict oldest if full
-        if (regexCache.size() >= MAX_REGEX_CACHE) {
-            regexCache.erase(regexCache.begin());
-        }
-        regexCache[cacheKey] = compiled;
-        return compiled;
-    } catch (const std::regex_error& e) {
-        std::cerr << "[QUERY] Invalid regex pattern: " << pattern << " - " << e.what() << std::endl;
-        throw;
-    }
+    if (regexCache.size() >= MAX_REGEX_CACHE) regexCache.erase(regexCache.begin());
+    regexCache[cacheKey] = compiled;
+    return compiled;
 }
 
 // ============================================================================
@@ -257,6 +258,20 @@ QueryNode parseQuery(const json& filter) {
     // ========== OPERATOR OBJECT ==========
     auto vobj = node.value;
 
+    // $options belongs to $regex; do not split it into an implicit AND.
+    if (vobj.contains("$regex")) {
+        if (vobj.size() > (vobj.contains("$options") ? 2U : 1U) ||
+            !vobj["$regex"].is_string() ||
+            (vobj.contains("$options") && !vobj["$options"].is_string())) {
+            throw std::invalid_argument("invalid $regex expression");
+        }
+        node.type = QueryNode::Type::REGEX;
+        node.regexPattern = vobj["$regex"].get<std::string>();
+        node.regexOptions = vobj.value("$options", "");
+        (void)getOrCompileRegex(node.regexPattern, node.regexOptions);
+        return node;
+    }
+
     // Handle multiple operators on same field: { age: { $gte: 18, $lte: 65 } }
     if (vobj.size() > 1) {
         node.type = QueryNode::Type::AND;
@@ -317,11 +332,6 @@ QueryNode parseQuery(const json& filter) {
     else if (vobj.contains("$type")) {
         node.type = QueryNode::Type::TYPE;
         node.value = vobj["$type"];
-    }
-    else if (vobj.contains("$regex")) {
-        node.type = QueryNode::Type::REGEX;
-        node.regexPattern = vobj["$regex"].get<std::string>();
-        node.regexOptions = vobj.value("$options", "");
     }
     else if (vobj.contains("$text")) {
         node.type = QueryNode::Type::TEXT;
@@ -518,12 +528,9 @@ static bool matchField(const QueryNode& node, const json& doc) {
 
             case QueryNode::Type::REGEX: {
                 if (!dv.is_string()) return false;
-                try {
-                    std::regex re = getOrCompileRegex(node.regexPattern, node.regexOptions);
-                    return std::regex_search(dv.get<std::string>(), re);
-                } catch (...) {
-                    return false;
-                }
+                const auto re = getOrCompileRegex(
+                    node.regexPattern, node.regexOptions);
+                return RE2::PartialMatch(dv.get_ref<const std::string&>(), *re);
             }
 
             case QueryNode::Type::TEXT: {

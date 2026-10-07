@@ -47,7 +47,7 @@ jobs:
           sudo find /etc/apt/sources.list.d -maxdepth 1 -type f \
             \( -iname '*google*' -o -iname '*chrome*' \) -delete
           sudo apt-get update
-          sudo apt-get install -y cmake g++ liblz4-dev libssl-dev
+          sudo apt-get install -y cmake g++ liblz4-dev libre2-dev libssl-dev
       - name: Build Debian package
         shell: bash
         run: |
@@ -264,7 +264,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
-      - run: brew install cmake lz4 openssl@3
+      - run: brew install cmake vcpkg
       - name: Build macOS installer
         shell: bash
         env:
@@ -277,6 +277,10 @@ jobs:
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
         run: |
           set -euo pipefail
+          triplet="${{ matrix.arch }}-osx"
+          if [[ "$triplet" == x86_64-osx ]]; then triplet=x64-osx; fi
+          vcpkg install --triplet "$triplet" \
+            --x-install-root="$PWD/build/vcpkg_installed"
           signing_p12="$RUNNER_TEMP/pacificdb-installer.p12"
           signing_keychain="$RUNNER_TEMP/pacificdb-signing.keychain-db"
           cleanup_macos_signing() {
@@ -335,8 +339,9 @@ jobs:
           fi
 
           cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release \
-            -DOPENSSL_ROOT_DIR="$(brew --prefix openssl@3)" \
-            -DLZ4_LIBRARY="$(brew --prefix lz4)/lib/liblz4.dylib" \
+            -DCMAKE_TOOLCHAIN_FILE="$(brew --prefix vcpkg)/libexec/scripts/buildsystems/vcpkg.cmake" \
+            -DVCPKG_TARGET_TRIPLET="$triplet" \
+            -DVCPKG_INSTALLED_DIR="$PWD/build/vcpkg_installed" \
             -DPACIFICDB_ENGINE_VERSION="$version"
           cmake --build build --target db_engine pacificdb -j2
           export PACIFICDB_ENVIRONMENT=development
