@@ -121,24 +121,29 @@ std::vector<json> rawMediaChunks(
     const std::string& mediaId) {
     const auto manifest = rawMedia(userId, mediaId);
     if (manifest.is_null()) return {};
-    const long long expectedCount = manifest.value("chunk_count", 0LL);
-    // A media_id query materializes every base64 payload before the caller can
-    // use its metadata. Fetch each deterministic chunk ID separately instead;
-    // this keeps every query below the normal result-size cap, even for files
-    // far larger than that cap.
+    const json ownerFilter{{"media_id", mediaId}};
+    // Read one real row per query so base64 payloads stay below the result-size
+    // ceiling without probing caller-declared sparse indices.
+    // ponytail: offset paging revisits stored rows; add a metadata cursor if
+    // uploads with very large actual chunk counts make this path hot.
     std::vector<json> chunks;
     const auto durableCount = DatabaseEngine::count(
-        userId, kDatabase, kMediaChunks, {{"media_id", mediaId}});
+        userId, kDatabase, kMediaChunks, ownerFilter);
     chunks.reserve(durableCount);
-    for (long long index = 0;
-         index < expectedCount && chunks.size() < durableCount; ++index) {
-        auto rows = DatabaseEngine::find(userId, kDatabase, kMediaChunks,
-                                         {{"id", chunkId(mediaId, index)}}, 1);
-        if (rows.empty()) continue;
+    while (chunks.size() < durableCount) {
+        auto rows = DatabaseEngine::find(
+            userId, kDatabase, kMediaChunks, ownerFilter, 1,
+            static_cast<long long>(chunks.size()));
+        if (rows.empty()) {
+            throw std::runtime_error("media chunk inventory was truncated");
+        }
         auto chunk = publicDocument(std::move(rows.front()));
         chunk.erase("data");
         chunks.push_back(std::move(chunk));
     }
+    std::sort(chunks.begin(), chunks.end(), [](const json& left, const json& right) {
+        return left.value("index", -1LL) < right.value("index", -1LL);
+    });
     return chunks;
 }
 
@@ -225,33 +230,17 @@ long long deleteOwnedChunks(
     const std::string& userId,
     const std::string& mediaId) {
     long long deleted = 0;
-    const auto manifest = rawMedia(userId, mediaId);
-    if (!manifest.is_null()) {
-        for (long long index = 0;
-             index < manifest.value("chunk_count", 0LL); ++index) {
-            if (DatabaseEngine::deleteOne(userId, kDatabase, kMediaChunks,
-                                          {{"id", chunkId(mediaId, index)}})) {
-                ++deleted;
-            }
+    const json ownerFilter{{"media_id", mediaId}};
+    // Always delete from offset zero because each deletion shifts the next row.
+    while (true) {
+        const auto rows = DatabaseEngine::find(
+            userId, kDatabase, kMediaChunks, ownerFilter, 1);
+        if (rows.empty()) break;
+        if (!DatabaseEngine::deleteOne(userId, kDatabase, kMediaChunks,
+                                       {{"id", rows.front().at("id")}})) {
+            break;
         }
-    } else {
-        // Reconciliation also removes chunks whose manifest was lost. Delete
-        // a small page at a time so one orphaned upload cannot exceed the
-        // normal result-size or result-count limits.
-        while (true) {
-            const auto rows = DatabaseEngine::find(
-                userId, kDatabase, kMediaChunks, {{"media_id", mediaId}}, 16);
-            if (rows.empty()) break;
-            long long pageDeleted = 0;
-            for (const auto& chunk : rows) {
-                if (DatabaseEngine::deleteOne(userId, kDatabase, kMediaChunks,
-                                              {{"id", chunk.at("id")}})) {
-                    ++deleted;
-                    ++pageDeleted;
-                }
-            }
-            if (pageDeleted == 0) break;
-        }
+        ++deleted;
     }
     return deleted;
 }

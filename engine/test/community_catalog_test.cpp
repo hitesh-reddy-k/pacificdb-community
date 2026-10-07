@@ -287,6 +287,42 @@ int main() {
     assert(catalog.reconcileMedia("system").at("removed_orphans") == 5);
     QueryLimiter::setMaxResultDocs(priorMaxDocs);
 
+    // Persisted sparse manifests must be inspectable and removable without
+    // probing every absent declared index.
+    constexpr long long sparseCount = 1'000'000'000LL;
+    const auto sparse = catalog.beginMedia(
+        "system", "app", "photos", "sparse.bin", "application/octet-stream",
+        3, sparseCount, sha256("AAA"));
+    const auto sparseId = sparse.at("id").get<std::string>();
+    DatabaseEngine::insert("system", "pacificdb_meta", "media_chunks", {
+        {"id", sparseId + ":999999999"}, {"media_id", sparseId},
+        {"index", sparseCount - 1}, {"size_bytes", 3},
+        {"sha256", sha256("AAA")}, {"data", "QUFB"},
+    });
+    for (int index = 0; index < 2; ++index) {
+        DatabaseEngine::insert("system", "pacificdb_meta", "media_chunks", {
+            {"id", "00-before-sparse-" + std::to_string(index)},
+            {"media_id", "unrelated"}, {"index", index},
+            {"size_bytes", 0}, {"sha256", sha256("")}, {"data", ""},
+        });
+    }
+    const auto priorMaxScanRows = QueryLimiter::getMaxScanRows();
+    QueryLimiter::setMaxScanRows(2);
+    const auto sparseProgress = catalog.getMedia("system", sparseId);
+    assert(sparseProgress.at("received_chunks") == 1);
+    assert(sparseProgress.at("received_indices") ==
+           nlohmann::json::array({sparseCount - 1}));
+    assert(sparseProgress.at("next_chunk") == 0);
+    assert(catalog.reconcileMedia("system", sparseId).at("repaired_progress") == 1);
+    assert(catalog.deleteMedia("system", sparseId, true));
+    assert(catalog.getMediaChunk("system", sparseId, sparseCount - 1).is_null());
+    QueryLimiter::setMaxScanRows(priorMaxScanRows);
+
+    const auto sparseEmpty = catalog.beginMedia(
+        "system", "app", "photos", "sparse-empty.bin",
+        "application/octet-stream", 0, sparseCount, sha256(""));
+    assert(catalog.cleanupMedia("system", sparseEmpty.at("id")) == 1);
+
     std::cout << "COMMUNITY_CATALOG_PASS\n";
     return 0;
 }
