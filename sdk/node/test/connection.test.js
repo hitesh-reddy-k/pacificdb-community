@@ -34,6 +34,64 @@ async function peer(t, handler) {
   return { port: server.address().port, frames };
 }
 
+async function oversizedPeer(t) {
+  const limit = 64 * 1024 * 1024;
+  const oversized = Buffer.alloc(limit + 2, 0x61);
+  oversized[oversized.length - 1] = 0x0a;
+  const frames = [];
+  let connections = 0;
+  const sockets = new Set();
+  const server = net.createServer(socket => {
+    connections += 1;
+    sockets.add(socket);
+    socket.on('close', () => sockets.delete(socket));
+    let wire = '';
+    socket.on('data', bytes => {
+      wire += bytes;
+      const newline = wire.indexOf('\n');
+      if (newline < 0) return;
+      const frame = JSON.parse(wire.slice(0, newline));
+      frames.push(frame);
+      if (frame.action === 'oversized_unterminated') {
+        socket.write(oversized.subarray(0, limit));
+        socket.write(oversized.subarray(limit, limit + 1));
+      } else if (frame.action === 'oversized_terminated') {
+        socket.write(oversized);
+      } else {
+        socket.end('{"status":"ok"}\n');
+      }
+    });
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(async () => {
+    for (const socket of sockets) socket.destroy();
+    await new Promise(resolve => server.close(resolve));
+  });
+  return { port: server.address().port, frames,
+    connectionCount: () => connections };
+}
+
+test('oversized responses are rejected once and the next request reconnects', async t => {
+  const p = await oversizedPeer(t);
+  const db = new sdk.PacificDBClient({ port: p.port, poolSize: 1, timeoutMs: 1500 });
+  t.after(() => db.close());
+
+  for (const action of ['oversized_unterminated', 'oversized_terminated']) {
+    await assert.rejects(db.request({ action }), error =>
+      error.code === 'response_too_large');
+    const connection = db._pool.connections[0];
+    assert.equal(connection.response, '');
+    assert.equal(connection.responseBytes, 0);
+    assert.deepEqual(await db.request({ action: 'ping' }), { status: 'ok' });
+  }
+
+  assert.deepEqual(p.frames.map(frame => frame.action), [
+    'oversized_unterminated', 'ping', 'oversized_terminated', 'ping',
+  ]);
+  assert.equal(p.frames.filter(frame => frame.action.startsWith('oversized_')).length, 2);
+  assert.ok(p.connectionCount() >= 4);
+});
+
 test('direct creation selects database and creates collections without catalog calls', async t => {
   const p = await peer(t, frame => frame.action === 'listDatabases' ? ['app'] : { status: 'ok' });
   const db = new sdk.PacificDBClient({ port: p.port });

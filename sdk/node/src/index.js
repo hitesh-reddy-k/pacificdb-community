@@ -15,6 +15,7 @@ const MAX_SOURCE_CHUNK_BYTES = 4 * 1024 * 1024;
 const REQUEST_RESERVE_BYTES = 64 * 1024;
 const DEFAULT_POOL_SIZE = 16;
 const MAX_POOL_SIZE = 32;
+const MAX_RESPONSE_BYTES = 64 * 1024 * 1024;
 
 function responseError(value) {
   const code = String(value.error);
@@ -30,9 +31,14 @@ class PooledConnection {
     this.connecting = null;
     this.connected = false;
     this.current = null;
-    this.response = '';
-    this.decoder = new StringDecoder('utf8');
+    this.resetResponse();
     this.responsesOnSocket = 0;
+  }
+
+  resetResponse() {
+    this.response = '';
+    this.responseBytes = 0;
+    this.decoder = new StringDecoder('utf8');
   }
 
   async connect() {
@@ -43,8 +49,7 @@ class PooledConnection {
       ...(this.pool.ca ? { ca: this.pool.ca } : {}) };
     const socket = this.pool.useTls ? tls.connect(options) : net.createConnection(options);
     this.socket = socket;
-    this.response = '';
-    this.decoder = new StringDecoder('utf8');
+    this.resetResponse();
     this.responsesOnSocket = 0;
     const connectedEvent = this.pool.useTls ? 'secureConnect' : 'connect';
     const connecting = new Promise((resolve, reject) => {
@@ -85,25 +90,38 @@ class PooledConnection {
       if (socket !== this.socket) return;
       this.connected = false;
       this.socket = null;
-      this.response = '';
-      this.decoder = new StringDecoder('utf8');
+      this.resetResponse();
     });
     return this.connecting;
   }
 
   onData(socket, chunk) {
     if (socket !== this.socket || !this.current) return;
-    this.response += this.decoder.write(chunk);
-    const newline = this.response.indexOf('\n');
+    const newline = chunk.indexOf(0x0a);
+    const payload = newline < 0 ? chunk : chunk.subarray(0, newline);
+    if (payload.length > MAX_RESPONSE_BYTES - this.responseBytes) {
+      this.finish(Object.assign(
+        new Error('PacificDB response exceeded the 64 MiB limit'),
+        { code: 'response_too_large' }), true);
+      return;
+    }
+    this.responseBytes += payload.length;
+    this.response += newline < 0
+      ? this.decoder.write(payload) : this.decoder.end(payload);
     if (newline < 0) return;
-    const wire = this.response.slice(0, newline);
-    this.response = this.response.slice(newline + 1);
+    const wire = this.response;
     let value;
     try {
       value = JSON.parse(wire);
     } catch (error) {
       this.finish(new Error(`PacificDB server at ${this.pool.host}:${this.pool.port} returned ` +
         'a non-JSON response; verify the host and port'), true);
+      return;
+    }
+    if (newline !== chunk.length - 1) {
+      this.finish(Object.assign(
+        new Error('PacificDB returned unexpected bytes after its response'),
+        { code: 'invalid_response' }), true);
       return;
     }
     this.responsesOnSocket += 1;
@@ -127,6 +145,7 @@ class PooledConnection {
     if (socket !== this.socket) return;
     this.connected = false;
     if (this.current) this.finish(error, true);
+    else this.resetResponse();
   }
 
   finish(error, destroy = false, value) {
@@ -134,6 +153,7 @@ class PooledConnection {
     if (!current) return;
     this.current = null;
     clearTimeout(current.timer);
+    this.resetResponse();
     if (destroy && this.socket && !this.socket.destroyed) this.socket.destroy();
     else if (this.socket && !this.socket.destroyed) this.socket.unref();
     if (error) current.reject(error);
@@ -142,6 +162,7 @@ class PooledConnection {
 
   async request(wire) {
     if (this.current) throw new Error('PacificDB pool assigned concurrent socket requests');
+    this.resetResponse();
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => this.finish(
         new Error('PacificDB request timed out'), true), this.pool.timeoutMs);
@@ -165,8 +186,7 @@ class PooledConnection {
     if (this.socket && !this.socket.destroyed) this.socket.destroy();
     this.connected = false;
     this.socket = null;
-    this.response = '';
-    this.decoder = new StringDecoder('utf8');
+    this.resetResponse();
   }
 }
 
