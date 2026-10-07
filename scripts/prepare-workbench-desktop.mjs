@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 import { cp, mkdir, readFile, rm, writeFile, access, chmod } from 'node:fs/promises';
 import { constants } from 'node:fs';
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -13,6 +16,14 @@ await access(executable, process.platform === 'win32' ? constants.F_OK : constan
 const cliName = process.platform === 'win32' ? 'pacificdb.exe' : 'pacificdb';
 const cliExecutable = path.join(path.dirname(executable), cliName);
 await access(cliExecutable, process.platform === 'win32' ? constants.F_OK : constants.X_OK);
+const engineIdentity = JSON.parse(execFileSync(executable, ['--build-info'], { encoding: 'utf8' }));
+const sourceRevision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+assert.equal(engineIdentity.engineVersion, cli.version, 'bundled engine component version mismatch');
+if (process.env.PACIFICDB_DESKTOP_RELEASE === '1') {
+  execFileSync('git', ['diff', '--exit-code', 'HEAD'], { cwd: root, stdio: 'pipe' });
+  assert.equal(engineIdentity.gitCommit, sourceRevision, 'release engine must match the source revision');
+}
+const digest = async file => createHash('sha256').update(await readFile(file)).digest('hex');
 const stage = path.join(root, 'desktop/stage');
 const resources = path.join(root, 'desktop/resources');
 await rm(stage, { recursive: true, force: true });
@@ -35,6 +46,10 @@ for (const name of ['LICENSE', 'LICENSES', 'THIRD_PARTY_NOTICES.md']) {
 }
 await cp(executable, path.join(resources, 'engine', executableName));
 await cp(cliExecutable, path.join(resources, 'engine', cliName));
+await writeFile(path.join(resources, 'engine', 'manifest.json'), JSON.stringify({
+  schemaVersion: 1, sourceRevision, engineIdentity,
+  engineSha256: await digest(executable), cliSha256: await digest(cliExecutable),
+}, null, 2) + '\n');
 if (process.platform !== 'win32') await chmod(path.join(resources, 'engine', executableName), 0o755);
 // Windows builds must ship the runtime DLLs from the native engine build.
 if (process.env.PACIFICDB_WORKBENCH_ENGINE_LIBS) {

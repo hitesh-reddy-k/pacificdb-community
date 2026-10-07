@@ -43,6 +43,7 @@ require(
     "clientTlsSecret:",
     "raftTlsSecret:",
     "bootstrapSecret:",
+    "auditMonitorSecret:",
     "encryptionEvidenceConfigMap:",
     "className:",
 )
@@ -52,6 +53,7 @@ require(
     "clientTlsSecret: pacificdb-client-tls",
     "raftTlsSecret: pacificdb-raft-tls",
     "bootstrapSecret: pacificdb-bootstrap",
+    "auditMonitorSecret: pacificdb-audit-monitor",
     "encryptionEvidenceConfigMap: pacificdb-at-rest-evidence",
 )
 require(
@@ -63,6 +65,10 @@ require(
     "RAFT_TLS_ENABLED",
     "PACIFICDB_AT_REST_ENCRYPTION_EVIDENCE_PATH",
     "status.podIP",
+    "name: POD_IP",
+    "production security.auditMonitorSecret is required",
+    "timeoutSeconds: 5",
+    "mountPath: /etc/pacificdb/audit-monitor",
     "readOnlyRootFilesystem: true",
     "startupProbe:",
     "readinessProbe:",
@@ -104,12 +110,17 @@ require(
     "--target db_engine pacificdb",
     "/usr/local/bin/pacificdb-healthcheck",
     "USER 10001:10001",
+    "python3",
 )
 require(
     "deploy/docker/healthcheck.sh",
     "PACIFICDB_ENVIRONMENT",
-    "openssl s_client",
-    '"action":"ping"',
+    "socket.create_connection",
+    "ssl.create_default_context",
+    "'action': 'ping'",
+    "auditHealthy",
+    "auditLoggingEnabled",
+    "65536",
     "health.crt",
     "health.key",
     "ca.crt",

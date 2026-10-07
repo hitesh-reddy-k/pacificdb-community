@@ -31,6 +31,18 @@ int main() {
     const std::string contents((std::istreambuf_iterator<char>(persisted)), {});
     assert(contents.find(key) == std::string::npos);
 
+    const auto monitorKey = security.createApiKey("audit-monitor", "metrics", "admin");
+    const std::string monitorToken = monitorKey.at("key");
+    security.initialize(root.dataRoot().string());
+    assert(security.hasPermission(monitorToken, pacificdb::security::Permission::VIEW_METRICS));
+    assert(!security.hasPermission(monitorToken, pacificdb::security::Permission::READ));
+    assert(!security.hasPermission(monitorToken, pacificdb::security::Permission::WRITE));
+    assert(!security.hasPermission(monitorToken, pacificdb::security::Permission::ADMIN));
+    assert(security.getSecurityMetrics().at("auditLoggingEnabled") == true);
+    security.enableAuditLogging(false);
+    assert(security.getSecurityMetrics().at("auditLoggingEnabled") == false);
+    security.enableAuditLogging(true);
+
     std::cout << "COMMUNITY_API_KEY_PASS\n";
     return 0;
 }

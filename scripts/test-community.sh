@@ -64,6 +64,7 @@ node scripts/test-p0-protocol-errors.mjs "$BUILD_DIR"
 node scripts/test-raft-frame-limit.mjs "$BUILD_DIR"
 node scripts/test-community-contract-matrix.mjs "$BUILD_DIR"
 node --test scripts/test-replica-integrity-monitor.mjs
+node --test scripts/test-build-tool-advisories.mjs
 node scripts/test-replica-integrity-rf3.mjs "$BUILD_DIR"
 node scripts/test-community-restart-matrix.mjs "$BUILD_DIR"
 scripts/test-community-disk-full.sh "$BUILD_DIR"

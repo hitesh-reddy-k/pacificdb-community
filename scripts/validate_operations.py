@@ -31,6 +31,11 @@ REQUIRED_ALERTS = frozenset(
         "PacificDBBackupTooOld",
         "PacificDBBackupFailed",
         "PacificDBCertificateExpiringSoon",
+        "PacificDBAuditPersistenceUnavailable",
+        "PacificDBAuditRecordsLost",
+        "PacificDBAuditAlertDeliveryFailed",
+        "PacificDBAuditMonitorStale",
+        "PacificDBAuditNotificationFailed",
     }
 )
 REQUIRED_RUNBOOKS = frozenset(

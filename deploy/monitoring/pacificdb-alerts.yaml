@@ -1,6 +1,26 @@
 groups:
   - name: pacificdb-production
     rules:
+      - alert: PacificDBAuditPersistenceUnavailable
+        expr: pacificdb_audit_healthy == 0
+        annotations:
+          runbook_url: docs/OPERATIONS.md#security-audit-failure-policy
+      - alert: PacificDBAuditRecordsLost
+        expr: increase(pacificdb_audit_write_failures_total[5m]) > 0 or increase(pacificdb_audit_buffer_evictions_total[5m]) > 0
+        annotations:
+          runbook_url: docs/OPERATIONS.md#security-audit-failure-policy
+      - alert: PacificDBAuditAlertDeliveryFailed
+        expr: absent(pacificdb_audit_alert_delivery_ok) or pacificdb_audit_alert_delivery_ok == 0
+        annotations:
+          runbook_url: docs/OPERATIONS.md#security-audit-failure-policy
+      - alert: PacificDBAuditMonitorStale
+        expr: absent(pacificdb_audit_monitor_last_check_timestamp_seconds) or time() - pacificdb_audit_monitor_last_check_timestamp_seconds > 180
+        annotations:
+          runbook_url: docs/OPERATIONS.md#security-audit-failure-policy
+      - alert: PacificDBAuditNotificationFailed
+        expr: increase(alertmanager_notifications_failed_total{integration="webhook"}[5m]) > 0
+        annotations:
+          runbook_url: docs/OPERATIONS.md#security-audit-failure-policy
       - alert: PacificDBWalLatencyHigh
         expr: pacificdb_wal_fsync_p99_ms > 25
         for: 10m

@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { listPackage } from '@electron/asar';
 import { _electron as electron } from 'playwright';
 
 const suppliedDirectory = process.env.PACIFICDB_TEST_DESKTOP_DATA;
@@ -18,6 +20,30 @@ let desktop;
 const env = { ...process.env, PACIFICDB_WORKBENCH_DATA: directory };
 delete env.ELECTRON_RUN_AS_NODE;
 const errors = [];
+if (executablePath) {
+  const resources = process.platform === 'darwin'
+    ? path.resolve(path.dirname(executablePath), '../Resources')
+    : path.join(path.dirname(executablePath), 'resources');
+  const native = path.join(resources, 'engine');
+  const manifest = JSON.parse(await readFile(path.join(native, 'manifest.json'), 'utf8'));
+  const enginePath = path.join(native, process.platform === 'win32' ? 'db_engine.exe' : 'db_engine');
+  const identity = spawnSync(enginePath, ['--build-info'], { encoding: 'utf8' });
+  assert.equal(identity.status, 0, identity.stderr);
+  const buildInfo = JSON.parse(identity.stdout);
+  const expected = process.env.PACIFICDB_EXPECTED_REVISION || spawnSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).stdout.trim();
+  assert.equal(buildInfo.gitCommit, expected, 'packaged engine must contain the latest candidate');
+  assert.equal(manifest.sourceRevision, expected);
+  assert.equal(manifest.engineIdentity.gitCommit, expected);
+  const hash = async file => createHash('sha256').update(await readFile(file)).digest('hex');
+  assert.equal(await hash(enginePath), manifest.engineSha256);
+  assert.equal(await hash(path.join(native, process.platform === 'win32' ? 'pacificdb.exe' : 'pacificdb')), manifest.cliSha256);
+  const entries = listPackage(path.join(resources, 'app.asar'));
+  for (const tool of ['electron-builder', 'electron-builder-squirrel-windows', 'app-builder-lib', 'sprintf-js', 'global-agent', 'roarr', 'dmg-builder']) {
+    assert.ok(!entries.some(entry => entry.split(/[\\/]/).includes(tool)), `build tool leaked into runtime: ${tool}`);
+  }
+  assert.ok(!entries.some(entry => entry.replaceAll('\\', '/').includes('/node_modules/@electron/get/')), 'build tool leaked into runtime: @electron/get');
+  console.log(`PACKAGED_ENGINE_IDENTITY_PASS ${expected} ${manifest.engineSha256}`);
+}
 async function launch(applicationPath = executablePath) {
   const started = Date.now();
   desktop = await electron.launch({

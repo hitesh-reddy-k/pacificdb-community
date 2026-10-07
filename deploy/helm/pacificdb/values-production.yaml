@@ -24,4 +24,5 @@ security:
   clientTlsSecret: ""
   raftTlsSecret: ""
   bootstrapSecret: ""
+  auditMonitorSecret: ""
   encryptionEvidenceConfigMap: ""

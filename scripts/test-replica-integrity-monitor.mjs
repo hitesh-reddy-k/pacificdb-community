@@ -7,9 +7,19 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import test from 'node:test';
+import { requestNode } from './replica-integrity-monitor.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const monitor = path.join(import.meta.dirname, 'replica-integrity-monitor.mjs');
+
+test('shared monitor transport rejects oversized metadata before buffering it', async t => {
+  const server = await fakeNode(() => ({ padding: 'x'.repeat(65536) }));
+  t.after(() => server.close());
+  await assert.rejects(requestNode(server.node, { action: 'security_metrics' }, 250), /monitor_response_too_large/);
+});
+test('mTLS requires a certificate/key pair', async () => {
+  await assert.rejects(requestNode({ host: '127.0.0.1', port: 1, tls: true, certFile: 'unused' }, {}, 250), /paired TLS/);
+});
 
 async function fakeNode(handler) {
   const sockets = new Set();

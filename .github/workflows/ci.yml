@@ -64,11 +64,13 @@ jobs:
           tar -xzf "$archive" -C "$RUNNER_TEMP/kubeconform-bin" kubeconform
           printf '%s\n' "$RUNNER_TEMP/kubeconform-bin" >> "$GITHUB_PATH"
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run test:build-tools
       - run: python3 scripts/test-release-consistency.py
       - run: python3 scripts/test-workflow-contract.py
       - run: python3 -m unittest scripts/test_security_review.py -v
       - run: scripts/test-helm-deployment.sh
       - run: scripts/test-community.sh build
+      - run: node scripts/test-audit-alert-e2e.mjs build
 
   packages:
     uses: ./.github/workflows/release.yml

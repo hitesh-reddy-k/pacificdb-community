@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "reviewedOn": "2026-10-07",
+  "expiresOn": "2026-11-06",
+  "owner": "PacificDB release maintainer",
+  "advisory": "https://github.com/advisories/GHSA-hp3w-g68c-fv3c",
+  "reason": "No patched sprintf-js release exists. Temporarily accept this moderate build-only dependency; no runtime advisory is accepted.",
+  "controls": ["Pinned lockfile and npm ci", "No untrusted format strings or unreviewed contributor release builds", "No release credentials on pull requests", "Verify packaged application excludes build tools", "Reject new advisories and expire this exception"],
+  "packages": {
+    "@electron/get": "3.1.0",
+    "app-builder-lib": "26.15.3",
+    "dmg-builder": "26.15.3",
+    "electron-builder": "26.15.3",
+    "electron-builder-squirrel-windows": "26.15.3",
+    "global-agent": "3.0.0",
+    "roarr": "2.15.4",
+    "sprintf-js": "1.1.3"
+  }
+}

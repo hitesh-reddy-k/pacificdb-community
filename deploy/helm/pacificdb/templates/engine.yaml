@@ -16,6 +16,7 @@
   {{- $clientTlsSecret = required "production security.clientTlsSecret is required" .Values.security.clientTlsSecret -}}
   {{- $raftTlsSecret = required "production security.raftTlsSecret is required" .Values.security.raftTlsSecret -}}
   {{- $bootstrapSecret = required "production security.bootstrapSecret is required" .Values.security.bootstrapSecret -}}
+  {{- $_ := required "production security.auditMonitorSecret is required" .Values.security.auditMonitorSecret -}}
   {{- $evidenceConfigMap = required "production security.encryptionEvidenceConfigMap is required" .Values.security.encryptionEvidenceConfigMap -}}
   {{- $_ := required "production storage.className is required" .Values.storage.className -}}
   {{- $_ := required "production backupStorage.className is required" .Values.backupStorage.className -}}
@@ -123,6 +124,9 @@ spec:
             {{- end }}
             {{- if $production }}
             - { name: PACIFICDB_ENVIRONMENT, value: production }
+            - name: POD_IP
+              valueFrom: { fieldRef: { fieldPath: status.podIP } }
+            - { name: PACIFICDB_HEALTH_TOKEN_FILE, value: "/etc/pacificdb/audit-monitor/$(RAFT_NODE_ID).token" }
             - name: ENGINE_BIND_HOST
               valueFrom: { fieldRef: { fieldPath: status.podIP } }
             - name: RAFT_BIND_HOST
@@ -159,18 +163,22 @@ spec:
             - { name: client-tls, mountPath: /etc/pacificdb/client-tls, readOnly: true }
             - { name: raft-tls, mountPath: /etc/pacificdb/raft-tls, readOnly: true }
             - { name: at-rest-evidence, mountPath: /etc/pacificdb/at-rest, readOnly: true }
+            - { name: audit-monitor, mountPath: /etc/pacificdb/audit-monitor, readOnly: true }
             {{- end }}
           {{- if $production }}
           startupProbe:
             exec: { command: ["/usr/local/bin/pacificdb-healthcheck", "startup"] }
+            timeoutSeconds: 5
             failureThreshold: 60
             periodSeconds: 5
           readinessProbe:
             exec: { command: ["/usr/local/bin/pacificdb-healthcheck", "readiness"] }
+            timeoutSeconds: 5
             periodSeconds: 5
             failureThreshold: 3
           livenessProbe:
             exec: { command: ["/usr/local/bin/pacificdb-healthcheck", "liveness"] }
+            timeoutSeconds: 5
             periodSeconds: 10
             failureThreshold: 5
           {{- else }}
@@ -188,6 +196,8 @@ spec:
           secret: { secretName: {{ $raftTlsSecret }}, defaultMode: 0440 }
         - name: at-rest-evidence
           configMap: { name: {{ $evidenceConfigMap }}, defaultMode: 0444 }
+        - name: audit-monitor
+          secret: { secretName: {{ .Values.security.auditMonitorSecret }}, defaultMode: 0440 }
         {{- end }}
   volumeClaimTemplates:
     - metadata: { name: data }

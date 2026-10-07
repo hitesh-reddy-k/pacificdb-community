@@ -1,31 +1,64 @@
 #!/bin/sh
-set -eu
+# One bounded JSON reply; reusable engine sockets need not close to pass a probe.
+exec python3 - "$@" <<'PY'
+import json
+import os
+import socket
+import ssl
+import sys
+import time
+from pathlib import Path
 
-probe_kind=${1:-liveness}
-host=${POD_IP:-127.0.0.1}
-port=${ENGINE_PORT:-9000}
-timeout_seconds=${PACIFICDB_HEALTH_TIMEOUT_SECONDS:-4}
-request='{"action":"ping"}'
-
-if [ "${PACIFICDB_ENVIRONMENT:-development}" = production ]; then
-  tls_dir=${PACIFICDB_HEALTH_TLS_DIR:-/etc/pacificdb/client-tls}
-  server_name=${PACIFICDB_TLS_SERVER_NAME:-pacificdb}
-  for required_file in ca.crt health.crt health.key; do
-    if [ ! -r "$tls_dir/$required_file" ]; then
-      echo "$probe_kind probe cannot read $tls_dir/$required_file" >&2
-      exit 1
-    fi
-  done
-  response=$(
-    printf '%s\n' "$request" |
-      timeout "$timeout_seconds" openssl s_client -quiet \
-        -connect "$host:$port" -servername "$server_name" \
-        -verify_hostname "$server_name" -verify_return_error \
-        -CAfile "$tls_dir/ca.crt" \
-        -cert "$tls_dir/health.crt" -key "$tls_dir/health.key" 2>/dev/null
-  )
-else
-  response=$(printf '%s\n' "$request" | nc -w "$timeout_seconds" "$host" "$port")
-fi
-
-printf '%s\n' "$response" | grep -Eq '"status"[[:space:]]*:[[:space:]]*"pong"'
+kind = sys.argv[1] if len(sys.argv) > 1 else 'liveness'
+try:
+    if kind not in ('startup', 'readiness', 'liveness'):
+        raise ValueError('unknown probe')
+    host = os.getenv('POD_IP') or os.getenv('ENGINE_BIND_HOST', '127.0.0.1')
+    if host in ('0.0.0.0', '*'):
+        host = '127.0.0.1'
+    timeout = float(os.getenv('PACIFICDB_HEALTH_TIMEOUT_SECONDS', '4'))
+    if not 0 < timeout <= 10:
+        raise ValueError('invalid timeout')
+    deadline = time.monotonic() + timeout
+    production = os.getenv('PACIFICDB_ENVIRONMENT', 'development') == 'production'
+    request = {'action': 'ping'}
+    if production and kind == 'readiness':
+        with open(os.getenv('PACIFICDB_HEALTH_TOKEN_FILE', '/etc/pacificdb/audit-monitor/token')) as token_file:
+            token = token_file.read(1025).strip()
+        if not token or len(token) > 1024:
+            raise ValueError('invalid credential')
+        request = {'action': 'security_metrics', 'token': token}
+    with socket.create_connection((host, int(os.getenv('ENGINE_PORT', '9000'))), timeout=timeout) as raw:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise ValueError('deadline exceeded')
+        raw.settimeout(remaining)
+        connection = raw
+        if production:
+            tls_dir = Path(os.getenv('PACIFICDB_HEALTH_TLS_DIR', '/etc/pacificdb/client-tls'))
+            context = ssl.create_default_context(cafile=str(tls_dir / 'ca.crt'))
+            context.minimum_version = ssl.TLSVersion.TLSv1_2
+            context.load_cert_chain(str(tls_dir / 'health.crt'), str(tls_dir / 'health.key'))
+            connection = context.wrap_socket(raw, server_hostname=os.getenv('PACIFICDB_TLS_SERVER_NAME', 'pacificdb'))
+        with connection:
+            connection.settimeout(max(0.001, deadline - time.monotonic()))
+            connection.sendall(json.dumps(request).encode() + b'\n')
+            reply = bytearray()
+            while b'\n' not in reply:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0 or len(reply) >= 65536:
+                    raise ValueError('bounded response exceeded')
+                connection.settimeout(remaining)
+                chunk = connection.recv(min(4096, 65536 - len(reply)))
+                if not chunk:
+                    raise ValueError('incomplete response')
+                reply.extend(chunk)
+            value = json.loads(reply.split(b'\n', 1)[0])
+            healthy = (all(value.get(field) is True for field in ('success', 'auditHealthy', 'auditLoggingEnabled'))
+                       if production and kind == 'readiness' else value.get('status') == 'pong')
+            if not healthy:
+                raise ValueError('unhealthy')
+except Exception:
+    print(f'{kind} probe failed', file=sys.stderr)
+    sys.exit(1)
+PY

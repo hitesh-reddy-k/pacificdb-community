@@ -1,0 +1,13 @@
+[Unit]
+Description=Schedule PacificDB audit health and alert delivery checks
+
+[Timer]
+# Enable explicitly after provisioning the metrics-only credential and alert route.
+OnBootSec=1min
+OnUnitActiveSec=1min
+AccuracySec=5s
+Persistent=true
+Unit=pacificdb-audit-monitor.service
+
+[Install]
+WantedBy=timers.target

@@ -68,6 +68,7 @@ jobs:
             xauth libgtk-3-0t64 libnss3 libasound2t64 libgbm1 libxss1
       - run: npm ci --no-audit --no-fund
       - run: npm run test:npm
+      - run: npm run test:build-tools
       - name: Build native engine and CLI
         run: |
           cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release \
@@ -83,6 +84,7 @@ jobs:
       - name: Package Workbench for Ubuntu 24.04
         env:
           PACIFICDB_DESKTOP_UBUNTU_24: '1'
+          PACIFICDB_DESKTOP_RELEASE: '1'
           ELECTRON_BUILDER_COMPRESSION_LEVEL: '1'
         run: npm run desktop:build -- --linux deb tar.gz --x64
       - name: Download and install previous Workbench Debian
@@ -152,6 +154,7 @@ jobs:
           "PACIFICDB_COMPONENT_VERSION=$(node -p 'require("./cli/package.json").version')" >> $env:GITHUB_ENV
       - run: npm ci --no-audit --no-fund
       - run: npm run test:npm
+      - run: npm run test:build-tools
       - name: Build static native binaries
         shell: pwsh
         run: |
@@ -303,6 +306,7 @@ jobs:
       - run: brew install cmake vcpkg
       - run: npm ci --no-audit --no-fund
       - run: npm run test:npm
+      - run: npm run test:build-tools
       - name: Build native engine and CLI
         shell: bash
         run: |

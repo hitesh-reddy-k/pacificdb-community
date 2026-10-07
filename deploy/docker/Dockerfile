@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM debian:bookworm-slim AS builder
+FROM debian:bookworm-slim@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587 AS builder
 
 ARG PACIFICDB_ENGINE_VERSION=dev
 ARG PACIFICDB_GIT_COMMIT=unknown
@@ -26,7 +26,7 @@ RUN cmake -S engine -B /build \
     && test -x /build/pacificdb \
     && strip /build/db_engine /build/pacificdb
 
-FROM debian:bookworm-slim AS runtime
+FROM debian:bookworm-slim@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587 AS runtime
 
 ARG PACIFICDB_ENGINE_VERSION=dev
 ARG PACIFICDB_GIT_COMMIT=unknown
@@ -41,7 +41,7 @@ LABEL org.opencontainers.image.title="PacificDB Engine" \
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       ca-certificates liblz4-1 libre2-9 libssl3 netcat-openbsd openssl \
+       ca-certificates liblz4-1 libre2-9 libssl3 netcat-openbsd openssl python3 \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system --gid 10001 pacificdb \
     && useradd --system --uid 10001 --gid pacificdb \

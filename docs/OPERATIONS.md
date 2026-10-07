@@ -29,6 +29,72 @@ Stream flush/close checks do not certify power-loss durability. Deployments
 requiring uninterrupted durable audit trails must suspend traffic on this
 health signal and verify their external append-only collector and storage.
 
+## Security audit monitor
+
+Run `scripts/audit-health-monitor.mjs` outside the engine once per minute.
+It uses the existing bounded monitor transport with verified mTLS, checks
+`auditHealthy` and `auditLoggingEnabled`, and sends firing/resolved alerts using
+[Alertmanager API v2](https://github.com/prometheus/alertmanager/blob/main/api/v2/openapi.yaml).
+The `metrics` API-key role grants VIEW_METRICS only: no document reads, writes,
+configuration or administration. An administrator can issue it through the
+authenticated protocol request:
+
+```json
+{"action":"api_key_create","name":"audit-monitor","role":"metrics","token":"<operator-admin-token>"}
+```
+
+Provision one credential per engine node; security stores are node-local.
+Store the token and monitor configuration as regular mode-0600 files owned by
+the monitor account. Install `audit-health-monitor.mjs` and its existing
+`replica-integrity-monitor.mjs` dependency under `/usr/lib/pacificdb`. Create a
+dedicated `pacificdb-monitor` account and mode-0700 writable result directory.
+The checked-in systemd service/timer are disabled until explicitly installed
+and enabled; they do not change this machine's services automatically.
+
+Private configuration example (replace every placeholder):
+
+```json
+{
+  "instance": "pacificdb-0",
+  "engine": {
+    "host": "<private-engine-address>", "port": 9000,
+    "tls": true, "servername": "<certificate-DNS-name>",
+    "caFile": "/etc/pacificdb/monitor/ca.crt",
+    "certFile": "/etc/pacificdb/monitor/client.crt",
+    "keyFile": "/etc/pacificdb/monitor/client.key",
+    "tokenFile": "/etc/pacificdb/monitor/engine.token"
+  },
+  "alertmanagerUrl": "https://<alertmanager-address>/api/v2/alerts",
+  "alertTokenFile": "/etc/pacificdb/monitor/alertmanager.token"
+}
+```
+
+`alertTokenFile` is optional for a mutually protected local destination. Remote
+engine connections require TLS/mTLS and remote alert destinations require
+HTTPS with normal certificate verification; plaintext is permitted only on
+literal loopback/localhost fixtures. Redirects are rejected. The Alertmanager
+server CA must be trusted by Node (use a protected `NODE_EXTRA_CA_CERTS` file
+when using a private CA; never disable TLS verification).
+
+Run `node scripts/audit-health-monitor.mjs PRIVATE_CONFIG.json RESULT.json`.
+It atomically writes a credential-free result and `RESULT.json.prom` metrics.
+Exit 0 means audit healthy and Alertmanager accepted the request; 1 means audit
+unhealthy/unavailable with the alert accepted; 2 means delivery/config/output
+failure. Timers retry every minute, renewing active alerts. Ship the textfile
+metrics to Prometheus and load the audit, stale-monitor and notification-failure
+rules in `deploy/monitoring/pacificdb-alerts.yaml`. Alertmanager acceptance is
+not downstream notification delivery or human acknowledgement; monitor its
+notification failures and verify receipts at the final operator destination.
+
+The runnable Linux drill `node scripts/test-audit-alert-e2e.mjs build` uses an
+owned mTLS engine, pinned disposable Alertmanager and loopback receiver. It
+checks blocked audit writes, metrics-only permissions, unready-but-live probes,
+firing delivery, receiver rejection/retry, failed Alertmanager connectivity and
+resolved delivery. This is local end-to-end evidence, not proof of a production
+cluster's network policy, external alert routing, encrypted storage or human
+response. Perform that drill against the configured production route before
+opening traffic, without injecting failure into user data.
+
 <!-- operations-contract:start -->
 {
   "schema_version": 1,

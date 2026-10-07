@@ -319,6 +319,7 @@ void SecurityManager::loadApiKeys() {
         record.name = item.value("name", "");
         const std::string role = item.value("role", "read");
         record.role = role == "admin" ? Role::ADMIN :
+                      (role == "metrics" || role == "metrics_viewer") ? Role::METRICS_VIEWER :
                       (role == "readwrite" || role == "write") ? Role::WRITE :
                       Role::READ_ONLY;
         record.secretHash = item.value("secret_hash", "");
@@ -339,8 +340,7 @@ void SecurityManager::saveApiKeysLocked() {
     for (const auto& [_, record] : apiKeys_) {
         stored["api_keys"].push_back({
             {"id", record.id}, {"name", record.name},
-            {"role", record.role == Role::ADMIN ? "admin" :
-                     record.role == Role::WRITE ? "readwrite" : "read"},
+            {"role", record.toPublicJson().at("role")},
             {"secret_hash", record.secretHash},
             {"created_by", record.createdBy}, {"created_at", record.createdAt},
             {"last_used_at", record.lastUsedAt}, {"revoked_at", record.revokedAt}});
@@ -925,6 +925,7 @@ json SecurityManager::getSecurityMetrics() {
         {"failedLogins", failedLogins_.load()},
         {"permissionDenials", permissionDenials_.load()},
         {"auditHealthy", auditHealthy_.load()},
+        {"auditLoggingEnabled", auditEnabled_.load()},
         {"auditWriteFailures", auditWriteFailures_.load()},
         {"auditBufferEvictions", auditBufferEvictions_.load()},
         {"activeTokens", activeTokens_.size()},
@@ -956,9 +957,10 @@ json SecurityManager::createApiKey(const std::string& name,
     }
     Role role;
     if (roleName == "read") role = Role::READ_ONLY;
+    else if (roleName == "metrics") role = Role::METRICS_VIEWER;
     else if (roleName == "readwrite") role = Role::WRITE;
     else if (roleName == "admin") role = Role::ADMIN;
-    else throw std::invalid_argument("API key role must be read, readwrite, or admin");
+    else throw std::invalid_argument("API key role must be read, readwrite, admin, or metrics");
 
     unsigned char idBytes[6];
     unsigned char secretBytes[32];

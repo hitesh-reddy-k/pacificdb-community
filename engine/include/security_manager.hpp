@@ -101,7 +101,6 @@ inline std::unordered_set<Permission> getPermissionsForRole(Role role) {
             break;
         case Role::METRICS_VIEWER:
             perms.insert(Permission::VIEW_METRICS);
-            perms.insert(Permission::READ);
             break;
     }
 
@@ -191,6 +190,7 @@ struct ApiKeyRecord {
 
     json toPublicJson() const {
         const std::string apiRole = role == Role::ADMIN ? "admin" :
+                                    role == Role::METRICS_VIEWER ? "metrics" :
                                     role == Role::WRITE ? "readwrite" : "read";
         return {{"id", id}, {"name", name}, {"role", apiRole},
                 {"created_by", createdBy}, {"created_at", createdAt},
@@ -388,7 +388,7 @@ private:
     int maxLoginAttempts_;
     int tokenExpiryMinutes_;
     int lockoutDurationMinutes_;
-    bool auditEnabled_;
+    std::atomic<bool> auditEnabled_;
 
     // Metrics
     std::atomic<uint64_t> totalLogins_{0};

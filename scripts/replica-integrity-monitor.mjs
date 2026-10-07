@@ -62,7 +62,8 @@ function validateConfig(value) {
     if (ids.has(id)) throw new Error(`duplicate node id: ${id}`);
     ids.add(id);
     return { id, host: node.host, port: node.port, tls: node.tls === true,
-      servername: node.servername, caFile: node.caFile };
+      servername: node.servername, caFile: node.caFile,
+      certFile: node.certFile, keyFile: node.keyFile };
   });
   return {
     userId: value.userId,
@@ -77,15 +78,19 @@ function validateConfig(value) {
   };
 }
 
-async function requestNode(node, payload, timeoutMs) {
+export async function requestNode(node, payload, timeoutMs) {
   let ca;
   if (node.caFile) ca = await readFile(node.caFile);
+  if (Boolean(node.certFile) !== Boolean(node.keyFile)) throw new Error('paired TLS certificate/key required');
+  const cert = node.certFile ? await readFile(node.certFile) : undefined;
+  const key = node.keyFile ? await readFile(node.keyFile) : undefined;
   return new Promise((resolve, reject) => {
     const socket = node.tls
-      ? tls.connect({ host: node.host, port: node.port, ca,
+      ? tls.connect({ host: node.host, port: node.port, ca, cert, key, rejectUnauthorized: true,
         ...(node.servername ? { servername: node.servername } : {}) })
       : net.createConnection({ host: node.host, port: node.port });
     let response = '';
+    let bytes = 0;
     let settled = false;
     const finish = (error, value) => {
       if (settled) return;
@@ -101,6 +106,8 @@ async function requestNode(node, payload, timeoutMs) {
       socket.write(`${JSON.stringify(payload)}\n`);
     });
     socket.on('data', (chunk) => {
+      bytes += chunk.length;
+      if (bytes > 64 * 1024) return finish(new Error('monitor_response_too_large'));
       response += chunk;
       const newline = response.indexOf('\n');
       if (newline < 0) return;
@@ -221,7 +228,7 @@ function result(status, startedAt, observations, fence, digestSchema) {
   };
 }
 
-async function atomicWrite(filename, content) {
+export async function atomicWrite(filename, content) {
   const temporary = `${filename}.tmp-${process.pid}`;
   await writeFile(temporary, content, { mode: 0o600 });
   await rename(temporary, filename);

@@ -28,4 +28,5 @@ security:
   clientTlsSecret: ""
   raftTlsSecret: ""
   bootstrapSecret: pacificdb-bootstrap
+  auditMonitorSecret: ""
   encryptionEvidenceConfigMap: ""

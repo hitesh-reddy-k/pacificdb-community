@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "test:npm": "npm test --workspace @pacificdb/client && npm test --workspace @pacificdb/cli",
+    "test:build-tools": "node scripts/check-build-tool-advisories.mjs",
     "workbench": "node cli/bin/pacificdb.js workbench",
     "test:workbench:browser": "node scripts/test-workbench-browser.mjs",
     "workbench:desktop": "electron desktop/main.mjs",

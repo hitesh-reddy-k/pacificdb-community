@@ -1,0 +1,23 @@
+[Unit]
+Description=PacificDB audit persistence and alert delivery check
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=pacificdb-monitor
+Group=pacificdb-monitor
+ExecStart=/usr/bin/node /usr/lib/pacificdb/audit-health-monitor.mjs /etc/pacificdb/audit-monitor.json /var/lib/pacificdb/audit-monitor/result.json
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+ReadWritePaths=/var/lib/pacificdb/audit-monitor
+UMask=0077
+
