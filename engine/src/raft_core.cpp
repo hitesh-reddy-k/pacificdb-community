@@ -64,6 +64,7 @@ constexpr char kRaftRecordMagic[] = {'P', 'D', 'B', 'R', '3'};
 constexpr std::uint8_t kRaftCodecRaw = 0;
 constexpr std::uint8_t kRaftCodecLz4 = 1;
 constexpr std::uint32_t kMaxRaftPayloadBytes = 64U * 1024U * 1024U;
+constexpr std::size_t kRaftFrameReserveBytes = 64U * 1024U;
 constexpr std::size_t kRaftRecordHeaderBytes =
     sizeof(kRaftRecordMagic) + 1 + 2 * sizeof(std::uint32_t);
 
@@ -90,9 +91,25 @@ std::string encodeRaftPayload(const nlohmann::json& value) {
     return out;
 }
 
+bool fitRaftEntriesFrame(nlohmann::json& message,
+                         std::vector<nlohmann::json>& entries,
+                         std::vector<uint64_t>& terms) {
+    while (!entries.empty()) {
+        message["entries"] = entries;
+        message["entryTerms"] = terms;
+        if (encodeRaftPayload(message).size() <=
+            kMaxRaftPayloadBytes - kRaftFrameReserveBytes) return true;
+        if (entries.size() == 1) return false;
+        entries.resize((entries.size() + 1) / 2);
+        terms.resize(entries.size());
+    }
+    return false;
+}
+
 std::string encodeRaftLogPayload(const nlohmann::json& value) {
     const auto packed = nlohmann::json::to_msgpack(value);
-    if (packed.empty() || packed.size() > kMaxRaftPayloadBytes - kRaftRecordHeaderBytes ||
+    if (packed.empty() ||
+        packed.size() > kMaxRaftPayloadBytes - kRaftFrameReserveBytes ||
         packed.size() > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
         throw std::runtime_error("Raft MessagePack payload is outside the supported size range");
     }
@@ -274,6 +291,9 @@ PersistentRaftLog g_persistentRaftLog;
 
 void appendRaftRecordBytes(std::string& bytes, uint64_t index, uint64_t term,
                            const std::string& payload) {
+    if (payload.empty() || payload.size() > kMaxRaftPayloadBytes) {
+        throw std::runtime_error("Raft log payload is outside the supported size range");
+    }
     const uint32_t size = static_cast<uint32_t>(payload.size());
     bytes.append(reinterpret_cast<const char*>(&index), sizeof(index));
     bytes.append(reinterpret_cast<const char*>(&term), sizeof(term));
@@ -1759,7 +1779,11 @@ size_t raftSnapshotChunkBytes() {
     static const size_t value = [] {
         const char* v = std::getenv("RAFT_SNAPSHOT_CHUNK_BYTES");
         if (!v) return size_t{4 * 1024 * 1024};
-        try { return std::max<size_t>(32 * 1024, static_cast<size_t>(std::stoull(v))); }
+        try {
+            return std::clamp<size_t>(
+                static_cast<size_t>(std::stoull(v)), 32 * 1024,
+                kMaxRaftPayloadBytes - kRaftFrameReserveBytes);
+        }
         catch (...) { return size_t{4 * 1024 * 1024}; }
     }();
     return value;
@@ -4129,16 +4153,6 @@ void RaftCore::ensurePeerReplicator(const std::string& peer, uint64_t term, uint
                     std::this_thread::sleep_for(std::chrono::milliseconds(10));
                     continue;
                 }
-                long long suffixBytes = 0;
-                for (const auto& e : suffixEntries) {
-                    suffixBytes += static_cast<long long>(encodeRaftPayload(e).size());
-                }
-                {
-                    std::lock_guard<std::mutex> ml(g_raftWriteMetricsMutex);
-                    raftRecordMetric(g_appendEntriesBatchEntries, static_cast<long long>(suffixEntries.size()));
-                    raftRecordMetric(g_appendEntriesBatchBytes, suffixBytes);
-                }
-
                 uint64_t leaderCommitSnapshot;
                 { std::lock_guard<std::mutex> lk(electionMutex_); leaderCommitSnapshot = commitIndex_; }
 
@@ -4149,8 +4163,21 @@ void RaftCore::ensurePeerReplicator(const std::string& peer, uint64_t term, uint
                 msg["prevLogIndex"] = prevIndex;
                 msg["prevLogTerm"] = getTermForIndex(prevIndex);
                 msg["leaderCommit"] = leaderCommitSnapshot;
-                msg["entries"] = suffixEntries;
-                msg["entryTerms"] = suffixTerms;
+                if (!fitRaftEntriesFrame(msg, suffixEntries, suffixTerms)) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(25));
+                    continue;
+                }
+                chunkTo = prevIndex + suffixEntries.size();
+                long long suffixBytes = 0;
+                for (const auto& e : suffixEntries) {
+                    suffixBytes += static_cast<long long>(encodeRaftPayload(e).size());
+                }
+                {
+                    std::lock_guard<std::mutex> ml(g_raftWriteMetricsMutex);
+                    raftRecordMetric(g_appendEntriesBatchEntries,
+                                     static_cast<long long>(suffixEntries.size()));
+                    raftRecordMetric(g_appendEntriesBatchBytes, suffixBytes);
+                }
 
                 bool ack = false; std::string resp;
                 auto peerStart = std::chrono::steady_clock::now();
@@ -4867,6 +4894,11 @@ bool RaftCore::sendToPeer(const std::string& peer, const json& payload, int time
             rpc["clusterId"] = clusterId;
         }
         const std::string wirePayload = encodeRaftPayload(rpc);
+        if (wirePayload.empty() || wirePayload.size() > kMaxRaftPayloadBytes) {
+            std::cerr << "[RAFTCORE] Refusing oversized outbound Raft frame"
+                      << std::endl;
+            return false;
+        }
         static const int64_t sendDelayMs = raftEnvIntMs("RAFT_SEND_DELAY_MS");
         static const int64_t sendJitterMs = raftEnvIntMs("RAFT_SEND_JITTER_MS");
         int64_t baseDelay = sendDelayMs;
@@ -5436,8 +5468,8 @@ bool RaftCore::backfillCommittedEntriesToPeer(const std::string& peer,
         msg["prevLogIndex"] = prevIndex;
         msg["prevLogTerm"] = getTermForIndex(prevIndex);
         msg["leaderCommit"] = leaderCommitIndex;
-        msg["entries"] = entries;
-        msg["entryTerms"] = entryTerms;
+        if (!fitRaftEntriesFrame(msg, entries, entryTerms)) return false;
+        to = from + entries.size() - 1;
 
         bool ack = false;
         std::string resp;
@@ -6954,21 +6986,30 @@ void RaftCore::handleFollowerConn(int clientSock, const std::atomic<size_t>& pen
         ~ConnCounter() { open.fetch_sub(1, std::memory_order_relaxed); closed.fetch_add(1, std::memory_order_relaxed); } }
         _connCounter{raftOpenConnections_, raftTotalClosed_};
     const bool keepAlive = raftReplicatorReuseConnection();
+    const auto receiveExact = [clientSock](void* buffer, std::size_t length) {
+        std::size_t received = 0;
+        while (received < length) {
+            const int bytes = raftSocketRecv(
+                clientSock, static_cast<char*>(buffer) + received,
+                length - received, 0);
+            if (bytes <= 0) return false;
+            received += static_cast<std::size_t>(bytes);
+        }
+        return true;
+    };
     try {
       for (;;) {  // v5.5P-R5.6: serve multiple framed RPCs per connection (persistent peer conn)
         uint32_t len = 0;
-        int r = raftSocketRecv(clientSock, reinterpret_cast<char*>(&len), sizeof(len), 0);
-        if (r != sizeof(len)) {
+        if (!receiveExact(&len, sizeof(len))) {
             break; }  // peer closed / framing end -> close connection
-        std::string payload(len, '\0');
-        int got = 0;
-        while (got < (int)len) {
-            int br = raftSocketRecv(clientSock, &payload[got], len - got, 0);
-            if (br <= 0) break;
-            got += br;
+        if (len == 0 || len > kMaxRaftPayloadBytes) {
+            std::cerr << "[RAFTCORE] Rejected invalid frame length=" << len
+                      << std::endl;
+            break;
         }
-        if (got < (int)len) break;  // incomplete frame -> close
-        RAFT_DLOG("[RAFTCORE] Received replicated payload (" << got << " bytes)" << std::endl);
+        std::string payload(len, '\0');
+        if (!receiveExact(payload.data(), len)) break;
+        RAFT_DLOG("[RAFTCORE] Received replicated payload (" << len << " bytes)" << std::endl);
 
         static const int64_t ackDelayMs = raftEnvIntMs("RAFT_ACK_DELAY_MS");
         static const int64_t ackJitterMs = raftEnvIntMs("RAFT_ACK_JITTER_MS");
