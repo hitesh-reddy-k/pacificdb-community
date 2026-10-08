@@ -1,8 +1,9 @@
-# PacificDB Workbench 1.1.2 candidate
+# PacificDB Workbench v1.1.2 prerelease
 
-Workbench 1.1.2 is an unpublished production-readiness candidate. This page
-describes the source candidate; it does not claim that public 1.1.2 installers
-or checksums exist.
+Workbench 1.1.2 is published as part of the [Community prerelease](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/1.1.2).
+The Linux Debian installer and portable archive are available with verified
+SHA-256 checksums. Final Windows/macOS installers are not published; this is
+not production certification.
 
 ## Version boundary
 
@@ -17,7 +18,7 @@ not unchanged public 1.1.1 binaries. See the [complete Community patch notes](1.
 - The desktop verification exercises bundled-CLI backup creation, verification,
   restore history, restart persistence, and sandbox boundaries.
 - Release qualification binds platform results to a clean Git revision,
-  Workbench version, installer paths, and SHA-256 digests. Publication remains
+  Workbench version, installer paths, and SHA-256 digests. Stable promotion remains
   blocked when platform, runtime audit, physical-power, independent-security,
   or long-duration-load evidence is missing or invalid.
 - Runtime dependencies are audited independently from development tooling.
@@ -28,8 +29,8 @@ not unchanged public 1.1.1 binaries. See the [complete Community patch notes](1.
 - Windows x64: NSIS installer
 - macOS arm64 and macOS x64: DMG images
 
-The Linux portable tarball may be built from source but is not a qualified
-release installer. Other operating systems and architectures are unsupported.
+The published Linux portable tarball passes scoped sandbox/runtime checks but
+is not an independently qualified native installer. Other operating systems and architectures are unsupported.
 
 ## Upgrade and security boundary
 

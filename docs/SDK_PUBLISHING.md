@@ -1,16 +1,14 @@
 # SDK package publication
 
-This branch prepares `pacificdb==1.1.1` and
-`io.pacificdb:pacificdb-client:1.1.1` artifacts. The hosted matrices and exact
-artifact inspection passed. PyPI rejected the final OIDC exchange because no
-matching trusted publisher is registered; Maven Central validation/publication
-still requires the configured owner credentials and explicit portal action.
-Neither coordinate is publicly available as 1.1.1. Never overwrite or claim
-ownership without release-owner verification and a coordinated version.
-The audited Java source is commit
-`25fb81d413973b6779eaf71a26bedb42f6d79be3`, which resolves Jackson 2.18.11;
-the immutable release tag contains the earlier 2.18.10 dependency and must not
-be used to install the Java client.
+The current source and published GitHub download assets are version **1.1.2**:
+`pacificdb==1.1.2` and `io.pacificdb:pacificdb-client:1.1.2`.
+The [Community prerelease](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/1.1.2)
+contains the inspected Python wheel and Java binary/source/Javadoc JARs.
+Immutable tag `1.1.2` includes the reviewed Jackson 2.18.11 dependency.
+Neither coordinate has been published as 1.1.2 to PyPI or Maven Central.
+PyPI needs trusted-publisher registration; Central needs owner credentials,
+signing and explicit portal action. Never overwrite or claim ownership without
+release-owner verification and a coordinated version.
 
 Build and inspect locally:
 
@@ -45,7 +43,7 @@ For a local signed bundle, provide a private temporary GPG keyring and its exact
 40-hex primary fingerprint, copy the POM alongside the JARs, then run:
 
 ```sh
-cp sdk/java/pom.xml sdk/java/target/pacificdb-client-1.1.1.pom
+cp sdk/java/pom.xml sdk/java/target/pacificdb-client-1.1.2.pom
 python scripts/pack-java-sdk.py --target sdk/java/target \
   --output sdk/java/target/central-publishing/central-bundle.zip \
   --fingerprint "$GPG_FINGERPRINT" --sign
@@ -85,6 +83,8 @@ signs the tested bytes with the configured release-owner key and uses the
 [Central validation API](https://central.sonatype.org/publish/publish-portal-api/)
 with explicit `USER_MANAGED`. It stops at `VALIDATED`; publication requires a
 separate owner action in the portal. The uploader contains no publish endpoint.
+
+## Historical v1.1.1 hosted results (not 1.1.2 qualification)
 
 The v1.1.1 Python workflow was executed across its Linux/Windows runtime matrix;
 artifact qualification passed and publication stopped at the missing PyPI

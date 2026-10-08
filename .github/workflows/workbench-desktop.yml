@@ -15,7 +15,7 @@ on:
       - 'package.json'
       - 'package-lock.json'
   push:
-    branches: [pacificdb-v1.0]
+    branches: [main]
     tags: ['workbench-v*']
     paths:
       - '.github/workflows/workbench-desktop.yml'

@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.2 — security and reliability patch (publication pending)
+## 1.1.2 — 2026-10-07 (security and reliability prerelease)
 
 - Align Community engine, native/npm CLI, Node/Python/Java SDKs, Workbench and Helm source metadata at 1.1.2.
 - Enforce database owners and explicit read-only/read-write/co-owner grants, role ceilings, namespace/database identity, nested bulk scope and audited superadmin recovery.

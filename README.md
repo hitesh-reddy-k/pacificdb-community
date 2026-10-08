@@ -6,7 +6,7 @@
 
 <p align="center">
   Open-source, self-hosted database for documents, vectors, and media.<br>
-  Security and reliability patch — source prepared; publication pending.
+  Security and reliability patch — published prerelease.
 </p>
 
 <p align="center">
@@ -38,9 +38,10 @@ have explicit revision/platform boundaries; that statement is not independent
 certification or a guarantee against vulnerabilities or data loss. Before
 using real data, follow the [readiness and backup checklist](docs/releases/1.1.2.md#production-readiness-statement).
 
-The download and registry instructions below still identify published 1.1.1
-artifacts. They do not contain the 1.1.2 security fixes. Build this patch from
-source until matching 1.1.2 artifacts are published and verified.
+[PacificDB Community v1.1.2](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/1.1.2) is a published
+prerelease with verified Linux native/Workbench packages, npm tarballs, a Python
+wheel and Java JARs. It is not certified production-ready. Registry publication
+and final Windows/macOS installers remain unavailable.
 
 ## What is included
 
@@ -71,27 +72,18 @@ See [COMMUNITY_SCOPE.md](COMMUNITY_SCOPE.md) for the exact boundary.
 ### Native package
 
 Download the package for your platform from
-[GitHub Releases](https://github.com/hitesh-reddy-k/pacificdb-community/releases).
+[the v1.1.2 prerelease](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/1.1.2).
 The native package contains the database engine and CLI.
 
 Ubuntu or Debian:
 
 ```sh
-sudo apt install ./pacificdb-community-*-linux-amd64.deb
+sudo apt install ./pacificdb-community-1.1.2-linux-amd64.deb
 pacificdb
 ```
 
-Windows:
-
-1. Open the downloaded `.exe` installer.
-2. Open a new Command Prompt.
-3. Run `pacificdb`.
-
-macOS:
-
-1. Install the package matching Apple silicon or Intel.
-2. Open Terminal.
-3. Run `pacificdb`.
+Windows and macOS: final 1.1.2 installers are not published. Use the source
+instructions for development; older installers are not this security patch.
 
 Plain `pacificdb` starts the local engine when it is not already running and
 opens the interactive shell. The engine continues in the background and is
@@ -99,22 +91,23 @@ reused by later CLI and application connections. Use `--no-start` when the CLI
 must only connect to an already-running engine. Check the installed release
 without starting the engine with `pacificdb --version`.
 
-Windows and macOS 1.1.1 installers are unsigned under a version-specific release-owner exception. Verify downloads
-against `SHA256SUMS` and review the
-[certification status](docs/COMMUNITY_P0_CERTIFICATION.md) before installation.
+Verify every downloaded package against the prerelease `SHA256SUMS`; review
+[qualification limits](docs/releases/1.1.2.md#production-readiness-statement)
+and test backup/restore before installation.
 
 ### npm
 
 Node.js 18 or newer:
 
 ```sh
-npm install --global @pacificdb/cli@1.1.1
-npm install @pacificdb/client@1.1.1
+npm install --global https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/1.1.2/pacificdb-client-1.1.2.tgz \
+  https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/1.1.2/pacificdb-cli-1.1.2.tgz
+npm install https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/1.1.2/pacificdb-client-1.1.2.tgz
 ```
 
-These commands install the previous published release. The source versions of
-the CLI and Node.js client in this patch are `1.1.2`; matching registry packages
-must be published before using `@1.1.2` install commands.
+These commands install the published 1.1.2 download assets. Registry publication
+remains pending; `@latest` is not this patch. Install the global client and CLI
+tarballs together to satisfy their exact-version dependency.
 
 The npm CLI is a client. It can automatically start `db_engine` when a native
 PacificDB server package is installed and available on `PATH`. Installing only
@@ -122,14 +115,16 @@ the npm package does not install the database engine.
 
 ### Desktop Workbench
 
-[Workbench 1.1.1](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/workbench-v1.1.1) includes Linux, Windows, and macOS installers with the bundled engine and CLI.
+[Workbench v1.1.2](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/1.1.2) includes a Linux Debian installer
+and portable archive with the bundled engine and CLI. Windows/macOS installers
+are not published for this prerelease.
 
 Workbench, engine, CLI and SDK source versions are aligned at 1.1.2 for this
-Community security patch. Public 1.1.2 publication is still pending. See the
+Community security prerelease. See the
 [Workbench operations guide](docs/WORKBENCH.md),
 [candidate readiness checklist](docs/WORKBENCH_PRODUCTION_READINESS.md), and
-[candidate notes](docs/releases/workbench-1.1.2.md). Missing hosted or external
-evidence blocks publication.
+[prerelease notes](docs/releases/workbench-1.1.2.md). Missing hosted or external
+evidence blocks stable promotion, not the explicitly marked prerelease.
 
 The desktop app bundles the Workbench GUI, native database engine, CLI, and
 runtime. Users can install it and open **PacificDB Workbench** from their app
@@ -224,7 +219,8 @@ backup file in bounded, checksummed chunks.
 
 ## Connect an application
 
-These examples require matching 1.1.1 clients. Start `pacificdb` once before running an application. Install the Node client with `npm install @pacificdb/client@1.1.1`.
+These examples require matching 1.1.2 clients from the download instructions
+above. Start `pacificdb` once before running an application.
 
 For complete install, authenticated connection, CRUD, vector/media, close, upgrade, and troubleshooting examples, see [Node.js](site/docs.html#nodejs), [Python](site/docs.html#python), [Java](site/docs.html#java), [CLI](site/docs.html#shell-reference), and [Workbench](site/docs.html#workbench). A `pacificdb://` database URL uses the engine protocol; open the separately printed `http://` URL for browser Workbench. Keep private credentials in `PACIFICDB_URL` and use `pacificdbs://` for verified TLS.
 
@@ -255,11 +251,11 @@ Install into a virtual environment:
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install --no-deps \
-  'git+https://github.com/hitesh-reddy-k/pacificdb-community.git@v1.1.1#subdirectory=sdk/python'
+  'https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/1.1.2/pacificdb-1.1.2-py3-none-any.whl'
 ```
 
-PyPI publication is pending trusted-publisher registration. The tagged-source
-command above was verified from a clean virtual environment.
+PyPI publication is pending trusted-publisher registration. The command
+above installs the published 1.1.2 wheel, without runtime dependencies.
 
 ```python
 import os
@@ -272,15 +268,15 @@ with PacificDB.connect(url) as db:
 
 ### Java
 
-Maven Central ownership is not configured. The release tag predates the final
-Jackson 2.18.11 security update, so install the audited release-branch revision:
+Maven Central publication is unavailable. Install the immutable 1.1.2 source,
+which includes the reviewed Jackson 2.18.11 dependency:
 
 ```sh
-git checkout 25fb81d413973b6779eaf71a26bedb42f6d79be3
+git checkout 1.1.2
 mvn -f sdk/java/pom.xml install
 ```
 
-Use `io.pacificdb:pacificdb-client:1.1.1` in your Maven application with Java 11+:
+Use `io.pacificdb:pacificdb-client:1.1.2` in your Maven application with Java 11+:
 
 ```java
 import io.pacificdb.PacificDB;
@@ -320,8 +316,8 @@ The CLI automatically starts an engine only for loopback hosts.
 
 ## Build and test
 
-Run the following from the 1.1.2 patch checkout. The public `v1.1.2` tag is not
-claimed to exist until the release workflow publishes the reviewed revision.
+Run the following from the published immutable tag `1.1.2` (displayed version
+v1.1.2) or the current `main` checkout.
 
 Requirements: CMake 3.20+, a C++17 compiler, OpenSSL development headers and
 libraries, LZ4, RE2, Node.js 22.12+ for repository development, Python 3.10+, Java 11+, and Maven. On Debian or
@@ -346,7 +342,7 @@ mvn -f sdk/java/pom.xml test
 
 ## Release readiness and support
 
-Version 1.1.2 is the prepared Community security patch; public artifact publication and exact-release external qualification are separate gates. Retained engineering reports describe their exact revisions, validation scope, known regressions, and release-owner exceptions. See the [changelog](CHANGELOG.md), [patch notes and readiness statement](docs/releases/1.1.2.md), and [upgrade guide](site/docs.html#upgrade). Historical 1.1.1 exceptions do not automatically authorize this patch.
+Version 1.1.2 is the published Community security prerelease; stable promotion and exact-release external qualification remain separate gates. Retained engineering reports describe their exact revisions, validation scope, known regressions, and release-owner exceptions. See the [changelog](CHANGELOG.md), [patch notes and readiness statement](docs/releases/1.1.2.md), and [upgrade guide](site/docs.html#upgrade). Historical 1.1.1 exceptions do not automatically authorize this patch.
 
 - [Certification report](docs/COMMUNITY_P0_CERTIFICATION.md)
 - [Production release procedure](docs/PRODUCTION_RELEASE.md)

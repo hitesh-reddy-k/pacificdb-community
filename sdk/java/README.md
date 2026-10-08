@@ -1,10 +1,15 @@
-![PacificDB](https://raw.githubusercontent.com/hitesh-reddy-k/pacificdb-community/pacificdb-v1.0/site/assets/pacificdb-logo-symbol.png)
+![PacificDB](https://raw.githubusercontent.com/hitesh-reddy-k/pacificdb-community/main/site/assets/pacificdb-logo-symbol.png)
 
 # PacificDB Java client
 
+Version **1.1.2 — prerelease**. Download the matching package from the
+[Community v1.1.2 release](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/1.1.2);
+registry publication is pending.
+
 A database-first client for the Community engine. Requires Java 11 or later;
-Jackson is the only runtime dependency. These examples describe this source
-candidate and require its built JAR, not an older registry release.
+Jackson is the only runtime dependency. These examples describe the 1.1.2
+prerelease and require its published JAR or tagged-source build, not an older
+registry release.
 
 Start a PacificDB server, then connect to a database directly:
 
@@ -110,6 +115,6 @@ not an engine restore API. File errors use typed SDK exceptions. Each request
 has a deadline; the whole transfer has no single overall deadline. In-memory
 attachments allocate the supplied bytes; use file APIs for large media.
 
-Apache-2.0. Local publication qualification is still in progress.
+Apache-2.0. Stable-release and registry qualification remain separate.
 
-Advanced named operations and wire aliases are documented in [SDK capabilities](https://github.com/hitesh-reddy-k/pacificdb-community/blob/pacificdb-v1.0/docs/SDK_CAPABILITIES.md).
+Advanced named operations and wire aliases are documented in [SDK capabilities](https://github.com/hitesh-reddy-k/pacificdb-community/blob/main/docs/SDK_CAPABILITIES.md).

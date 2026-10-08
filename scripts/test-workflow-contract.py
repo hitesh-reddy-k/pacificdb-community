@@ -90,7 +90,7 @@ require(
 require(
     ".github/workflows/ci.yml",
     "pull_request:",
-    "branches: [pacificdb-v1.0]",
+    "branches: [main]",
     "contents: write",
     "packages: write",
     "source-linux:",
