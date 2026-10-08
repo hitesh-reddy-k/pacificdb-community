@@ -18,6 +18,11 @@ using json = nlohmann::json;
 
 int main() {
 #ifdef __linux__
+    // Exercise checksum and bundle streaming within a small worker-stack budget.
+    rlimit stackLimit{};
+    if (getrlimit(RLIMIT_STACK, &stackLimit) != 0) return 8;
+    stackLimit.rlim_cur = std::min(stackLimit.rlim_cur, rlim_t{512U * 1024U});
+    if (setrlimit(RLIMIT_STACK, &stackLimit) != 0) return 8;
     rlimit limit{};
     if (getrlimit(RLIMIT_AS, &limit) != 0) return 8;
     limit.rlim_cur = std::min(limit.rlim_cur, rlim_t{128U * 1024U * 1024U});

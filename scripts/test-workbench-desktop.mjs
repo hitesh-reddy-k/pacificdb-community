@@ -163,9 +163,9 @@ try {
     timeout: 30_000, env: cliEnvironment,
   });
   assert.equal(createdBackup.status, 0, cliDiagnostics(createdBackup));
-  assert.doesNotMatch(createdBackup.stdout, /error:/i, cliDiagnostics(createdBackup));
+  assert.doesNotMatch(createdBackup.stdout + createdBackup.stderr, /error:/i, cliDiagnostics(createdBackup));
   const backupId = createdBackup.stdout.match(/"backup_id":\s*"([^"]+)"/)?.[1];
-  assert.ok(backupId, createdBackup.stdout);
+  assert.ok(backupId, cliDiagnostics(createdBackup));
   console.log('[workbench-desktop] candidate CLI verify and restore');
   const recovered = spawnSync(candidateCli, ['--host', '127.0.0.1', '--port',
     candidatePort, '--no-start'], {
@@ -173,7 +173,7 @@ try {
     timeout: 60_000, env: cliEnvironment,
   });
   assert.equal(recovered.status, 0, cliDiagnostics(recovered));
-  assert.doesNotMatch(recovered.stdout, /error:/i, cliDiagnostics(recovered));
+  assert.doesNotMatch(recovered.stdout + recovered.stderr, /error:/i, cliDiagnostics(recovered));
   assert.match(recovered.stdout, new RegExp(backupId));
   assert.match(recovered.stdout, /completed/);
   // Navigation out of the trusted application must be denied.

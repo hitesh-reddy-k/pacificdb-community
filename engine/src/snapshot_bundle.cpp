@@ -59,7 +59,7 @@ const nlohmann::json& files(const nlohmann::json& manifest) {
 }
 
 void copyBytes(std::istream& input, std::ostream& output, uint64_t bytes) {
-    std::array<char, kCopyBytes> buffer{};
+    std::vector<char> buffer(kCopyBytes);
     while (bytes > 0) {
         const size_t wanted = static_cast<size_t>(std::min<uint64_t>(bytes, buffer.size()));
         if (!input.read(buffer.data(), static_cast<std::streamsize>(wanted))) {
