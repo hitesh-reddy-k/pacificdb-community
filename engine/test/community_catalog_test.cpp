@@ -221,6 +221,23 @@ int main() {
     assert(repaired.at("received_bytes") == 3);
     assert(repaired.at("next_chunk") == 0);
 
+    // Durable chunks, not cached manifest indices, remain authoritative after
+    // a crash or damaged progress update (including equal-count stale hints).
+    for (const auto& hint : std::vector<nlohmann::json>{
+             nlohmann::json::array({0}),
+             nlohmann::json::array({"damaged"}),
+             nlohmann::json::array({1, 1}), nlohmann::json()}) {
+        DatabaseEngine::updateOne("system", "pacificdb_meta", "media_manifests",
+                                  {{"id", reconcile.at("id")}},
+                                  {{"$set", {{"received_indices", hint}}}});
+        const auto progress = catalog.getMedia("system", reconcile.at("id"));
+        assert(progress.at("received_chunks") == 1);
+        assert(progress.at("received_indices") == nlohmann::json::array({1}));
+        assert(progress.at("received_bytes") == 3);
+    }
+    assert(catalog.reconcileMedia("system", reconcile.at("id"))
+               .at("repaired_progress") == 1);
+
     DatabaseEngine::insert("system", "pacificdb_meta", "media_chunks", {
         {"id", "missing-media:0"}, {"media_id", "missing-media"},
         {"index", 0}, {"size_bytes", 3}, {"sha256", sha256("AAA")},
@@ -265,6 +282,11 @@ int main() {
                .at("status") == "ready");
     assert(catalog.getMediaChunk("system", largeUpload.at("id"), 1)
                .at("data") == encodedChunk);
+    DatabaseEngine::updateOne("system", "pacificdb_meta", "media_manifests",
+                              {{"id", largeUpload.at("id")}},
+                              {{"$set", {{"received_indices", {0, 0}}}}});
+    assert(catalog.getMedia("system", largeUpload.at("id"))
+               .at("received_indices") == nlohmann::json::array({0, 1}));
 
     // Catalog maintenance must continue past the normal per-query document
     // limit and must not materialize all media payloads in one result.

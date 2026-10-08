@@ -264,7 +264,6 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
-      - run: brew install cmake vcpkg
       - name: Build macOS installer
         shell: bash
         env:
@@ -279,7 +278,7 @@ jobs:
           set -euo pipefail
           triplet="${{ matrix.arch }}-osx"
           if [[ "$triplet" == x86_64-osx ]]; then triplet=x64-osx; fi
-          vcpkg install --triplet "$triplet" \
+          "$VCPKG_INSTALLATION_ROOT/vcpkg" install --triplet "$triplet" \
             --x-install-root="$PWD/build/vcpkg_installed"
           signing_p12="$RUNNER_TEMP/pacificdb-installer.p12"
           signing_keychain="$RUNNER_TEMP/pacificdb-signing.keychain-db"
@@ -339,7 +338,7 @@ jobs:
           fi
 
           cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_TOOLCHAIN_FILE="$(brew --prefix vcpkg)/libexec/scripts/buildsystems/vcpkg.cmake" \
+            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" \
             -DVCPKG_TARGET_TRIPLET="$triplet" \
             -DVCPKG_INSTALLED_DIR="$PWD/build/vcpkg_installed" \
             -DPACIFICDB_ENGINE_VERSION="$version"

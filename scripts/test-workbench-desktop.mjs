@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { listPackage } from '@electron/asar';
 import { _electron as electron } from 'playwright';
+import { closeDesktopApplication, desktopOperation } from './lib/workbench-desktop-lifecycle.mjs';
 
 const suppliedDirectory = process.env.PACIFICDB_TEST_DESKTOP_DATA;
 const directory = suppliedDirectory ? path.resolve(suppliedDirectory) :
@@ -27,7 +28,7 @@ if (executablePath) {
   const native = path.join(resources, 'engine');
   const manifest = JSON.parse(await readFile(path.join(native, 'manifest.json'), 'utf8'));
   const enginePath = path.join(native, process.platform === 'win32' ? 'db_engine.exe' : 'db_engine');
-  const identity = spawnSync(enginePath, ['--build-info'], { encoding: 'utf8' });
+  const identity = spawnSync(enginePath, ['--build-info'], { encoding: 'utf8', timeout: 10_000 });
   assert.equal(identity.status, 0, identity.stderr);
   const buildInfo = JSON.parse(identity.stdout);
   const expected = process.env.PACIFICDB_EXPECTED_REVISION || spawnSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).stdout.trim();
@@ -46,6 +47,7 @@ if (executablePath) {
 }
 async function launch(applicationPath = executablePath) {
   const started = Date.now();
+  console.log(`[workbench-desktop] launch ${applicationPath || 'development application'}`);
   desktop = await electron.launch({
     ...(applicationPath ? { executablePath: applicationPath } : {}),
     args: [...(!applicationPath ? [path.resolve('desktop/main.mjs')] : [])],
@@ -63,13 +65,14 @@ async function launch(applicationPath = executablePath) {
   console.log(`Desktop ready in ${Date.now() - started} ms`);
   return page;
 }
+const evaluate = (callback, phase) => desktopOperation(desktop, () => desktop.evaluate(callback), phase);
 try {
   let page = await launch(previousExecutablePath || executablePath);
   assert.equal(await page.evaluate(() => typeof process), 'undefined');
-  const preferences = await desktop.evaluate(({ BrowserWindow }) => {
+  const preferences = await evaluate(({ BrowserWindow }) => {
     const p = BrowserWindow.getAllWindows()[0].webContents.getLastWebPreferences();
     return { sandbox: p.sandbox, contextIsolation: p.contextIsolation, nodeIntegration: p.nodeIntegration };
-  });
+  }, 'verify window sandbox');
   assert.deepEqual(preferences, { sandbox: true, contextIsolation: true, nodeIntegration: false });
   async function create(kind, name) {
     await page.locator(kind === 'database' ? '#overview-create' : `#add-${kind}`).click();
@@ -91,13 +94,13 @@ try {
   await page.locator('#document-json').fill('{"id":"desktop-note","message":"Saved in the desktop app"}');
   await page.locator('#insert-doc').click();
   await page.locator('#document-list .record').filter({ hasText: 'Saved in the desktop app' }).waitFor();
-  const command = await desktop.evaluate(async ({ Menu, clipboard }) => {
+  const command = await evaluate(async ({ Menu, clipboard }) => {
     const previous = await clipboard.readText();
     await Menu.getApplicationMenu().getMenuItemById('copy-cli').click();
     const value = await clipboard.readText();
     await clipboard.writeText(previous);
     return value;
-  });
+  }, 'copy previous CLI connection');
   assert.match(command, /--host 127\.0\.0\.1 --port \d+ --no-start$/);
   const firstExecutable = previousExecutablePath || executablePath;
   const nativeDirectory = firstExecutable ? process.platform === 'darwin' ?
@@ -106,7 +109,7 @@ try {
     path.dirname(path.resolve(process.env.PACIFICDB_WORKBENCH_ENGINE || path.join('build',
       process.platform === 'win32' ? 'db_engine.exe' : 'db_engine')));
   const cli = path.join(nativeDirectory, process.platform === 'win32' ? 'pacificdb.exe' : 'pacificdb');
-  const version = spawnSync(cli, ['--version'], { encoding: 'utf8' });
+  const version = spawnSync(cli, ['--version'], { encoding: 'utf8', timeout: 10_000 });
   assert.equal(version.status, 0, version.stderr);
   assert.match(version.stdout, /PacificDB/);
   const shell = spawnSync(cli, ['--host', '127.0.0.1', '--port',
@@ -125,21 +128,20 @@ try {
   await page.locator('#media-file').setInputFiles({ name: 'desktop.txt', mimeType: 'text/plain', buffer: Buffer.from('desktop upload') });
   await page.locator('#upload-media').click();
   await page.locator('#media-list .record').filter({ hasText: 'desktop.txt' }).waitFor();
-  const exit = new Promise((resolve) => desktop.process().once('exit', resolve));
-  await desktop.evaluate(({ app }) => { app.quit(); });
-  await exit;
+  console.log('[workbench-desktop] stop previous application before candidate restart');
+  await closeDesktopApplication(desktop);
   desktop = null;
   page = await launch();
   assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
   await page.locator('#nav-explorer').click();
   await page.locator('#document-list .record').filter({ hasText: 'desktop-note' }).waitFor();
-  const candidateCommand = await desktop.evaluate(async ({ Menu, clipboard }) => {
+  const candidateCommand = await evaluate(async ({ Menu, clipboard }) => {
     const previous = await clipboard.readText();
     await Menu.getApplicationMenu().getMenuItemById('copy-cli').click();
     const value = await clipboard.readText();
     await clipboard.writeText(previous);
     return value;
-  });
+  }, 'copy candidate CLI connection');
   const candidateDirectory = executablePath ? process.platform === 'darwin' ?
     path.resolve(path.dirname(executablePath), '../Resources/engine') :
     path.join(path.dirname(executablePath), 'resources/engine') :
@@ -151,6 +153,7 @@ try {
   assert.ok(candidatePort, 'candidate CLI command must include its engine port');
   const cliEnvironment = { ...process.env,
     PACIFICDB_CLI_HOME: path.join(directory, 'upgrade-cli') };
+  console.log('[workbench-desktop] candidate CLI backup');
   const createdBackup = spawnSync(candidateCli, ['--host', '127.0.0.1', '--port',
     candidatePort, '--no-start'], {
     encoding: 'utf8', input: 'create backup --name workbench-upgrade\nquit\n',
@@ -160,6 +163,7 @@ try {
   assert.doesNotMatch(createdBackup.stdout, /error:/i);
   const backupId = createdBackup.stdout.match(/"backup_id":\s*"([^"]+)"/)?.[1];
   assert.ok(backupId, createdBackup.stdout);
+  console.log('[workbench-desktop] candidate CLI verify and restore');
   const recovered = spawnSync(candidateCli, ['--host', '127.0.0.1', '--port',
     candidatePort, '--no-start'], {
     encoding: 'utf8', input: `backup verify ${backupId}\nrestore backup ${backupId}\nlist restores\nquit\n`,
@@ -178,9 +182,7 @@ try {
     'WORKBENCH_DESKTOP_PASS: native window, sandbox, bundled engine, CRUD, media, shutdown/restart persistence');
 } finally {
   if (desktop) {
-    const exited = new Promise((resolve) => desktop.process().once('exit', resolve));
-    await desktop.evaluate(({ app }) => app.quit()).catch(() => {});
-    await exited;
+    await closeDesktopApplication(desktop);
   }
   if (ownsDirectory) await rm(directory, { recursive: true, force: true });
 }

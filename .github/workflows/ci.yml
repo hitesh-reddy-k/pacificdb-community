@@ -67,6 +67,8 @@ jobs:
       - run: npm run test:build-tools
       - run: python3 scripts/test-release-consistency.py
       - run: python3 scripts/test-workflow-contract.py
+      - run: python3 scripts/test-macos-dependencies.py
+      - run: node --test scripts/test-workbench-desktop-lifecycle.mjs
       - run: python3 -m unittest scripts/test_security_review.py -v
       - run: scripts/test-helm-deployment.sh
       - run: scripts/test-community.sh build
