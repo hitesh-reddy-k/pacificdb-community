@@ -21,7 +21,7 @@ def forbid(path: str, *needles: str) -> None:
 
 def upload_paths(workflow: str, artifact_name: str) -> list[str]:
     match = re.search(
-        rf"^      - uses: actions/upload-artifact@v4\n"
+        rf"^      - uses: actions/upload-artifact@v6\n"
         rf"        with:\n"
         rf"          name: {re.escape(artifact_name)}\n"
         rf"          path: \|\n"
@@ -148,7 +148,7 @@ require(
     ".github/workflows/release.yml",
     "container:",
     "docker/setup-buildx-action@v3",
-    "docker/login-action@v3",
+    "docker/login-action@v4",
     "docker/build-push-action@v6",
     "push-by-digest=true",
     "p0-evidence-linux-amd64-container.json",

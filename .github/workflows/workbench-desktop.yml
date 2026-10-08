@@ -126,7 +126,7 @@ jobs:
           mkdir -p build/workbench-upload
           cp "dist/desktop/PacificDB-Workbench-${WORKBENCH_VERSION}-linux-amd64.deb" \
             build/workbench-linux-x64.json build/workbench-upload/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: workbench-linux-x64
           if-no-files-found: error
@@ -278,7 +278,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path build/workbench-upload | Out-Null
           Copy-Item "dist/desktop/PacificDB-Workbench-$env:WORKBENCH_VERSION-win-x64.exe", `
             build/workbench-windows-x64.json -Destination build/workbench-upload
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: workbench-windows-x64
           if-no-files-found: error
@@ -409,7 +409,7 @@ jobs:
           mkdir -p build/workbench-upload
           cp "dist/desktop/PacificDB-Workbench-${WORKBENCH_VERSION}-mac-${{ matrix.arch }}.dmg" \
             "build/workbench-macos-${{ matrix.arch }}.json" build/workbench-upload/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: workbench-macos-${{ matrix.arch }}
           if-no-files-found: error
@@ -530,7 +530,7 @@ jobs:
           python3 scripts/workbench_release_qualification.py aggregate "${args[@]}"
       - name: Upload Workbench qualification report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: workbench-release-qualification
           if-no-files-found: error

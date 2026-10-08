@@ -137,8 +137,8 @@ class SecurityWorkflowContractTests(unittest.TestCase):
             "security-events: write",
             "cpp",
             "javascript-typescript",
-            "github/codeql-action/init@v3",
-            "github/codeql-action/analyze@v3",
+            "github/codeql-action/init@v4",
+            "github/codeql-action/analyze@v4",
         ):
             self.assertIn(value, workflow)
 
