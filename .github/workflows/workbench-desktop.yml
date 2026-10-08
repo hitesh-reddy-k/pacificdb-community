@@ -269,6 +269,7 @@ jobs:
       - name: Record Windows platform evidence
         shell: pwsh
         run: |
+          git status --porcelain --untracked-files=all
           python scripts/workbench_release_qualification.py platform `
             --name windows-x64 --version $env:WORKBENCH_VERSION `
             --artifact "dist/desktop/PacificDB-Workbench-$env:WORKBENCH_VERSION-win-x64.exe" `
