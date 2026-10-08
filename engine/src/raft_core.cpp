@@ -5803,7 +5803,8 @@ void RaftCore::runListener() {
     raftListenerSocket_.store(
         static_cast<std::intptr_t>(server), std::memory_order_release);
     raftListenerRunning_.store(true);
-    std::cout << "[RAFTCORE] Listener ready on " << raftBindHost << ":" << listenPort_ << std::endl;
+    std::cout << ("[RAFTCORE] Listener ready on " + raftBindHost + ":" +
+                  std::to_string(listenPort_) + "\n") << std::flush;
 
     // Reusable inbound RPC workers. Previously every accepted heartbeat/append/vote
     // connection created and detached a new std::thread. A short V10 syscall profile

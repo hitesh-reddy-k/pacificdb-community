@@ -17,6 +17,8 @@ const engineBinary = path.join(build, process.platform === 'win32' ? 'db_engine.
 const cliBinary = path.join(build, process.platform === 'win32' ? 'pacificdb.exe' : 'pacificdb');
 const root = await mkdtemp(path.join(os.tmpdir(), 'pacificdb-p0-media-'));
 const chunk = 256 * 1024;
+const requestTimeoutMs = Number(process.env.PACIFICDB_P0_MEDIA_TIMEOUT_MS || 120000);
+assert.ok(Number.isSafeInteger(requestTimeoutMs) && requestTimeoutMs > 0);
 const sizes = [0, 1, chunk - 1, chunk, chunk + 1, 2 * chunk - 1,
   2 * chunk, 2 * chunk + 1, 1024 * 1024, 4 * 1024 * 1024, 10 * 1024 * 1024];
 if (process.env.PACIFICDB_P0_MEDIA_100MB === '1') sizes.push(100 * 1024 * 1024);
@@ -97,7 +99,7 @@ function bytesFor(size) {
 const uploaded = [];
 try {
   await start();
-  const client = new PacificDBClient({ port, timeoutMs: 120000 });
+  const client = new PacificDBClient({ port, timeoutMs: requestTimeoutMs });
   await client.createProject('media-test');
   await client.createDatabase('media');
   client.database = 'media';
@@ -113,7 +115,10 @@ try {
         (error) => error.code === 'media_file_empty');
       continue;
     }
+    const began = Date.now();
+    console.error(`[p0-media] uploading ${size} bytes`);
     const manifest = await client.uploadMediaFile('assets', sourcePath, { chunkBytes: chunk });
+    console.error(`[p0-media] ready ${size} bytes in ${Date.now() - began} ms`);
     assert.equal(manifest.status, 'ready');
     const destination = path.join(root, 'downloads', `first-${caseIndex}.bin`);
     await client.downloadMediaFile(manifest.id, destination);
@@ -124,7 +129,7 @@ try {
   assert.equal(listed.media.filter((item) => item.status === 'ready').length, uploaded.length);
   await stop('SIGKILL');
   await start();
-  const recovered = new PacificDBClient({ port, database: 'media', timeoutMs: 120000 });
+  const recovered = new PacificDBClient({ port, database: 'media', timeoutMs: requestTimeoutMs });
   for (let index = 0; index < uploaded.length; index += 1) {
     const destination = path.join(root, 'downloads', `recovered-${index}.bin`);
     const result = await recovered.downloadMediaFile(uploaded[index].id, destination);

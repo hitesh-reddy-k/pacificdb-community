@@ -122,14 +122,37 @@ std::vector<json> rawMediaChunks(
     const auto manifest = rawMedia(userId, mediaId);
     if (manifest.is_null()) return {};
     const json ownerFilter{{"media_id", mediaId}};
-    // Read one real row per query so base64 payloads stay below the result-size
-    // ceiling without probing caller-declared sparse indices.
-    // ponytail: offset paging revisits stored rows; add a metadata cursor if
-    // uploads with very large actual chunk counts make this path hot.
     std::vector<json> chunks;
     const auto durableCount = DatabaseEngine::count(
         userId, kDatabase, kMediaChunks, ownerFilter);
     chunks.reserve(durableCount);
+    // Progress indices are only a lookup hint: prove the durable count and
+    // each owning row before using them. Point reads avoid materializing all
+    // previous base64 chunks again on every offset page (quadratic work).
+    const auto indices = manifest.find("received_indices");
+    if (indices != manifest.end() && indices->is_array() &&
+        indices->size() == durableCount) {
+        long long previous = -1;
+        for (const auto& value : *indices) {
+            if (!value.is_number_integer()) break;
+            const auto index = value.get<long long>();
+            if (index <= previous || index >= manifest.value("chunk_count", 0LL)) break;
+            auto rows = DatabaseEngine::find(
+                userId, kDatabase, kMediaChunks, {{"id", chunkId(mediaId, index)}}, 1);
+            if (rows.empty() || rows.front().value("media_id", json()) != mediaId ||
+                rows.front().value("index", json()) != value) break;
+            auto chunk = publicDocument(std::move(rows.front()));
+            chunk.erase("data");
+            chunks.push_back(std::move(chunk));
+            previous = index;
+        }
+        if (chunks.size() == durableCount) return chunks;
+        chunks.clear();
+    }
+    // Missing/stale crash progress still enumerates actual stored rows, never
+    // the caller-declared sparse range. Keep each payload query bounded.
+    // ponytail: recovery fallback uses offset paging; add a metadata cursor
+    // if very large unreconciled uploads make this exceptional path hot.
     while (chunks.size() < durableCount) {
         auto rows = DatabaseEngine::find(
             userId, kDatabase, kMediaChunks, ownerFilter, 1,

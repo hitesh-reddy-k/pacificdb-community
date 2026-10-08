@@ -71,9 +71,10 @@ async function oversizedPeer(t) {
     connectionCount: () => connections };
 }
 
-test('oversized responses are rejected once and the next request reconnects', async t => {
+test('oversized responses are rejected once and the next request reconnects', { timeout: 90_000 }, async t => {
   const p = await oversizedPeer(t);
-  const db = new sdk.PacificDBClient({ port: p.port, poolSize: 1, timeoutMs: 1500 });
+  // This fixture streams over 128 MiB; do not race its byte-limit check against a tiny request deadline.
+  const db = new sdk.PacificDBClient({ port: p.port, poolSize: 1, timeoutMs: 30_000 });
   t.after(() => db.close());
 
   for (const action of ['oversized_unterminated', 'oversized_terminated']) {

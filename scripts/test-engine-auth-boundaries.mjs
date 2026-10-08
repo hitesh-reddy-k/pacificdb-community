@@ -186,6 +186,23 @@ try {
       collection: 'vectors', vector: [1, 0], k: 1 });
     assert.equal(readable.status, 'ok');
 
+    // Keep the storage tail of the request dispatcher covered on native builds.
+    const storage = await admin.request({ action: 'storage_stats' });
+    assert.equal(storage.success, true);
+    assert.equal(typeof storage.sst_files, 'number');
+    const wal = await admin.request({ action: 'admin_wal_status' });
+    assert.equal(wal.success, true);
+    assert.equal(wal.checksum_validation_expected, true);
+    const verified = await admin.request({ action: 'verify_integrity',
+      userId: 'system', dbName: 'auth_db', collection: 'vectors' });
+    assert.equal(verified.success, true);
+    assert.equal(verified.readOnly, true);
+    const repaired = await admin.request({ action: 'storage_repair' });
+    assert.equal(repaired.success, true);
+    assert.equal(repaired.repairPerformed, true);
+    assert.equal((await reader.request({ action: 'queryVector',
+      collection: 'vectors', vector: [1, 0], k: 1 })).status, 'ok');
+
     const before = await admin.request({ action: 'admin_raft_status' });
     assert.ok(before.currentTerm < 999999999, 'denied term changes must not mutate Raft');
 

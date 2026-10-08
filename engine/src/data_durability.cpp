@@ -293,14 +293,14 @@ std::string ChecksumCalculator::sha256(const void* data, size_t length) {
 std::string ChecksumCalculator::sha256File(const std::string& path) {
     std::ifstream input(path, std::ios::binary);
     if (!input) return {};
+    std::vector<char> buffer(1024 * 1024);
     EVP_MD_CTX* context = EVP_MD_CTX_new();
     if (!context) return {};
     bool ok = EVP_DigestInit_ex(context, EVP_sha256(), nullptr) == 1;
-    char buffer[1024 * 1024];
     while (ok && input) {
-        input.read(buffer, sizeof(buffer));
+        input.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
         const auto bytes = input.gcount();
-        if (bytes > 0) ok = EVP_DigestUpdate(context, buffer, static_cast<size_t>(bytes)) == 1;
+        if (bytes > 0) ok = EVP_DigestUpdate(context, buffer.data(), static_cast<size_t>(bytes)) == 1;
     }
     unsigned char digest[EVP_MAX_MD_SIZE];
     unsigned int digestLength = 0;

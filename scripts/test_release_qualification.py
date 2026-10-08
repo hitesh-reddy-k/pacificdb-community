@@ -63,6 +63,28 @@ class ReleaseQualificationTests(unittest.TestCase):
         self.assertFalse(evidence["dirty"])
         self.assertTrue(evidence["release_eligible"])
 
+    def test_windows_checkout_keeps_cli_entry_script_lf(self):
+        temp, repo = self.make_repository()
+        self.addCleanup(temp.cleanup)
+        source = Path(__file__).resolve().parents[1]
+        (repo / ".gitattributes").write_bytes((source / ".gitattributes").read_bytes())
+        entry = repo / "cli/bin/pacificdb.js"
+        entry.parent.mkdir(parents=True)
+        expected = (source / "cli/bin/pacificdb.js").read_bytes()
+        entry.write_bytes(expected)
+        subprocess.run(["git", "-C", str(repo), "add", "."], check=True)
+        subprocess.run(["git", "-C", str(repo), "commit", "-qm", "CLI entry"], check=True)
+        checkout_temp = tempfile.TemporaryDirectory()
+        self.addCleanup(checkout_temp.cleanup)
+        checkout = Path(checkout_temp.name) / "checkout"
+        subprocess.run(["git", "-c", "core.autocrlf=true", "clone", "-q",
+                        str(repo), str(checkout)], check=True)
+        subprocess.run(["git", "-C", str(checkout), "config", "core.autocrlf", "true"],
+                       check=True)
+        self.assertEqual(expected, (checkout / "cli/bin/pacificdb.js").read_bytes(),
+                         "npm must not need to rewrite the CLI shebang after checkout")
+        self.assertFalse(qualification.collect_repository_state(checkout)["dirty"])
+
     def test_required_blocked_gate_prevents_stable_release(self):
         self.assertEqual(
             "BLOCKED",

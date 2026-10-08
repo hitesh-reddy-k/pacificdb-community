@@ -218,6 +218,7 @@ jobs:
           $previous = "$env:RUNNER_TEMP\PacificDB-Workbench-1.1.1-win-x64.exe"
           $installed = "$env:RUNNER_TEMP\workbench-previous-installed"
           $fixture = "$env:RUNNER_TEMP\workbench-previous-fixture"
+          Write-Host '[workbench-desktop] download and install previous NSIS'
           Invoke-WebRequest `
             -Uri 'https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-v1.1.1/PacificDB-Workbench-1.1.1-win-x64.exe' `
             -OutFile $previous
@@ -225,6 +226,7 @@ jobs:
           if ($process.ExitCode -ne 0) { exit $process.ExitCode }
           New-Item -ItemType Directory -Force -Path $fixture | Out-Null
           Copy-Item -Path "$installed\*" -Destination $fixture -Recurse
+          Write-Host '[workbench-desktop] previous NSIS installation complete'
       - name: Uninstall previous Workbench NSIS
         shell: pwsh
         run: |
@@ -238,12 +240,20 @@ jobs:
           $candidate = Get-Item "$pwd\dist\desktop\PacificDB-Workbench-$env:WORKBENCH_VERSION-win-x64.exe"
           $installed = "$env:RUNNER_TEMP\workbench-candidate-installed"
           $data = "$env:RUNNER_TEMP\workbench-data-windows"
-          $process = Start-Process -FilePath $candidate.FullName -ArgumentList @('/S', "/D=$installed") -Wait -PassThru
+          Write-Host '[workbench-desktop] install candidate NSIS'
+          $process = Start-Process -FilePath $candidate.FullName -ArgumentList @('/S', "/D=$installed") -PassThru
+          if (-not $process.WaitForExit(120000)) {
+            Stop-Process -Id $process.Id -Force
+            throw 'Candidate Workbench NSIS installation timed out after 120 seconds.'
+          }
           if ($process.ExitCode -ne 0) { exit $process.ExitCode }
+          Write-Host '[workbench-desktop] candidate NSIS installation complete; starting installed upgrade test'
           New-Item -ItemType Directory -Force -Path $data | Out-Null
           $env:PACIFICDB_TEST_DESKTOP_PREVIOUS = "$env:RUNNER_TEMP\workbench-previous-fixture\PacificDB Workbench.exe"
           $env:PACIFICDB_TEST_DESKTOP = "$installed\PacificDB Workbench.exe"
           $env:PACIFICDB_TEST_DESKTOP_DATA = $data
+          node --test scripts/test-workbench-desktop-lifecycle.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           npm run test:workbench:desktop
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Uninstall candidate Workbench NSIS and verify data preservation
@@ -259,6 +269,7 @@ jobs:
       - name: Record Windows platform evidence
         shell: pwsh
         run: |
+          git status --porcelain --untracked-files=all
           python scripts/workbench_release_qualification.py platform `
             --name windows-x64 --version $env:WORKBENCH_VERSION `
             --artifact "dist/desktop/PacificDB-Workbench-$env:WORKBENCH_VERSION-win-x64.exe" `
@@ -303,7 +314,6 @@ jobs:
         run: |
           echo "WORKBENCH_VERSION=$(node -p 'require("./package.json").version')" >> "$GITHUB_ENV"
           echo "PACIFICDB_COMPONENT_VERSION=$(node -p 'require("./cli/package.json").version')" >> "$GITHUB_ENV"
-      - run: brew install cmake vcpkg
       - run: npm ci --no-audit --no-fund
       - run: npm run test:npm
       - run: npm run test:build-tools
@@ -311,11 +321,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          vcpkg install --triplet arm64-osx \
+          triplet="${{ matrix.arch }}-osx"
+          "$VCPKG_INSTALLATION_ROOT/vcpkg" install --triplet "$triplet" \
             --x-install-root="$PWD/build/vcpkg_installed"
           cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_TOOLCHAIN_FILE="$(brew --prefix vcpkg)/libexec/scripts/buildsystems/vcpkg.cmake" \
-            -DVCPKG_TARGET_TRIPLET=arm64-osx \
+            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" \
+            -DVCPKG_TARGET_TRIPLET="$triplet" \
             -DVCPKG_INSTALLED_DIR="$PWD/build/vcpkg_installed" \
             -DPACIFICDB_ENGINE_VERSION="$PACIFICDB_COMPONENT_VERSION"
           cmake --build build --target db_engine pacificdb -j2

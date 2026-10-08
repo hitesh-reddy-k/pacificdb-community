@@ -4,6 +4,7 @@ import { chmod, mkdir, mkdtemp, readFile, rm, readdir, writeFile } from 'node:fs
 import os from 'node:os';
 import path from 'node:path';
 import { startDesktopEngine } from '../desktop/engine.mjs';
+import { PacificDBClient } from '../sdk/node/src/index.js';
 
 const build = path.resolve(process.argv[2] || 'build');
 const root = await mkdtemp(path.join(os.tmpdir(), 'pacificdb-desktop-isolation-'));
@@ -14,9 +15,32 @@ try {
   for (const name of names) process.env[name] = path.join(root, 'external', name);
   engine = await startDesktopEngine({ executable: path.join(build,
     process.platform === 'win32' ? 'db_engine.exe' : 'db_engine'), directory: path.join(root, 'desktop') });
-  const startupLog = await readFile(engine.logPath, 'utf8');
+  const raftReady = /\[RAFTCORE\] Listener ready on 127\.0\.0\.1:/;
+  const listenerDeadline = Date.now() + 5000;
+  let startupLog;
+  do {
+    startupLog = await readFile(engine.logPath, 'utf8');
+    if (raftReady.test(startupLog)) break;
+    await new Promise(resolve => setTimeout(resolve, 25));
+  } while (Date.now() < listenerDeadline);
   assert.match(startupLog, /\[SERVER\] Listening on 127\.0\.0\.1:/);
-  assert.match(startupLog, /\[RAFTCORE\] Listener ready on 127\.0\.0\.1:/);
+  assert.match(startupLog, raftReady);
+  const client = new PacificDBClient({ port: engine.port, poolSize: 1 });
+  try {
+    const storage = await client.request({ action: 'storage_stats' });
+    assert.equal(storage.success, true);
+    assert.equal(typeof storage.sst_files, 'number');
+    const wal = await client.request({ action: 'admin_wal_status' });
+    assert.equal(wal.success, true);
+    assert.equal(wal.checksum_validation_expected, true);
+    const verified = await client.request({ action: 'verify_integrity' });
+    assert.equal(verified.success, true);
+    assert.equal(verified.readOnly, true);
+    const repaired = await client.request({ action: 'storage_repair' });
+    assert.equal(repaired.success, true);
+    assert.equal(repaired.repairPerformed, true);
+    console.log('DESKTOP_STORAGE_DISPATCH_PASS');
+  } finally { client.close(); }
   await engine.stop();
   assert.match(await readFile(engine.logPath, 'utf8'), /Clean shutdown marker v2 written/);
   assert.ok(!(await readdir(root)).includes('external'), 'desktop must not write inherited engine paths');
