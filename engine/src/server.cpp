@@ -7444,7 +7444,8 @@ void startServer() {
               << dbqMaxQueuePerShard << "\n";
     DBTaskQueuePartitioned::configure(dbqShards, dbqWorkersPerShard, dbqMaxQueuePerShard);
 
-    std::cout << "[SERVER] Listening on " << engineBindHost << ":" << enginePort << " with connection pool...\n";
+    std::cout << ("[SERVER] Listening on " + engineBindHost + ":" +
+                  std::to_string(enginePort) + " with connection pool...\n");
     std::cout << "[SERVER] Connection pool: " << minThreads << "-" << maxThreads << " threads, max queue: " << maxQueue << "\n";
     std::cout << "[SERVER] Admission control: max connections=" << maxConnections
               << " (effective inflight target)"

@@ -15,9 +15,16 @@ try {
   for (const name of names) process.env[name] = path.join(root, 'external', name);
   engine = await startDesktopEngine({ executable: path.join(build,
     process.platform === 'win32' ? 'db_engine.exe' : 'db_engine'), directory: path.join(root, 'desktop') });
-  const startupLog = await readFile(engine.logPath, 'utf8');
+  const raftReady = /\[RAFTCORE\] Listener ready on 127\.0\.0\.1:/;
+  const listenerDeadline = Date.now() + 5000;
+  let startupLog;
+  do {
+    startupLog = await readFile(engine.logPath, 'utf8');
+    if (raftReady.test(startupLog)) break;
+    await new Promise(resolve => setTimeout(resolve, 25));
+  } while (Date.now() < listenerDeadline);
   assert.match(startupLog, /\[SERVER\] Listening on 127\.0\.0\.1:/);
-  assert.match(startupLog, /\[RAFTCORE\] Listener ready on 127\.0\.0\.1:/);
+  assert.match(startupLog, raftReady);
   const client = new PacificDBClient({ port: engine.port, poolSize: 1 });
   try {
     const storage = await client.request({ action: 'storage_stats' });
