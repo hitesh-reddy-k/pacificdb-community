@@ -182,6 +182,11 @@ jobs:
         run: |
           node scripts/test-desktop-engine.mjs build/Release
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify authorization and storage dispatch on Windows
+        shell: pwsh
+        run: |
+          node scripts/test-engine-auth-boundaries.mjs build/Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Sign bundled native executables for release tags
         if: env.WORKBENCH_RELEASE_TAG != '' && env.WORKBENCH_RELEASE_TAG != 'workbench-v1.1.1'
         shell: pwsh

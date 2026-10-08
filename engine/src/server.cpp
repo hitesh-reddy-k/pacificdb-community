@@ -2119,6 +2119,257 @@ static std::vector<std::array<std::string, 3>> discoverIndexValidationTargets(
     return targets;
 }
 
+// Keep storage scopes out of the long dispatch chain (MSVC C1061).
+static json handleStorageMaintenance(const std::string& action, const json& req) {
+    json res;
+    auto collectStorageFiles = []() {
+        json stats;
+        stats["data_root"] = DatabaseEngine::getDataRoot();
+        stats["total_bytes"] = 0ULL;
+        stats["sst_files"] = 0;
+        stats["sst_bytes"] = 0ULL;
+        stats["wal_files"] = 0;
+        stats["wal_bytes"] = 0ULL;
+        stats["other_files"] = 0;
+
+        try {
+            std::filesystem::path root(DatabaseEngine::getDataRoot());
+            if (std::filesystem::exists(root)) {
+                for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
+                    if (!entry.is_regular_file()) continue;
+                    uintmax_t size = 0;
+                    try { size = entry.file_size(); } catch (...) { size = 0; }
+                    stats["total_bytes"] = stats.value("total_bytes", 0ULL) + size;
+                    const std::string ext = entry.path().extension().string();
+                    if (ext == ".sst") {
+                        stats["sst_files"] = stats.value("sst_files", 0) + 1;
+                        stats["sst_bytes"] = stats.value("sst_bytes", 0ULL) + size;
+                    } else if (ext == ".wal") {
+                        stats["wal_files"] = stats.value("wal_files", 0) + 1;
+                        stats["wal_bytes"] = stats.value("wal_bytes", 0ULL) + size;
+                    } else {
+                        stats["other_files"] = stats.value("other_files", 0) + 1;
+                    }
+                }
+            }
+        } catch (const std::exception& e) {
+            stats["scan_error"] = e.what();
+        } catch (...) {
+            stats["scan_error"] = "unknown";
+        }
+        return stats;
+    };
+
+    auto walJson = []() {
+        auto& walStats = WAL::getStats();
+        return json{
+            {"success", true},
+            {"entries_written", walStats.entriesWritten.load()},
+            {"entries_fsynced", walStats.entriesFsynced.load()},
+            {"batches_committed", walStats.batchesCommitted.load()},
+            {"bytes_written", walStats.bytesWritten.load()},
+            {"pending_entries", WAL::getPendingCount()},
+            {"avg_flush_latency_ms", walStats.avgFlushLatencyMs.load()},
+            {"queue_wait_us_total", walStats.queueWaitUs.load()},
+            {"encode_crc_us_total", walStats.encodeCrcUs.load()},
+            {"write_us_total", walStats.writeUs.load()},
+            {"fdatasync_us_total", walStats.fdatasyncUs.load()},
+            {"physical_records_written", walStats.physicalRecordsWritten.load()},
+            {"physical_syncs", walStats.physicalSyncs.load()},
+            {"coalesced_requests", walStats.coalescedRequests.load()},
+            {"active_appends", walStats.activeAppends.load()},
+            {"bytes_before_compression", walStats.bytesBeforeCompression.load()},
+            {"bytes_after_compression", walStats.bytesAfterCompression.load()},
+            {"compressed_batches", walStats.compressedBatches.load()},
+            {"uncompressed_batches", walStats.uncompressedBatches.load()},
+            {"segments_created", walStats.segmentsCreated.load()},
+            {"segments_compacted", walStats.segmentsCompacted.load()},
+            {"active_segments", walStats.activeSegments.load()},
+            {"current_lsn", WAL::getCurrentLSN()},
+            {"segment_count", WAL::getSegmentCount()}
+        };
+    };
+
+    if (action == "wal_status" || action == "admin_wal_status") {
+        res = walJson();
+        res["action"] = action;
+        res["checksum_validation_expected"] = true;
+        res["replay_rejects_corrupt_records"] = true;
+    } else if (action == "memtable_status") {
+        res = LSM::getRuntimeStats();
+    } else if (action == "lsmProfile" || action == "lsm_profile" || action == "lsm_metrics" || action == "admin_lsm_status") {
+        res = LSM::getLsmMetrics();
+        res["action"] = action;
+        res["runtime"] = LSM::getRuntimeStats();
+    } else if (action == "admin_compaction_status") {
+        res = LSM::getRuntimeStats();
+        res["success"] = true;
+        res["action"] = action;
+        res["lsm_metrics"] = LSM::getLsmMetrics();
+    } else if (action == "sst_status") {
+        json files = collectStorageFiles();
+        res = {
+            {"success", true},
+            {"data_root", files.value("data_root", "")},
+            {"sst_files", files.value("sst_files", 0)},
+            {"sst_bytes", files.value("sst_bytes", 0ULL)},
+            {"sst_mb", files.value("sst_bytes", 0ULL) / 1024.0 / 1024.0}
+        };
+    } else if (action == "storage_stats") {
+        json files = collectStorageFiles();
+        res = {
+            {"success", true},
+            {"data_root", files.value("data_root", "")},
+            {"total_bytes", files.value("total_bytes", 0ULL)},
+            {"total_mb", files.value("total_bytes", 0ULL) / 1024.0 / 1024.0},
+            {"sst_files", files.value("sst_files", 0)},
+            {"sst_mb", files.value("sst_bytes", 0ULL) / 1024.0 / 1024.0},
+            {"wal_files", files.value("wal_files", 0)},
+            {"wal_mb", files.value("wal_bytes", 0ULL) / 1024.0 / 1024.0},
+            {"memtables", LSM::getRuntimeStats()},
+            {"wal", walJson()},
+            {"memory", {
+                {"current_usage_mb", MemoryManager::getProcessMemory() / 1024.0 / 1024.0},
+                {"usage_percent", MemoryManager::getMemoryUsage() * 100.0},
+                {"backpressure_active", MemoryManager::shouldSlowDownWrites()}
+            }}
+        };
+    } else if (action == "storage_flush" || action == "flush") {
+        json before = LSM::getRuntimeStats();
+        LSM::forceFlush();
+        res = {
+            {"success", true},
+            {"message", "Memtables flushed to SSTables."},
+            {"before", before},
+            {"after", LSM::getRuntimeStats()},
+            {"wal", walJson()}
+        };
+    } else if (action == "storage_compact" || action == "compact") {
+        int compactedCollections = 0;
+        try {
+            std::filesystem::path root(DatabaseEngine::getDataRoot());
+            if (std::filesystem::exists(root)) {
+                for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
+                    if (!entry.is_directory()) continue;
+                    if (entry.path().extension() != ".lsm") continue;
+                    const std::string collection = entry.path().stem().string();
+                    const std::string dbName = entry.path().parent_path().filename().string();
+                    const std::string userId = entry.path().parent_path().parent_path().filename().string();
+                    if (!userId.empty() && !dbName.empty() && !collection.empty()) {
+                        LSM::compact(userId, dbName, collection);
+                        compactedCollections++;
+                    }
+                }
+            }
+            res = {
+                {"success", true},
+                {"message", "Compaction checked all SSTable collections."},
+                {"collections_checked", compactedCollections},
+                {"storage", collectStorageFiles()}
+            };
+        } catch (const std::exception& e) {
+            res = { {"success", false}, {"error", "compact_failed"}, {"message", e.what()} };
+        }
+    } else if (action == "admin_replay_check") {
+        res = {
+            {"success", true},
+            {"action", action},
+            {"wal", walJson()},
+            {"storage", collectStorageFiles()},
+            {"message", "Replay status is exposed for audit; destructive crash replay tests remain external harness gates."}
+        };
+    } else if (action == "verify_integrity" || action == "admin_storage_verify") {
+        // Defect V11.4-VERIFY-001: this action previously shared the repair
+        // handler. It rebuilt a bloom filter for every SST and then reported
+        // "Storage integrity verified", so it compared nothing, could never
+        // fail, and mutated storage under a READ permission.
+        //
+        // It now performs a real base/index comparison. LSM::validateColumnIndexes
+        // rebuilds the expected index from the base documents and diffs it against
+        // the persisted index, reporting missing and stale entries per field. This
+        // handler is read-only and FAILS CLOSED: success is true only when every
+        // collection verified cleanly.
+        try {
+            const std::string vUser = req.value("userId", std::string(""));
+            const std::string vDb = req.value("dbName", req.value("db", std::string("")));
+            const std::string vColl = req.value("collection", std::string(""));
+
+            // Each verified collection is identified by its <collection>.idx
+            // directory under the LSM root, which LSM::init sets to the data root.
+            const auto targets = discoverIndexValidationTargets(
+                vUser, vDb, vColl);
+
+            json collections = json::array();
+            size_t missingTotal = 0;
+            size_t staleTotal = 0;
+            size_t errorTotal = 0;
+            for (const auto& t : targets) {
+                json v = LSM::validateColumnIndexes(t[0], t[1], t[2]);
+                const std::string vStatus = v.value("status", std::string("error"));
+                const size_t missing = v.value("missingEntries", static_cast<size_t>(0));
+                const size_t stale = v.value("staleEntries", static_cast<size_t>(0));
+                missingTotal += missing;
+                staleTotal += stale;
+                if (vStatus == "error") errorTotal++;
+                collections.push_back({
+                    {"userId", t[0]}, {"database", t[1]}, {"collection", t[2]},
+                    {"status", vStatus},
+                    {"missingEntries", missing},
+                    {"staleEntries", stale},
+                    {"fields", v.value("fields", json::array())}
+                });
+            }
+
+            const bool consistent = (missingTotal == 0 && staleTotal == 0 && errorTotal == 0);
+            res = {
+                {"success", consistent},
+                {"action", action},
+                {"verification", "base_index_comparison"},
+                {"readOnly", true},
+                {"collectionsVerified", collections.size()},
+                {"missingIndexEntries", missingTotal},
+                {"staleIndexEntries", staleTotal},
+                {"collectionsInError", errorTotal},
+                {"baseIndexConsistent", consistent},
+                {"collections", collections},
+                {"message", consistent
+                    ? "Base data and indexes are consistent."
+                    : "Base/index divergence detected; storage is NOT verified."}
+            };
+            if (!consistent) res["error"] = "base_index_divergence";
+        } catch (const std::exception& e) {
+            // Fail closed: an exception is never a clean verification.
+            res = { {"success", false}, {"error", "verification_failed"}, {"message", e.what()} };
+        }
+    } else if (action == "storage_repair" || action == "repair") {
+        int sstChecked = 0;
+        int sstReindexed = 0;
+        try {
+            std::filesystem::path root(DatabaseEngine::getDataRoot());
+            if (std::filesystem::exists(root)) {
+                for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
+                    if (!entry.is_regular_file()) continue;
+                    if (entry.path().extension() != ".sst") continue;
+                    sstChecked++;
+                    LSM::buildBloomForSST(entry.path().string());
+                    sstReindexed++;
+                }
+            }
+            res = {
+                {"success", true},
+                {"message", "Storage repair completed."},
+                {"repairPerformed", true},
+                {"sst_checked", sstChecked},
+                {"sst_reindexed", sstReindexed},
+                {"storage", collectStorageFiles()}
+            };
+        } catch (const std::exception& e) {
+            res = { {"success", false}, {"error", "repair_failed"}, {"message", e.what()} };
+        }
+    }
+    return res;
+}
+
 void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
     SOCKET sock = (SOCKET)clientSocket;
     sockaddr_in peer{};
@@ -6443,251 +6694,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                  action == "storage_repair" || action == "repair" ||
                  action == "verify_integrity" ||
                  action == "lsm_metrics" || action == "lsmProfile" || action == "lsm_profile") {
-            auto collectStorageFiles = []() {
-                json stats;
-                stats["data_root"] = DatabaseEngine::getDataRoot();
-                stats["total_bytes"] = 0ULL;
-                stats["sst_files"] = 0;
-                stats["sst_bytes"] = 0ULL;
-                stats["wal_files"] = 0;
-                stats["wal_bytes"] = 0ULL;
-                stats["other_files"] = 0;
-
-                try {
-                    std::filesystem::path root(DatabaseEngine::getDataRoot());
-                    if (std::filesystem::exists(root)) {
-                        for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
-                            if (!entry.is_regular_file()) continue;
-                            uintmax_t size = 0;
-                            try { size = entry.file_size(); } catch (...) { size = 0; }
-                            stats["total_bytes"] = stats.value("total_bytes", 0ULL) + size;
-                            const std::string ext = entry.path().extension().string();
-                            if (ext == ".sst") {
-                                stats["sst_files"] = stats.value("sst_files", 0) + 1;
-                                stats["sst_bytes"] = stats.value("sst_bytes", 0ULL) + size;
-                            } else if (ext == ".wal") {
-                                stats["wal_files"] = stats.value("wal_files", 0) + 1;
-                                stats["wal_bytes"] = stats.value("wal_bytes", 0ULL) + size;
-                            } else {
-                                stats["other_files"] = stats.value("other_files", 0) + 1;
-                            }
-                        }
-                    }
-                } catch (const std::exception& e) {
-                    stats["scan_error"] = e.what();
-                } catch (...) {
-                    stats["scan_error"] = "unknown";
-                }
-                return stats;
-            };
-
-            auto walJson = []() {
-                auto& walStats = WAL::getStats();
-                return json{
-                    {"success", true},
-                    {"entries_written", walStats.entriesWritten.load()},
-                    {"entries_fsynced", walStats.entriesFsynced.load()},
-                    {"batches_committed", walStats.batchesCommitted.load()},
-                    {"bytes_written", walStats.bytesWritten.load()},
-                    {"pending_entries", WAL::getPendingCount()},
-                    {"avg_flush_latency_ms", walStats.avgFlushLatencyMs.load()},
-                    {"queue_wait_us_total", walStats.queueWaitUs.load()},
-                    {"encode_crc_us_total", walStats.encodeCrcUs.load()},
-                    {"write_us_total", walStats.writeUs.load()},
-                    {"fdatasync_us_total", walStats.fdatasyncUs.load()},
-                    {"physical_records_written", walStats.physicalRecordsWritten.load()},
-                    {"physical_syncs", walStats.physicalSyncs.load()},
-                    {"coalesced_requests", walStats.coalescedRequests.load()},
-                    {"active_appends", walStats.activeAppends.load()},
-                    {"bytes_before_compression", walStats.bytesBeforeCompression.load()},
-                    {"bytes_after_compression", walStats.bytesAfterCompression.load()},
-                    {"compressed_batches", walStats.compressedBatches.load()},
-                    {"uncompressed_batches", walStats.uncompressedBatches.load()},
-                    {"segments_created", walStats.segmentsCreated.load()},
-                    {"segments_compacted", walStats.segmentsCompacted.load()},
-                    {"active_segments", walStats.activeSegments.load()},
-                    {"current_lsn", WAL::getCurrentLSN()},
-                    {"segment_count", WAL::getSegmentCount()}
-                };
-            };
-
-            if (action == "wal_status" || action == "admin_wal_status") {
-                res = walJson();
-                res["action"] = action;
-                res["checksum_validation_expected"] = true;
-                res["replay_rejects_corrupt_records"] = true;
-            } else if (action == "memtable_status") {
-                res = LSM::getRuntimeStats();
-            } else if (action == "lsmProfile" || action == "lsm_profile" || action == "lsm_metrics" || action == "admin_lsm_status") {
-                res = LSM::getLsmMetrics();
-                res["action"] = action;
-                res["runtime"] = LSM::getRuntimeStats();
-            } else if (action == "admin_compaction_status") {
-                res = LSM::getRuntimeStats();
-                res["success"] = true;
-                res["action"] = action;
-                res["lsm_metrics"] = LSM::getLsmMetrics();
-            } else if (action == "sst_status") {
-                json files = collectStorageFiles();
-                res = {
-                    {"success", true},
-                    {"data_root", files.value("data_root", "")},
-                    {"sst_files", files.value("sst_files", 0)},
-                    {"sst_bytes", files.value("sst_bytes", 0ULL)},
-                    {"sst_mb", files.value("sst_bytes", 0ULL) / 1024.0 / 1024.0}
-                };
-            } else if (action == "storage_stats") {
-                json files = collectStorageFiles();
-                res = {
-                    {"success", true},
-                    {"data_root", files.value("data_root", "")},
-                    {"total_bytes", files.value("total_bytes", 0ULL)},
-                    {"total_mb", files.value("total_bytes", 0ULL) / 1024.0 / 1024.0},
-                    {"sst_files", files.value("sst_files", 0)},
-                    {"sst_mb", files.value("sst_bytes", 0ULL) / 1024.0 / 1024.0},
-                    {"wal_files", files.value("wal_files", 0)},
-                    {"wal_mb", files.value("wal_bytes", 0ULL) / 1024.0 / 1024.0},
-                    {"memtables", LSM::getRuntimeStats()},
-                    {"wal", walJson()},
-                    {"memory", {
-                        {"current_usage_mb", MemoryManager::getProcessMemory() / 1024.0 / 1024.0},
-                        {"usage_percent", MemoryManager::getMemoryUsage() * 100.0},
-                        {"backpressure_active", MemoryManager::shouldSlowDownWrites()}
-                    }}
-                };
-            } else if (action == "storage_flush" || action == "flush") {
-                json before = LSM::getRuntimeStats();
-                LSM::forceFlush();
-                res = {
-                    {"success", true},
-                    {"message", "Memtables flushed to SSTables."},
-                    {"before", before},
-                    {"after", LSM::getRuntimeStats()},
-                    {"wal", walJson()}
-                };
-            } else if (action == "storage_compact" || action == "compact") {
-                int compactedCollections = 0;
-                try {
-                    std::filesystem::path root(DatabaseEngine::getDataRoot());
-                    if (std::filesystem::exists(root)) {
-                        for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
-                            if (!entry.is_directory()) continue;
-                            if (entry.path().extension() != ".lsm") continue;
-                            const std::string collection = entry.path().stem().string();
-                            const std::string dbName = entry.path().parent_path().filename().string();
-                            const std::string userId = entry.path().parent_path().parent_path().filename().string();
-                            if (!userId.empty() && !dbName.empty() && !collection.empty()) {
-                                LSM::compact(userId, dbName, collection);
-                                compactedCollections++;
-                            }
-                        }
-                    }
-                    res = {
-                        {"success", true},
-                        {"message", "Compaction checked all SSTable collections."},
-                        {"collections_checked", compactedCollections},
-                        {"storage", collectStorageFiles()}
-                    };
-                } catch (const std::exception& e) {
-                    res = { {"success", false}, {"error", "compact_failed"}, {"message", e.what()} };
-                }
-            } else if (action == "admin_replay_check") {
-                res = {
-                    {"success", true},
-                    {"action", action},
-                    {"wal", walJson()},
-                    {"storage", collectStorageFiles()},
-                    {"message", "Replay status is exposed for audit; destructive crash replay tests remain external harness gates."}
-                };
-            } else if (action == "verify_integrity" || action == "admin_storage_verify") {
-                // Defect V11.4-VERIFY-001: this action previously shared the repair
-                // handler. It rebuilt a bloom filter for every SST and then reported
-                // "Storage integrity verified", so it compared nothing, could never
-                // fail, and mutated storage under a READ permission.
-                //
-                // It now performs a real base/index comparison. LSM::validateColumnIndexes
-                // rebuilds the expected index from the base documents and diffs it against
-                // the persisted index, reporting missing and stale entries per field. This
-                // handler is read-only and FAILS CLOSED: success is true only when every
-                // collection verified cleanly.
-                try {
-                    const std::string vUser = req.value("userId", std::string(""));
-                    const std::string vDb = req.value("dbName", req.value("db", std::string("")));
-                    const std::string vColl = req.value("collection", std::string(""));
-
-                    // Each verified collection is identified by its <collection>.idx
-                    // directory under the LSM root, which LSM::init sets to the data root.
-                    const auto targets = discoverIndexValidationTargets(
-                        vUser, vDb, vColl);
-
-                    json collections = json::array();
-                    size_t missingTotal = 0;
-                    size_t staleTotal = 0;
-                    size_t errorTotal = 0;
-                    for (const auto& t : targets) {
-                        json v = LSM::validateColumnIndexes(t[0], t[1], t[2]);
-                        const std::string vStatus = v.value("status", std::string("error"));
-                        const size_t missing = v.value("missingEntries", static_cast<size_t>(0));
-                        const size_t stale = v.value("staleEntries", static_cast<size_t>(0));
-                        missingTotal += missing;
-                        staleTotal += stale;
-                        if (vStatus == "error") errorTotal++;
-                        collections.push_back({
-                            {"userId", t[0]}, {"database", t[1]}, {"collection", t[2]},
-                            {"status", vStatus},
-                            {"missingEntries", missing},
-                            {"staleEntries", stale},
-                            {"fields", v.value("fields", json::array())}
-                        });
-                    }
-
-                    const bool consistent = (missingTotal == 0 && staleTotal == 0 && errorTotal == 0);
-                    res = {
-                        {"success", consistent},
-                        {"action", action},
-                        {"verification", "base_index_comparison"},
-                        {"readOnly", true},
-                        {"collectionsVerified", collections.size()},
-                        {"missingIndexEntries", missingTotal},
-                        {"staleIndexEntries", staleTotal},
-                        {"collectionsInError", errorTotal},
-                        {"baseIndexConsistent", consistent},
-                        {"collections", collections},
-                        {"message", consistent
-                            ? "Base data and indexes are consistent."
-                            : "Base/index divergence detected; storage is NOT verified."}
-                    };
-                    if (!consistent) res["error"] = "base_index_divergence";
-                } catch (const std::exception& e) {
-                    // Fail closed: an exception is never a clean verification.
-                    res = { {"success", false}, {"error", "verification_failed"}, {"message", e.what()} };
-                }
-            } else if (action == "storage_repair" || action == "repair") {
-                int sstChecked = 0;
-                int sstReindexed = 0;
-                try {
-                    std::filesystem::path root(DatabaseEngine::getDataRoot());
-                    if (std::filesystem::exists(root)) {
-                        for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
-                            if (!entry.is_regular_file()) continue;
-                            if (entry.path().extension() != ".sst") continue;
-                            sstChecked++;
-                            LSM::buildBloomForSST(entry.path().string());
-                            sstReindexed++;
-                        }
-                    }
-                    res = {
-                        {"success", true},
-                        {"message", "Storage repair completed."},
-                        {"repairPerformed", true},
-                        {"sst_checked", sstChecked},
-                        {"sst_reindexed", sstReindexed},
-                        {"storage", collectStorageFiles()}
-                    };
-                } catch (const std::exception& e) {
-                    res = { {"success", false}, {"error", "repair_failed"}, {"message", e.what()} };
-                }
-            }
+            res = handleStorageMaintenance(action, req);
         }
 
         else {
