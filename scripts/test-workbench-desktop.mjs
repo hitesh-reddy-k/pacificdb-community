@@ -18,6 +18,7 @@ const executablePath = process.env.PACIFICDB_TEST_DESKTOP;
 const previousExecutablePath = process.env.PACIFICDB_TEST_DESKTOP_PREVIOUS;
 const screenshot = process.env.PACIFICDB_DESKTOP_SCREENSHOT;
 let desktop;
+let primaryError;
 const env = { ...process.env, PACIFICDB_WORKBENCH_DATA: directory };
 delete env.ELECTRON_RUN_AS_NODE;
 const errors = [];
@@ -66,6 +67,8 @@ async function launch(applicationPath = executablePath) {
   return page;
 }
 const evaluate = (callback, phase) => desktopOperation(desktop, () => desktop.evaluate(callback), phase);
+const cliDiagnostics = (result) => JSON.stringify({ status: result.status, signal: result.signal,
+  error: result.error?.message, stdout: result.stdout, stderr: result.stderr });
 try {
   let page = await launch(previousExecutablePath || executablePath);
   assert.equal(await page.evaluate(() => typeof process), 'undefined');
@@ -159,8 +162,8 @@ try {
     encoding: 'utf8', input: 'create backup --name workbench-upgrade\nquit\n',
     timeout: 30_000, env: cliEnvironment,
   });
-  assert.equal(createdBackup.status, 0, createdBackup.stderr);
-  assert.doesNotMatch(createdBackup.stdout, /error:/i);
+  assert.equal(createdBackup.status, 0, cliDiagnostics(createdBackup));
+  assert.doesNotMatch(createdBackup.stdout, /error:/i, cliDiagnostics(createdBackup));
   const backupId = createdBackup.stdout.match(/"backup_id":\s*"([^"]+)"/)?.[1];
   assert.ok(backupId, createdBackup.stdout);
   console.log('[workbench-desktop] candidate CLI verify and restore');
@@ -169,8 +172,8 @@ try {
     encoding: 'utf8', input: `backup verify ${backupId}\nrestore backup ${backupId}\nlist restores\nquit\n`,
     timeout: 60_000, env: cliEnvironment,
   });
-  assert.equal(recovered.status, 0, recovered.stderr);
-  assert.doesNotMatch(recovered.stdout, /error:/i);
+  assert.equal(recovered.status, 0, cliDiagnostics(recovered));
+  assert.doesNotMatch(recovered.stdout, /error:/i, cliDiagnostics(recovered));
   assert.match(recovered.stdout, new RegExp(backupId));
   assert.match(recovered.stdout, /completed/);
   // Navigation out of the trusted application must be denied.
@@ -180,9 +183,15 @@ try {
   console.log(previousExecutablePath ?
     'WORKBENCH_DESKTOP_UPGRADE_PASS: previous data, candidate restart, bundled CLI backup and restore' :
     'WORKBENCH_DESKTOP_PASS: native window, sandbox, bundled engine, CRUD, media, shutdown/restart persistence');
+} catch (error) {
+  primaryError = error;
+  console.error('[workbench-desktop] original failure:', error);
+  const engineLog = await readFile(path.join(directory, 'database', 'engine.log'), 'utf8').catch(() => '');
+  console.error('[workbench-desktop] engine log tail:\n' + engineLog.slice(-8000));
+  throw error;
 } finally {
   if (desktop) {
-    await closeDesktopApplication(desktop);
+    await closeDesktopApplication(desktop, 45_000, primaryError);
   }
   if (ownsDirectory) await rm(directory, { recursive: true, force: true });
 }

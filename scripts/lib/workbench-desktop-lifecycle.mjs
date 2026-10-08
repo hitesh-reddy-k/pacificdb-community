@@ -21,8 +21,13 @@ export async function desktopOperation(desktop, action, phase, timeoutMs = 45_00
   } finally { clearTimeout(deadline); }
 }
 
-export async function closeDesktopApplication(desktop, timeoutMs = 45_000) {
+export async function closeDesktopApplication(desktop, timeoutMs = 45_000, primaryError) {
   const child = desktop.process();
   if (child.exitCode !== null || child.signalCode !== null) return;
-  await desktopOperation(desktop, () => desktop.close(), 'graceful shutdown', timeoutMs);
+  try {
+    await desktopOperation(desktop, () => desktop.close(), 'graceful shutdown', timeoutMs);
+  } catch (error) {
+    if (!primaryError) throw error;
+    console.error('[workbench-desktop] cleanup also failed:', error);
+  }
 }

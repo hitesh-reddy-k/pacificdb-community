@@ -34,3 +34,17 @@ test('cleanup lets the desktop close API shut its process down cleanly', { timeo
     assert.equal(child.exitCode, 0);
   } finally { if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL'); }
 });
+
+test('cleanup failure preserves the original desktop test failure', { timeout: 10_000 }, async () => {
+  const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { detached: true });
+  const original = new Error('candidate backup failed');
+  try {
+    await assert.rejects((async () => {
+      try { throw original; }
+      finally {
+        await closeDesktopApplication({ process: () => child,
+          close: () => Promise.reject(new Error('cleanup failed')) }, 100, original);
+      }
+    })(), (error) => error === original);
+  } finally { if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL'); }
+});
