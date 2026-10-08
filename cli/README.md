@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/hitesh-reddy-k/pacificdb-community/pacificdb-v1.0/site/assets/pacificdb-logo-symbol.png" width="112" alt="PacificDB logo">
+  <img src="https://raw.githubusercontent.com/hitesh-reddy-k/pacificdb-community/main/site/assets/pacificdb-logo-symbol.png" width="112" alt="PacificDB logo">
 </p>
 
 # PacificDB CLI
@@ -7,11 +7,13 @@
 The Apache-2.0 Community CLI talks directly to a PacificDB engine.
 
 ```sh
-npm install --global @pacificdb/cli@latest
+npm install --global https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/1.1.2/pacificdb-client-1.1.2.tgz \
+  https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/1.1.2/pacificdb-cli-1.1.2.tgz
 pacificdb
 ```
 
-This package source is PacificDB CLI `1.0.1`.
+This package is PacificDB CLI `1.1.2` (prerelease). Install both download
+assets together; the registry `latest` tag has not been promoted to this patch.
 
 Plain `pacificdb` opens the shell. For a loopback connection, it starts
 `db_engine` automatically when the executable is available on `PATH`.

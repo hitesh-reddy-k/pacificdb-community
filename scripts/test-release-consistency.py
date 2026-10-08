@@ -33,7 +33,7 @@ def main() -> None:
 
     raw_logo = (
         "https://raw.githubusercontent.com/hitesh-reddy-k/"
-        "pacificdb-community/pacificdb-v1.0/" + CANONICAL_LOGO
+        "pacificdb-community/main/" + CANONICAL_LOGO
     )
     for readme in (
         "cli/README.md",
@@ -59,18 +59,12 @@ def main() -> None:
         f"site/release-{engine_version}.html", f"PacificDB Community · {release_tag}"
     )
 
-    # Source metadata can lead published packages. Keep download URLs bound to
-    # the actual published artifact version until new installers exist.
-    published_version = match_version(
-        "site/index.html", r"const releaseBase='[^']+/releases/download/v([^']+)'"
-    )
-    require_text("site/index.html", f"pacificdb-community-{published_version}-")
-    require_text(
-        "site/index.html", f"releases/download/v{published_version}/SHA256SUMS"
-    )
-    require_text(
-        "site/docs.html", f"pacificdb-community-{published_version}-linux-amd64.deb"
-    )
+    # Published prerelease assets use tag 1.1.2, not the stable v* pattern.
+    require_text("site/index.html", f"releases/download/{engine_version}/pacificdb-community-{engine_version}-linux-amd64.deb")
+    require_text("site/index.html", f"releases/download/{engine_version}/SHA256SUMS")
+    require_text("site/docs.html", f"pacificdb-community-{engine_version}-linux-amd64.deb")
+    for workflow in ("pages", "ci", "codeql", "sdk-packages", "workbench-desktop"):
+        require_text(f".github/workflows/{workflow}.yml", "branches: [main]")
 
     cli = json.loads((ROOT / "cli/package.json").read_text(encoding="utf-8"))
     node = json.loads(

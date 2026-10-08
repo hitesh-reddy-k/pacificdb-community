@@ -1,7 +1,7 @@
 name: Deploy PacificDB website
 on:
   push:
-    branches: [pacificdb-v1.0]
+    branches: [main]
     paths: ["site/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 permissions:
@@ -20,6 +20,10 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
+      - name: Verify current website and download contracts
+        run: |
+          node scripts/test-site-docs.mjs
+          node --test scripts/test-site-docs-contract.mjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

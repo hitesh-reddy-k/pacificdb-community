@@ -56,37 +56,48 @@ assert.ok(index.includes(`release-${version}.html`));
 assert.ok(docs.includes(`release-${version}.html`));
 const workbench = index.match(/<section\b[^>]*\bid=["']workbench["'][^>]*>[\s\S]*?<\/section>/)?.[0];
 assert.ok(workbench, 'landing page must expose the Workbench section');
-assert.ok(workbench.includes('href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-v1.1.1/PacificDB-Workbench-1.1.1-win-x64.exe"'),
-  'Workbench must link the published Windows desktop installer, not the engine installer');
-assert.match(workbench, /<button\b[^>]*\bdisabled[^>]*>macOS — Coming soon<\/button>/,
-  'Workbench macOS placeholder must be visibly unavailable and disabled');
-assert.doesNotMatch(workbench, /href=["'][^"']*macos/i,
-  'Workbench macOS placeholder must not expose a download link');
+assert.ok(workbench.includes(`releases/download/${version}/PacificDB-Workbench-${version}-linux-amd64.deb`),
+  'Workbench must link the published Linux desktop installer, not the engine installer');
+for (const platform of ['Windows', 'macOS']) {
+  assert.match(workbench, new RegExp('<button\\b[^>]*\\bdisabled[^>]*>' + platform + ' — Not available in ' + version + '</button>'),
+    'unpublished Workbench platforms must be visibly unavailable and disabled');
+}
+assert.doesNotMatch(workbench, /href=["'][^"']*(?:win-x64\.exe|mac-[^"']*\.dmg)/i,
+  'unpublished Workbench platforms must not expose download links');
 for (const heading of ['Added', 'Removed', 'Improved']) {
-  assert.match(releaseNotes, new RegExp(`<h3>${heading}</h3>`));
+  assert.ok(releaseNotes.includes('<h3>' + heading + '</h3>'));
 }
-
-for (const landingSection of ['top', 'why', 'how', 'features', 'downloads', 'start', 'sdks']) {
-  assert.ok(elementIds(index).has(landingSection), `missing landing section: ${landingSection}`);
+for (const section of ['top', 'why', 'how', 'features', 'downloads', 'start', 'sdks']) {
+  assert.ok(elementIds(index).has(section), 'missing landing section: ' + section);
 }
-
-for (const platform of [
-  'linux-amd64.deb',
-  'windows-x64.exe',
-  'macos-arm64.pkg',
-  'macos-x86_64.pkg'
-]) {
-  assert.ok(index.includes(platform), `missing download platform: ${platform}`);
+const releaseBase = `https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/${version}/`;
+const publishedAssets = new Set([
+  `pacificdb-community-${version}-linux-amd64.deb`,
+  `PacificDB-Workbench-${version}-linux-amd64.deb`,
+  `PacificDB-Workbench-${version}-linux-x64.tar.gz`,
+  `pacificdb-client-${version}.tgz`, `pacificdb-cli-${version}.tgz`,
+  `pacificdb-${version}-py3-none-any.whl`,
+  `pacificdb-client-${version}.jar`, `pacificdb-client-${version}-sources.jar`,
+  `pacificdb-client-${version}-javadoc.jar`, 'SHA256SUMS'
+]);
+for (const html of [index, docs, releaseNotes]) {
+  assert.doesNotMatch(html, /publication pending|source prepared|current stable/i,
+    'current pages must describe the published prerelease');
+  if (html !== releaseNotes) assert.doesNotMatch(html, /1\.1\.1/, 'current guides must use 1.1.2');
+  assert.match(html, /prerelease/i, 'current pages must retain the prerelease boundary');
+  for (const match of html.matchAll(/https:\/\/github\.com\/hitesh-reddy-k\/pacificdb-community\/releases\/download\/([^"'<>\s&]+)/g)) {
+    const [tag, name] = match[1].split('/');
+    assert.equal(tag, version, 'download tags must match the published prerelease');
+    assert.ok(publishedAssets.has(name), `unpublished release download: ${name}`);
+  }
 }
-
-const publishedRelease = index.match(
-  /const releaseBase='https:\/\/github\.com\/hitesh-reddy-k\/pacificdb-community\/releases\/download\/v([^']+)'/);
-assert.ok(publishedRelease, 'landing page must declare a published release URL');
-const publishedVersion = publishedRelease[1];
-assert.ok(index.includes(`pacificdb-community-${publishedVersion}-`),
-  'landing page artifact names must match the published release URL');
-assert.ok(docs.includes(`v${publishedVersion}`),
-  'documentation version must match the published release URL');
+assert.ok(index.includes(releaseBase + `pacificdb-community-${version}-linux-amd64.deb`));
+for (const platform of ['Windows', 'macOS']) {
+  const card = index.match(new RegExp(`<article class="download-card">(?:(?!</article>)[\\s\\S])*?<h3>${platform}</h3>[\\s\\S]*?</article>`))?.[0];
+  assert.ok(card, 'missing native platform card');
+  assert.match(card, /<button\b[^>]*\bdisabled[^>]*>/, 'unpublished native installers must be disabled');
+  assert.doesNotMatch(card, /href=["'][^"']*releases\/download/, 'unpublished native installers must not have download links');
+}
 assert.match(index, /id=["']mac-arch["']/);
 assert.match(index, /id=["']mac-download["']/);
 assert.match(index, /navigator\.clipboard/);

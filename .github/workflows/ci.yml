@@ -3,7 +3,7 @@ name: Required production checks
 on:
   pull_request:
   push:
-    branches: [pacificdb-v1.0]
+    branches: [main]
 
 permissions:
   contents: write

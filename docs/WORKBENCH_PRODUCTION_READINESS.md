@@ -1,8 +1,10 @@
 # Workbench 1.1.2 production-readiness candidate — 6 October 2026
 
-**Verdict: candidate only. Public production release is blocked until every
+**Verdict: prerelease only. Stable production promotion is blocked until every
 hosted, external, and signing row below has evidence for the exact release
-revision and installer digests.** No release was published by this work.
+revision and installer digests.** The Linux packages were subsequently
+published in the [Community v1.1.2 prerelease](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/1.1.2)
+on 7 October 2026. That publication does not turn these qualification gaps into PASS.
 
 Workbench, engine, CLI and SDK source versions now align at 1.1.2 for the
 Community security patch. Earlier local installer results below describe

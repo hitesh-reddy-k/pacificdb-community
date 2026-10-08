@@ -3,7 +3,7 @@ on:
   pull_request:
     paths: ['sdk/**', 'scripts/*sdk*', '.github/workflows/*publish.yml', '.github/workflows/sdk-packages.yml']
   push:
-    branches: [pacificdb-v1.0]
+    branches: [main]
     paths: ['sdk/**', 'scripts/*sdk*', '.github/workflows/*publish.yml', '.github/workflows/sdk-packages.yml']
   workflow_dispatch:
   workflow_call:

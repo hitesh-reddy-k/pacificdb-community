@@ -1,10 +1,14 @@
-![PacificDB](https://raw.githubusercontent.com/hitesh-reddy-k/pacificdb-community/pacificdb-v1.0/site/assets/pacificdb-logo-symbol.png)
+![PacificDB](https://raw.githubusercontent.com/hitesh-reddy-k/pacificdb-community/main/site/assets/pacificdb-logo-symbol.png)
 
 # PacificDB Python client
 
+Version **1.1.2 — prerelease**. Download the matching package from the
+[Community v1.1.2 release](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/1.1.2);
+registry publication is pending.
+
 A database-first client for the Community engine. Requires Python 3.10 or later;
-no runtime dependencies. These examples describe this source candidate. The new
-APIs must be used with its built package, not an older registry release.
+no runtime dependencies. These examples describe the 1.1.2 prerelease. The new
+APIs require its published wheel or tagged-source build, not an older registry release.
 
 Start a PacificDB server, then connect to a database directly:
 
@@ -104,6 +108,6 @@ Each network call has a deadline; an entire multi-chunk transfer has no single
 overall deadline. In-memory attachments allocate the supplied bytes; use the
 file APIs for large media.
 
-Apache-2.0. Local publication qualification is still in progress.
+Apache-2.0. Stable-release and registry qualification remain separate.
 
-Advanced named operations and wire aliases are documented in [SDK capabilities](https://github.com/hitesh-reddy-k/pacificdb-community/blob/pacificdb-v1.0/docs/SDK_CAPABILITIES.md).
+Advanced named operations and wire aliases are documented in [SDK capabilities](https://github.com/hitesh-reddy-k/pacificdb-community/blob/main/docs/SDK_CAPABILITIES.md).

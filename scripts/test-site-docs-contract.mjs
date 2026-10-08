@@ -25,16 +25,19 @@ test('website validation still rejects missing files, fragments, assets and obso
     ['<a href="missing.html#anchor">missing page</a>', 'ENOENT'],
     ['<a href="docs.html#missing-anchor">missing fragment</a>', 'missing fragment target'],
     ['<!-- hitesh-reddy-k.github.io/pacificdb-community/docs.html -->', 'AssertionError'],
+    ['<p>Install version 1.1.1</p>', 'current guides must use 1.1.2'],
+    ['<a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/1.1.2/pacificdb-community-1.1.2-windows-x64.exe">unpublished</a>', 'unpublished release download'],
+    ['<a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v1.1.2/SHA256SUMS">wrong tag</a>', 'download tags must match'],
   ]) {
     await writeFile(indexPath, index + extra);
     await assert.rejects(execFileAsync(process.execPath, [script]), (error) =>
       error.code === 1 && error.stderr.includes(expected));
   }
   for (const [changed, expected] of [
-    [index.replace('workbench-v1.1.1/PacificDB-Workbench-1.1.1-win-x64.exe',
-      'v1.1.1/pacificdb-community-1.1.1-windows-x64.exe'), 'Workbench must link the published Windows desktop installer'],
+    [index.replace('1.1.2/PacificDB-Workbench-1.1.2-linux-amd64.deb',
+      '1.1.2/pacificdb-community-1.1.2-linux-amd64.deb'), 'Workbench must link the published Linux desktop installer'],
     [index.replace('type="button" disabled>macOS', 'type="button">macOS'),
-      'Workbench macOS placeholder must be visibly unavailable and disabled'],
+      'unpublished Workbench platforms must be visibly unavailable and disabled'],
   ]) {
     assert.notEqual(changed, index, 'download regression fixture must change the rendered HTML');
     await writeFile(indexPath, changed);

@@ -7,12 +7,12 @@ do not need Node.js, npm, a browser, or a separately installed database server.
 
 ## Release and support status
 
-[Workbench 1.1.1](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/workbench-v1.1.1)
-is the published desktop release. Workbench 1.1.2 is an unpublished
-production-readiness candidate on this branch; its [candidate status](WORKBENCH_PRODUCTION_READINESS.md)
-must reach `PASS` before anyone creates a public release. It is now part of the
-Community 1.1.2 security patch and bundles the matching 1.1.2 engine, CLI and
-Node client. See the [patch notes and readiness statement](releases/1.1.2.md).
+[Workbench v1.1.2](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/1.1.2)
+is the published Linux desktop prerelease, with Debian/portable downloads and
+SHA-256 checksums. Final Windows/macOS installers are not published. Its
+[qualification status](WORKBENCH_PRODUCTION_READINESS.md) must reach `PASS`
+before stable promotion or a production-ready claim. It shares Community
+1.1.2 with the bundled engine/CLI and SDK source metadata.
 
 The packaged and hosted-test targets are Ubuntu 24.04/Debian-compatible Linux
 x64 (Debian package), Windows x64 (NSIS), macOS arm64, and macOS x64 (DMG).
