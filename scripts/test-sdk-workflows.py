@@ -31,7 +31,7 @@ class Publication(unittest.TestCase):
         uploader=(ROOT/'scripts/upload-java-validation.py').read_text();self.assertIn('USER_MANAGED',uploader);self.assertNotIn('/deployment/',uploader)
     def test_build_has_supported_runtimes_and_installed_smoke(self):
         text=(ROOT/'.github/workflows/sdk-packages.yml').read_text()
-        for token in ['workflow_call:','windows-latest','ubuntu-22.04',"'3.10'","'3.12'","'11'","'17'","'21'",'test-python-installed-client.sh','test-java-installed-client.sh','test-cross-sdk-e2e.mjs','test-sdk-capability-matrix.py','test-sdk-packages.py','test-sdk-workflows.py','twine check','verify-sdk-packages.py','pack-java-sdk.py','actions/upload-artifact@v4','tested-sdk-packages']:
+        for token in ['workflow_call:','windows-latest','ubuntu-22.04',"'3.10'","'3.12'","'11'","'17'","'21'",'test-python-installed-client.sh','test-java-installed-client.sh','test-cross-sdk-e2e.mjs','test-sdk-capability-matrix.py','test-sdk-packages.py','test-sdk-workflows.py','twine check','verify-sdk-packages.py','pack-java-sdk.py','actions/upload-artifact@v6','tested-sdk-packages']:
             self.assertIn(token,text)
         self.assertNotIn('id-token: write',text)
         self.assertNotIn('central.skipPublishing=false',text)

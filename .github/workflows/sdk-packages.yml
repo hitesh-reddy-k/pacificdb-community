@@ -105,7 +105,7 @@ jobs:
           cp sdk/python/dist/* release-sdk/python/
           cp sdk/java/target/pacificdb-client-1.1.2*.jar sdk/java/target/pacificdb-client-1.1.2.pom sdk/java/target/local-test-public.asc release-sdk/java/
           cp sdk/java/target/central-publishing/central-bundle.zip release-sdk/java/central-publishing/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: tested-sdk-packages
           path: release-sdk/
