@@ -10,7 +10,9 @@ do not need Node.js, npm, a browser, or a separately installed database server.
 [Workbench v1.1.2](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/1.1.2)
 is the published Linux desktop prerelease, with Debian/portable downloads and
 SHA-256 checksums. The Windows x64 installer is available separately in the
-[Workbench v1.1.2 desktop release](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/workbench-v1.1.2).
+[Workbench v1.1.2 Windows unsigned prerelease](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/workbench-windows-v1.1.2).
+This tested Windows installer is unsigned; Windows may show an unknown-publisher
+or SmartScreen warning. Follow your device or organization's installation policy.
 Use that release's `SHA256SUMS` for Windows, not the Community Linux manifest. Its
 [qualification status](WORKBENCH_PRODUCTION_READINESS.md) must reach `PASS`
 before stable promotion or a production-ready claim. It shares Community
@@ -30,8 +32,8 @@ artifacts built from source are named:
 - Linux: `PacificDB-Workbench-1.1.2-linux-amd64.deb`; install with
   `sudo apt install ./PacificDB-Workbench-1.1.2-linux-amd64.deb`, launch with
   `pacificdb-workbench`, and remove with `sudo apt remove pacificdb-workbench`.
-- Windows: [PacificDB-Workbench-1.1.2-win-x64.exe](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-v1.1.2/PacificDB-Workbench-1.1.2-win-x64.exe);
-  download the [Windows SHA256SUMS](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-v1.1.2/SHA256SUMS),
+- Windows: [PacificDB-Workbench-1.1.2-win-x64.exe](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-windows-v1.1.2/PacificDB-Workbench-1.1.2-win-x64.exe);
+  download the [Windows SHA256SUMS](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-windows-v1.1.2/SHA256SUMS),
   compare the installer's `Get-FileHash -Algorithm SHA256` result with its manifest
   entry, then run the installer, launch
   **PacificDB Workbench** from the Start menu, and remove it from **Installed
