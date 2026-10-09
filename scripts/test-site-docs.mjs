@@ -58,11 +58,17 @@ const workbench = index.match(/<section\b[^>]*\bid=["']workbench["'][^>]*>[\s\S]
 assert.ok(workbench, 'landing page must expose the Workbench section');
 assert.ok(workbench.includes(`releases/download/${version}/PacificDB-Workbench-${version}-linux-amd64.deb`),
   'Workbench must link the published Linux desktop installer, not the engine installer');
-for (const platform of ['Windows', 'macOS']) {
+const windowsWorkbenchBase = `https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-v${version}/`;
+const windowsWorkbenchInstaller = `PacificDB-Workbench-${version}-win-x64.exe`;
+assert.ok(workbench.includes(`href="${windowsWorkbenchBase}${windowsWorkbenchInstaller}"`),
+  'Windows Workbench must have an actionable installer download');
+assert.ok(workbench.includes(`href="${windowsWorkbenchBase}SHA256SUMS"`),
+  'Windows Workbench must link its own release checksum manifest');
+for (const platform of ['macOS']) {
   assert.match(workbench, new RegExp('<button\\b[^>]*\\bdisabled[^>]*>' + platform + ' — Not available in ' + version + '</button>'),
     'unpublished Workbench platforms must be visibly unavailable and disabled');
 }
-assert.doesNotMatch(workbench, /href=["'][^"']*(?:win-x64\.exe|mac-[^"']*\.dmg)/i,
+assert.doesNotMatch(workbench, /href=["'][^"']*mac-[^"']*\.dmg/i,
   'unpublished Workbench platforms must not expose download links');
 for (const heading of ['Added', 'Removed', 'Improved']) {
   assert.ok(releaseNotes.includes('<h3>' + heading + '</h3>'));
@@ -87,6 +93,11 @@ for (const html of [index, docs, releaseNotes]) {
   assert.match(html, /prerelease/i, 'current pages must retain the prerelease boundary');
   for (const match of html.matchAll(/https:\/\/github\.com\/hitesh-reddy-k\/pacificdb-community\/releases\/download\/([^"'<>\s&]+)/g)) {
     const [tag, name] = match[1].split('/');
+    if (tag === `workbench-v${version}`) {
+      assert.ok([windowsWorkbenchInstaller, 'SHA256SUMS'].includes(name),
+        `unexpected Windows Workbench release download: ${name}`);
+      continue;
+    }
     assert.equal(tag, version, 'download tags must match the published prerelease');
     assert.ok(publishedAssets.has(name), `unpublished release download: ${name}`);
   }

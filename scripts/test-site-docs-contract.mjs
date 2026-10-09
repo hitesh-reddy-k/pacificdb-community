@@ -36,6 +36,10 @@ test('website validation still rejects missing files, fragments, assets and obso
   for (const [changed, expected] of [
     [index.replace('1.1.2/PacificDB-Workbench-1.1.2-linux-amd64.deb',
       '1.1.2/pacificdb-community-1.1.2-linux-amd64.deb'), 'Workbench must link the published Linux desktop installer'],
+    [index.replace('workbench-v1.1.2/PacificDB-Workbench-1.1.2-win-x64.exe',
+      '1.1.2/PacificDB-Workbench-1.1.2-win-x64.exe'), 'Windows Workbench must have an actionable installer download'],
+    [index.replace('workbench-v1.1.2/SHA256SUMS', '1.1.2/SHA256SUMS'),
+      'Windows Workbench must link its own release checksum manifest'],
     [index.replace('type="button" disabled>macOS', 'type="button">macOS'),
       'unpublished Workbench platforms must be visibly unavailable and disabled'],
   ]) {
