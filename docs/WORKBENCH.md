@@ -9,7 +9,9 @@ do not need Node.js, npm, a browser, or a separately installed database server.
 
 [Workbench v1.1.2](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/1.1.2)
 is the published Linux desktop prerelease, with Debian/portable downloads and
-SHA-256 checksums. Final Windows/macOS installers are not published. Its
+SHA-256 checksums. The Windows x64 installer is available separately in the
+[Workbench v1.1.2 desktop release](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/workbench-v1.1.2).
+Use that release's `SHA256SUMS` for Windows, not the Community Linux manifest. Its
 [qualification status](WORKBENCH_PRODUCTION_READINESS.md) must reach `PASS`
 before stable promotion or a production-ready claim. It shares Community
 1.1.2 with the bundled engine/CLI and SDK source metadata.
@@ -28,7 +30,10 @@ artifacts built from source are named:
 - Linux: `PacificDB-Workbench-1.1.2-linux-amd64.deb`; install with
   `sudo apt install ./PacificDB-Workbench-1.1.2-linux-amd64.deb`, launch with
   `pacificdb-workbench`, and remove with `sudo apt remove pacificdb-workbench`.
-- Windows: `PacificDB-Workbench-1.1.2-win-x64.exe`; run the installer, launch
+- Windows: [PacificDB-Workbench-1.1.2-win-x64.exe](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-v1.1.2/PacificDB-Workbench-1.1.2-win-x64.exe);
+  download the [Windows SHA256SUMS](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/workbench-v1.1.2/SHA256SUMS),
+  compare the installer's `Get-FileHash -Algorithm SHA256` result with its manifest
+  entry, then run the installer, launch
   **PacificDB Workbench** from the Start menu, and remove it from **Installed
   apps** or with the installation directory's `Uninstall PacificDB Workbench.exe`.
 - macOS: `PacificDB-Workbench-1.1.2-mac-arm64.dmg` or
@@ -141,7 +146,8 @@ requires `MAC_CSC_LINK` (Developer ID Application certificate),
 verifies installed packages, aggregates exact-revision qualification, publishes
 four installer variants only on `PASS`, and adds SHA-256 checksums to a GitHub
 Release. Normal branch and pull request runs only upload workflow artifacts.
-Candidate 1.1.2 has not been published.
+The Linux prerelease and Windows desktop downloads above use separate release
+tags and checksum manifests; source candidate builds are not public releases.
 
 The renderer runs sandboxed with Node integration disabled. A private local
 service connects it to the bundled engine. The app denies outside navigation,
