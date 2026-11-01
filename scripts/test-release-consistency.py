@@ -52,24 +52,29 @@ def main() -> None:
     if engine_version != identity["version"]:
         raise AssertionError("engine base version does not match release.json")
     component_version = identity["releaseVersion"]
-    # The public website stays on its published channel until explicit publication.
-    published_version = "1.1.2" if identity["channel"] == "prerelease" else engine_version
-    release_tag = f"v{published_version}"
-    landing_tag = match_version("site/index.html", r'<span class="badge">(v[0-9.]+)(?: candidate[^<]*)?</span>')
-    if landing_tag != release_tag:
-        raise AssertionError("landing version does not match engine")
-    require_text("site/index.html", f'href="release-{published_version}.html"')
-    docs_tag = match_version("site/docs.html", r'<span class="version-badge">(v[0-9.]+)(?: candidate[^<]*)?</span>')
-    if docs_tag != release_tag:
-        raise AssertionError("documentation version does not match engine")
-    require_text(
-        f"site/release-{published_version}.html", f"PacificDB Community · {release_tag}"
-    )
-
-    # Published prerelease assets use tag 1.1.2, not the stable v* pattern.
-    require_text("site/index.html", f"releases/download/{published_version}/pacificdb-community-{published_version}-linux-amd64.deb")
-    require_text("site/index.html", f"releases/download/{published_version}/SHA256SUMS")
-    require_text("site/docs.html", f"pacificdb-community-{published_version}-linux-amd64.deb")
+    # The website advertises an independently published release. A development
+    # checkout or older main branch must not rename an existing public package.
+    published = json.loads((ROOT / "site/release.json").read_text())
+    published_version = published["candidate"]
+    release_tag = published["tag"]
+    if release_tag != f"v{published_version}" or published["channel"] != "prerelease":
+        raise AssertionError("invalid public prerelease identity")
+    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+", published_version):
+        raise AssertionError("website must identify the actual release candidate")
+    badge = r'<span class="badge">(v[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+)</span>'
+    if match_version("site/index.html", badge) != release_tag:
+        raise AssertionError("landing version does not match public release metadata")
+    docs_badge = badge.replace('class="badge"', 'class="version-badge"')
+    if match_version("site/docs.html", docs_badge) != release_tag:
+        raise AssertionError("documentation version does not match public release metadata")
+    require_text("site/index.html", f'href="release-{published["version"]}.html"')
+    require_text(f"site/release-{published['version']}.html", published_version)
+    native = f"pacificdb-community-{published_version}-linux-x64.deb"
+    if native not in published["assets"] or "SHA256SUMS" not in published["assets"]:
+        raise AssertionError("website inventory is missing published native assets")
+    require_text("site/index.html", f"releases/download/{release_tag}/{native}")
+    require_text("site/index.html", f"releases/download/{release_tag}/SHA256SUMS")
+    require_text("site/docs.html", native)
     for workflow in ("pages", "ci", "codeql", "sdk-packages", "workbench-desktop"):
         workflow_text = (ROOT/f".github/workflows/{workflow}.yml").read_text()
         if "branches:" not in workflow_text or "main" not in workflow_text:
