@@ -63,7 +63,6 @@ jobs:
             'productionReady':False}
           (evidence/'summary.json').write_text(json.dumps(result,indent=2)+'\n')
           PYCODE
-          PYCODE
       - uses: actions/upload-artifact@v6
         if: always()
         with:
