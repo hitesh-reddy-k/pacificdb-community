@@ -65,6 +65,10 @@ on:
         description: Successful native and SDK prerelease qualification run
         required: false
         type: string
+      linux_source_run:
+        description: Exact-source successful Linux installer job when rerun separately
+        required: false
+        type: string
       qualification_run:
         description: Successful complete frozen Community regression run
         required: false
@@ -98,6 +102,7 @@ jobs:
       release_tag: ${{ inputs.release_tag }}
       native_run: ${{ inputs.native_source_run }}
       platform_run: ${{ inputs.desktop_source_run }}
+      linux_run: ${{ inputs.linux_source_run || inputs.desktop_source_run }}
       qualification_run: ${{ inputs.qualification_run }}
   qualify_frozen_candidate:
     if: github.event_name == 'workflow_dispatch' && inputs.qualify_candidate

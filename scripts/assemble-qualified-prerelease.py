@@ -160,7 +160,7 @@ PUBLISHING_OWNER_GUIDE.md in the documentation archive, with disposable data.
         'authentication': [evidence / 'checkpoint/summary.json'],
         'vector': [evidence / 'checkpoint/summary.json'],
         'cli': [evidence / 'native-run.json', evidence / 'community/summary.json'],
-        'workbench': [evidence / 'platform-run.json', *platform_evidence],
+        'workbench': [evidence / 'platform-run.json', evidence / 'linux-platform-run.json', *platform_evidence],
         'installed-sdks': [evidence / 'native-run.json'],
         'artifact-integrity': [evidence / 'native-run.json', evidence / 'checkpoint/summary.json'],
         'security-blockers': [evidence / 'advisory-gate.json', evidence / 'full-audit.json', evidence / 'runtime-audit.json'],

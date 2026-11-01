@@ -11,6 +11,9 @@ on:
       platform_run:
         required: true
         type: string
+      linux_run:
+        required: true
+        type: string
       qualification_run:
         required: true
         type: string
@@ -28,6 +31,7 @@ jobs:
       RELEASE_TAG: ${{ inputs.release_tag }}
       NATIVE_RUN: ${{ inputs.native_run }}
       PLATFORM_RUN: ${{ inputs.platform_run }}
+      LINUX_RUN: ${{ inputs.linux_run }}
       QUALIFICATION_RUN: ${{ inputs.qualification_run }}
     steps:
       - uses: actions/checkout@v7
@@ -43,20 +47,22 @@ jobs:
           set -euo pipefail
           python3 scripts/check-sdk-release-tag.py "$RELEASE_TAG" --require-tag
           mkdir -p build/assembly/evidence
-          for role in native platform qualification; do
-            case "$role" in native) run="$NATIVE_RUN";; platform) run="$PLATFORM_RUN";; qualification) run="$QUALIFICATION_RUN";; esac
+          for role in native platform linux-platform qualification; do
+            case "$role" in native) run="$NATIVE_RUN";; platform) run="$PLATFORM_RUN";; linux-platform) run="$LINUX_RUN";; qualification) run="$QUALIFICATION_RUN";; esac
             gh run view "$run" --json headSha,status,conclusion,jobs,url > "build/assembly/evidence/$role-run.json"
           done
           python3 - <<'PYCODE'
           import json,subprocess
           from pathlib import Path
           root=Path('build/assembly/evidence');rev=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
-          for role in ['native','platform','qualification']:
-              d=json.load(open(root/f'{role}-run.json'));assert d['status']=='completed' and d['conclusion']=='success',(role,d['conclusion'])
+          for role in ['native','platform','linux-platform','qualification']:
+              d=json.load(open(root/f'{role}-run.json'))
+              if role in ['native','qualification']:assert d['status']=='completed' and d['conclusion']=='success',(role,d['conclusion'])
               if role=='native':assert d['headSha']==rev
               if role=='platform':
-                  required={'linux','windows','macos (macos-15, arm64)','macos (macos-15-intel, x64)'}
+                  required={'windows','macos (macos-15, arm64)','macos (macos-15-intel, x64)'}
                   assert all(any(j['name']==name and j['conclusion']=='success' for j in d['jobs']) for name in required)
+              if role=='linux-platform':assert any(j['name']=='linux' and j['conclusion']=='success' for j in d['jobs'])
           PYCODE
       - name: Download exact tested distributions and evidence
         run: |
@@ -66,7 +72,8 @@ jobs:
           gh run download "$NATIVE_RUN" --name prerelease-linux-x64-raw-evidence --dir build/assembly/evidence/native-raw
           gh run download "$QUALIFICATION_RUN" --name complete-frozen-candidate-regression --dir build/assembly/evidence/community
           for platform in linux-x64 windows-x64 macos-x64 macos-arm64; do
-            gh run download "$PLATFORM_RUN" --name "workbench-$platform" --dir "build/assembly/platform-$platform"
+            run="$PLATFORM_RUN"; if test "$platform" = linux-x64; then run="$LINUX_RUN"; fi
+            gh run download "$run" --name "workbench-$platform" --dir "build/assembly/platform-$platform"
           done
           npm ci --ignore-scripts --no-audit --no-fund
           npm audit --json > build/assembly/evidence/full-audit.json
