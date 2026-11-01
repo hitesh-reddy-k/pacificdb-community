@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM debian:bookworm-slim@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587 AS builder
+FROM debian:bookworm-slim@sha256:99c0b25c46d0214d5a2091092e7908907dcaecd6a962cde0ac700acee222b6f3 AS builder
 
 ARG PACIFICDB_ENGINE_VERSION=dev
 ARG PACIFICDB_GIT_COMMIT=unknown
@@ -26,7 +26,7 @@ RUN cmake -S engine -B /build \
     && test -x /build/pacificdb \
     && strip /build/db_engine /build/pacificdb
 
-FROM debian:bookworm-slim@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587 AS runtime
+FROM debian:bookworm-slim@sha256:99c0b25c46d0214d5a2091092e7908907dcaecd6a962cde0ac700acee222b6f3 AS runtime
 
 ARG PACIFICDB_ENGINE_VERSION=dev
 ARG PACIFICDB_GIT_COMMIT=unknown
