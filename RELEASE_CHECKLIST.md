@@ -62,3 +62,15 @@ blind major override. No new exception, disabled check or forced downgrade was
 used. Runtime npm audit has zero findings; that does not override the full gate.
 Workbench CI runs 41290663590 and 41290952849 retain the failures. Public release,
 tag and registry publication remain blocked rather than reported complete.
+
+## Additional storage gate (release blocking)
+
+The complete Community runner is **Failed** at genuine disk-full recovery. A
+partial-catalog publication defect is fixed with RED/GREEN regression coverage
+and three real ENOSPC catalog cases. Separate database-drop/document-update
+recovery expectations remain **Failed**, including reproduction on the unmodified
+packaged f1d48ad binary. See [storage failure findings](docs/releases/v1.2.0-rc.1/STORAGE_FAILURE_FINDINGS.md).
+The first metadata-fix checkpoint passed 77 checks/46 CTest; the subsequent
+replicated-marker fix passes its focused regression and requires the final full
+checkpoint. Final delivery receipts record the exact tested binary/revision.
+No tag or public release is authorized by a partial gate result.

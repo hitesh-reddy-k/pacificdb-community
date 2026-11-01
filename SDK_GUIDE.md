@@ -1,6 +1,6 @@
 # Pre-release v1.2 SDK guide
 
-The engine base version is `1.2.0`; the candidate is `v 1.2.0-rc.1` (Pre-release
+The engine base version is `1.2.0`; the candidate is `v1.2.0-rc.1` (Pre-release
 v1.2). Node and Java packages use `1.2.0-rc.1`; Python uses PEP 440 `1.2.0rc1`.
 Registry publication is pending. Use the exact checksummed candidate assets;
 older registry packages do not contain the native vector preview APIs.

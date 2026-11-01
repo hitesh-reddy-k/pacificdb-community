@@ -544,7 +544,9 @@ bool DatabaseEngine::applyReplicatedEntry(const nlohmann::json& entry) {
                 "raft-create:" + std::to_string(applyIndex);
             std::string collId = createCollectionWithVectorIdentity(
                 userId, dbName, collection, vectorIdentity, entry.value("vector_schema",json()));
-            if (collId.empty() && (entry.contains("vector_schema") || !DatabaseEngine::collectionExists(userId, dbName, collection))) {
+            // An orphan marker can survive a failed catalog write. It is not
+            // proof that this committed collection creation finished applying.
+            if (collId.empty()) {
                 std::cerr << "[ENGINE][APPLY] CREATE_COLLECTION failed user=" << userId
                           << " db=" << dbName << " collection=" << collection << std::endl;
                 return false;
@@ -842,8 +844,8 @@ static bool replaceDatabaseMetadata(const fs::path& metaFile, const json& meta) 
         if (!output) return false;
         output << meta.dump(2);
         output.flush();
+        output.close();
         if (!output.good()) {
-            output.close();
             std::error_code removeError;
             fs::remove(temporary, removeError);
             return false;
@@ -1087,8 +1089,9 @@ void DatabaseEngine::ensureUserRoot(const std::string& userId) {
                 {"created", std::time(nullptr)},
                 {"collections", json::array()}
             };
-            std::ofstream ofs(metaFile);
-            ofs << dbMeta.dump(2);
+            if (!replaceDatabaseMetadata(metaFile, dbMeta)) {
+                throw std::runtime_error("cannot publish system database metadata");
+            }
         }
     }
 }
@@ -1153,14 +1156,12 @@ bool DatabaseEngine::createDatabase(const std::string& userId,
     };
     if (!security.empty()) dbMeta["security"] = security;
 
-    std::ofstream metaOut(metaFile);
-    if (!metaOut) {
+    // Never expose an empty/partial db.meta if allocation or writing fails.
+    // Recovery discovers catalogs before replaying committed database creates.
+    if (!replaceDatabaseMetadata(metaFile, dbMeta)) {
         std::cerr << "[ENGINE][CREATE DB] Failed to write metadata: " << metaFile.string() << "\n";
         return false;
     }
-    metaOut << dbMeta.dump(2);
-    metaOut.close();
-
     Logger::write((base / "logs/db.log").string(), "DATABASE CREATED with type: " + dbTypeNorm);
     std::cout << "[ENGINE][CREATE DB] Database created with type: " << dbTypeNorm << "\n";
     return true;
@@ -1313,10 +1314,7 @@ std::string DatabaseEngine::createCollectionWithVectorIdentity(
                 pacificdb::VectorSchemaRegistry::persistMetadata(DATA_ROOT,metaFile,meta,file);
                 return collId;
             }
-            std::ofstream mout(metaFile);
-            if (mout) {
-                mout << meta.dump(2);
-                mout.close();
+            if (replaceDatabaseMetadata(metaFile, meta)) {
                 std::cout << "[ENGINE][CREATE COLLECTION] Repaired db.meta collection metadata: "
                           << collEntry.dump() << "\n";
                 return collId;
@@ -1360,12 +1358,8 @@ std::string DatabaseEngine::createCollectionWithVectorIdentity(
             pacificdb::VectorSchemaRegistry::persistMetadata(DATA_ROOT,metaFile,meta,file);
             return collId;
         }
-        std::ofstream mout(metaFile);
-        if (mout) {
-            mout << meta.dump(2);
-            mout.close();
-            std::cout << "[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: " << collEntry.dump() << "\n";
-        }
+        if (!replaceDatabaseMetadata(metaFile, meta)) return std::string();
+        std::cout << "[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: " << collEntry.dump() << "\n";
         return collId;
     } catch (const std::exception& ex) {
         std::cerr << "[ENGINE][CREATE COLLECTION] Failed to update db.meta: " << ex.what() << "\n";

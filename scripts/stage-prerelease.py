@@ -63,6 +63,8 @@ def main():
   for name in docs:t.add(ROOT/name,arcname=name)
   for file in sorted((ROOT/'LICENSES').glob('*')):
    if file.is_file():t.add(file,arcname=file.relative_to(ROOT))
+  for file in sorted((ROOT/'docs/releases'/identity['tag']).glob('*')):
+   if file.is_file():t.add(file,arcname=file.relative_to(ROOT))
   for file in sorted((ROOT/'docs').glob('V1.2_*.md')):t.add(file,arcname=file.relative_to(ROOT))
   for name in ['docs/releases/1.2.0-development.md','docs/v1.2-evidence/community-verified-cache-comparison-20261101/REPORT.md','docs/v1.2-evidence/community-verified-cache-comparison-20261101/results.json','docs/v1.2-evidence/community-verified-cache-comparison-20261101/METHODOLOGY_ADDENDUM.md']:t.add(ROOT/name,arcname=name)
  add(docarchive)

@@ -6,6 +6,11 @@ Base version `1.2.0`, candidate/tag `v1.2.0-rc.1`, branch `v1.2`, title
 **Pre-release v1.2**. Check the exact artifact/publication/platform outcomes in
 [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) before using a download or registry.
 
+Publication is currently blocked by disk-full recovery and desktop build-tool
+security gates. Any local packages are draft validation artifacts. Review
+[the storage findings](docs/releases/v1.2.0-rc.1/STORAGE_FAILURE_FINDINGS.md) before
+planning evaluation; use disposable data only.
+
 ## Requirements and first installation
 
 Use a supported tested host with sufficient memory/disk and an isolated data root.

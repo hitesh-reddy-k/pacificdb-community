@@ -50,6 +50,10 @@ this is not a universal mixed-version or downgrade guarantee.
 
 ## Known issues
 
+- **Release blocked:** the full disk-full recovery gate fails for error responses
+  whose requested DROP/update is visible after restart. Partial catalog writes
+  are fixed separately; see [the storage findings](docs/releases/v1.2.0-rc.1/STORAGE_FAILURE_FINDINGS.md).
+
 - ANN graphs rebuild after restart. Measured 1M initial construction 45.82 minutes,
   post-crash reconstruction 35.97 minutes on the recorded 25D workstation workload.
 - Strict ANN queries can be unavailable during writes; measured 1M mixed reads
