@@ -2,7 +2,7 @@
 
 PacificDB is a self-hosted unified document/vector/media database. This candidate
 is for professional evaluation and feedback, not a production-readiness claim.
-Base version `1.2.0`, candidate/tag `v 1.2.0-rc.1`, branch `v1.2`, title
+Base version `1.2.0`, candidate/tag `v1.2.0-rc.1`, branch `v1.2`, title
 **Pre-release v1.2**. Check the exact artifact/publication/platform outcomes in
 [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) before using a download or registry.
 

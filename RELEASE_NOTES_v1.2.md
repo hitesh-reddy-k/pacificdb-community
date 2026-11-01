@@ -1,6 +1,6 @@
 # Pre-release v1.2
 
-**Base version 1.2.0 · candidate/tagv 1.2.0-rc.1 · branchv1.2 · GitHub type: Pre-release.**
+**Base version 1.2.0 · candidate/tag v1.2.0-rc.1 · branch v1.2 · GitHub type: Pre-release.**
 Intended for external company testers and developers. Production qualification
 remains INCOMPLETE. Publication and platform status are recorded in
 [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md); a candidate name alone does not prove
@@ -75,6 +75,13 @@ PostgreSQL; ANN 18.24ms versus 2.26ms, Recall@10 0.9778 versus 0.9897. Exact pac
 index build cost 15.45s is disclosed. This is not independent certification or a
 benchmark of renamedRC bytes. See [original report](docs/v1.2-evidence/community-verified-cache-comparison-20261101/REPORT.md)
 and [current tests/checklist](TESTING.md). Fresh RC tests remain separately recorded.
+
+Current RC validation additionally passed 76 top-level checks/45 CTest on the
+initial RC build, source/installed Node, Python and Java checks, and sandboxed
+Linux Workbench package tests. Clean-source delivery receipts identify their own
+binary hashes. The full desktop build-tool dependency audit still fails on
+moderate transitive findings; public publication and untested platform installers
+remain blocked. No new benchmark run is attributed to RC artifacts.
 
 ## Feedback
 

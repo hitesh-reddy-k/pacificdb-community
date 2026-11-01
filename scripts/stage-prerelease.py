@@ -57,10 +57,12 @@ def main():
    if file.suffix in ('.deb','.gz') and file.is_file():add(file);workbench_files.append(file.name)
  # Workbench receipts are checked by the release owner; merely copying is never a Passed install.
  checks.append({'name':'workbench','status':'Not tested' if not workbench_files else 'Blocked','reason':'requires exact-artifact GUI/install receipt'})
- docs=['RELEASE_NOTES_v1.2.md','INSTALLATION.md','SDK_GUIDE.md','ARCHITECTURE.md','TESTING.md','COMPANY_TESTING_GUIDE.md','RELEASE_CHECKLIST.md','CHANGELOG.md','LICENSE','THIRD_PARTY_NOTICES.md','release.json']
+ docs=['RELEASE_NOTES_v1.2.md','INSTALLATION.md','SDK_GUIDE.md','ARCHITECTURE.md','TESTING.md','COMPANY_TESTING_GUIDE.md','RELEASE_CHECKLIST.md','CHANGELOG.md','LICENSE','THIRD_PARTY_NOTICES.md','SECURITY.md','release.json']
  docarchive=logs/f'pacificdb-docs-{release}.tar.gz'
  with tarfile.open(docarchive,'w:gz') as t:
   for name in docs:t.add(ROOT/name,arcname=name)
+  for file in sorted((ROOT/'LICENSES').glob('*')):
+   if file.is_file():t.add(file,arcname=file.relative_to(ROOT))
   for file in sorted((ROOT/'docs').glob('V1.2_*.md')):t.add(file,arcname=file.relative_to(ROOT))
   for name in ['docs/releases/1.2.0-development.md','docs/v1.2-evidence/community-verified-cache-comparison-20261101/REPORT.md','docs/v1.2-evidence/community-verified-cache-comparison-20261101/results.json','docs/v1.2-evidence/community-verified-cache-comparison-20261101/METHODOLOGY_ADDENDUM.md']:t.add(ROOT/name,arcname=name)
  add(docarchive)

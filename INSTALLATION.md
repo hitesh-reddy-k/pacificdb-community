@@ -1,6 +1,6 @@
 # Install Pre-release v1.2
 
-Candidate: `v 1.2.0-rc.1`, base `1.2.0`. This is an external-testing release.
+Candidate: `v1.2.0-rc.1`, base `1.2.0`. This is an external-testing release.
 Check [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) before downloading: Not tested
 or Blocked is not verified support, and an intended URL is not proof of publication.
 Use an isolated data directory and copies of test data. Keep production unchanged.

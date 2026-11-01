@@ -1,6 +1,6 @@
 # Pre-release v1.2: repository assessment
 
-Assessment started2026-11-01 on branchv1.2, baseline 8732d299008e6cbc581f 76e7c2a1eb2f7dad703f.
+Assessment started 2026-11-01 on branch v1.2, baseline 8732d299008e6cbc581f76e7c2a1eb2f7dad703f.
 The checkout already held uncommitted native vector implementation. It was
 preserved in an ignored baseline source snapshot before release engineering.
 
@@ -49,11 +49,11 @@ The benchmark and historical checkpoint logs retain their source identities.
 
 Remote origin is https://github.com/hitesh-reddy-k/pacificdb-community.git, public,
 with owner push access verified. At initial inspection remote main matched the
-baseline; remotev1.2 and tagv 1.2.0-rc.1 were absent. Published engine/SDK prerelease
+baseline; remote v1.2 and tag v1.2.0-rc.1 were absent. Published engine/SDK prerelease
 1.1.2 corresponds to commit 07ffb00a7b224c5ca5cd338c2b0b86723c3b7721, while later
 main commits repaired dependencies and Windows Workbench. Release notes derive
 both committed changes since that tag and the preserved dirty implementation;
-there is no preexisting committedv1.2 feature history to invent.
+there is no preexisting committed v1.2 feature history to invent.
 
 Local Git contains stale broken Codex capture refs. A regular fetch reports a
 missing local object. Existing branches/refs are preserved; source updates and
