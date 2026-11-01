@@ -51,25 +51,25 @@ jobs:
           notice=root/'DATA_NOTICE.md'
           notice.write_text('''# Frozen public GloVe25 benchmark inputs
 
-Source: ANN-Benchmarks GloVe25 angular, https://ann-benchmarks.com/glove-25-angular.hdf5
-Dataset catalogue: https://github.com/erikbern/ann-benchmarks
-Underlying GloVe vectors: Jeffrey Pennington, Richard Socher, Christopher D. Manning.
-https://nlp.stanford.edu/projects/glove/ identifies the vector data as PDDL1.0.
-License: https://opendatacommons.org/licenses/pddl/1-0/
+          Source: ANN-Benchmarks GloVe25 angular, https://ann-benchmarks.com/glove-25-angular.hdf5
+          Dataset catalogue: https://github.com/erikbern/ann-benchmarks
+          Underlying GloVe vectors: Jeffrey Pennington, Richard Socher, Christopher D. Manning.
+          https://nlp.stanford.edu/projects/glove/ identifies the vector data as PDDL1.0.
+          License: https://opendatacommons.org/licenses/pddl/1-0/
 
-PacificDB's preparation selects the first1M training rows, normalizes through
-float64 to float32, selects1100 test queries with seed20261029 and computes
-independent exhaustive float64 cosine truth. The manifest records all numeric
-file hashes; this CI independently reproduced every frozen source/array/truth hash.
-The original source HDF5 is not included in this prepared-input archive.
+          PacificDB's preparation selects the first1M training rows, normalizes through
+          float64 to float32, selects1100 test queries with seed20261029 and computes
+          independent exhaustive float64 cosine truth. The manifest records all numeric
+          file hashes; this CI independently reproduced every frozen source/array/truth hash.
+          The original source HDF5 is not included in this prepared-input archive.
 
-Extract the archive and pass its published-workload directory as --publication
-to the released benchmark harness. It verifies base.npy, queries.npy and truth.npz
-before execution. DATA_SHA256SUMS covers the prepared package. The preparation
-helper's --verify-only checks the full source set and expects the source HDF5 too.
-This is benchmark input data, not a database snapshot or performance certification.
-100 tuning queries and1000 held-out queries; K=10; cosine25D. Timings depend on host.
-''')
+          Extract the archive and pass its published-workload directory as --publication
+          to the released benchmark harness. It verifies base.npy, queries.npy and truth.npz
+          before execution. DATA_SHA256SUMS covers the prepared package. The preparation
+          helper's --verify-only checks the full source set and expects the source HDF5 too.
+          This is benchmark input data, not a database snapshot or performance certification.
+          100 tuning queries and1000 held-out queries; K=10; cosine25D. Timings depend on host.
+          ''')
           paths=[data/name for name in ['base.npy','queries.npy','query-source-indices.npy','truth.npz','manifest.json']]+[notice]
           (root/'DATA_SHA256SUMS').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+str(p.relative_to(root))+'\n' for p in paths))
           archive=Path('build/pacificdb-benchmark-glove25-1m-inputs-20261029.tar.gz')
