@@ -19,6 +19,10 @@ concurrency:
   group: prerelease-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  sdk:
+    uses: ./.github/workflows/sdk-packages.yml
+    with:
+      ref: ${{ inputs.release_tag || github.ref }}
   linux:
     runs-on: ubuntu-24.04
     steps:
@@ -87,7 +91,7 @@ jobs:
           if-no-files-found: error
   publish:
     if: github.event_name == 'workflow_dispatch' && inputs.publish
-    needs: linux
+    needs: [linux, sdk]
     runs-on: ubuntu-24.04
     environment: prerelease-publish
     permissions:

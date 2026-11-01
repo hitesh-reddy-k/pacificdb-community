@@ -13,6 +13,7 @@ def main():
  logs=out.parent/(out.name+'-logs');logs.mkdir(exist_ok=True)
  revision=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
  dirty=bool(subprocess.check_output(['git','status','--porcelain','--untracked-files=all'],cwd=ROOT,text=True).strip())
+ source_status=subprocess.check_output(['git','status','--porcelain','--untracked-files=all'],cwd=ROOT)
  if dirty and not a.allow_dirty_staging:p.error('source must be clean for candidate staging (or explicitly allow nonpublishable dirty rehearsal)')
  def run(name,command,env=None,cwd=ROOT):
   print('STAGING',name,flush=True)
@@ -63,6 +64,8 @@ def main():
   for file in sorted((ROOT/'docs').glob('V1.2_*.md')):t.add(file,arcname=file.relative_to(ROOT))
   for name in ['docs/releases/1.2.0-development.md','docs/v1.2-evidence/community-verified-cache-comparison-20261101/REPORT.md','docs/v1.2-evidence/community-verified-cache-comparison-20261101/results.json','docs/v1.2-evidence/community-verified-cache-comparison-20261101/METHODOLOGY_ADDENDUM.md']:t.add(ROOT/name,arcname=name)
  add(docarchive)
+ if subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()!=revision or subprocess.check_output(['git','status','--porcelain','--untracked-files=all'],cwd=ROOT)!=source_status:
+  raise RuntimeError('source changed during staging; preserve this attempt and restart from frozen source')
  manifest={'schemaVersion':1,'version':identity['version'],'releaseVersion':release,'releaseName':identity['name'],'tag':identity['tag'],'branch':identity['branch'],'revision':revision,'sourceClean':not dirty,'prerelease':True,'productionReady':False,'publicationDecision':'BLOCKED','artifacts':artifacts,'checks':checks,'unverified':['complete stable platform/upgrade/power/security qualification','registry publication and external accessibility'],'knownIssues':['ANN rebuild after restart','strict ANN write-time unavailability','ANN/ingestion/filtering performance gaps'],'buildInfo':info,'host':{'system':platform.system(),'machine':platform.machine(),'platform':platform.platform()}}
  (out/'RELEASE-MANIFEST.json').write_text(json.dumps(manifest,indent=2)+'\n')
  sums={x['filename']:x['sha256'] for x in artifacts};sums['RELEASE-MANIFEST.json']=hashlib.sha256((out/'RELEASE-MANIFEST.json').read_bytes()).hexdigest()
