@@ -1,0 +1,80 @@
+name: Frozen candidate targeted sanitizer qualification
+on:
+  workflow_call:
+    inputs:
+      release_tag:
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  targeted:
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [ASAN_UBSAN, TSAN]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+      UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+      TSAN_OPTIONS: halt_on_error=1:second_deadlock_stack=1
+      SELECTED_SANITIZER: ${{ matrix.sanitizer }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release_tag }}
+          fetch-depth: 0
+      - name: Configure independent instrumented build
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ liblz4-dev libre2-dev libssl-dev
+          mkdir -p build-sanitizer-evidence
+          git rev-parse HEAD > build-sanitizer-evidence/SOURCE_REVISION.txt
+          python3 scripts/release_identity.py > build-sanitizer-evidence/release.json
+          extra=()
+          if test "$SELECTED_SANITIZER" = ASAN_UBSAN; then
+            extra=(-DENABLE_ASAN=ON '-DCMAKE_CXX_FLAGS=-fsanitize=undefined -fno-sanitize-recover=undefined' '-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=undefined')
+          else
+            extra=(-DENABLE_TSAN=ON)
+          fi
+          cmake -S engine -B build-sanitized -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            '-DCMAKE_CXX_FLAGS_RELWITHDEBINFO=-O1 -g -DNDEBUG' \
+            -DPACIFICDB_ENGINE_VERSION=1.2.0 "${extra[@]}" 2>&1 | tee build-sanitizer-evidence/configure.log
+      - name: Build selected real failure/concurrency tests
+        run: |
+          set -euo pipefail
+          cmake --build build-sanitized -j1 --target \
+            db_engine_database_metadata_failure_test db_engine_raft_commit_publication_test \
+            db_engine_query_request_state_test db_engine_vector_safety_concurrency_test \
+            db_engine_vector_generation_test db_engine_native_vector_index_service_test \
+            2>&1 | tee build-sanitizer-evidence/build.log
+      - name: Execute instrumented tests without suppressions
+        run: |
+          python3 - <<'PYCODE'
+          import json,os,subprocess
+          from pathlib import Path
+          root=Path('build-sanitizer-evidence')
+          expression=r'^db_engine_(database_metadata_failure|raft_(commit_publication|log_sync_failure|directory_sync_failure|group_sync_failure)|query_request_state|vector_safety_concurrency|vector_generation|native_vector_index_service)_test$'
+          command=['ctest','--test-dir','build-sanitized','--output-on-failure','--timeout','180','-R',expression]
+          with (root/'ctest.log').open('w') as log:
+              result=subprocess.run(command,stdout=log,stderr=subprocess.STDOUT)
+          text=(root/'ctest.log').read_text();print(text)
+          status='PASS' if result.returncode==0 else 'BLOCKED' if 'ThreadSanitizer: unexpected memory mapping' in text else 'FAIL'
+          summary={'status':status,'sanitizer':os.environ['SELECTED_SANITIZER'],
+            'revision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
+            'releaseVersion':json.load(open('release.json'))['releaseVersion'],
+            'exitCode':result.returncode,'command':command,
+            'scope':'targeted durability syscall/publication and request/index concurrency tests only; not full sanitizer or production certification',
+            'suppressions':'NONE','globalOSSecurityChanges':'NONE'}
+          (root/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')
+          raise SystemExit(result.returncode)
+          PYCODE
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: candidate-sanitizer-${{ matrix.sanitizer }}
+          path: |
+            build-sanitizer-evidence/
+            build-sanitized/Testing/Temporary/LastTest.log
