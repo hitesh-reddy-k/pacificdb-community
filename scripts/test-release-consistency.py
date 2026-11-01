@@ -47,22 +47,29 @@ def main() -> None:
         "engine/CMakeLists.txt",
         r'set\(PACIFICDB_ENGINE_VERSION "([^"]+)"',
     )
-    release_tag = f"v{engine_version}"
-    landing_tag = match_version("site/index.html", r'<span class="badge">(v[0-9.]+)(?: candidate[^<]*)?</span>')
-    if landing_tag != release_tag:
-        raise AssertionError("landing version does not match engine")
-    require_text("site/index.html", f'href="release-{engine_version}.html"')
-    docs_tag = match_version("site/docs.html", r'<span class="version-badge">(v[0-9.]+)(?: candidate[^<]*)?</span>')
-    if docs_tag != release_tag:
-        raise AssertionError("documentation version does not match engine")
-    require_text(
-        f"site/release-{engine_version}.html", f"PacificDB Community · {release_tag}"
-    )
-
-    # Published prerelease assets use tag 1.1.2, not the stable v* pattern.
-    require_text("site/index.html", f"releases/download/{engine_version}/pacificdb-community-{engine_version}-linux-amd64.deb")
-    require_text("site/index.html", f"releases/download/{engine_version}/SHA256SUMS")
-    require_text("site/docs.html", f"pacificdb-community-{engine_version}-linux-amd64.deb")
+    # The website advertises an independently published release. A development
+    # checkout or older main branch must not rename an existing public package.
+    published = json.loads((ROOT / "site/release.json").read_text())
+    published_version = published["candidate"]
+    release_tag = published["tag"]
+    if release_tag != f"v{published_version}" or published["channel"] != "prerelease":
+        raise AssertionError("invalid public prerelease identity")
+    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+", published_version):
+        raise AssertionError("website must identify the actual release candidate")
+    badge = r'<span class="badge">(v[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+)</span>'
+    if match_version("site/index.html", badge) != release_tag:
+        raise AssertionError("landing version does not match public release metadata")
+    docs_badge = badge.replace('class="badge"', 'class="version-badge"')
+    if match_version("site/docs.html", docs_badge) != release_tag:
+        raise AssertionError("documentation version does not match public release metadata")
+    require_text("site/index.html", f'href="release-{published["version"]}.html"')
+    require_text(f"site/release-{published['version']}.html", published_version)
+    native = f"pacificdb-community-{published_version}-linux-x64.deb"
+    if native not in published["assets"] or "SHA256SUMS" not in published["assets"]:
+        raise AssertionError("website inventory is missing published native assets")
+    require_text("site/index.html", f"releases/download/{release_tag}/{native}")
+    require_text("site/index.html", f"releases/download/{release_tag}/SHA256SUMS")
+    require_text("site/docs.html", native)
     for workflow in ("pages", "ci", "codeql", "sdk-packages", "workbench-desktop"):
         require_text(f".github/workflows/{workflow}.yml", "branches: [main]")
 
