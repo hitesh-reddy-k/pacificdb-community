@@ -1,0 +1,82 @@
+name: Publish tested prerelease container
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Exact existing qualified RC tag
+        required: true
+        default: v1.2.0-rc.1
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    environment: prerelease-publish
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE_NAME: ghcr.io/hitesh-reddy-k/pacificdb-community
+      RELEASE_TAG: ${{ inputs.release_tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release_tag }}
+          fetch-depth: 0
+      - name: Require a published prerelease bound to this commit
+        run: |
+          set -euo pipefail
+          python3 scripts/check-sdk-release-tag.py "$RELEASE_TAG" --require-tag
+          test "$(python3 scripts/release_identity.py --field channel)" = prerelease
+          test "$(gh release view "$RELEASE_TAG" --json isPrerelease --jq .isPrerelease)" = true
+          test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = false
+          mkdir staged
+          gh release download "$RELEASE_TAG" --pattern RELEASE-MANIFEST.json --dir staged
+          gh release download "$RELEASE_TAG" --pattern SHA256SUMS --dir staged
+          python3 - <<'PY'
+          import json,subprocess,os
+          from pathlib import Path
+          m=json.load(open('staged/RELEASE-MANIFEST.json'))
+          for artifact in m['artifacts']:
+              name=artifact['filename']
+              assert name and Path(name).name==name and not name.startswith('.')
+              subprocess.run(['gh','release','download',os.environ['RELEASE_TAG'],
+                  '--pattern',name,'--dir','staged'],check=True)
+          PY
+          (cd staged && sha256sum -c SHA256SUMS)
+          python3 scripts/verify-prerelease-staging.py --directory staged \
+            --revision "$(git rev-parse HEAD)" --require-qualified
+      - name: Build and smoke-test exact RC image
+        run: |
+          set -euo pipefail
+          version=$(python3 scripts/release_identity.py --field version)
+          candidate=$(python3 scripts/release_identity.py --field releaseVersion)
+          image="$IMAGE_NAME:$candidate"
+          docker build -f deploy/docker/Dockerfile \
+            --build-arg PACIFICDB_ENGINE_VERSION="$version" \
+            --build-arg PACIFICDB_RELEASE_VERSION="$candidate" \
+            --build-arg PACIFICDB_GIT_COMMIT="$(git rev-parse HEAD)" \
+            --build-arg PACIFICDB_BUILD_TIMESTAMP="$(git show -s --format=%cI HEAD)" \
+            -t "$image" .
+          bash scripts/test-container-image.sh "$image" staged/container-before-push.json
+          printf 'RC_IMAGE=%s\n' "$image" >> "$GITHUB_ENV"
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Publish only RC tag and verify pulled digest
+        run: |
+          set -euo pipefail
+          docker push "$RC_IMAGE"
+          digest=$(docker image inspect "$RC_IMAGE" --format '{{index .RepoDigests 0}}')
+          docker pull "$digest"
+          bash scripts/test-container-image.sh "$digest" staged/container-published.json
+          printf '%s\n' "$digest" > staged/IMAGE_DIGEST.txt
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: prerelease-container-evidence
+          path: staged/
+          if-no-files-found: error

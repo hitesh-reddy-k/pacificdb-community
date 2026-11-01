@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: Publish verified staged assets after release-owner approval
+        description: Publish the qualified draft's exact assets after release-owner approval
         type: boolean
         default: false
       release_tag:
@@ -101,14 +101,20 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ inputs.release_tag }}
-      - uses: actions/download-artifact@v4
-        with:
-          name: prerelease-linux-x64
-          path: staged
+      - name: Download the owner-qualified draft assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = true
+          mkdir staged
+          gh release download "$RELEASE_TAG" --dir staged
       - name: Verify tag and staged assets
         env:
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
+          set -euo pipefail
           test "$RELEASE_TAG" = "$(python3 scripts/release_identity.py --field tag)"
           test "$(git rev-parse "$RELEASE_TAG^{commit}")" = "$(git rev-parse HEAD)"
           (cd staged && sha256sum -c SHA256SUMS)
@@ -118,7 +124,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
-          gh release create "$RELEASE_TAG" staged/* --repo "$GITHUB_REPOSITORY" \
-            --title 'Pre-release v1.2' --prerelease --latest=false \
-            --notes-file RELEASE_NOTES_v1.2.md
+          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false \
+            --title 'Pre-release v1.2' --prerelease --latest=false
           gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isPrerelease,tagName,targetCommitish

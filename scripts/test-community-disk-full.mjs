@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { open } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdir, rm, stat, statfs, symlink } from 'node:fs/promises';
+import { mkdir, rm, stat, statfs, symlink, writeFile } from 'node:fs/promises';
 import net from 'node:net';
 import path from 'node:path';
 import { PacificDBClient } from '../sdk/node/src/index.js';
@@ -101,7 +101,7 @@ async function runCase(category) {
     throw new Error(`engine failed to start for ${category}: ${last?.message}`);
   }
   async function start() {
-    engineOutput = '';
+    engineOutput += '\n--- engine start ---\n';
     engine = spawn(binary, [], { cwd: repositoryRoot, env: environment,
       stdio: ['ignore', 'pipe', 'pipe'] });
     const capture = (chunk) => {
@@ -232,6 +232,14 @@ async function runCase(category) {
     await stop();
     await rm(root, { recursive: true, force: true });
     return filledBytes;
+  } catch (error) {
+    console.error(`ENOSPC_CASE_FAILED ${category}`);
+    if (process.env.PACIFICDB_ENOSPC_EVIDENCE) {
+      const evidence = path.resolve(process.env.PACIFICDB_ENOSPC_EVIDENCE);
+      await mkdir(evidence, { recursive: true });
+      await writeFile(path.join(evidence, `${category}-engine.log`), engineOutput);
+    }
+    throw error;
   } finally {
     await stop('SIGKILL').catch(() => {});
     await rm(filler, { force: true }).catch(() => {});

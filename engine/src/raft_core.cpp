@@ -1945,7 +1945,10 @@ static void raftStartLogFsyncer(const std::string& logPath) {
 }
 // Durably sync the raft log, or defer to the background fsyncer in async mode.
 static inline void raftFdatasyncFile(const std::string& logPath) {
-    syncRaftLog(logPath);
+    if (!syncRaftLog(logPath)) {
+        RaftCore::instance().fenceStorageFailure();
+        throw std::runtime_error("raft_log_sync_failed");
+    }
 }
 
 static inline void raftSyncOrDeferLog(const std::string& logPath) {
@@ -2021,7 +2024,14 @@ static void raftGroupLogFsync(const std::string& logPath, uint64_t myIndex) {
             uint64_t target = g_logAppendSeq.load(std::memory_order_acquire);
             if (target < myIndex) target = myIndex; // our entry is in the file
             auto t0 = std::chrono::steady_clock::now();
-            raftFdatasyncFile(logPath);
+            try {
+                raftFdatasyncFile(logPath);
+            } catch (...) {
+                lk.lock();
+                g_logFsyncCoord.running = false;
+                g_logFsyncCoord.cv.notify_all();
+                throw;
+            }
             auto durMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - t0).count();
             lk.lock();
@@ -2985,51 +2995,72 @@ bool RaftCore::replicateAndApply(const json& inputEntry, OperationPriority prior
         g_writeLifecycleAdmitted.fetch_add(1, std::memory_order_relaxed);
         g_writeLifecycleRaftSubmitted.fetch_add(1, std::memory_order_relaxed);
         MetricsExporter::incrementCounter("pacificdb_pipeline_raft_bypassed_total", 1.0);
-        // Persist to raft log and apply locally (minimal synchronous local apply)
+        // Serialize this node's append through durable commit publication. Apply
+        // and all reads remain outside the log lock. This makes a rejected local
+        // tail removable before a later write/audit record can commit over it.
         uint64_t index = 0;
         uint64_t term = 0;
-        std::string payload = encodeRaftLogPayload(entry);
+        const std::string payload = encodeRaftLogPayload(entry);
+        std::unique_lock<std::mutex> appendLock(logMutex_);
+        const std::string logPath = (std::filesystem::path(dataRoot()) / "raft/log.bin").string();
+        const uint64_t previousIndex = lastIndex_;
+        std::error_code sizeError;
+        const uint64_t startOffset = std::filesystem::exists(logPath)
+            ? std::filesystem::file_size(logPath, sizeError) : 0;
+        if (sizeError) return false;
+        index = previousIndex + 1;
+        std::string vote;
         {
-            std::lock_guard<std::mutex> lk(logMutex_);
-            std::string base = dataRoot(); if (base.back() != '/' && base.back() != '\\') base += "/";
-            std::string logPath = base + "raft/log.bin";
-            index = lastIndex_ + 1;
-            {
-                std::lock_guard<std::mutex> lk2(electionMutex_);
-                term = currentTerm_;
-            }
-            std::string bytes;
-            bytes.reserve(sizeof(index) + sizeof(term) + sizeof(uint32_t) + payload.size());
-            appendRaftRecordBytes(bytes, index, term, payload);
-            uint64_t startOffset = 0;
-            if (appendRaftLog(logPath, bytes, &startOffset)) {
-                lastIndex_ = index;
-                cacheRaftRecordBlock(bytes, startOffset);
-                lastEntryTerm_ = term;
-            } else {
-                index = 0;
-            }
+            std::lock_guard<std::mutex> electionLock(electionMutex_);
+            term = currentTerm_;
+            vote = votedFor_;
         }
-
-        if (index == 0) {
+        std::string bytes;
+        bytes.reserve(sizeof(index) + sizeof(term) + sizeof(uint32_t) + payload.size());
+        appendRaftRecordBytes(bytes, index, term, payload);
+        try {
+            if (!appendRaftLog(logPath, bytes)) {
+                throw std::runtime_error("cannot append standalone Raft log");
+            }
+            // The checkpoint must never cover a log record whose sync failed.
+            raftLogAppendSeqBump(index);
+            raftGroupLogFsync(logPath, index);
+            persistConsensusState(term, vote, index,
+                lastApplied_.load(std::memory_order_acquire), false);
+        } catch (const std::exception& error) {
+            std::cerr << "[RAFTCORE] standalone commit publication failed before apply: "
+                      << error.what() << std::endl;
+            if (!consensusPublicationUncertain_.load(std::memory_order_acquire)) {
+                // No commit record was published. Remove the partial/rejected
+                // append while later appenders are excluded by the same lock.
+                try {
+                    resetRaftLog(logPath);
+                    std::filesystem::resize_file(logPath, startOffset);
+                    if (!syncRaftLog(logPath)) throw std::runtime_error("cannot sync rejected Raft tail rollback");
+                    g_logAppendSeq.store(previousIndex, std::memory_order_release);
+                    std::lock_guard<std::mutex> syncLock(g_logFsyncCoord.m);
+                    g_logFsyncCoord.fsyncedSeq = previousIndex;
+                } catch (const std::exception& rollbackError) {
+                    consensusPublicationUncertain_.store(true, std::memory_order_release);
+                    leader_.store(false); leadershipReady_.store(false);
+                    recoveryComplete_.store(false, std::memory_order_release);
+                    std::cerr << "[RAFTCORE] failed to remove rejected tail; restart required: "
+                              << rollbackError.what() << std::endl;
+                }
+            }
             g_writeLifecycleFailed.fetch_add(1, std::memory_order_relaxed);
             failedRequests_++;
+            if (consensusPublicationUncertain_.load(std::memory_order_acquire)) {
+                throw std::runtime_error("write_outcome_unknown");
+            }
             return false;
         }
+        lastIndex_ = index;
+        lastEntryTerm_ = term;
+        cacheRaftRecordBlock(bytes, startOffset);
+        appendLock.unlock();
 
-        // The single-node quorum is not durable until its Raft record is on disk.
-        // persistProgress() fsyncs a different file, so doing it first can leave a
-        // committed watermark ahead of a lost log tail after physical power loss.
-        raftLogAppendSeqBump(index);
-        {
-            std::string base = dataRoot();
-            if (base.back() != '/' && base.back() != '\\') base += "/";
-            raftGroupLogFsync(base + "raft/log.bin", index);
-        }
-
-        // A single-node group reaches quorum with its own durable log append.
-        // Publish commit before applying so lastApplied can never move ahead of
-        // commitIndex, matching the replicated path's safety invariant.
+        // Publish commit before applying so lastApplied cannot pass commitIndex.
         {
             std::lock_guard<std::mutex> lk(electionMutex_);
             if (index > commitIndex_) commitIndex_ = index;
@@ -3041,12 +3072,8 @@ bool RaftCore::replicateAndApply(const json& inputEntry, OperationPriority prior
                     index, index, timeoutMs, ApplySource::LEADER_BYPASS)) {
                 throw std::runtime_error("single-node committed entry was not applied");
             }
-            // In a one-node group the local durable append is the quorum. Recovery
-            // cannot infer that an arbitrary log tail was acknowledged, so publish
-            // the committed/applied watermark durably before the client sees success.
-            // Without this checkpoint, a crash after any earlier clean restart made
-            // the newly acknowledged tail indistinguishable from an uncommitted one.
-            persistProgress();
+            // The durable log and pre-apply commit marker recover this mutation
+            // even if the optional applied checkpoint still trails this index.
             g_writeLifecycleQuorumReached.fetch_add(1, std::memory_order_relaxed);
             g_writeLifecycleApplied.fetch_add(1, std::memory_order_relaxed);
             g_writeLifecycleResponded.fetch_add(1, std::memory_order_relaxed);
@@ -3055,7 +3082,9 @@ bool RaftCore::replicateAndApply(const json& inputEntry, OperationPriority prior
         } catch (...) {
             g_writeLifecycleFailed.fetch_add(1, std::memory_order_relaxed);
             failedRequests_++;
-            return false;
+            // Commit was durably published; apply/response failure is not proof
+            // of rollback. Preserve that distinction through caller exceptions.
+            throw std::runtime_error("write_outcome_unknown");
         }
     }
 
@@ -6125,16 +6154,24 @@ void RaftCore::persistConsensusState(uint64_t term,
     }
 
     std::lock_guard<std::mutex> persistLock(consensusStatePersistMutex_);
+    if (consensusPublicationUncertain_.load(std::memory_order_acquire)) {
+        throw std::runtime_error("raft_consensus_publication_uncertain_restart_required");
+    }
     // Progress writers race with term/vote writers. Preserve the newest
     // election state and monotonically merge commit/apply progress so a late
     // stale snapshot can never move the durable record backwards.
-    if (updateElectionState && term >= persistedConsensusTerm_) {
-        persistedConsensusTerm_ = term;
-        persistedVotedFor_ = votedFor;
+    const bool newerElection = updateElectionState && term >= persistedConsensusTerm_;
+    const uint64_t nextTerm = newerElection ? term : persistedConsensusTerm_;
+    const std::string nextVote = newerElection ? votedFor : persistedVotedFor_;
+    // Preserve election intent even if I/O fails. A later progress writer must
+    // never rewrite a lower term or an older vote after an uncertain rename.
+    if (newerElection) {
+        persistedConsensusTerm_ = nextTerm;
+        persistedVotedFor_ = nextVote;
     }
-    persistedCommitIndex_ = std::max(persistedCommitIndex_, commitIndex);
-    persistedLastApplied_ = std::max(persistedLastApplied_, lastApplied);
-    if (persistedLastApplied_ > persistedCommitIndex_) {
+    const uint64_t nextCommit = std::max(persistedCommitIndex_, commitIndex);
+    const uint64_t nextApplied = std::max(persistedLastApplied_, lastApplied);
+    if (nextApplied > nextCommit) {
         throw std::logic_error("durable raft progress invariant violated: lastApplied > commitIndex");
     }
 
@@ -6147,10 +6184,10 @@ void RaftCore::persistConsensusState(uint64_t term,
 
     json state = {
         {"version", 1},
-        {"currentTerm", persistedConsensusTerm_},
-        {"votedFor", persistedVotedFor_},
-        {"commitIndex", persistedCommitIndex_},
-        {"lastApplied", persistedLastApplied_}
+        {"currentTerm", nextTerm},
+        {"votedFor", nextVote},
+        {"commitIndex", nextCommit},
+        {"lastApplied", nextApplied}
     };
     const std::string checksumInput = state.dump();
     state["checksum"] = pacificdb::durability::ChecksumCalculator::sha256(
@@ -6172,8 +6209,6 @@ void RaftCore::persistConsensusState(uint64_t term,
         throw std::runtime_error("cannot fsync raft consensus state temp file");
     }
     CloseHandle(tempHandle);
-    std::error_code removeEc;
-    std::filesystem::remove(statePath, removeEc);
 #else
     int tempFd = open(tempPath.c_str(), O_WRONLY);
     if (tempFd < 0 || fsync(tempFd) != 0) {
@@ -6184,21 +6219,36 @@ void RaftCore::persistConsensusState(uint64_t term,
 #endif
 
     std::error_code renameEc;
+#ifdef _WIN32
+    if (!MoveFileExA(tempPath.c_str(), statePath.c_str(),
+                     MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+        renameEc = std::error_code(GetLastError(), std::system_category());
+    }
+#else
     std::filesystem::rename(tempPath, statePath, renameEc);
+#endif
     if (renameEc) {
         std::filesystem::remove(tempPath);
         throw std::runtime_error("cannot atomically replace raft consensus state: " + renameEc.message());
     }
 #ifndef _WIN32
     int dirFd = open(raftDir.c_str(), O_RDONLY | O_DIRECTORY);
-    if (dirFd >= 0) {
-        if (fsync(dirFd) != 0) {
-            close(dirFd);
-            throw std::runtime_error("cannot fsync raft consensus state directory");
-        }
-        close(dirFd);
+    const bool directorySynced = dirFd >= 0 && fsync(dirFd) == 0;
+    if (dirFd >= 0) close(dirFd);
+    if (!directorySynced) {
+        // Rename may already be visible/durable. Never roll back this log tail
+        // or overwrite its checkpoint, and never acknowledge or accept new work.
+        consensusPublicationUncertain_.store(true, std::memory_order_release);
+        leader_.store(false); leadershipReady_.store(false);
+        recoveryComplete_.store(false, std::memory_order_release);
+        throw std::runtime_error("raft_consensus_publication_uncertain_restart_required");
     }
 #endif
+    // Failed publication must not contaminate the cached durable watermarks.
+    persistedConsensusTerm_ = nextTerm;
+    persistedVotedFor_ = nextVote;
+    persistedCommitIndex_ = nextCommit;
+    persistedLastApplied_ = nextApplied;
     consensusStateLoaded_ = true;
 }
 
@@ -7111,6 +7161,15 @@ void RaftCore::handleFollowerConn(int clientSock, const std::atomic<size_t>& pen
                 }
                 std::string t = j.value("type", "");
 	                if (t == "heartbeat") {
+                        if (!isRecoveryComplete()) {
+                            const std::string refusal = json({
+                                {"type", "appendEntriesResponse"}, {"term", currentTerm_},
+                                {"success", false}, {"matchIndex", 0}, {"logMatch", false},
+                                {"reason", "recovery_incomplete"}
+                            }).dump();
+                            raftSocketSend(clientSock, refusal.c_str(), (int)refusal.size(), 0);
+                            return;
+                        }
 	                    uint64_t term = j.value("term", (uint64_t)0);
 	                    bool leaderReady = j.value("leaderReady", true);
 	                    bool hasLeaderLogPosition = j.contains("leaderLastLogIndex") || j.contains("lastLogIndex");

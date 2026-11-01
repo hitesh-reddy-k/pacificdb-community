@@ -50,9 +50,9 @@ this is not a universal mixed-version or downgrade guarantee.
 
 ## Known issues
 
-- **Release blocked:** the full disk-full recovery gate fails for error responses
-  whose requested DROP/update is visible after restart. Partial catalog writes
-  are fixed separately; see [the storage findings](docs/releases/v1.2.0-rc.1/STORAGE_FAILURE_FINDINGS.md).
+- Standalone commit publication and rejected-tail cleanup now fail closed under
+  ENOSPC and synchronous I/O errors. Uncertain post-rename outcomes fence the node
+  until restart. See [the storage findings](docs/releases/v1.2.0-rc.1/STORAGE_FAILURE_FINDINGS.md).
 
 - ANN graphs rebuild after restart. Measured 1M initial construction 45.82 minutes,
   post-crash reconstruction 35.97 minutes on the recorded 25D workstation workload.
@@ -83,9 +83,9 @@ and [current tests/checklist](TESTING.md). Fresh RC tests remain separately reco
 Current RC validation additionally passed 76 top-level checks/45 CTest on the
 initial RC build, source/installed Node, Python and Java checks, and sandboxed
 Linux Workbench package tests. Clean-source delivery receipts identify their own
-binary hashes. The full desktop build-tool dependency audit still fails on
-moderate transitive findings; public publication and untested platform installers
-remain blocked. No new benchmark run is attributed to RC artifacts.
+binary hashes. The matcher compatibility repair clears the full/runtime desktop dependency
+audits without an exception. Publication and platform support still require exact
+final artifact receipts. No new benchmark run is attributed to RC artifacts.
 
 ## Feedback
 

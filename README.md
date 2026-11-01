@@ -1,4 +1,9 @@
 <p align="center">
+
+Pre-release v1.2 preparation: [release notes](RELEASE_NOTES_v1.2.md),
+[installation](INSTALLATION.md), [company evaluation](COMPANY_TESTING_GUIDE.md),
+[owner publishing guide](PUBLISHING_OWNER_GUIDE.md) and [verified release checklist](RELEASE_CHECKLIST.md).
+The candidate is `1.2.0-rc.1`; it is separate from the stable download channel.
   <img src="site/assets/pacificdb-logo-symbol.png" width="96" alt="PacificDB logo">
 </p>
 

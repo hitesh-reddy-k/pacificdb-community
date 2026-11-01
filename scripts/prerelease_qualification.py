@@ -5,7 +5,7 @@ import json
 import re
 from pathlib import Path
 
-REQUIRED=('identity','engine','document-media','authentication','vector','cli','workbench','installed-sdks','artifact-integrity','security-blockers')
+REQUIRED=('identity','engine','document-media','authentication','vector','cli','workbench','installed-sdks','artifact-integrity','security-blockers','disk-full-recovery')
 STABLE_ONLY=['platform-matrix','mixed-version-upgrade','physical-power','independent-security','sustained-load']
 
 def assess(data):

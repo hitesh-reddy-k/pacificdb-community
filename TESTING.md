@@ -87,3 +87,23 @@ visible even when reference/recall checks pass. Process SIGKILL recovery is not
 physical power-loss evidence. Cross-platform CI must execute installer/runtime
 checks before support is marked verified; source targets or emulation are insufficient.
 The strict stable-release audit remains separate from scoped preview staging.
+
+## Exact prerelease receipts
+
+`stage-prerelease.py` stages/tests packages and remains BLOCKED by default. After
+reviewing the final core, disk-full, SDK, GUI and security receipts, the release
+owner supplies a JSON receipt whose revision/version, artifact hashes and local
+execution-evidence hashes match the staging directory. Seal it with:
+
+```sh
+python3 scripts/qualify-prerelease.py --directory STAGED_DIRECTORY \
+  --receipts OWNER_RECEIPTS.json --revision EXACT_40_HEX_COMMIT
+python3 scripts/verify-prerelease-staging.py --directory STAGED_DIRECTORY \
+  --revision EXACT_40_HEX_COMMIT --require-qualified
+```
+
+The receipt format and tamper/missing/error checks are exercised by
+`python3 scripts/test_prerelease_receipts.py`. Evidence hashes bind reviewed logs;
+they do not replace reading test outcomes. The disk-full gate is mandatory. The
+manual publisher downloads the qualified draft's exact assets and checks the tag,
+manifest and SHA256SUMS before making it public. No stable/latest promotion occurs.

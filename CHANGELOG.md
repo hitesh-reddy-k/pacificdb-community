@@ -1,5 +1,17 @@
 # Changelog
 
+## Pre-release v1.2 reliability follow-through
+
+- Fixed standalone pre-apply durable commit publication and rejected Raft tail
+  cleanup under ENOSPC; propagated log-sync errors and fenced uncertain nodes.
+- Prevented recovery-incomplete replicas from acknowledging heartbeat/read-barrier
+  requests or advertising an untrusted tail. Added syscall-failure regressions.
+- Replaced vulnerable desktop matcher versions with pinned patched minimatch and
+  reviewed, hash-guarded compatibility adaptations; full npm audit is clean.
+- Added receipt-backed prerelease qualification, RC-only container publication and
+  owner PyPI/Maven publishing instructions. Stable qualification remains separate.
+
+
 ## 1.2.0-rc.1 — Pre-release v1.2 (external testing)
 
 Base version:1.2.0. Production qualification remains incomplete. Publication and

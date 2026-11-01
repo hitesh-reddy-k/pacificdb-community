@@ -1,76 +1,47 @@
 # Pre-release v1.2 release checklist
 
-Base 1.2.0; candidate/tag v1.2.0-rc.1; branch v1.2; title Pre-release v1.2.
+Base `1.2.0`; candidate/tag `v1.2.0-rc.1`; branch `v1.2`; title **Pre-release v1.2**.
 Statuses: **Passed / Failed / Blocked / Not applicable / Not tested**.
-This live checklist is revised from executed evidence. Production readiness stays
-INCOMPLETE; scoped preview staging never substitutes for strict stable qualification.
+Final artifact manifest/receipts bind immutable bytes and revision; this source
+checklist records executed preparation scopes. Stable production readiness remains
+INCOMPLETE. Original failed attempts are retained and are not relabeled PASS.
 
-| Activity | Status | Evidence / remaining action |
+| Activity | Status | Evidence / scope |
 | --- | --- | --- |
-| Preserve current source/dirty changes before release edits | Passed | Ignored baseline source/archive/diff snapshot retained |
-| Inspect local/remote branch/tag and previous releases | Passed | Remote main baseline 8732d29; candidate branch/tag absent initially; previous 1.1.2 identity recorded |
-| Canonical release/ecosystem mapping tests | Passed | release.json; three initial identity tests and focused SDK mapping checks |
-| Fresh native 1.2.0/RC binaries | Passed | Clean-source RC build at 4955ab5 inspected; engine and native CLI report base/candidate identity |
-| Tenant lockout/access/logging fixes | Passed | RED/GREEN real storage/auth tests; bounded expiry/reset, access no hang, credentials redacted; independent static patch review |
-| Current native/vector/document/media/RF3 checkpoint | Passed | 76 top-level checks / 45 CTest on clean-source 4955ab5 RC binary; original timestamp-test failure retained and fixed |
-| SDK source units and initial staged packages | Passed | Current Node34/Python 134/Java30 units; isolated artifact tests and clean-source installed consumers passed |
-| Initial exact staged SDK live TCP/TLS/recovery | Passed | All three installed SDKs, CLI, media, schemas/typed vectors/hybrid; clean-source 4955ab5 rerun passed TCP/TLS/SIGKILL recovery with exact staged bytes |
-| Workbench/CLI source contracts | Passed | Agent source regression/lifecycle/preview checks; real browser, desktop and bundled-engine runtime smoke passed |
-| Fresh browser/Electron/native integration | Passed | Real browser, isolated engine, explicit ANN opt-in and Electron sandbox-enforced GUI |
-| Native Linux package extraction/runtime | Passed | Extracted payload CRUD/media/vector checks; actual Debian 13 container installation and nonroot managed-engine ping/stop passed |
-| Initial Workbench Linux package/extracted runtime | Passed | Debian/tar payload and extracted GUI tested; Electron 44.10.1/source-bound 4955ab5 Debian payload passed sandbox-enforced GUI, persistence and backup/restore |
-| Container build/nonroot/runtime | Not tested | Docker available; candidate build/smoke pending |
-| Windows/macOS/ARM64 actual install/runtime | Not tested | Remote Windows/macOS/Linux Workbench jobs stop at the unchanged dependency gate; no installer/runtime qualification claimed |
-| Runtime npm advisory check | Passed | npm audit --omit=dev: 0; Electron updated to 44.10.1 and compatible undici/fast-uri patches |
-| Full build-tool dependency audit | Failed | 15 moderate build-only transitive advisories remain; no new waiver or unsafe major override applied |
-| Static security audit | Passed | Bounded offline review completed with explicit partial coverage/two validated issues; narrow fixes exercised separately |
-| Resolve confirmed engine findings | Passed | Focused regressions and independent patch review; targeted TSAN/ASan pass |
-| Full independent security certification | Blocked | Requires external exact-artifact review; not established by local audit |
-| Physical power-loss qualification | Blocked | External hardware evidence unavailable; process crash tests are separate |
-| Full mixed-version/platform upgrade matrix | Not tested | Requires exact previous artifacts and executed scenarios |
-| Source-bound final artifact checksums/SBOM/license inventory | Not tested | Stage and final review pending |
-| Company examples/docs link checks | Passed | Three language examples and media roundtrips executed from staged SDKs; root document targets checked |
-| Commit and remote v1.2 push | Passed | 296aa2a and 4955ab5 pushed and independently resolved on origin/v1.2; no force push or unrelated-ref deletion |
-| Candidate tag source binding | Blocked | Tag remains uncreated until candidate qualification passes; do not tag a failed release gate |
-| GitHub prerelease publication | Blocked | Concrete artifacts/destination/visibility approval required before publication |
-| npm publication (@pacificdb/client, @pacificdb/cli; next) | Blocked | Owner credentials/permissions and exact-artifact publication approval required |
-| PyPI publication (pacificdb 1.2.0rc1) | Blocked | Registered OIDC/environment and publication approval required |
-| Maven Central publication | Blocked | Namespace/signing/token/environment and publication approval required; staged JAR/POM is alternative |
-| GHCR candidate publication | Blocked | Exact-image verification and publication approval required; no stable/latest promotion |
-| Independently verify public accessibility/installed examples | Not tested | Only after actual approved publication |
-| Stable production release | Not applicable | This task is an external-testing prerelease; known ANN/performance limits remain |
+| Preserve original checkpoint and unrelated work | Passed | Baseline archive/diff retained; existing v1.2 implementation preserved |
+| Canonical engine/Workbench/CLI/SDK identity | Passed | release.json, SemVer/PEP440 mapping, source and package checks |
+| Tenant authentication/access/logging corrections | Passed | Lockout/reset/reload, access deadlock, secret redaction regressions; earlier targeted sanitizer runs remain revision-scoped |
+| Native core and vector CTest | Passed | Integrated source: 50 CTest cases including new commit/syscall/heartbeat failure regressions |
+| Complete Community runner | Passed | community-complete.log: CRUD, indexes/aggregation, media/authentication, automatic startup, crash/checkpoint recovery, ENOSPC, RF3/partition/restart, sustained concurrency, SDK units/live TLS/recovery |
+| Full real disk-full matrix | Passed | All 21 operation categories; rejected baseline state retained after restart |
+| Synchronous log and checkpoint publication failure handling | Passed | Early failure rollback, ordinary/group sync errors, uncertain-directory publication fencing, heartbeat rejection; RED/GREEN tests |
+| Installed SDK packages | Passed | Eight exact npm/wheel/sdist/JAR/POM artifacts; clean installed consumers; authenticated TCP/TLS/SIGKILL recovery; final rebuilt artifacts require their own receipts |
+| SDK runtime CI | Passed | 16 jobs on source-equivalent SDK revision f1d48ad: Node18/22/24, Python3.10/3.12 and Java11/17/21 on Linux/Windows; repeat final tag CI before publishing |
+| Linux Workbench runtime | Passed | Normal Chromium sandbox, document/media, restart and bundled CLI backup/restore; final source-bound packaging repeats these checks |
+| Native Debian installation and container runtime | Passed | Earlier clean-source Debian13 installation and exported/reloaded nonroot read-only container checks; final artifact receipts required |
+| Full/runtime npm advisory gate | Passed | Zero findings; patched minimatch11.0.3 plus five exact-source guarded build-tool adaptations; no new waiver or suppressed audit |
+| Matcher compatibility | Passed | Eight package/guard tests, all 30 upstream glob7 test files, actual Linux deb/archive packaging and GUI |
+| Windows/macOS native installers | Not tested | Final platform CI build/install/runtime evidence required; source/runtime matrix alone is insufficient |
+| Mixed-version/platform upgrade matrix | Not tested | Complete Community runner explicitly skips without exact previous artifact |
+| Physical power-loss validation | Blocked | Requires external hardware evidence; process crash/failpoint tests are separate |
+| Independent external security certification | Blocked | Bounded source review/fixes are not external certification |
+| New storage patch sanitizer qualification | Not tested | Earlier sanitizer evidence does not cover the complete new storage patch |
+| RC source commit/remote references | Passed | Earlier source checkpoints pushed without force; final staged manifest records latest exact revision and clean source |
+| Exact final package checksums / receipt qualification | Not tested | Run qualify-prerelease.py and verify-prerelease-staging.py --require-qualified on the final immutable staging directory |
+| RC Git tag | Not tested | Create once after final source-bound qualification and remote conflict check; never move an existing tag |
+| GitHub prerelease / public download checks | Not tested | Explicitly authorized by user; publish only qualified assets as prerelease, never latest; independently download/verify |
+| npm client and CLI publication to next | Not tested | Repository NPM_TOKEN configured; exact tag workflow and registry install verification still required |
+| PyPI publication | Blocked | Owner must configure matching trusted publisher, then publish/verify; see owner guide |
+| Maven Central publication | Blocked | Owner namespace, signing key and Portal token setup required; validation-only workflow then owner Publish |
+| GHCR RC publication | Not tested | Explicit manual RC workflow; requires public qualified prerelease; verify pushed digest and anonymous accessibility |
+| Post-publication benchmarks | Not tested | Run only after publication from downloaded native/SDK artifacts; keep original dev evidence separate |
+| Stable production release | Not applicable | This is an external-testing prerelease; vector/distributed/upgrade/power/security limits remain disclosed |
 
-The previous [benchmark/recovery report](docs/v1.2-evidence/community-verified-cache-comparison-20261101/REPORT.md)
-remains revision-scoped. Its successful static checks do not erase measured ANN
-availability/performance failures. Full raw local logs remain under ignored build
-roots; portable final summaries/manifests will be attached to staged artifacts.
+Read [storage fixes and original failures](docs/releases/v1.2.0-rc.1/STORAGE_FAILURE_FINDINGS.md),
+[owner publishing steps](PUBLISHING_OWNER_GUIDE.md), [company guide](COMPANY_TESTING_GUIDE.md)
+and [release notes](RELEASE_NOTES_v1.2.md). Missing/failed receipts block publication;
+qualification cannot be obtained by changing a status string or dropping a test.
 
-## Validation scope and publication blocker
-
-The clean-source 4955ab5 staging attempt installs the exact eight SDK artifacts
-against the RC engine; all three languages pass authenticated TCP, TLS and abrupt
-restart recovery (160 documents and 700,000 media bytes each). The native Debian
-package was also installed in a clean Debian 13 container. GUI validation uses
-Electron 44.10.1 with the Chromium sandbox enabled. Final delivery manifests bind
-any subsequent documentation/package rebuild to its own revision and checksums.
-
-The full dependency gate remains **Failed**: npm reports 15 moderate entries
-through minimatch in the desktop build dependency tree. The upstream
-[advisory](https://github.com/isaacs/minimatch/security/advisories/GHSA-g3hv-75wg-m249)
-identifies 11.0.1 as patched; the older callable dependency consumers prevent a
-blind major override. No new exception, disabled check or forced downgrade was
-used. Runtime npm audit has zero findings; that does not override the full gate.
-Workbench CI runs 41290663590 and 41290952849 retain the failures. Public release,
-tag and registry publication remain blocked rather than reported complete.
-
-## Additional storage gate (release blocking)
-
-The complete Community runner is **Failed** at genuine disk-full recovery. A
-partial-catalog publication defect is fixed with RED/GREEN regression coverage
-and three real ENOSPC catalog cases. Separate database-drop/document-update
-recovery expectations remain **Failed**, including reproduction on the unmodified
-packaged f1d48ad binary. See [storage failure findings](docs/releases/v1.2.0-rc.1/STORAGE_FAILURE_FINDINGS.md).
-The first metadata-fix checkpoint passed 77 checks/46 CTest; the subsequent
-replicated-marker fix passes its focused regression and requires the final full
-checkpoint. Final delivery receipts record the exact tested binary/revision.
-No tag or public release is authorized by a partial gate result.
+The old 1M [benchmark report](docs/v1.2-evidence/community-verified-cache-comparison-20261101/REPORT.md)
+retains its original dev revision, limitations and failures. A new report must use
+actual published RC bytes with equivalent PostgreSQL/pgvector settings.
