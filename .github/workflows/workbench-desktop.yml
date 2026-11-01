@@ -666,7 +666,8 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get install -y ./dist/desktop/PacificDB-Workbench-1.2.0-rc.1-linux-amd64.deb
-          PACIFICDB_TEST_DESKTOP='/opt/PacificDB Workbench/pacificdb-workbench' xvfb-run -a npm run test:workbench:desktop
+          stat -c '%U:%G %a %n' '/opt/PacificDB Workbench/chrome-sandbox'
+          DEBUG=pw:browser PACIFICDB_TEST_DESKTOP='/opt/PacificDB Workbench/pacificdb-workbench' xvfb-run -a npm run test:workbench:desktop
           mkdir -p build/release-platforms
           cp dist/desktop/PacificDB-Workbench-1.2.0-rc.1-linux-amd64.deb build/release-platforms/
           node scripts/workbench-preview-evidence.mjs linux-x64 build/release-platforms/PacificDB-Workbench-1.2.0-rc.1-linux-amd64.deb build/release-platforms/workbench-linux-x64-preview.json
