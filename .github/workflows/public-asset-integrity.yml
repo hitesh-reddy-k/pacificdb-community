@@ -1,0 +1,71 @@
+name: Verify complete public prerelease inventory
+on:
+  workflow_call:
+    inputs:
+      release_tag:
+        type: string
+        required: true
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release_tag }}
+          fetch-depth: 0
+      - name: Fresh public download and full qualified inventory verification
+        run: |
+          set -euo pipefail
+          python3 scripts/check-sdk-release-tag.py "$RELEASE_TAG" --require-tag
+          mkdir -p build/public-assets build/integrity-evidence
+          gh release view "$RELEASE_TAG" --json isDraft,isPrerelease,url,assets > build/integrity-evidence/release.json
+          gh release download "$RELEASE_TAG" --dir build/public-assets
+          (cd build/public-assets && sha256sum -c SHA256SUMS) | tee build/integrity-evidence/checksums.log
+          python3 scripts/verify-prerelease-staging.py --directory build/public-assets \
+            --revision "$(git rev-parse HEAD)" --require-qualified | tee build/integrity-evidence/qualified-inventory.log
+          python3 - <<'PYCODE'
+          import hashlib,json,tarfile,importlib.util,subprocess
+          from pathlib import Path
+          root=Path('build/public-assets');evidence=Path('build/integrity-evidence')
+          release=json.load(open(evidence/'release.json'));assert release['isPrerelease'] and not release['isDraft']
+          manifest=json.load(open(root/'RELEASE-MANIFEST.json'))
+          assert manifest['productionReady'] is False
+          public={a['name']:a for a in release['assets']}
+          assert set(public)=={a['filename'] for a in manifest['artifacts']}|{'RELEASE-MANIFEST.json','SHA256SUMS'}
+          for a in manifest['artifacts']:assert public[a['filename']]['digest']=='sha256:'+a['sha256']
+          dataset='NOT_PRESENT'
+          if 'benchmarkInputs' in manifest:
+              spec=importlib.util.spec_from_file_location('prepared',Path('scripts/prepare-community-benchmark.py'))
+              prepared=importlib.util.module_from_spec(spec);spec.loader.exec_module(prepared)
+              archive=root/manifest['benchmarkInputs']['artifact']
+              with tarfile.open(archive) as stream:
+                  members=stream.getmembers()
+                  assert all(member.isfile() and not member.name.startswith('/') and '..' not in Path(member.name).parts for member in members)
+                  prefix='published-workload/'
+                  m=json.load(stream.extractfile(prefix+'data/manifest.json'))
+                  assert m['base_count']==1000000 and m['dimensions']==25 and m['query_count']==1100 and m['seed']==20261029
+                  for name,expected in prepared.EXPECTED.items():
+                      assert m['hashes'][name]==expected
+                      if name!='glove-25-angular.hdf5':assert hashlib.file_digest(stream.extractfile(prefix+'data/'+name),'sha256').hexdigest()==expected
+                  for line in stream.extractfile(prefix+'DATA_SHA256SUMS').read().decode().splitlines():
+                      expected,name=line.split(None,1);assert hashlib.file_digest(stream.extractfile(prefix+name.strip()),'sha256').hexdigest()==expected
+              dataset='PASS: all prepared numeric, manifest and notice hashes matched after fresh public download'
+          result={'status':'PASS','releaseURL':release['url'],'releaseVersion':manifest['releaseVersion'],
+            'productRevision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
+            'declaredArtifacts':len(manifest['artifacts']),'preparedInputs':dataset,
+            'scope':'fresh public bytes/inventory verification only; installed/runtime tests are separate receipts',
+            'productionReady':False}
+          (evidence/'summary.json').write_text(json.dumps(result,indent=2)+'\n')
+          PYCODE
+          PYCODE
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: complete-public-asset-integrity
+          path: build/integrity-evidence/
