@@ -34,6 +34,8 @@
     "pacificdb-benchmark-glove25-1m-inputs-20261029.tar.gz",
     "pacificdb-company-guide-1.2.0-rc.2-d99f7be.tar.gz",
     "SHA256SUMS",
-    "RELEASE-MANIFEST.json"
+    "RELEASE-MANIFEST.json",
+    "BENCHMARK_REPORT_1.2.0-rc.2.txt",
+    "pacificdb-benchmarks-1.2.0-rc.2-20261101.tar.gz"
   ]
 }
