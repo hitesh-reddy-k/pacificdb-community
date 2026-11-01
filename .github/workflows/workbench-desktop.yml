@@ -57,6 +57,18 @@ on:
         description: Run complete Community regressions and real ENOSPC on the frozen source
         type: boolean
         default: false
+      assemble_candidate:
+        description: Qualify and publish the existing RC tag from successful frozen-source CI artifacts
+        type: boolean
+        default: false
+      native_source_run:
+        description: Successful native and SDK prerelease qualification run
+        required: false
+        type: string
+      qualification_run:
+        description: Successful complete frozen Community regression run
+        required: false
+        type: string
       publish_container:
         description: Publish only the qualified public RC container
         type: boolean
@@ -72,10 +84,21 @@ permissions:
   contents: read
 
 concurrency:
-  group: workbench-${{ github.ref }}-${{ inputs.qualify_candidate && 'qualification' || inputs.publish_desktop && 'desktop-publication' || inputs.verify_publication && 'public-consumer' || inputs.source_ref || 'platform' }}
+  group: workbench-${{ github.ref }}-${{ inputs.assemble_candidate && 'assembly' || inputs.qualify_candidate && 'qualification' || inputs.publish_desktop && 'desktop-publication' || inputs.verify_publication && 'public-consumer' || inputs.source_ref || 'platform' }}
   cancel-in-progress: false
 
 jobs:
+  assemble_frozen_candidate:
+    if: github.event_name == 'workflow_dispatch' && inputs.assemble_candidate
+    uses: ./.github/workflows/assemble-prerelease.yml
+    permissions:
+      contents: write
+      actions: read
+    with:
+      release_tag: ${{ inputs.release_tag }}
+      native_run: ${{ inputs.native_source_run }}
+      platform_run: ${{ inputs.desktop_source_run }}
+      qualification_run: ${{ inputs.qualification_run }}
   qualify_frozen_candidate:
     if: github.event_name == 'workflow_dispatch' && inputs.qualify_candidate
     uses: ./.github/workflows/qualify-candidate.yml
