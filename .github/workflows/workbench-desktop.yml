@@ -92,7 +92,13 @@ jobs:
       - name: Browser workflow
         run: |
           npx playwright install --with-deps chromium
-          npm run test:workbench:browser -- build
+          # Ubuntu AppArmor restricts developer-browser user namespaces. Use the
+          # runner's installed, root-owned Chrome sandbox helper, preserving the
+          # normal Chromium sandbox instead of disabling it or changing sysctls.
+          helper=/opt/google/chrome/chrome-sandbox
+          test -f "$helper"
+          test "$(stat -c '%u:%a' "$helper")" = 0:4755
+          CHROME_DEVEL_SANDBOX="$helper" npm run test:workbench:browser -- build
       - name: Package Workbench for Ubuntu 24.04
         env:
           PACIFICDB_DESKTOP_UBUNTU_24: '1'
