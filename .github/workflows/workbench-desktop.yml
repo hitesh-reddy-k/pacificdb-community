@@ -65,6 +65,10 @@ on:
         description: Attach current company guidance without replacing released program bytes
         type: boolean
         default: false
+      prepare_benchmark_inputs:
+        description: Independently reproduce and attach the checksum-frozen public 1M workload
+        type: boolean
+        default: false
       native_source_run:
         description: Successful native and SDK prerelease qualification run
         required: false
@@ -92,10 +96,17 @@ permissions:
   contents: read
 
 concurrency:
-  group: workbench-${{ github.ref }}-${{ inputs.attach_company_guide && 'company-guide' || inputs.assemble_candidate && 'assembly' || inputs.qualify_candidate && 'qualification' || inputs.publish_desktop && 'desktop-publication' || inputs.verify_publication && 'public-consumer' || inputs.source_ref || 'platform' }}
+  group: workbench-${{ github.ref }}-${{ inputs.prepare_benchmark_inputs && 'benchmark-inputs' || inputs.attach_company_guide && 'company-guide' || inputs.assemble_candidate && 'assembly' || inputs.qualify_candidate && 'qualification' || inputs.publish_desktop && 'desktop-publication' || inputs.verify_publication && 'public-consumer' || inputs.source_ref || 'platform' }}
   cancel-in-progress: false
 
 jobs:
+  benchmark_inputs:
+    if: github.event_name == 'workflow_dispatch' && inputs.prepare_benchmark_inputs
+    uses: ./.github/workflows/benchmark-inputs.yml
+    permissions:
+      contents: write
+    with:
+      release_tag: ${{ inputs.release_tag }}
   company_guide:
     if: github.event_name == 'workflow_dispatch' && inputs.attach_company_guide
     uses: ./.github/workflows/company-guide.yml
