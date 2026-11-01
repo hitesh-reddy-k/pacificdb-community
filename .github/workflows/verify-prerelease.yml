@@ -70,14 +70,20 @@ jobs:
           PYCODE
           npm ci --ignore-scripts --no-audit --no-fund
           node scripts/patch-build-tool-compat.mjs
+          # Use the current diagnostic driver with unchanged assertions. Product
+          # files and packaged-engine identity remain checked against the RC tag.
+          git show "$GITHUB_SHA:scripts/test-workbench-desktop.mjs" > build/public-desktop-driver.mjs
+          mkdir -p build/lib
+          cp scripts/lib/workbench-desktop-lifecycle.mjs build/lib/
       - name: Install and exercise public Linux package
         if: runner.os == 'Linux'
         run: |
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y xvfb xauth ./build/public-artifacts/"$CANDIDATE_FILE"
-          PACIFICDB_TEST_DESKTOP='/opt/PacificDB Workbench/pacificdb-workbench' \
-            xvfb-run -a npm run test:workbench:desktop | tee build/public-linux-gui.log
+          PACIFICDB_DESKTOP_DIAGNOSTICS="$PWD/build/public-gui-failure" \
+            PACIFICDB_TEST_DESKTOP='/opt/PacificDB Workbench/pacificdb-workbench' \
+            xvfb-run -a node build/public-desktop-driver.mjs | tee build/public-linux-gui.log
       - name: Install and exercise public Windows package
         if: runner.os == 'Windows'
         shell: pwsh
@@ -88,7 +94,8 @@ jobs:
           if (-not $process.WaitForExit(120000)) { Stop-Process -Id $process.Id -Force; throw 'Public installer timed out' }
           if ($process.ExitCode -ne 0) { throw "Public installer failed: $($process.ExitCode)" }
           $env:PACIFICDB_TEST_DESKTOP = "$installed\PacificDB Workbench.exe"
-          npm run test:workbench:desktop
+          $env:PACIFICDB_DESKTOP_DIAGNOSTICS = "$pwd/build/public-gui-failure"
+          node build/public-desktop-driver.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Install and exercise public macOS package
         if: runner.os == 'macOS'
@@ -100,8 +107,9 @@ jobs:
           hdiutil attach "build/public-artifacts/$CANDIDATE_FILE" -mountpoint "$mount" -nobrowse
           ditto "$mount/PacificDB Workbench.app" "$installed"
           hdiutil detach "$mount"
-          PACIFICDB_TEST_DESKTOP="$installed/Contents/MacOS/PacificDB Workbench" \
-            npm run test:workbench:desktop | tee build/public-macos-gui.log
+          PACIFICDB_DESKTOP_DIAGNOSTICS="$PWD/build/public-gui-failure" \
+            PACIFICDB_TEST_DESKTOP="$installed/Contents/MacOS/PacificDB Workbench" \
+            node build/public-desktop-driver.mjs | tee build/public-macos-gui.log
       - name: Download complete public distribution and verify qualification
         if: runner.os == 'Linux'
         run: |
@@ -130,6 +138,7 @@ jobs:
           export PACIFICDB_TEST_NODE_MODULE="file://$PWD/build/public-npm-consumer/node_modules/@pacificdb/client/src/index.js"
           export PACIFICDB_TEST_CLI_ENTRY="$PWD/build/public-npm-consumer/node_modules/@pacificdb/cli/bin/pacificdb.js"
           export PACIFICDB_TEST_TYPED_VECTORS=1 PACIFICDB_TEST_NATIVE_VECTOR_PREVIEW=1 PACIFICDB_TEST_VECTOR_SCHEMA=1
+          export PACIFICDB_VECTOR_PREVIEW_ENABLED=1
           PACIFICDB_TEST_LANGUAGES=node PACIFICDB_TEST_SKIP_JAVA_BUILD=1 \
             node scripts/test-cross-sdk-e2e.mjs "$PACIFICDB_TEST_ENGINE_BUILD" | tee build/public-node-live.log
           scripts/test-python-installed-client.sh \
@@ -137,8 +146,19 @@ jobs:
           scripts/test-java-installed-client.sh build/complete-public-distribution | tee build/public-java.log
       - name: Record public package verification
         run: |
-          node scripts/workbench-preview-evidence.mjs '${{ matrix.platform }}' \
-            "build/public-artifacts/$CANDIDATE_FILE" 'build/public-${{ matrix.platform }}-verified.json'
+          python - <<'PYCODE'
+          import hashlib,json,os,subprocess,platform
+          from pathlib import Path
+          p=Path('build/public-artifacts')/os.environ['CANDIDATE_FILE']
+          evidence={'profile':'public-prerelease-install-verification','releaseTag':os.environ['RELEASE_TAG'],
+            'productRevision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
+            'verificationWorkflowRevision':os.environ['GITHUB_SHA'],'platform':'${{ matrix.platform }}',
+            'artifact':{'filename':p.name,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()},
+            'checks':['public download/hash','packaged native identity','normal Chromium sandbox','document/media CRUD','restart persistence','bundled CLI backup/restore'],
+            'sdkConsumers':'authenticated TCP/TLS and SIGKILL recovery from registry npm/GitHub wheel/JAR' if platform.system()=='Linux' else 'separate Linux verification',
+            'status':'PASS','signing':'NOT_ASSERTED','productionQualification':'INCOMPLETE'}
+          Path('build/public-${{ matrix.platform }}-verified.json').write_text(json.dumps(evidence,indent=2)+'\n')
+          PYCODE
       - uses: actions/upload-artifact@v6
         if: always()
         with:
@@ -149,3 +169,4 @@ jobs:
             build/public-artifacts/SHA256SUMS
             build/public-*-verified.json
             build/public-*.log
+            build/public-gui-failure.*
