@@ -661,7 +661,11 @@ jobs:
           set -euo pipefail
           cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.2.0
           cmake --build build --target db_engine pacificdb -j2
-          npm run desktop:build -- --linux deb tar.gz --x64 --publish never
+          # Restore upstream's application-scoped AppArmor setup on Ubuntu24.
+          # The RC's custom postinst omitted it, making Chromium's SUID fallback
+          # fail on the space in /opt/PacificDB Workbench. Keep the OS sandbox.
+          npm run desktop:build -- --linux deb tar.gz --x64 --publish never \
+            --config.deb.afterInstall="$PWD/node_modules/app-builder-lib/templates/linux/after-install.tpl"
       - name: Install candidate and test its GUI with normal sandbox
         run: |
           set -euo pipefail
@@ -671,6 +675,15 @@ jobs:
           mkdir -p build/release-platforms
           cp dist/desktop/PacificDB-Workbench-1.2.0-rc.1-linux-amd64.deb build/release-platforms/
           node scripts/workbench-preview-evidence.mjs linux-x64 build/release-platforms/PacificDB-Workbench-1.2.0-rc.1-linux-amd64.deb build/release-platforms/workbench-linux-x64-preview.json
+          python3 - <<'PYCODE'
+          import json,hashlib,os
+          from pathlib import Path
+          p=Path('build/release-platforms/workbench-linux-x64-preview.json');d=json.loads(p.read_text())
+          d['packagingOverride']={'afterInstall':'electron-builder upstream templates/linux/after-install.tpl',
+            'sha256':hashlib.sha256(Path('node_modules/app-builder-lib/templates/linux/after-install.tpl').read_bytes()).hexdigest(),
+            'workflowRevision':os.environ['GITHUB_SHA'],'reason':'restore app-scoped AppArmor userns setup; keep normal Chromium sandbox'}
+          p.write_text(json.dumps(d,indent=2)+'\n')
+          PYCODE
       - name: Get Windows/macOS installers from successful exact-source jobs
         run: |
           set -euo pipefail
