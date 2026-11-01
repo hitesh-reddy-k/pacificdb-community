@@ -21,6 +21,7 @@ module.exports = {
   deb: { maintainer: 'PacificDB Community', depends: [process.env.PACIFICDB_DESKTOP_UBUNTU_24 === '1' ?
     'libc6 (>= 2.39)' : 'libc6 (>= 2.38)', process.env.PACIFICDB_DESKTOP_UBUNTU_24 === '1' ?
     'libstdc++6 (>= 13)' : 'libstdc++6 (>= 14)', 'libgcc-s1', 'libssl3t64',
+    process.env.PACIFICDB_DESKTOP_UBUNTU_24 === '1' ? 'libre2-10' : 'libre2-11-absl20240722',
     'liblz4-1', 'libxxhash0', 'libzstd1', 'zlib1g', 'libgtk-3-0t64', 'libnss3',
     'libxss1', 'libasound2t64', 'libgbm1', 'libnotify4', 'libxtst6', 'xdg-utils'],
     afterInstall: path.join(__dirname, 'after-install.sh') },

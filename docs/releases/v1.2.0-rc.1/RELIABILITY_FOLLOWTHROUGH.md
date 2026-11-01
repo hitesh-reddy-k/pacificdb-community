@@ -64,3 +64,11 @@ The matcher bridge is temporary maintenance responsibility until supported
 upstream build clients accept the patched matcher API. New dependency versions
 must be reviewed and tested before updating its source guards. No claim of native
 Windows/macOS installer qualification follows from Linux compatibility tests.
+
+## Native runtime distribution fix
+
+The Workbench Debian package now explicitly declares its bundled engine's RE2
+runtime dependency for Debian13 and Ubuntu24 builds. A populated development host
+can hide missing shared-library declarations; final qualification includes a clean
+Debian installation and direct bundled-engine/CLI execution, separately from GUI
+checks. Portable archives require the documented matching shared libraries.

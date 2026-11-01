@@ -41,7 +41,10 @@ Use `pacificdb --help` and the [company guide](COMPANY_TESTING_GUIDE.md).
 ## Workbench
 
 The Linux desktop archive includes Electron, the SDK, browser assets and the
-native engine/CLI. Extract it and run `pacificdb-workbench`; a `.deb` creates the
+native engine/CLI. It still needs matching native shared libraries: OpenSSL3, LZ4
+and RE2 plus the C++ runtime. The Debian package declares the host ABI (Debian13
+RE2/libstdc++14, or Ubuntu24 RE2/libstdc++13 for its separately built package).
+A Debian13 binary is not an Ubuntu24 binary; inspect the manifest and dependencies. Extract it and run `pacificdb-workbench`; a `.deb` creates the
 same launcher. Graphical runtime dependencies and Chromium sandbox behavior must
 be available. Do not run the GUI as root or disable its sandbox for normal use.
 
