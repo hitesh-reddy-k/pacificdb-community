@@ -37,6 +37,10 @@ on:
       - 'package-lock.json'
   workflow_dispatch:
     inputs:
+      publish_container:
+        description: Publish only the qualified public RC container
+        type: boolean
+        default: false
       release_tag:
         description: Exact existing workbench-vMAJOR.MINOR.PATCH tag to retry
         required: false
@@ -52,6 +56,14 @@ concurrency:
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
+  prerelease_container:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_container
+    uses: ./.github/workflows/container-prerelease.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      release_tag: ${{ inputs.release_tag }}
   linux:
     if: inputs.release_tag == ''
     runs-on: ubuntu-24.04

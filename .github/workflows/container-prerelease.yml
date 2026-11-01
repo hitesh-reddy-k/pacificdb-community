@@ -1,5 +1,10 @@
 name: Publish tested prerelease container
 on:
+  workflow_call:
+    inputs:
+      release_tag:
+        type: string
+        required: true
   workflow_dispatch:
     inputs:
       release_tag:
