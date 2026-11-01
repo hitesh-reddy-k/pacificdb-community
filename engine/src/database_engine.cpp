@@ -9,6 +9,11 @@
 #include "update_ops.hpp"
 #include "lsm.hpp"
 #include "query_limiter.hpp"
+#include "vector_top_k.hpp"
+#include "vector_value.hpp"
+#include "vector_numeric.hpp"
+#include "vector_schema.hpp"
+#include "vector_schema_lease.hpp"
 #include "raft_core.hpp"
 #include "memory_manager.hpp"
 #include "id_generator.hpp"
@@ -227,64 +232,10 @@ static std::vector<double> jsonToVector(const json& jvec) {
     return v;
 }
 
-struct HnswLiteNode {
-    std::string id;
-    std::vector<double> vec;
-    json doc;
-    std::vector<int> neighbors;
-};
-
-struct HnswLiteIndex {
-    std::vector<HnswLiteNode> nodes;
-    size_t signature = 0;
-};
-
-static std::unordered_map<std::string, HnswLiteIndex> g_hnswLiteIndexes;
-static std::mutex g_hnswLiteMutex;
-
-static bool hnswLiteEnabled() {
-    static const bool enabled = [] {
-        const char* v = std::getenv("VECTOR_HNSW_ENABLED");
-        if (!v) return true;
-        const std::string s(v);
-        return !(s == "0" || s == "false" || s == "FALSE" || s == "off");
-    }();
-    return enabled;
-}
-
-static int hnswLiteM() {
-    static const int value = [] {
-        const char* v = std::getenv("VECTOR_HNSW_M");
-        if (!v) return 8;
-        try { return std::max(4, std::min(48, std::stoi(v))); } catch (...) { return 8; }
-    }();
-    return value;
-}
-
-static int hnswLiteEfSearch() {
-    static const int value = [] {
-        const char* v = std::getenv("VECTOR_HNSW_EF_SEARCH");
-        if (!v) return 64;
-        try { return std::max(16, std::min(2048, std::stoi(v))); } catch (...) { return 64; }
-    }();
-    return value;
-}
-
-static bool hnswLiteAllowFallback() {
-    static const bool enabled = [] {
-        const char* v = std::getenv("VECTOR_HNSW_ALLOW_FALLBACK");
-        if (!v) return true;
-        const std::string s(v);
-        return !(s == "0" || s == "false" || s == "FALSE" || s == "off");
-    }();
-    return enabled;
-}
-
-static std::string vectorIndexKey(const std::string& userId,
-                                  const std::string& dbName,
-                                  const std::string& collection) {
-    return userId + "|" + dbName + "|" + collection;
-}
+// ANN selection is fail-closed until a qualified index generation is available.
+// These legacy settings can control fallback; they can never enable a builder.
+static bool vectorAnnEnabled() { return !envFalse("VECTOR_HNSW_ENABLED"); }
+static bool vectorAutoFallback() { return !vectorAnnEnabled() || !envFalse("VECTOR_HNSW_ALLOW_FALLBACK"); }
 
 static double vectorScore(const std::vector<double>& q, const std::vector<double>& v, const std::string& metric) {
     if (q.size() != v.size() || q.empty()) return std::numeric_limits<double>::quiet_NaN();
@@ -293,78 +244,31 @@ static double vectorScore(const std::vector<double>& q, const std::vector<double
     return cosineSimilarity(q, v);
 }
 
-static void rebuildHnswLiteIndex(HnswLiteIndex& idx,
-                                 const std::vector<json>& docs,
-                                 const std::string& metric) {
-    idx.nodes.clear();
-    idx.nodes.reserve(docs.size());
-
-    for (const auto& d : docs) {
-        if (d.contains("_deleted") && d["_deleted"].is_boolean() && d["_deleted"].get<bool>()) continue;
-        if (!d.contains("vector") || !d["vector"].is_array()) continue;
-        auto v = jsonToVector(d["vector"]);
-        if (v.empty()) continue;
-        idx.nodes.push_back(HnswLiteNode{d.value("id", std::string("")), std::move(v), d, {}});
-    }
-
-    const int M = hnswLiteM();
-    for (int i = 0; i < static_cast<int>(idx.nodes.size()); ++i) {
-        if (i == 0) continue;
-        std::vector<std::pair<double, int>> scored;
-        scored.reserve(i);
-        for (int j = 0; j < i; ++j) {
-            double s = vectorScore(idx.nodes[i].vec, idx.nodes[j].vec, metric);
-            scored.push_back({s, j});
-        }
-        std::sort(scored.begin(), scored.end(), [](const auto& a, const auto& b) { return a.first > b.first; });
-        int degree = std::min(M, static_cast<int>(scored.size()));
-        for (int k = 0; k < degree; ++k) {
-            int nb = scored[k].second;
-            idx.nodes[i].neighbors.push_back(nb);
-            idx.nodes[nb].neighbors.push_back(i);
+// Legacy arrays keep double precision. The numeric path avoids allocating a
+// second vector and computes the query norm only once per request. Non-numeric
+// legacy rows retain their existing decoder behavior until schema migration.
+static double scoreVectorArray(const std::vector<double>& q, const json& values,
+                               const std::string& metric, double queryNorm) {
+    if (values.size() != q.size()) return vectorScore(q, jsonToVector(values), metric);
+    const bool euclidean = metric == "l2" || metric == "euclidean";
+    const bool dot = metric == "dot" || metric == "dot_product";
+    double sum = 0, norm = 0;
+    for (size_t i = 0; i < q.size(); ++i) {
+        if (!values[i].is_number()) return vectorScore(q, jsonToVector(values), metric);
+        const double x = values[i].get<double>();
+        if (euclidean) {
+            const double d = q[i] - x;
+            sum += d * d;
+        } else {
+            sum += q[i] * x;
+            if (!dot) norm += x * x;
         }
     }
-}
-
-static std::vector<int> searchHnswLiteCandidates(const HnswLiteIndex& idx,
-                                                 const std::vector<double>& q,
-                                                 const std::string& metric,
-                                                 int efSearch) {
-    std::vector<int> result;
-    if (idx.nodes.empty() || q.empty()) return result;
-
-    struct ScoredNode { double score; int node; };
-    auto cmp = [](const ScoredNode& a, const ScoredNode& b) { return a.score < b.score; };
-    std::priority_queue<ScoredNode, std::vector<ScoredNode>, decltype(cmp)> frontier(cmp);
-
-    int entry = 0;
-    double entryScore = vectorScore(q, idx.nodes[entry].vec, metric);
-    frontier.push({entryScore, entry});
-
-    std::unordered_set<int> visited;
-    visited.insert(entry);
-
-    while (!frontier.empty() && static_cast<int>(result.size()) < efSearch) {
-        auto cur = frontier.top();
-        frontier.pop();
-        result.push_back(cur.node);
-
-        for (int nb : idx.nodes[cur.node].neighbors) {
-            if (visited.find(nb) != visited.end()) continue;
-            visited.insert(nb);
-            double ns = vectorScore(q, idx.nodes[nb].vec, metric);
-            frontier.push({ns, nb});
-        }
-    }
-
-    return result;
-}
-
-static void invalidateVectorIndex(const std::string& userId,
-                                  const std::string& dbName,
-                                  const std::string& collection) {
-    std::lock_guard<std::mutex> lk(g_hnswLiteMutex);
-    g_hnswLiteIndexes.erase(vectorIndexKey(userId, dbName, collection));
+    const double denominator = queryNorm * std::sqrt(norm);
+    const double score=euclidean?-std::sqrt(sum):dot?sum:denominator<1e-12?0.:sum/denominator;
+    if(!std::isfinite(score)||(!euclidean&&!dot&&!std::isfinite(denominator)))
+        return pacificdb::vectors::wideDenseScore(q,[&](size_t i){return values[i].get<double>();},metric);
+    return score;
 }
 
 /* ---------------- INIT ---------------- */
@@ -390,6 +294,7 @@ void DatabaseEngine::configureStorageRoot(const std::string& rootPath) {
 }
 
 void DatabaseEngine::init(const std::string& rootPath, bool restoreWal) {
+    stopNativeVectorIndexes();
     configureStorageRoot(rootPath);
 
     // Ensure system workspace and database exist for auth/metadata collections
@@ -510,6 +415,7 @@ bool DatabaseEngine::recoveryReplayMode() {
 }
 
 bool DatabaseEngine::applyReplicatedEntry(const nlohmann::json& entry) {
+    pacificdb::VectorSchemaApplyScope schemaApplyScope;
     try {
         const std::uint64_t applyIndex =
             entry.value("_raft_commit_index", static_cast<std::uint64_t>(0));
@@ -632,8 +538,13 @@ bool DatabaseEngine::applyReplicatedEntry(const nlohmann::json& entry) {
                       << " user=" << userId << " db=" << dbName
                       << " collection=" << collection << std::endl;
             ELOG("[ENGINE][APPLY] Creating collection on follower: user=" << userId << " db=" << dbName << " coll=" << collection << std::endl);
-            std::string collId = DatabaseEngine::createCollection(userId, dbName, collection);
-            if (collId.empty() && !DatabaseEngine::collectionExists(userId, dbName, collection)) {
+            // Existing public collection IDs remain unchanged. This additive
+            // identity binds derived vector definitions to one committed creation.
+            const auto vectorIdentity = applyIndex == 0 ? std::string() :
+                "raft-create:" + std::to_string(applyIndex);
+            std::string collId = createCollectionWithVectorIdentity(
+                userId, dbName, collection, vectorIdentity, entry.value("vector_schema",json()));
+            if (collId.empty() && (entry.contains("vector_schema") || !DatabaseEngine::collectionExists(userId, dbName, collection))) {
                 std::cerr << "[ENGINE][APPLY] CREATE_COLLECTION failed user=" << userId
                           << " db=" << dbName << " collection=" << collection << std::endl;
                 return false;
@@ -771,7 +682,8 @@ bool DatabaseEngine::applyReplicatedEntry(const nlohmann::json& entry) {
 
             // raft/log.bin is the WAL for replicated mutations. Writing the same payload
             // to both db.wal and the collection WAL tripled durable write traffic.
-            LSM::put(userId, dbName, collection, data, true, applyIndex, false);
+            LSM::put(userId, dbName, collection, data, true, applyIndex, false,
+                op=="DELETE" ? LSM::PutIntent::Tombstone : LSM::PutIntent::Record);
             updateReadFenceFromDoc(userId, dbName, collection, data);
             ELOG("[ENGINE][APPLY] Entry applied to LSM" << std::endl);
         }
@@ -920,6 +832,10 @@ static json readDatabaseMetadataFile(const fs::path& metaFile) {
 }
 
 static bool replaceDatabaseMetadata(const fs::path& metaFile, const json& meta) {
+    if(pacificdb::VectorSchema::metadataUsesSchemas(meta)){
+        pacificdb::VectorSchemaRegistry::persistMetadata(DATA_ROOT,metaFile,meta);
+        return true;
+    }
     const fs::path temporary = metaFile.string() + ".security.tmp";
     {
         std::ofstream output(temporary, std::ios::trunc);
@@ -960,14 +876,6 @@ static void clearReadFencesWithPrefix(const std::string& prefix) {
     }
     g_readFenceOrder.erase(std::remove_if(g_readFenceOrder.begin(), g_readFenceOrder.end(),
         [&](const std::string& key) { return key.rfind(prefix, 0) == 0; }), g_readFenceOrder.end());
-}
-
-static void clearVectorIndexesWithPrefix(const std::string& prefix) {
-    std::lock_guard<std::mutex> lock(g_hnswLiteMutex);
-    for (auto it = g_hnswLiteIndexes.begin(); it != g_hnswLiteIndexes.end();) {
-        if (it->first.rfind(prefix, 0) == 0) it = g_hnswLiteIndexes.erase(it);
-        else ++it;
-    }
 }
 
 static bool isTenantDocumentVisible(const std::string& userId, const json& doc) {
@@ -1061,9 +969,7 @@ static bool documentVisibleForCurrentRead(const json& doc, bool bypassRaft) {
         // This mode is used for isolated restore verification and local development.
         // Explicitly pending/uncommitted records remain hidden above; only the
         // cluster-relative commit/floor comparison is bypassed.
-        if (standaloneRaftBypassEnabled()) {
-            return true;
-        }
+        if (!standaloneRaftBypassEnabled()) {
         try {
             uint64_t docCommit = 0;
             bool commitFound = false;
@@ -1085,6 +991,7 @@ static bool documentVisibleForCurrentRead(const json& doc, bool bypassRaft) {
         } catch (...) {
             return false;
         }
+    }
     }
 
     const long long floorVersion = resolveReadFloorVersionFromContext();
@@ -1110,6 +1017,13 @@ static bool documentVisibleForCurrentRead(const json& doc, bool bypassRaft) {
     }
 
     return true;
+}
+
+bool DatabaseEngine::nativeVectorReadContextEligible() {
+    return resolveReadFloorVersionFromContext() < 0 && g_readContext.consistency != "bounded";
+}
+bool DatabaseEngine::nativeVectorRowVisible(const std::string& userId, const json& row) {
+    return isTenantDocumentVisible(userId, row) && documentVisibleForCurrentRead(row);
 }
 
 static void appendRaftWriteMeta(json& entry, const json& raftMeta) {
@@ -1184,6 +1098,7 @@ bool DatabaseEngine::createDatabase(const std::string& userId,
                                     const std::string& dbName,
                                     const std::string& dbType,
                                     const json& security) {
+    pacificdb::VectorSchemaLease schemaLease(userId,dbName,true);
 
     requireStorageNamespace(userId, dbName);
     if (!security.empty() && !validDatabaseSecurity(security, true)) return false;
@@ -1317,7 +1232,16 @@ bool DatabaseEngine::setDatabaseSecurity(const std::string& userId,
 /* ---------------- COLLECTION ---------------- */
 std::string DatabaseEngine::createCollection(const std::string& userId,
                                              const std::string& dbName,
-                                             const std::string& collection) {
+                                             const std::string& collection, const json& vectorSchema) {
+    if(!vectorSchema.is_null()&&!pacificdb::VectorSchemaRegistry::leasesEnabled())
+        throw std::runtime_error("vector_schema preview must be enabled before accepting writes");
+    pacificdb::VectorSchemaLease schemaLease(userId,dbName,true);
+    return createCollectionWithVectorIdentity(userId, dbName, collection, {}, vectorSchema);
+}
+
+std::string DatabaseEngine::createCollectionWithVectorIdentity(
+    const std::string& userId, const std::string& dbName,
+    const std::string& collection, const std::string& vectorIdentity, const json& vectorSchema) {
     requireStorageNamespace(userId, dbName, collection);
     std::lock_guard<std::mutex> metadataLock(g_databaseMetadataMutex);
     fs::path dbRoot = basePath(userId, dbName);
@@ -1327,6 +1251,23 @@ std::string DatabaseEngine::createCollection(const std::string& userId,
         std::cerr << "[ENGINE][CREATE COLLECTION] DB does not exist. Create DB before collections. user="
                   << userId << " db=" << dbName << "\n";
         return "";  // Return empty string instead of false
+    }
+
+    const auto schema = vectorSchema.is_null() ? json() : pacificdb::VectorSchema::canonical(vectorSchema);
+    if (!schema.is_null()) {
+        const auto metaFile = dbRoot / "db.meta";
+        if (fs::exists(metaFile)) {
+            std::ifstream input(metaFile);const auto existing=json::parse(input);
+            for (const auto& entry : existing.value("collections",json::array())) {
+                if (entry.is_object() && entry.value("name",std::string())==collection &&
+                    (!entry.contains("vector_schema") || pacificdb::VectorSchema::canonical(entry.at("vector_schema"))!=schema))
+                    throw std::invalid_argument("vector_schema immutable collection schema mismatch");
+            }
+        }
+        // Publish constraints before the collection can accept its first record.
+        // Failed creation leaves restrictive state until recovery/retry, not an
+        // acknowledged unvalidated collection.
+        pacificdb::VectorSchemaRegistry::install(DATA_ROOT,userId,dbName,collection,schema);
     }
 
     // Ensure data directory exists
@@ -1364,8 +1305,14 @@ std::string DatabaseEngine::createCollection(const std::string& userId,
 
             std::string collId = IDGenerator::generateObjectId();
             json collEntry = { {"name", collection}, {"id", collId}, {"created", std::time(nullptr)} };
+            if (!vectorIdentity.empty()) collEntry["vector_incarnation"] = vectorIdentity;
+            if (!schema.is_null()) collEntry["vector_schema"] = schema;
             meta["collections"].push_back(collEntry);
 
+            if (pacificdb::VectorSchema::metadataUsesSchemas(meta)) {
+                pacificdb::VectorSchemaRegistry::persistMetadata(DATA_ROOT,metaFile,meta,file);
+                return collId;
+            }
             std::ofstream mout(metaFile);
             if (mout) {
                 mout << meta.dump(2);
@@ -1374,7 +1321,7 @@ std::string DatabaseEngine::createCollection(const std::string& userId,
                           << collEntry.dump() << "\n";
                 return collId;
             }
-        } catch (...) {}
+        } catch (...) { if (!schema.is_null()) throw; }
         return std::string();
     }
 
@@ -1385,6 +1332,7 @@ std::string DatabaseEngine::createCollection(const std::string& userId,
     }
 
     std::cout << "[ENGINE][CREATE COLLECTION] Created " << file.string() << "\n";
+    if (!schema.is_null()) { out.flush(); if (!out.good()) throw std::runtime_error("vector_schema collection marker write failed"); out.close(); }
 
     // Update database metadata to include this collection with generated id
     try {
@@ -1404,8 +1352,14 @@ std::string DatabaseEngine::createCollection(const std::string& userId,
         // Generate a collection id and append
         std::string collId = IDGenerator::generateObjectId();
         json collEntry = { {"name", collection}, {"id", collId}, {"created", std::time(nullptr)} };
+        if (!vectorIdentity.empty()) collEntry["vector_incarnation"] = vectorIdentity;
+        if (!schema.is_null()) collEntry["vector_schema"] = schema;
         meta["collections"].push_back(collEntry);
 
+        if (pacificdb::VectorSchema::metadataUsesSchemas(meta)) {
+            pacificdb::VectorSchemaRegistry::persistMetadata(DATA_ROOT,metaFile,meta,file);
+            return collId;
+        }
         std::ofstream mout(metaFile);
         if (mout) {
             mout << meta.dump(2);
@@ -1415,6 +1369,7 @@ std::string DatabaseEngine::createCollection(const std::string& userId,
         return collId;
     } catch (const std::exception& ex) {
         std::cerr << "[ENGINE][CREATE COLLECTION] Failed to update db.meta: " << ex.what() << "\n";
+        if (!schema.is_null()) throw;
     }
     return std::string();
 }
@@ -1422,11 +1377,13 @@ std::string DatabaseEngine::createCollection(const std::string& userId,
 bool DatabaseEngine::dropCollection(const std::string& userId,
                                     const std::string& dbName,
                                     const std::string& collection) {
+    pacificdb::VectorSchemaLease schemaLease(userId,dbName,true);
     requireStorageNamespace(userId, dbName, collection);
 
     const fs::path dbRoot = basePath(userId, dbName);
     if (!fs::exists(dbRoot)) return true; // idempotent Raft replay
     if (!LSM::dropCollection(userId, dbName, collection)) return false;
+    retireNativeVectorIndexes(userId, dbName, collection);
 
     std::error_code ec;
     fs::remove(dbRoot / "data" / (collection + ".bin"), ec);
@@ -1444,6 +1401,7 @@ bool DatabaseEngine::dropCollection(const std::string& userId,
         if (!meta.contains("collections") || !meta["collections"].is_array()) {
             meta["collections"] = json::array();
         }
+        const bool durableSchemaMetadata=pacificdb::VectorSchema::metadataUsesSchemas(meta);
         json kept = json::array();
         for (const auto& item : meta["collections"]) {
             const std::string name = item.is_string() ? item.get<std::string>()
@@ -1451,6 +1409,9 @@ bool DatabaseEngine::dropCollection(const std::string& userId,
             if (name != collection) kept.push_back(item);
         }
         meta["collections"] = std::move(kept);
+        if(durableSchemaMetadata){
+            pacificdb::VectorSchemaRegistry::persistMetadata(DATA_ROOT,metaFile,meta);
+        }else{
         const fs::path temp = metaFile.string() + ".drop.tmp";
         std::ofstream output(temp, std::ios::trunc);
         if (!output) return false;
@@ -1463,14 +1424,16 @@ bool DatabaseEngine::dropCollection(const std::string& userId,
             fs::remove(temp);
             return false;
         }
+        }
     }
 
+    pacificdb::VectorSchemaRegistry::erase(DATA_ROOT,userId,dbName,collection);
     clearReadFencesWithPrefix(userId + "|" + dbName + "|" + collection + "|");
-    clearVectorIndexesWithPrefix(userId + "|" + dbName + "|" + collection);
     return true;
 }
 
 bool DatabaseEngine::dropDatabase(const std::string& userId, const std::string& dbName) {
+    pacificdb::VectorSchemaLease schemaLease(userId,dbName,true);
     requireStorageNamespace(userId, dbName);
 
     const fs::path dbRoot = basePath(userId, dbName);
@@ -1517,7 +1480,6 @@ bool DatabaseEngine::dropDatabase(const std::string& userId, const std::string& 
     fs::remove_all(dbRoot, ec);
     if (ec) return false;
     clearReadFencesWithPrefix(userId + "|" + dbName + "|");
-    clearVectorIndexesWithPrefix(userId + "|" + dbName + "|");
     return true;
 }
 
@@ -1586,6 +1548,7 @@ void DatabaseEngine::insert(const std::string& userId,
                             const std::string& collection,
                             json doc,
                             const json& raftMeta) {
+    pacificdb::VectorSchemaLease schemaLease(userId,dbName,false);
     requireStorageNamespace(userId, dbName, collection);
     StoragePipelineScope storageScope;
 
@@ -1602,6 +1565,7 @@ void DatabaseEngine::insert(const std::string& userId,
 
     // Engine-layer tenant guard: do not rely only on router checks.
     enforceTenantOnWrite(userId, doc);
+    pacificdb::VectorSchemaRegistry::validateRecord(DATA_ROOT,userId,dbName,collection,doc);
     stampMvccWrite(doc);
 
     // Check memory pressure and apply backpressure if needed
@@ -1752,6 +1716,7 @@ json DatabaseEngine::insertMany(const std::string& userId,
                                 const std::string& collection,
                                 std::vector<json> docs,
                                 const json& raftMeta) {
+    pacificdb::VectorSchemaLease schemaLease(userId,dbName,false);
     requireStorageNamespace(userId, dbName, collection);
     StoragePipelineScope storageScope;
     auto totalStart = std::chrono::steady_clock::now();
@@ -1788,6 +1753,7 @@ json DatabaseEngine::insertMany(const std::string& userId,
             doc["id"] = IDGenerator::generateObjectId();
         }
         enforceTenantOnWrite(userId, doc);
+        pacificdb::VectorSchemaRegistry::validateRecord(DATA_ROOT,userId,dbName,collection,doc);
         stampMvccWrite(doc);
         prepared.push_back(std::move(doc));
     }
@@ -1937,18 +1903,10 @@ void DatabaseEngine::insertVector(const std::string& userId,
                                   const json& doc,
                                   const json& raftMeta) {
     requireStorageNamespace(userId, dbName, collection);
-    if (!doc.contains("vector") || !doc["vector"].is_array() || doc["vector"].empty()) {
-        throw std::invalid_argument("vector must be a non-empty numeric array");
-    }
-    for (const auto& value : doc["vector"]) {
-        if (!value.is_number() || !std::isfinite(value.get<double>())) {
-            throw std::invalid_argument("vector must be a non-empty numeric array");
-        }
-    }
+    pacificdb::vectors::validateRecord(doc);
     json toStore = doc;
     toStore["kind"] = "vector";
     insert(userId, dbName, collection, std::move(toStore), raftMeta);
-    invalidateVectorIndex(userId, dbName, collection);
 }
 
 static size_t parseEnvBytes(const char* env, size_t fallback) {
@@ -2859,7 +2817,10 @@ std::vector<json> DatabaseEngine::find(const std::string& userId,
             findStep(6, "before disk read (full scan)");
             LSM::visitLatest(userId, dbName, collection,
                 [&](const LSM::LatestRowView& row) {
-                    if (QueryCancel::isCancelled()) return false;
+                    if (QueryCancel::isCancelled()) {
+                        QueryLimiter::markTruncated("cancelled");
+                        return false;
+                    }
                     if (++scanned > maxScan) {
                         QueryLimiter::reportScanLimitReached(scanned, maxScan);
                         return false;
@@ -2888,6 +2849,7 @@ std::vector<json> DatabaseEngine::find(const std::string& userId,
     if (!streamedScan) for (auto& d : docs) {
         if (QueryCancel::isCancelled()) {
             std::cerr << "[ENGINE][FIND] Query cancelled by timeout, returning partial results\n";
+            QueryLimiter::markTruncated("cancelled");
             break;
         }
 
@@ -2971,28 +2933,47 @@ size_t DatabaseEngine::count(const std::string& userId,
 }
 
 /* ---------------- VECTOR QUERY ---------------- */
+bool DatabaseEngine::vectorExactFallbackAllowed(const json& query) {
+    if (query.contains("allow_exact_fallback") && !query.at("allow_exact_fallback").is_boolean())
+        throw std::invalid_argument("allow_exact_fallback must be a boolean");
+    return query.value("allow_exact_fallback",
+        query.value("search_mode",std::string("auto")) == "auto" && vectorAutoFallback());
+}
+
 std::vector<json> DatabaseEngine::queryVector(const std::string& userId,
                                               const std::string& dbName,
                                               const std::string& collection,
-                                              const json& query) {
+                                              const json& query,
+                                              json* execution, DatabaseEngine::VectorDeadline deadline) {
     requireStorageNamespace(userId, dbName, collection);
     auto queryStart = std::chrono::steady_clock::now();
+    const auto queryDeadline = pacificdb::vector_query::bound(queryStart,QueryLimiter::getMaxQueryTime(),deadline);
     // query: { vector: [...], k: int, metric: "cosine"|"l2", filter: {...}, modality?: string }
-    if (!query.contains("vector") || !query["vector"].is_array() ||
-        query["vector"].empty()) {
+    if (!query.contains("vector")) {
         throw std::invalid_argument("vector must be a non-empty numeric array");
     }
-    for (const auto& value : query["vector"]) {
-        if (!value.is_number() || !std::isfinite(value.get<double>())) {
-            throw std::invalid_argument("vector must be a non-empty numeric array");
-        }
+    const auto queryValue = pacificdb::vectors::decode(query.at("vector"));
+    const auto vectorName = query.value("vector_name", std::string());
+    if (query.contains("vector_name")) {
+        pacificdb::vectors::validateName(vectorName);
     }
     if (query.contains("k") && !query["k"].is_number_integer()) {
         throw std::invalid_argument("k must be a positive integer");
     }
-    std::vector<double> q = jsonToVector(query.value("vector", json::array()));
+    if (query.contains("k")) {
+        const auto& requested = query["k"];
+        if ((requested.is_number_unsigned() && requested.get<uint64_t>() > static_cast<uint64_t>(std::numeric_limits<int>::max())) ||
+            (!requested.is_number_unsigned() && (requested.get<int64_t>() <= 0 ||
+             requested.get<int64_t>() > std::numeric_limits<int>::max()))) {
+            throw std::invalid_argument("k must be a positive integer within the supported range");
+        }
+    }
+    const auto& q = queryValue.values;
+    const double queryNorm = magnitude(q);
     int k = query.value("k", 10);
     std::string metric = query.value("metric", std::string("cosine"));
+    if (const auto schema=pacificdb::VectorSchemaRegistry::get(DATA_ROOT,userId,dbName,collection))
+        pacificdb::VectorSchema::query(*schema,vectorName,queryValue,metric);
     if (k <= 0) throw std::invalid_argument("k must be a positive integer");
     if (metric != "cosine" && metric != "l2" && metric != "euclidean" &&
         metric != "dot" && metric != "dot_product") {
@@ -3006,107 +2987,119 @@ std::vector<json> DatabaseEngine::queryVector(const std::string& userId,
     scored.reserve(static_cast<size_t>(std::max(1, k)));
 
     size_t scanned = 0;
+    const auto requestState = QueryLimiter::capture();
+    requestState->scannedRows.store(0, std::memory_order_relaxed);
     size_t maxScan = QueryLimiter::getMaxScanRows();
     size_t maxResults = QueryLimiter::getMaxResultDocs();
     const QueryNode filterQuery = parseQuery(filter);
     std::unordered_set<std::string> filterFields;
     collectQueryRootFields(filterQuery, filterFields);
 
-    bool usedHnswLite = false;
-    if (hnswLiteEnabled() && !q.empty()) {
-        auto key = vectorIndexKey(userId, dbName, collection);
-        size_t signature = 0;
-        size_t documentCount = 0;
-        LSM::visitLatest(userId, dbName, collection, [&](const LSM::LatestRowView& row) {
-            ++documentCount;
-            const auto id = row.field("id");
-            const auto version = row.field("_mvcc_version");
-            if (id) signature ^= std::hash<std::string>{}(id->dump());
-            if (version) signature ^= std::hash<std::string>{}(version->dump()) * 0x9e3779b97f4a7c15ULL;
-            return true;
-        });
-        signature ^= documentCount * 0xc2b2ae3d27d4eb4fULL;
-        HnswLiteIndex idxSnapshot;
-        {
-            std::lock_guard<std::mutex> lk(g_hnswLiteMutex);
-            auto& idx = g_hnswLiteIndexes[key];
-            if (idx.signature != signature || (idx.nodes.empty() && documentCount > 0)) {
-                std::vector<json> docs;
-                docs.reserve(documentCount);
-                LSM::visitLatest(userId, dbName, collection,
-                    [&](const LSM::LatestRowView& row) {
-                        docs.push_back(row.materialize());
-                        return true;
-                    });
-                rebuildHnswLiteIndex(idx, docs, metric);
-                idx.signature = signature;
-            }
-            idxSnapshot = idx;
-        }
-
-        if (!idxSnapshot.nodes.empty()) {
-            auto candidates = searchHnswLiteCandidates(idxSnapshot, q, metric, hnswLiteEfSearch());
-            for (int ci : candidates) {
-                if (ci < 0 || ci >= static_cast<int>(idxSnapshot.nodes.size())) continue;
-                const auto& node = idxSnapshot.nodes[ci];
-                const auto& d = node.doc;
-
-                scanned++;
-                if (scanned > maxScan) {
-                    QueryLimiter::reportScanLimitReached(scanned, maxScan);
-                    break;
-                }
-
-                if (!modality.empty() && d.value("modality", std::string("")) != modality) continue;
-                if (!evalQuery(filterQuery, d)) continue;
-                double score = vectorScore(q, node.vec, metric);
-                if (std::isnan(score)) continue;
-                scored.push_back({score, d});
-                if (scored.size() >= maxResults) {
-                    QueryLimiter::reportResultLimitReached(scored.size(), maxResults);
-                    QueryLimiter::markTruncated("result_limit");
-                    break;
-                }
-            }
-            usedHnswLite = true;
-        }
+    const std::string searchMode = query.value("search_mode", std::string("auto"));
+    if (searchMode != "auto" && searchMode != "exact" && searchMode != "ann") {
+        throw std::invalid_argument("search_mode must be auto, exact or ann");
     }
+    if (static_cast<size_t>(k) > maxResults) {
+        throw std::invalid_argument("vector k exceeds MAX_RESULT_DOCS");
+    }
+    if (QueryCancel::isCancelled()) throw std::runtime_error("vector_query_cancelled");
+    const auto checkVectorDeadline = [&] {
+        if (QueryCancel::isCancelled()) throw std::runtime_error("vector_query_cancelled");
+        if (std::chrono::steady_clock::now() > queryDeadline) {
+            throw std::runtime_error("vector_query_timeout");
+        }
+    };
+    checkVectorDeadline();
 
-    if (!usedHnswLite || (hnswLiteAllowFallback() && static_cast<int>(scored.size()) < k)) {
+    if (query.contains("allow_exact_fallback") && !query["allow_exact_fallback"].is_boolean()) {
+        throw std::invalid_argument("allow_exact_fallback must be a boolean");
+    }
+    const bool fallbackAllowed = vectorExactFallbackAllowed(query);
+    if (searchMode != "exact" && !fallbackAllowed) {
+        throw std::runtime_error("vector_index_unavailable: ABSENT (no qualified ANN generation)");
+    }
+    if (execution) *execution = {{"requested_mode", searchMode}, {"executed_mode", "exact"},
+        {"index_state", "ABSENT"}, {"fallback", searchMode != "exact"}};
+
+    {
+        // Restart as an exact scan, rather than retaining overlapping ANN
+        // candidates. visitLatest already resolves each ID/version/tombstone.
+        scored.clear();
+        scanned = 0;
+        pacificdb::vector_search::TopK top(static_cast<size_t>(k), QueryLimiter::getMaxResultBytes());
+        // Vector execution alone uses the new selective decoder. Ordinary
+        // document/media readers retain their existing storage interfaces.
+        const bool filterBeforeVector = !filterQuery.isMatchAll() || !modality.empty();
+        const bool rawDense = !queryValue.sparse && vectorName.empty();
+        std::vector<std::string> vectorFields(filterFields.begin(), filterFields.end());
+        for (const char* field : {"id", "tenant_id", "_deleted", "_visibility_state",
+                                  "committed", "_raft_commit_index", "_visibility_floor",
+                                  "version", "_mvcc_commit_ms"}) {
+            if (std::find(vectorFields.begin(), vectorFields.end(), field) == vectorFields.end()) vectorFields.emplace_back(field);
+        }
+        const std::string vectorField = vectorName.empty() ? "vector" : "vectors";
+        if (!filterBeforeVector && !rawDense) vectorFields.emplace_back(vectorField);
+        if (!modality.empty()) vectorFields.emplace_back("modality");
         LSM::visitLatest(userId, dbName, collection, [&](const LSM::LatestRowView& row) {
-            if (QueryCancel::isCancelled()) {
-                std::cerr << "[ENGINE][VECTOR] Query cancelled by timeout\n";
-                return false;
+            checkVectorDeadline();
+            if (++scanned > maxScan) {
+                // A prefix top-K is not an exact answer. Do not return one.
+                throw std::runtime_error("vector_scan_limit_exceeded");
             }
-
-            scanned++;
-            if (scanned > maxScan) {
-                QueryLimiter::reportScanLimitReached(scanned, maxScan);
-                return false;
-            }
-
-            json projected = projectLatestRow(row, filterFields);
-            const auto vectorValue = row.field("vector");
-            if (!vectorValue) return true;
-            projected["vector"] = *vectorValue;
+            requestState->scannedRows.store(scanned, std::memory_order_relaxed);
+            json projected = row.project(vectorFields);
+            if (!isTenantDocumentVisible(userId, projected) ||
+                !documentVisibleForCurrentRead(projected)) return true;
             if (!modality.empty()) {
-                const auto rowModality = row.field("modality");
-                if (!rowModality || !rowModality->is_string() ||
+                const auto rowModality = projected.find("modality");
+                if (rowModality == projected.end() || !rowModality->is_string() ||
                     rowModality->get<std::string>() != modality) return true;
             }
             if (!evalQuery(filterQuery, projected)) return true;
-            auto v = jsonToVector(*vectorValue);
-            if (v.empty() || q.empty()) return true;
-            double score = vectorScore(q, v, metric);
-            if (std::isnan(score)) return true;
-            scored.push_back({score, row.materialize()});
-            if (scored.size() >= maxResults) {
-                QueryLimiter::reportResultLimitReached(scored.size(), maxResults);
-                QueryLimiter::markTruncated("result_limit");
-                return false;
+            if (rawDense) {
+                if (auto score = row.denseScore(vectorField, q, metric, queryNorm)) {
+                    const auto id = projected.find("id");
+                    top.consider(*score, id != projected.end()
+                        ? (id->is_string() ? id->get<std::string>() : id->dump()) : "",
+                        [&] { return row.materialize(); });
+                    return true;
+                }
             }
+            auto vectorValue = projected.find(vectorField);
+            if (vectorValue == projected.end() && (filterBeforeVector || rawDense)) {
+                // Selective metadata filters should not decode rejected vectors.
+                if (auto value = row.field(vectorField)) projected[vectorField] = std::move(*value);
+                vectorValue = projected.find(vectorField);
+            }
+            if (vectorValue == projected.end()) return true;
+            const json* selected = &*vectorValue;
+            if (!vectorName.empty()) {
+                if (!selected->is_object() || !selected->contains(vectorName)) return true;
+                selected = &selected->at(vectorName);
+            }
+            double score;
+            if (!queryValue.sparse && selected->is_array()) {
+                // Preserve the existing no-copy legacy dense distance kernel.
+                score = scoreVectorArray(q, *selected, metric, queryNorm);
+            } else {
+                try {
+                    const auto stored = pacificdb::vectors::decode(*selected);
+                    score = pacificdb::vectors::score(queryValue, stored, metric);
+                } catch (const std::invalid_argument&) {
+                    // Ordinary document CRUD can contain arbitrary payloads. Such
+                    // records are ineligible, as with legacy invalid dense arrays.
+                    return true;
+                }
+            }
+            const auto id = projected.find("id");
+            top.consider(score, id != projected.end() ? (id->is_string() ? id->get<std::string>() : id->dump()) : "",
+                         [&] { return row.materialize(); });
             return true;
         });
+        for (auto& doc : top.finish()) {
+            const double score = doc.at("score").get<double>();
+            scored.push_back({score, std::move(doc)});
+        }
     }
 
     {
@@ -3131,9 +3124,15 @@ std::vector<json> DatabaseEngine::queryVector(const std::string& userId,
     if (k > (int)scored.size()) k = (int)scored.size();
     if (k > 0) {
         std::nth_element(scored.begin(), scored.begin() + (k - 1), scored.end(),
-                         [](const Scored& a, const Scored& b) { return a.score > b.score; });
+                         [](const Scored& a, const Scored& b) {
+                             return a.score > b.score || (a.score == b.score &&
+                                 a.doc.value("id", std::string()) < b.doc.value("id", std::string()));
+                         });
         std::sort(scored.begin(), scored.begin() + k,
-                  [](const Scored& a, const Scored& b) { return a.score > b.score; });
+                  [](const Scored& a, const Scored& b) {
+                             return a.score > b.score || (a.score == b.score &&
+                                 a.doc.value("id", std::string()) < b.doc.value("id", std::string()));
+                         });
     }
 
     std::vector<json> out;
@@ -3153,6 +3152,7 @@ std::vector<json> DatabaseEngine::queryVector(const std::string& userId,
             sm.updateShardQueryLoad(shardId, latencyMs);
         }
     } catch (...) {}
+    QueryLimiter::checkResultSize(out);
     return out;
 }
 
@@ -3165,6 +3165,7 @@ bool DatabaseEngine::updateOne(
     const json& update,
     const json& raftMeta
 ) {
+    pacificdb::VectorSchemaLease schemaLease(userId,dbName,false);
     requireStorageNamespace(userId, dbName, collection);
     StoragePipelineScope storageScope;
     bool isMainUsers = (dbName == "system" && collection == "users");
@@ -3251,6 +3252,7 @@ bool DatabaseEngine::updateOne(
     }
 
     if (!updated) { ELOG("[ENGINE][UPDATE] No match for filter " << filter.dump() << "\n"); return false; }
+    pacificdb::VectorSchemaRegistry::validateRecord(DATA_ROOT,userId,dbName,collection,updatedDoc);
     if (!updatedDoc.contains("id")) { ELOG("[ENGINE][UPDATE] Missing id field, skipping update write\n"); return false; }
 
     bool raftEnabled = RaftCore::instance().isEnabled();
@@ -3293,6 +3295,7 @@ bool DatabaseEngine::deleteOne(const std::string& userId,
                                const std::string& collection,
                                const json& filter,
                                const json& raftMeta) {
+    pacificdb::VectorSchemaLease schemaLease(userId,dbName,false);
     requireStorageNamespace(userId, dbName, collection);
     StoragePipelineScope storageScope;
 

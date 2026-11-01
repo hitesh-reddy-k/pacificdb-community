@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { PacificDBClient } from '@pacificdb/client';
+import { releaseIdentity } from './release.js';
 
 const JSON_LIMIT = 1024 * 1024;
 const MEDIA_LIMIT = 64 * 1024 * 1024;
@@ -174,7 +175,10 @@ async function execute(client, body) {
         string(body.id, 'id'), body.vector, object(body.metadata ?? {}, 'metadata'));
     case 'vectors.query':
       return client.queryVector(await collection(client, body), body.vector,
-        { k: body.k ?? 10, metric: body.metric ?? 'cosine', filter: object(body.filter ?? {}, 'filter') });
+        { k: body.k ?? 10, metric: body.metric ?? 'cosine', filter: object(body.filter ?? {}, 'filter'),
+          ...Object.fromEntries(['searchMode', 'vectorName', 'indexName', 'requireIndex',
+            'allowExactFallback', 'efSearch', 'timeoutMs'].filter(key => body[key] !== undefined)
+            .map(key => [key, body[key]])) });
     case 'media.list':
       database(client, body.database);
       return client.request({ action: 'community_media_list',
@@ -229,7 +233,7 @@ export async function createWorkbenchServer({ clientFactory, port = 0, connectio
         const [filename, contentType] = assets[pathname];
         let content = await readFile(new URL(`../workbench/${filename}`, import.meta.url),
           contentType === 'image/png' ? undefined : 'utf8');
-        if (pathname === '/') content = content.replace('__SESSION_TOKEN__', token);
+        if (pathname === '/') content = content.replace('__SESSION_TOKEN__', token).replace('__RELEASE_LABEL__', releaseIdentity.label);
         send(res, 200, content, contentType);
         return;
       }

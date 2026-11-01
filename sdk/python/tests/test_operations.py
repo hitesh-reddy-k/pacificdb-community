@@ -97,3 +97,13 @@ def test_malformed_lists_and_rows_preserve_context(response):
         with pytest.raises(PacificDBError) as got: db.find_one('items')
         assert got.value.code == 'unexpected_response_shape'
         assert db.database == 'app'
+
+
+def test_creation_schema_is_optional_and_preserves_scope():
+    schema={'default': {'dimensions':2,'metric':'dot','required':True}}
+    with peer(lambda request: {'status':'ok','echo':request}) as server, PacificDB(port=server.port,database='app') as db:
+        result=db.create_collection('vectors',vector_schema=schema)
+        assert result['echo']['vector_schema']==schema
+        assert result['echo']['dbName']=='app' and result['echo']['collection']=='vectors'
+        db.create_collection('legacy')
+        assert 'vector_schema' not in server.frames[-1]

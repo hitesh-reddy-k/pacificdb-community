@@ -301,13 +301,17 @@ static void validateProductionConfiguration() {
 
 static int runEngine(int argc, char** argv) {
     if (argc == 2 && std::string(argv[1]) == "--version") {
-        std::cout << "PacificDB Engine " << PACIFICDB_ENGINE_VERSION << "\n";
+        std::cout << "PacificDB Engine " << PACIFICDB_VERSION_DISPLAY << "\n";
         return 0;
     }
     if (argc == 2 && std::string(argv[1]) == "--build-info") {
         std::cout
             << "{\"product\":\"PacificDB Engine\","
             << "\"engineVersion\":\"" << PACIFICDB_ENGINE_VERSION << "\","
+            << "\"releaseVersion\":\"" << PACIFICDB_RELEASE_VERSION << "\","
+            << "\"releaseChannel\":\"" << PACIFICDB_RELEASE_CHANNEL << "\","
+            << "\"releaseName\":\"" << PACIFICDB_RELEASE_NAME << "\","
+            << "\"releaseTag\":\"" << PACIFICDB_RELEASE_TAG << "\","
             << "\"gitCommit\":\"" << PACIFICDB_GIT_COMMIT << "\","
             << "\"storageFormatVersion\":\"" << PACIFICDB_STORAGE_FORMAT_VERSION << "\","
             << "\"raftProtocolVersion\":\"" << PACIFICDB_RAFT_PROTOCOL_VERSION << "\","
@@ -340,6 +344,19 @@ static int runEngine(int argc, char** argv) {
     EnvConfig::load();
     if (EnvConfig::getBool("ENGINE_VERBOSE", false)) {
         EnvConfig::dump();
+    }
+    // QueryLimiter also guards internal visibility checks during committed apply.
+    // Reject invalid operator settings before opening storage or starting Raft.
+    const auto queryTimeout = EnvConfig::getString("MAX_QUERY_TIMEOUT_SEC", "30");
+    try {
+        size_t consumed = 0;
+        const auto seconds = std::stoll(queryTimeout, &consumed);
+        if (consumed != queryTimeout.size() || seconds <= 0 || seconds > 86400 ||
+            queryTimeout.find_first_not_of("0123456789") != std::string::npos)
+            throw std::invalid_argument("invalid query timeout");
+    } catch (const std::exception&) {
+        std::cerr << "[MAIN] FATAL: MAX_QUERY_TIMEOUT_SEC must be an integer between 1 and 86400; use request timeout_ms for a shorter query deadline\n";
+        return 78;
     }
     for (const char* bindKey : {"ENGINE_BIND_HOST", "RAFT_BIND_HOST"}) {
         const std::string value = EnvConfig::getString(bindKey, "0.0.0.0");
@@ -768,13 +785,33 @@ static int runEngine(int argc, char** argv) {
                   << "\n";
     }
 
+    // A one-member group has no remote voter that could own a conflicting tail.
+    // Commit a no-op before opening client sockets when a durable local suffix
+    // remains. Otherwise the first user write can be validated against metadata
+    // that its own apply later replaces with an earlier schema DDL entry.
+    bool startupApplyFailed=false;
+    if(RaftCore::instance().peerCount()==0 &&
+       RaftCore::instance().getLastIndex()>RaftCore::instance().getLastApplied()){
+        g_enginePhase.store("standalone_apply_fence");
+        const json noop={{"type","raft_noop"},{"reason","standalone_startup_apply_fence"}};
+        try {
+            if(!RaftCore::instance().replicateAndApply(noop,OperationPriority::CRITICAL,15000))
+                startupApplyFailed=true;
+        } catch(const std::exception& error) {
+            std::cerr<<"[MAIN] STARTUP_REFUSED: standalone apply fence: "<<error.what()<<"\n";
+            startupApplyFailed=true;
+        }
+        if(startupApplyFailed)
+            std::cerr<<"[MAIN] STARTUP_REFUSED: durable standalone log prefix did not apply; client listener withheld\n";
+    }
+
     g_enginePhase.store("server_startup");
     std::cout << "\n[MAIN] ========== SERVER STARTUP ==========\n";
 #ifdef _WIN32
     WindowsShutdownEvent shutdownEvent(
         pacificdb::cli::currentProcessId());
 #endif
-    startServer();  // socket server loop
+    if(!startupApplyFailed) startServer();  // socket server loop
 
     // ============================================
     // CLEANUP ON EXIT
@@ -819,6 +856,7 @@ static int runEngine(int argc, char** argv) {
     // exists only in memory. Legacy shutdown wrote that marker without draining
     // active memtables, which made a fast restart silently lose the WAL-only
     // suffix. No marker is written if the drain fails.
+    DatabaseEngine::stopNativeVectorIndexes();
     bool cleanFlushComplete = false;
     try {
         LSM::forceFlush();
@@ -844,7 +882,7 @@ static int runEngine(int argc, char** argv) {
 
     // Mark clean shutdown only after the force-flush contract is proven.
     bool cleanMarkerWritten = false;
-    if (cleanFlushComplete) {
+    if (cleanFlushComplete && !startupApplyFailed) {
         try {
             RecoveryManager::markCleanShutdown(dataRoot);
             cleanMarkerWritten = true;
@@ -888,7 +926,7 @@ static int runEngine(int argc, char** argv) {
 
     std::cout << "[MAIN] Shutdown complete" << std::endl;
 
-    return serverStartupFailed() ? 78 : 0;
+    return (startupApplyFailed || serverStartupFailed()) ? 78 : 0;
 }
 
 int main(int argc, char** argv) {

@@ -4,9 +4,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const version = JSON.parse(await readFile(path.join(repositoryRoot, 'cli/package.json'), 'utf8')).version;
-const releaseFilename = `release-${version}.html`;
 const siteRoot = path.join(repositoryRoot, 'site');
+// The published website channel does not advance when an unpublished candidate
+// changes npm metadata. Validate its actual declared download/version channel.
+const publicIndex = await readFile(path.join(siteRoot, 'index.html'), 'utf8');
+const publishedBadge = publicIndex.match(/<span class="badge">v([0-9]+\.[0-9]+\.[0-9]+)(?: candidate[^<]*)?<\/span>/);
+assert.ok(publishedBadge, 'published site must declare its version');
+const version = publishedBadge[1];
+const releaseFilename = `release-${version}.html`;
 
 async function readSiteFile(filename) {
   return readFile(path.join(siteRoot, filename), 'utf8');

@@ -126,6 +126,10 @@ public:
     readAll(const std::string& walFile);
 
     static WalScanResult scan(const std::string& logicalWal, const WalVisitor& visitor);
+    // Startup/recovery scan: requires an idle log and excludes append/clear/
+    // reclaim while callbacks run, without holding the append mutex. Callbacks
+    // must not mutate this log; conflicting operations fail explicitly.
+    static WalScanResult scanRecovery(const std::string& logicalWal, const WalVisitor& visitor);
     static bool reclaimThrough(const std::string& logicalWal, std::uint64_t coveredLsn,
                                std::string* error = nullptr);
 

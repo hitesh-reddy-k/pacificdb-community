@@ -12,11 +12,14 @@ on:
       - 'scripts/test-desktop-engine.mjs'
       - 'scripts/test-index-low-cardinality.mjs'
       - 'scripts/prepare-workbench-desktop.mjs'
+      - 'release.json'
+      - 'scripts/release_identity.py'
+      - 'scripts/workbench-preview-evidence.mjs'
       - 'package.json'
       - 'package-lock.json'
   push:
-    branches: [main]
-    tags: ['workbench-v*']
+    branches: [main, v1.2]
+    tags: ['workbench-v*', 'v*-rc.*']
     paths:
       - '.github/workflows/workbench-desktop.yml'
       - 'desktop/**'
@@ -27,6 +30,9 @@ on:
       - 'scripts/test-desktop-engine.mjs'
       - 'scripts/test-index-low-cardinality.mjs'
       - 'scripts/prepare-workbench-desktop.mjs'
+      - 'release.json'
+      - 'scripts/release_identity.py'
+      - 'scripts/workbench-preview-evidence.mjs'
       - 'package.json'
       - 'package-lock.json'
   workflow_dispatch:
@@ -60,7 +66,11 @@ jobs:
       - name: Resolve Workbench and component versions
         run: |
           echo "WORKBENCH_VERSION=$(node -p 'require("./package.json").version')" >> "$GITHUB_ENV"
-          echo "PACIFICDB_COMPONENT_VERSION=$(node -p 'require("./cli/package.json").version')" >> "$GITHUB_ENV"
+          echo "PACIFICDB_COMPONENT_VERSION=$(python3 scripts/release_identity.py --field version)" >> "$GITHUB_ENV"
+      - name: Validate candidate tag identity
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: test "$GITHUB_REF_NAME" = "$(node -p 'require("./release.json").tag')"
       - name: Install native and GUI dependencies
         run: |
           sudo apt-get update
@@ -69,6 +79,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run test:npm
       - run: npm run test:build-tools
+      - run: node --test scripts/test-workbench-preview-evidence.mjs
       - name: Build native engine and CLI
         run: |
           cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release \
@@ -76,6 +87,7 @@ jobs:
           cmake --build build --target db_engine pacificdb -j2
       - run: node scripts/test-workbench-e2e.mjs build
       - run: node scripts/test-desktop-engine.mjs build
+      - run: node scripts/test-workbench-desktop-vector-preview.mjs build
       - run: node scripts/test-index-low-cardinality.mjs build
       - name: Browser workflow
         run: |
@@ -86,7 +98,7 @@ jobs:
           PACIFICDB_DESKTOP_UBUNTU_24: '1'
           PACIFICDB_DESKTOP_RELEASE: '1'
           ELECTRON_BUILDER_COMPRESSION_LEVEL: '1'
-        run: npm run desktop:build -- --linux deb tar.gz --x64
+        run: npm run desktop:build -- --linux deb tar.gz --x64 --publish never
       - name: Download and install previous Workbench Debian
         shell: bash
         run: |
@@ -118,6 +130,7 @@ jobs:
           sudo apt-get remove -y pacificdb-workbench
           test -d "$RUNNER_TEMP/workbench-data-linux/database"
       - name: Record Linux platform evidence
+        if: ${{ !contains(env.WORKBENCH_VERSION, '-') }}
         run: |
           python3 scripts/workbench_release_qualification.py platform \
             --name linux-x64 --version "$WORKBENCH_VERSION" \
@@ -126,6 +139,12 @@ jobs:
           mkdir -p build/workbench-upload
           cp "dist/desktop/PacificDB-Workbench-${WORKBENCH_VERSION}-linux-amd64.deb" \
             build/workbench-linux-x64.json build/workbench-upload/
+      - name: Record Linux preview staging evidence
+        if: contains(env.WORKBENCH_VERSION, '-')
+        run: |
+          node scripts/workbench-preview-evidence.mjs linux-x64 "dist/desktop/PacificDB-Workbench-${WORKBENCH_VERSION}-linux-amd64.deb" build/workbench-linux-x64-preview.json
+          mkdir -p build/workbench-upload
+          cp "dist/desktop/PacificDB-Workbench-${WORKBENCH_VERSION}-linux-amd64.deb" build/workbench-linux-x64-preview.json build/workbench-upload/
       - uses: actions/upload-artifact@v6
         with:
           name: workbench-linux-x64
@@ -151,10 +170,15 @@ jobs:
         shell: pwsh
         run: |
           "WORKBENCH_VERSION=$(node -p 'require("./package.json").version')" >> $env:GITHUB_ENV
-          "PACIFICDB_COMPONENT_VERSION=$(node -p 'require("./cli/package.json").version')" >> $env:GITHUB_ENV
+          "PACIFICDB_COMPONENT_VERSION=$(python scripts/release_identity.py --field version)" >> $env:GITHUB_ENV
+      - name: Validate candidate tag identity
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: test "$GITHUB_REF_NAME" = "$(node -p 'require("./release.json").tag')"
       - run: npm ci --no-audit --no-fund
       - run: npm run test:npm
       - run: npm run test:build-tools
+      - run: node --test scripts/test-workbench-preview-evidence.mjs
       - name: Build static native binaries
         shell: pwsh
         run: |
@@ -181,6 +205,8 @@ jobs:
         shell: pwsh
         run: |
           node scripts/test-desktop-engine.mjs build/Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/test-workbench-desktop-vector-preview.mjs build/Release
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Sign bundled native executables for release tags
         if: env.WORKBENCH_RELEASE_TAG != '' && env.WORKBENCH_RELEASE_TAG != 'workbench-v1.1.1'
@@ -267,6 +293,7 @@ jobs:
             throw 'Workbench data directory was removed by uninstall.'
           }
       - name: Record Windows platform evidence
+        if: ${{ !contains(env.WORKBENCH_VERSION, '-') }}
         shell: pwsh
         run: |
           git status --porcelain --untracked-files=all
@@ -278,6 +305,14 @@ jobs:
           New-Item -ItemType Directory -Force -Path build/workbench-upload | Out-Null
           Copy-Item "dist/desktop/PacificDB-Workbench-$env:WORKBENCH_VERSION-win-x64.exe", `
             build/workbench-windows-x64.json -Destination build/workbench-upload
+      - name: Record Windows preview staging evidence
+        if: contains(env.WORKBENCH_VERSION, '-')
+        shell: pwsh
+        run: |
+          node scripts/workbench-preview-evidence.mjs windows-x64 "dist/desktop/PacificDB-Workbench-$env:WORKBENCH_VERSION-win-x64.exe" build/workbench-windows-x64-preview.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Force -Path build/workbench-upload | Out-Null
+          Copy-Item "dist/desktop/PacificDB-Workbench-$env:WORKBENCH_VERSION-win-x64.exe", build/workbench-windows-x64-preview.json -Destination build/workbench-upload
       - uses: actions/upload-artifact@v6
         with:
           name: workbench-windows-x64
@@ -313,10 +348,15 @@ jobs:
       - name: Resolve Workbench and component versions
         run: |
           echo "WORKBENCH_VERSION=$(node -p 'require("./package.json").version')" >> "$GITHUB_ENV"
-          echo "PACIFICDB_COMPONENT_VERSION=$(node -p 'require("./cli/package.json").version')" >> "$GITHUB_ENV"
+          echo "PACIFICDB_COMPONENT_VERSION=$(python3 scripts/release_identity.py --field version)" >> "$GITHUB_ENV"
+      - name: Validate candidate tag identity
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: test "$GITHUB_REF_NAME" = "$(node -p 'require("./release.json").tag')"
       - run: npm ci --no-audit --no-fund
       - run: npm run test:npm
       - run: npm run test:build-tools
+      - run: node --test scripts/test-workbench-preview-evidence.mjs
       - name: Build native engine and CLI
         shell: bash
         run: |
@@ -341,6 +381,7 @@ jobs:
             if [[ -z "${!name}" ]]; then echo "Missing $name" >&2; exit 1; fi
           done
       - run: node scripts/test-desktop-engine.mjs build
+      - run: node scripts/test-workbench-desktop-vector-preview.mjs build
       - name: Package Workbench for macOS
         env:
           ELECTRON_BUILDER_COMPRESSION_LEVEL: '1'
@@ -401,6 +442,7 @@ jobs:
           rm -rf "$RUNNER_TEMP/workbench-candidate"
           test -d "$RUNNER_TEMP/workbench-data-macos/database"
       - name: Record macOS platform evidence
+        if: ${{ !contains(env.WORKBENCH_VERSION, '-') }}
         run: |
           python3 scripts/workbench_release_qualification.py platform \
             --name macos-${{ matrix.arch }} --version "$WORKBENCH_VERSION" \
@@ -409,6 +451,12 @@ jobs:
           mkdir -p build/workbench-upload
           cp "dist/desktop/PacificDB-Workbench-${WORKBENCH_VERSION}-mac-${{ matrix.arch }}.dmg" \
             "build/workbench-macos-${{ matrix.arch }}.json" build/workbench-upload/
+      - name: Record macOS preview staging evidence
+        if: contains(env.WORKBENCH_VERSION, '-')
+        run: |
+          node scripts/workbench-preview-evidence.mjs macos-${{ matrix.arch }} "dist/desktop/PacificDB-Workbench-${WORKBENCH_VERSION}-mac-${{ matrix.arch }}.dmg" build/workbench-macos-${{ matrix.arch }}-preview.json
+          mkdir -p build/workbench-upload
+          cp "dist/desktop/PacificDB-Workbench-${WORKBENCH_VERSION}-mac-${{ matrix.arch }}.dmg" build/workbench-macos-${{ matrix.arch }}-preview.json build/workbench-upload/
       - uses: actions/upload-artifact@v6
         with:
           name: workbench-macos-${{ matrix.arch }}
@@ -436,7 +484,7 @@ jobs:
       - name: Resolve Workbench and component versions
         run: |
           echo "WORKBENCH_VERSION=$(node -p 'require("./package.json").version')" >> "$GITHUB_ENV"
-          echo "PACIFICDB_COMPONENT_VERSION=$(node -p 'require("./cli/package.json").version')" >> "$GITHUB_ENV"
+          echo "PACIFICDB_COMPONENT_VERSION=$(python3 scripts/release_identity.py --field version)" >> "$GITHUB_ENV"
       - name: Check release version
         shell: bash
         run: |
@@ -444,6 +492,7 @@ jobs:
           version="${WORKBENCH_RELEASE_TAG#workbench-v}"
           test "$WORKBENCH_RELEASE_TAG" = "workbench-v$version"
           test "$version" = "$WORKBENCH_VERSION"
+          test "$(python3 scripts/release_identity.py --field channel)" = stable
       - name: Download installers from tag build
         if: inputs.release_tag == ''
         uses: actions/download-artifact@v4
@@ -549,5 +598,5 @@ jobs:
           gh release create "$WORKBENCH_RELEASE_TAG" dist/desktop/PacificDB-Workbench-*.deb \
             dist/desktop/PacificDB-Workbench-*.exe \
             dist/desktop/PacificDB-Workbench-*.dmg dist/desktop/SHA256SUMS \
-            --title "PacificDB Workbench ${WORKBENCH_RELEASE_TAG#workbench-v}" \
+            --latest=false --title "PacificDB Workbench ${WORKBENCH_RELEASE_TAG#workbench-v}" \
             --notes "Desktop Workbench with bundled engine and CLI for Linux, Windows, and macOS."

@@ -391,6 +391,11 @@ test('stores arbitrary media bytes and vector data through public methods', asyn
                          { modality: 'image' });
   await client.queryVector('embeddings', [0.25, 0.75],
                            { k: 3, filter: { modality: 'image' } });
+  await client.queryVector('embeddings', [0.25, 0.75], { searchMode: 'exact' });
+  await client.queryVector('embeddings', [0.25, 0.75],
+    { searchMode: 'ann', allowExactFallback: true });
+  assert.throws(() => client.queryVector('embeddings', [0.25, 0.75],
+                                       { searchMode: 'unknown' }), /searchMode/);
 
   assert.equal(requests[0].action, 'insert');
   assert.equal(requests[0].data.kind, 'media');
@@ -400,6 +405,20 @@ test('stores arbitrary media bytes and vector data through public methods', asyn
   assert.deepEqual(requests[2].data.vector, [0.25, 0.75]);
   assert.equal(requests[3].action, 'queryVector');
   assert.deepEqual(requests[3].filter, { modality: 'image' });
+  assert.equal(requests[3].search_mode, undefined);
+  assert.equal(requests[4].search_mode, 'exact');
+  assert.equal(requests[5].allow_exact_fallback, true);
+  assert.throws(() => client.queryVector('embeddings', [0.25, 0.75],
+    { allowExactFallback: 'yes' }), /allowExactFallback/);
+  const sparse = { format: 'sparse-v1', precision: 'float64', dimensions: 1000,
+    indices: [3, 99], values: [0.125, -2] };
+  await client.putVector('embeddings', 'terms', sparse);
+  await client.queryVector('embeddings', sparse, { searchMode: 'exact', vectorName: 'terms' });
+  assert.deepEqual(requests[6].data.vector, sparse);
+  assert.deepEqual(requests[7].vector, sparse);
+  assert.equal(requests[7].vector_name, 'terms');
+  assert.throws(() => client.putVector('embeddings', 'bad', { ...sparse, indices: [3, 3] }), /sparse/);
+  assert.throws(() => client.queryVector('embeddings', sparse, { vectorName: '' }), /vectorName/);
 });
 
 test('uploads and downloads media sequentially in bounded chunks', async (t) => {
@@ -607,4 +626,30 @@ test('exports complete backup files in verified bounded chunks', async (t) => {
   assert.equal(result.sizeBytes, source.length);
   assert.equal(requests.filter((request) =>
     request.action === 'export_backup_file_chunk').length, 3);
+});
+
+
+test('native vector preview options preserve wire fields and reject invalid deadlines', async () => {
+  const client = new PacificDBClient({ database: 'app' });
+  const requests=[];client.request=async request=>{requests.push(request);return {status:'ok'};};
+  await client.queryVector('vectors',[1,0],{indexName:'flat',requireIndex:true,searchMode:'exact',timeoutMs:0});
+  assert.equal(requests[0].index_name,'flat');assert.equal(requests[0].require_index,true);
+  assert.equal(requests[0].timeout_ms,0);assert.equal(requests[0].search_mode,'exact');
+  await client.queryHybrid('vectors',[1,0],'text',{indexName:'flat',timeoutMs:20});
+  assert.equal(requests[1].timeout_ms,20);assert.equal(requests[1].action,'queryHybrid');
+  for(const timeoutMs of [-1,1.5,3600001,'10']) {
+    assert.throws(()=>client.queryVector('vectors',[1,0],{timeoutMs}),/timeoutMs/);
+    assert.throws(()=>client.queryHybrid('vectors',[1,0],'text',{indexName:'flat',timeoutMs}),/timeoutMs/);
+  }
+  client.close();
+});
+
+
+test('bounded ANN exploration option retains exact wire spelling', async () => {
+ const client=new PacificDBClient({database:'app'});let sent;
+ client.request=async request=>{sent=request;return {status:'ok'};};
+ await client.queryVector('vectors',[1,0],{indexName:'ann',searchMode:'ann',efSearch:200});
+ assert.equal(sent.ef_search,200);
+ for(const efSearch of [0,-1,1.5,100001,'10'])assert.throws(()=>client.queryVector('vectors',[1,0],{efSearch}),/efSearch/);
+ client.close();
 });

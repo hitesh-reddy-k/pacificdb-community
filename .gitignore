@@ -27,3 +27,9 @@
 .superpowers/
 **/*.egg-info/
 /release-sdk/
+
+# Preserve generated local release evidence/artifacts without publishing binaries
+# or transient test data as source. Portable reports are explicitly selected.
+/docs/PacificDB-v1.2-*.zip
+/docs/PacificDB-v1.2-*.zip.sha256
+/docs/v1.2-evidence/

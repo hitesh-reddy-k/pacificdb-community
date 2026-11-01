@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pacificdb"
-version = "1.1.2"
+version = "1.2.0rc1"
 description = "Database-first PacificDB Community client with verified pooled connections and streaming transfers"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -24,7 +24,7 @@ classifiers = [
 [project.urls]
 Source = "https://github.com/hitesh-reddy-k/pacificdb-community"
 Issues = "https://github.com/hitesh-reddy-k/pacificdb-community/issues"
-Documentation = "https://github.com/hitesh-reddy-k/pacificdb-community/tree/pacificdb-v1.0/sdk/python"
+Documentation = "https://github.com/hitesh-reddy-k/pacificdb-community/tree/v1.2.0-rc.1/sdk/python"
 
 [tool.setuptools.packages.find]
 include = ["pacificdb", "pacificdb.*"]

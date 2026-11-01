@@ -3,6 +3,11 @@
 #include <string>
 #include <vector>
 #include <mutex>
+#include <shared_mutex>
+#include <memory_resource>
+#include <limits>
+#include <functional>
+#include "vector_memory_budget.hpp"
 #include <unordered_map>
 #include <chrono>
 #include <atomic>
@@ -213,9 +218,12 @@ enum class DistanceMetric {
 };
 
 struct HNSWNode {
-    std::string id;
-    std::vector<float> vector;
-    std::vector<std::vector<size_t>> neighbors; // neighbors[level] = [idx, ...]
+    explicit HNSWNode(std::pmr::memory_resource* resource = std::pmr::get_default_resource())
+        : id(resource), vector(resource), neighbors(resource) {}
+    std::pmr::string id;
+    std::pmr::vector<float> vector;
+    std::pmr::vector<std::pmr::vector<size_t>> neighbors;
+    bool deleted{false};
 };
 
 struct HNSWConfig {
@@ -224,52 +232,89 @@ struct HNSWConfig {
     size_t efSearch = 50;       // Size of dynamic candidate list during search
     DistanceMetric metric = DistanceMetric::COSINE;
     size_t dimensions = 0;     // Set on first insert
+    size_t maxElements = 1000000; // Node-count bound, not a byte/RSS reservation
+    size_t maxMemoryBytes = 256ULL * 1024 * 1024; // Graph plus internal search scratch
+    size_t maxBuildMilliseconds = 600000;
 };
 
 class HNSWIndex {
 public:
-    HNSWIndex(HNSWConfig config = {}) : config_(config), maxLevel_(0), entryPoint_(0) {}
+    using Check = std::function<void()>;
+    explicit HNSWIndex(HNSWConfig config = {});
+    HNSWIndex(HNSWConfig config, std::shared_ptr<VectorAllocationBudget> sharedBudget);
 
     // Insert a vector with an ID
     bool insert(const std::string& id, const std::vector<float>& vec);
+    bool insert(const std::string& id, const std::vector<float>& vec, const Check& check);
+
+    // Incremental replacement appends a new navigable node and tombstones the
+    // previous physical node. maxElements bounds physical history; rebuild is
+    // required at capacity. Removed nodes remain traversal bridges, never hits.
+    bool upsert(const std::string& id,const std::vector<float>& vec,const Check& check = {});
+    bool remove(const std::string& id,const Check& check = {});
 
     // Search for k nearest neighbors
     std::vector<std::pair<std::string, float>> search(
         const std::vector<float>& query, size_t k) const;
+    std::vector<std::pair<std::string, float>> search(
+        const std::vector<float>& query, size_t k, const Check& check) const;
+    std::vector<std::pair<std::string,float>> search(
+        const std::vector<float>& query,size_t k,const Check& check,size_t efSearch) const;
 
     // Batch insert
     size_t batchInsert(const std::vector<std::pair<std::string, std::vector<float>>>& items);
 
-    size_t size() const { return nodes_.size(); }
-    size_t dimensions() const { return config_.dimensions; }
+    size_t size() const {
+        std::shared_lock<std::shared_mutex> lock(mu_);
+        return idToIndex_.size();
+    }
+    size_t dimensions() const {
+        std::shared_lock<std::shared_mutex> lock(mu_);
+        return config_.dimensions;
+    }
 
     json getStats() const {
+        std::shared_lock<std::shared_mutex> lock(mu_);
         return {
-            {"size", nodes_.size()},
+            {"size", idToIndex_.size()},
+            {"physicalNodes", nodes_.size()},
+            {"tombstones", nodes_.size()-idToIndex_.size()},
             {"dimensions", config_.dimensions},
             {"maxLevel", maxLevel_},
             {"M", config_.M},
             {"efConstruction", config_.efConstruction},
             {"efSearch", config_.efSearch},
+            {"maxElements", config_.maxElements},
+            {"allocatedBytes", memory_.accounting().used()},
+            {"peakAllocatedBytes", memory_.accounting().peak()},
+            {"memoryLimitBytes", config_.maxMemoryBytes},
+            {"healthy", !failed_},
             {"metric", config_.metric == DistanceMetric::COSINE ? "cosine" :
                        config_.metric == DistanceMetric::EUCLIDEAN ? "euclidean" : "dot_product"}
         };
     }
 
 private:
-    float distance(const std::vector<float>& a, const std::vector<float>& b) const;
+    template<class A, class B> float distance(const A& a, const B& b) const {
+        if (a.size() != b.size()) return std::numeric_limits<float>::max();
+        return distanceRaw(a.data(), b.data(), a.size());
+    }
+    float distanceRaw(const float* a, const float* b, size_t count) const;
     int randomLevel() const;
 
     // Search from entry point at a specific level
-    std::vector<std::pair<size_t, float>> searchLayer(
-        const std::vector<float>& query, size_t entryIdx, size_t ef, int level) const;
+    std::pmr::vector<std::pair<size_t, float>> searchLayer(
+        const std::vector<float>& query, size_t entryIdx, size_t ef, int level, const Check& check, bool liveOnly = false) const;
+    bool insertLocked(const std::string& id,const std::vector<float>& vec,const Check& check,bool replace);
 
     HNSWConfig config_;
-    std::vector<HNSWNode> nodes_;
-    mutable std::mutex mu_;
+    mutable VectorBudgetResource memory_;
+    std::pmr::vector<HNSWNode> nodes_;
+    mutable std::shared_mutex mu_;
     size_t maxLevel_;
     size_t entryPoint_;
-    std::unordered_map<std::string, size_t> idToIndex_;
+    std::pmr::unordered_map<std::pmr::string, size_t> idToIndex_;
+    bool failed_{false};
 };
 
 } // namespace pacificdb

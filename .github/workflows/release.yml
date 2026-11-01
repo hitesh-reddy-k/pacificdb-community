@@ -31,7 +31,7 @@ on:
       version:
         description: Version to build without publishing
         required: true
-        default: 1.1.2
+        default: 1.2.0
   push:
     tags: ["v*"]
 
@@ -40,6 +40,7 @@ permissions:
 
 jobs:
   linux:
+    if: ${{ !startsWith(github.ref, 'refs/tags/v') || !contains(github.ref_name, '-') }}
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v7
@@ -73,6 +74,7 @@ jobs:
             dist/p0-evidence-linux-amd64.json
 
   windows:
+    if: ${{ !startsWith(github.ref, 'refs/tags/v') || !contains(github.ref_name, '-') }}
     runs-on: windows-2025
     steps:
       - uses: actions/checkout@v7
@@ -253,6 +255,7 @@ jobs:
             dist/p0-evidence-windows-x64.json
 
   macos:
+    if: ${{ !startsWith(github.ref, 'refs/tags/v') || !contains(github.ref_name, '-') }}
     strategy:
       fail-fast: false
       matrix:
@@ -443,6 +446,7 @@ jobs:
             dist/p0-evidence-macos-${{ matrix.arch }}.json
 
   container:
+    if: ${{ !startsWith(github.ref, 'refs/tags/v') || !contains(github.ref_name, '-') }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -485,7 +489,7 @@ jobs:
             dist/p0-evidence-linux-amd64-container.json
 
   container_publish:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
     needs: [container]
     runs-on: ubuntu-24.04
     permissions:
@@ -539,7 +543,7 @@ jobs:
             dist/p0-evidence-linux-amd64-container.json
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
     needs: [linux, windows, macos, container_publish]
     runs-on: ubuntu-24.04
     permissions:

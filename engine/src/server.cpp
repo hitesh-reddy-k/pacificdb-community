@@ -1,6 +1,11 @@
+#include "query_cancellation.hpp"
 #include "server.hpp"
 #include <array>
 #include "database_engine.hpp"
+#include "native_vector_rpc.hpp"
+#include "vector_schema.hpp"
+#include "vector_schema_lease.hpp"
+#include "vector_index_catalog.hpp"
 #include "lsm.hpp"
 #include "raft_core.hpp"
 #include "connection_pool.hpp"
@@ -891,7 +896,7 @@ static json sanitizeDeterministicPayload(const json& payload) {
         }
     }
     for (const char* secret : {
-             "password", "token", "key", "local_discovery_nonce",
+             "password", "ownerPassword", "newPassword", "token", "key", "local_discovery_nonce",
              "discovery_nonce"}) {
         if (out.contains(secret)) out[secret] = "[redacted]";
     }
@@ -1052,7 +1057,8 @@ static pacificdb::security::Permission permissionForAction(const std::string& ac
         action == "community_media_list" || action == "community_media_get" ||
         action == "community_media_get_chunk" || action == "community_capabilities" ||
         action == "security_whoami" || action == "api_key_list" ||
-        action == "api_key_get" || action == "queryVector" ||
+        action == "api_key_get" || action == "queryVector" || action == "queryHybrid" ||
+        action == "vectorIndexStatus" || action == "listVectorIndexes" ||
         action == "opStatus" || action == "health_check" ||
         action == "get_cluster_status" || action == "cluster_route" ||
         action == "route_key" || action == "get_shard_details" ||
@@ -1086,10 +1092,11 @@ static pacificdb::security::Permission permissionForAction(const std::string& ac
     if (action == "dropCollection") {
         return Permission::DROP_COLLECTION;
     }
-    if (action == "createIndex" || action == "rebuildIndex" || action == "indexRebuild") {
+    if (action == "createIndex" || action == "rebuildIndex" || action == "indexRebuild" ||
+        action == "createVectorIndex" || action == "rebuildVectorIndex") {
         return Permission::CREATE_COLLECTION;
     }
-    if (action == "dropIndex") {
+    if (action == "dropIndex" || action == "dropVectorIndex") {
         return Permission::DROP_COLLECTION;
     }
     if (action == "create_backup" || action == "list_backups" ||
@@ -1756,6 +1763,7 @@ static bool isWriteAction(const std::string& action) {
            action == "createDatabase" || action == "createCollection" ||
            action == "createIndex" || action == "dropIndex" ||
            action == "rebuildIndex" || action == "indexRebuild" ||
+           action == "createVectorIndex" || action == "rebuildVectorIndex" || action == "dropVectorIndex" ||
            action == "dropDatabase" || action == "dropCollection" ||
            action == "community_project_create" ||
            action == "community_project_delete" ||
@@ -2371,6 +2379,11 @@ static json handleStorageMaintenance(const std::string& action, const json& req)
 }
 
 void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
+    const auto connectionToken = QueryCancel::getToken();
+    struct RequestReadCleanup {
+        RequestReadCleanup() { DatabaseEngine::clearReadContext(); }
+        ~RequestReadCleanup() { DatabaseEngine::clearReadContext(); }
+    };
     SOCKET sock = (SOCKET)clientSocket;
     sockaddr_in peer{};
 #ifdef _WIN32
@@ -2628,6 +2641,16 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
 
     std::string pendingInput;
     for (int _kaI = 0; _kaI < _kaMX && !_kaSockClosed; ++_kaI) {
+        // A keepalive socket is not a request: reset state and cancellation for
+        // every RPC. Queued children retain this RPC's shared owners only.
+        QueryLimiter::Scope requestLimits;
+        auto requestToken = QueryCancel::makeToken();
+        if (connectionToken) {
+            requestToken->deadline = connectionToken->deadline;
+            requestToken->cancelled.store(connectionToken->cancelled.load());
+        }
+        QueryCancel::Scope requestCancellation(requestToken);
+        RequestReadCleanup requestReadCleanup;
         if (_kaI > 0) {
             // Reset all per-request state for subsequent keepalive requests
             reqId = ++g_reqIdCounter;
@@ -3648,6 +3671,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                 std::string dbType = req.value("dbType", "binary"); // Default to binary
                 validateStorageIdentifier(userId, "userId");
                 validateStorageIdentifier(dbName, "databaseName");
+                pacificdb::VectorSchemaLease schemaDdlLease(userId,dbName,true);
                 validateDatabaseStorageBeforeReplication(userId, dbName);
                 const bool databaseAlreadyExists =
                     DatabaseEngine::databaseExists(userId, dbName);
@@ -3771,8 +3795,17 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                 std::string coll  = req.value("collection", "");
                 validateStorageIdentifier(userId, "userId");
                 validateStorageIdentifier(dbName, "databaseName");
+                pacificdb::VectorSchemaLease schemaDdlLease(userId,dbName,true);
                 validateStorageIdentifier(coll, "collectionName");
                 validateCollectionStorageBeforeReplication(userId, dbName, coll);
+                json vectorSchema;
+                if (req.contains("vector_schema")) {
+                    if (!pacificdb::native_vector_rpc::enabled()) throw std::runtime_error("vector_schema_preview_disabled");
+                    if (RaftCore::instance().isEnabled() && RaftCore::instance().peerCount()!=0)
+                        throw std::runtime_error("vector_schema_cluster_capability_unavailable");
+                    vectorSchema=pacificdb::VectorSchema::canonical(req.at("vector_schema"));
+                }
+
 
                 if (!dbName.empty() && !coll.empty()) {
                     static std::mutex createCollectionMutex;
@@ -3804,6 +3837,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                         {"traceparent", traceParent}
                     };
 
+                    if (!vectorSchema.is_null()) entry["vector_schema"]=vectorSchema;
                     const bool alreadyExists = DatabaseEngine::collectionExists(
                         userId, dbName, coll);
                     bool committed = false;
@@ -3814,7 +3848,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                         pacificdb::timing::recordStage(pacificdb::timing::Stage::Replication,
                             static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(replicationEnd - replicationStart).count()));
                     } else if (!alreadyExists) {
-                        committed = !DatabaseEngine::createCollection(userId, dbName, coll).empty();
+                        committed = !DatabaseEngine::createCollection(userId, dbName, coll,vectorSchema).empty();
                     }
 
                     if (alreadyExists) {
@@ -3871,6 +3905,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                 const std::string projectId = req.value("project_id", "");
                 validateStorageIdentifier(userId, "userId");
                 validateStorageIdentifier(dbName, "databaseName");
+                pacificdb::VectorSchemaLease schemaDdlLease(userId,dbName,true);
                 if (!dropDb) {
                     validateStorageIdentifier(collection, "collectionName");
                 }
@@ -3986,6 +4021,46 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                     res = meta["collections"];
                 } else {
                     res = json::array();
+                }
+            }
+        }
+
+        // Standalone native indexing preview. Existing authentication, database
+        // ACL, namespace and write-admission gates above apply to these actions.
+        else if (action == "createVectorIndex" || action == "rebuildVectorIndex" ||
+                 action == "dropVectorIndex" || action == "vectorIndexStatus" || action == "listVectorIndexes") {
+            if (!pacificdb::native_vector_rpc::enabled()) {
+                res = {{"error","vector_index_preview_disabled"}};
+            } else if (RaftCore::instance().isEnabled() && !RaftCore::instance().isRecoveryComplete()) {
+                res = {{"error","not_visible_yet"},{"message","node recovery in progress; index lifecycle is blocked"},{"retry_after_ms",100}};
+            } else {
+                const auto user = req.value("userId",std::string("system"));
+                const auto database = req.value("dbName",std::string());
+                const auto collection = req.value("collection",std::string());
+                validateStorageIdentifier(user,"userId");validateStorageIdentifier(database,"databaseName");
+                validateCollectionStorageIdentifier(collection);
+                if (!DatabaseEngine::databaseExists(user,database) || !DatabaseEngine::collectionExists(user,database,collection)) {
+                    res = {{"error","vector_index_target_not_found"}};
+                } else if (isWriteAction(action) && !RaftCore::instance().isLeader()) {
+                    res = {{"error","not_leader"}};
+                } else if (action == "createVectorIndex") {
+                    if (!pacificdb::native_vector_rpc::annEnabled() && req.at("options").value("algorithm",std::string("hnsw")) != "flat")
+                        throw std::runtime_error("vector_ann_disabled");
+                    res = {{"status","ok"},{"index",DatabaseEngine::buildNativeVectorIndex(user,database,collection,req.at("options"))},
+                           {"build_async",true},{"durable_definition",true}};
+                } else if (action == "listVectorIndexes") {
+                    res = {{"status","ok"},{"indexes",pacificdb::VectorIndexCatalog::list(user,database,collection)}};
+                } else {
+                    const auto name = req.value("name",std::string());
+                    validateStorageIdentifier(name,"vectorIndexName");
+                    if (action == "vectorIndexStatus")
+                        res = {{"status","ok"},{"index",DatabaseEngine::nativeVectorIndexStatus(user,database,collection,name)}};
+                    else if (action == "rebuildVectorIndex") {
+                        if (!pacificdb::native_vector_rpc::annEnabled() &&
+                            DatabaseEngine::nativeVectorIndexStatus(user,database,collection,name).at("spec").value("algorithm",std::string("hnsw")) != "flat")
+                            throw std::runtime_error("vector_ann_disabled");
+                        res = {{"status","ok"},{"index",DatabaseEngine::rebuildNativeVectorIndex(user,database,collection,name)},{"build_async",true}};
+                    } else res = {{"status","ok"},{"removed",DatabaseEngine::dropNativeVectorIndex(user,database,collection,name)}};
                 }
             }
         }
@@ -4446,6 +4521,11 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                        {"count", aggregate.at("documents").size()},
                        {"data", aggregate.at("documents")},
                        {"stages", aggregate.at("stages")}};
+                std::string partialReason;
+                if (QueryLimiter::consumeTruncatedFlag(partialReason)) {
+                    res["partial"] = true;
+                    res["partial_reason"] = partialReason;
+                }
             }
         }
         else if (action == "explain") {
@@ -4966,6 +5046,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                         setLifecycle("timeout_triggered_us", timeoutTriggeredUs);
                         res = { {"error", "server_busy"}, {"retry_after_ms", 100} };
                     } else if (future.wait_for(std::chrono::milliseconds(execTimeoutMs)) == std::future_status::timeout) {
+                        if (auto token = QueryCancel::getToken()) token->cancelled.store(true);
                         g_inflightFutures.fetch_sub(1);
                         updateInflightGauges();
                         recordTimeoutOriginCounter("dbq");
@@ -5132,7 +5213,7 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
         }
 
         // ---------------- VECTOR QUERY ----------------
-        else if (action == "queryVector") {
+        else if (action == "queryVector" || action == "queryHybrid") {
             DLOG("[SERVER] Dispatching VECTOR QUERY\n");
             std::string readConsistency = normalizeReadConsistencyMode(req.value("consistency", std::string("eventual")));
             req["consistency"] = readConsistency;
@@ -5166,7 +5247,42 @@ void handleClient(unsigned long long clientSocket, long long enqueuedAtUs) {
                 else if (!DatabaseEngine::collectionExists(userId, dbName, collection))
                     res = {{"error", "collection_not_found"}};
                 else {
-                    auto results = DatabaseEngine::queryVector(userId, dbName, collection, req);
+                    // Scope vector read context to this request, including exceptions.
+                    // The Raft barrier above remains the authority for strong reads.
+                    struct VectorReadContextGuard {
+                        ~VectorReadContextGuard() { DatabaseEngine::clearReadContext(); }
+                    } vectorReadContextGuard;
+                    long long vectorStalenessMs = 0, vectorFloorVersion = -1;
+                    for (const char* name : {"maxStalenessMs", "max_staleness_ms"}) {
+                        if (req.contains(name) && req[name].is_number_integer()) {
+                            vectorStalenessMs = std::max(0LL, req[name].get<long long>());
+                            break;
+                        }
+                    }
+                    for (const char* name : {"minVersion", "read_your_writes_floor", "readFloorVersion"}) {
+                        if (req.contains(name) && req[name].is_number_integer()) {
+                            vectorFloorVersion = std::max(0LL, req[name].get<long long>());
+                            break;
+                        }
+                    }
+                    DatabaseEngine::setReadContext(readConsistency, vectorStalenessMs, vectorFloorVersion);
+                    json vectorExecution;
+                    const auto vectorDeadline = pacificdb::native_vector_rpc::deadline(req);
+                    std::vector<json> results;
+                    if (action == "queryHybrid") {
+                        if (!pacificdb::native_vector_rpc::enabled()) throw std::runtime_error("vector_index_preview_disabled");
+                        if (req.contains("search_mode") || req.contains("allow_exact_fallback") || req.contains("require_index"))
+                            throw std::invalid_argument("hybrid vector search-mode overrides are not supported");
+                        const auto name = req.value("index_name",std::string());
+                        validateStorageIdentifier(name,"vectorIndexName");
+                        if (!pacificdb::native_vector_rpc::annEnabled() &&
+                            DatabaseEngine::nativeVectorIndexStatus(userId,dbName,collection,name).at("spec").value("algorithm",std::string("hnsw")) != "flat")
+                            throw std::runtime_error("vector_ann_disabled");
+                        results = DatabaseEngine::queryNativeHybridIndex(userId,dbName,collection,name,req,&vectorExecution,vectorDeadline);
+                    } else {
+                        results = pacificdb::native_vector_rpc::search(userId,dbName,collection,req,&vectorExecution,vectorDeadline);
+                    }
+                    res["search"] = std::move(vectorExecution);
                     res["status"] = "ok";
                     res["count"] = results.size();
                     res["data"] = results;

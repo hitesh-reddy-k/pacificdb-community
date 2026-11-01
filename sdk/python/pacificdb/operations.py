@@ -52,6 +52,30 @@ class Vectors(_Family):
         """Send queryVector; return the original decoded engine response."""
         return self._call("queryVector", options, "collection")
 
+    def create_index(self, **options):
+        """Standalone vector preview; requires server opt-in. Engine field names apply."""
+        return self._call("createVectorIndex", options, "collection")
+
+    def list_indexes(self, **options):
+        """Standalone vector preview; requires server opt-in. Engine field names apply."""
+        return self._call("listVectorIndexes", options, "collection")
+
+    def index_status(self, **options):
+        """Standalone vector preview; requires server opt-in. Engine field names apply."""
+        return self._call("vectorIndexStatus", options, "collection")
+
+    def rebuild_index(self, **options):
+        """Standalone vector preview; requires server opt-in. Engine field names apply."""
+        return self._call("rebuildVectorIndex", options, "collection")
+
+    def drop_index(self, **options):
+        """Standalone vector preview; requires server opt-in. Engine field names apply."""
+        return self._call("dropVectorIndex", options, "collection")
+
+    def query_hybrid(self, **options):
+        """Standalone vector preview; requires server opt-in. Engine field names apply."""
+        return self._call("queryHybrid", options, "collection")
+
 
 
 class Media(_Family):

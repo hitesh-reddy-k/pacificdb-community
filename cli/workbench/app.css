@@ -268,3 +268,5 @@ summary { cursor: pointer; }
 .tree-toggle:hover { background: #274566; color: #fff; }
 .environment[data-state="connecting"] .environment-dot { background: #e5b967; }
 .environment[data-state="connecting"] .environment-state { color: #e5b967; }
+
+.brand .release-label { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; line-height: 1.5; letter-spacing: normal; }

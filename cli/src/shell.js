@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { MediaUploadError } from '@pacificdb/client';
 
-const shellVersion = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version;
+import { releaseIdentity } from './release.js';
 
 function parseJson(text) {
   try { return JSON.parse(text); }
@@ -56,6 +56,7 @@ Media
 Vectors
   put vector <collection> <id> <json-vector>
   query vector <collection> <json-vector> [--k <n>] [--metric <name>]
+  request <json>                      Schema/index lifecycle and hybrid search (SDK also available)
 
 System
   help [topic]                        Show help
@@ -79,7 +80,7 @@ export const SHELL_BANNER = `
        ~~~~~~~~\\______/~~~~~~~~
          ~~~~~~~~~~~~~~~~~~~~
              PacificDB
-               v${shellVersion}
+               v${releaseIdentity.label}
        Documents · Vectors · Media
   Type help to see commands.\n`;
 

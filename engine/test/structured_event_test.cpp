@@ -1,6 +1,7 @@
 #include "structured_event.hpp"
 
 #include <cassert>
+#include <chrono>
 #include <nlohmann/json.hpp>
 #include <sstream>
 #include <string>
@@ -36,7 +37,17 @@ int main() {
 
     std::ostringstream output;
     pacificdb::observability::emitStructuredEvent(output, event);
-    assert(output.str() == line + "\n");
+    const auto emittedLine = output.str();
+    assert(!emittedLine.empty() && emittedLine.back() == '\n');
+    assert(emittedLine.find('\n') == emittedLine.size() - 1);
+    auto emitted = nlohmann::json::parse(emittedLine);
+    const auto after = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    assert(emitted.at("timestamp_ms").get<long long>() >=
+           value.at("timestamp_ms").get<long long>());
+    assert(emitted.at("timestamp_ms").get<long long>() <= after);
+    emitted["timestamp_ms"] = value.at("timestamp_ms");
+    assert(emitted == value);
 
     StructuredEvent credentials{
         "warn", "auth", "auth_rejected", "", "rejected",

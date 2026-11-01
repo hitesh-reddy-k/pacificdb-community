@@ -9,6 +9,7 @@
 #include <filesystem>
 #include "storage_path.hpp"
 #include "storage_format_v2.hpp"
+#include "vector_freshness.hpp"
 
 using json = nlohmann::json;
 
@@ -23,6 +24,9 @@ public:
             : msgpack_(&row) {}
 
         std::optional<json> field(std::string_view name) const;
+        json project(const std::vector<std::string>& names) const;
+        std::optional<double> denseScore(std::string_view name, const std::vector<double>& query,
+                                        const std::string& metric, double queryNorm) const;
         json materialize() const;
 
     private:
@@ -53,14 +57,22 @@ public:
     // restore memtables from collection WAL files (best-effort)
     static void restoreFromWal();
 
+    // Derived-index eligibility only: absent while a mutation/restore is active.
+    // Callers must capture before scanning and revalidate after fetching results.
+    static std::optional<pacificdb::VectorFreshness::Stamp> vectorCertificate(
+        const std::string& userId, const std::string& dbName,
+        const std::string& collection);
+
     // put document into memtable (and WAL) and schedule flush
+    enum class PutIntent { Record, Tombstone };
     static void put(const std::string& userId,
                     const std::string& dbName,
                     const std::string& collection,
                     const json& doc,
                     bool requireIndexCompletion = false,
                     std::uint64_t applyIndex = 0,
-                    bool writeWal = true);
+                    bool writeWal = true,
+                    PutIntent intent = PutIntent::Record);
 
     // Batch put path used by insertMany. Returns write timing and flush metrics.
     static nlohmann::json putMany(const std::string& userId,
@@ -89,7 +101,8 @@ public:
     static bool visitLatest(const std::string& userId,
                             const std::string& dbName,
                             const std::string& collection,
-                            const std::function<bool(const LatestRowView&)>& visitor);
+                            const std::function<bool(const LatestRowView&)>& visitor,
+                            bool includeUncommitted = false, bool includeDeleted = false);
 
     // ⚡ NEW: Fast field-based lookup using indexes
     static std::vector<json> findByField(const std::string& userId,

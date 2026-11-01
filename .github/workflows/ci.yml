@@ -75,6 +75,4 @@ jobs:
       - run: node scripts/test-audit-alert-e2e.mjs build
 
   packages:
-    uses: ./.github/workflows/release.yml
-    with:
-      version: 1.1.2
+    uses: ./.github/workflows/prerelease.yml

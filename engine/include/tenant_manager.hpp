@@ -200,6 +200,9 @@ struct TenantUser {
     std::chrono::system_clock::time_point lastLogin;
     int failedLoginAttempts;
     bool isLocked;
+    // Epoch seconds; legacy locked rows without an expiry remain locked until
+    // an authorized password reset, matching engine-account migration behavior.
+    int64_t lockedUntil = 0;
     json metadata;                  // Additional user metadata
 
     json toJson() const {
@@ -223,6 +226,7 @@ struct TenantUser {
                 lastLogin.time_since_epoch()).count()},
             {"failedLoginAttempts", failedLoginAttempts},
             {"isLocked", isLocked},
+            {"lockedUntil", lockedUntil},
             {"metadata", metadata}
         };
     }
@@ -249,6 +253,7 @@ struct TenantUser {
             std::chrono::seconds(j.value("lastLogin", 0L)));
         u.failedLoginAttempts = j.value("failedLoginAttempts", 0);
         u.isLocked = j.value("isLocked", false);
+        u.lockedUntil = j.value("lockedUntil", int64_t{0});
         u.metadata = j.value("metadata", json::object());
         return u;
     }

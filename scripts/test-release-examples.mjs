@@ -9,10 +9,17 @@ import os from 'node:os';
 import { startDesktopEngine } from '../desktop/engine.mjs';
 
 const repository = path.resolve(import.meta.dirname, '..');
+const identity=JSON.parse(await readFile(path.join(repository,'release.json'),'utf8'));
+const staging=path.resolve(process.env.PACIFICDB_SDK_STAGING||path.join(repository,'build-v1.2-release/staging/sdk'));
 const root = await mkdtemp(path.join(os.tmpdir(), 'pacificdb-release-examples-'));
 const build = path.resolve(process.argv[2] || 'build');
 const decode = text => text.replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 const html = await readFile(path.join(repository, 'site/docs.html'), 'utf8');
+const guide = await readFile(path.join(repository, 'SDK_GUIDE.md'), 'utf8');
+function guideExample(language) {
+  const match=guide.match(new RegExp('```'+language+'\\n([\\s\\S]*?)```'));
+  assert.ok(match,`missing SDK guide ${language} example`);return match[1];
+}
 function example(id) {
   const match = html.match(new RegExp(`<code id="${id}">([\\s\\S]*?)</code>`));
   assert.ok(match, `missing example ${id}`); return decode(match[1]);
@@ -25,23 +32,23 @@ async function run(command, args, env = {}, cwd = root) {
   assert.equal(signal, null, output); assert.equal(code, 0, output); console.log(output.trim());
   return output;
 }
-let engine;
+let engine,succeeded=false;
 try {
   await run('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund',
-    path.join(repository, 'release-sdk/npm/pacificdb-client-1.1.2.tgz'),
-    path.join(repository, 'release-sdk/npm/pacificdb-cli-1.1.2.tgz')]);
+    path.join(staging,'npm',`pacificdb-client-${identity.npmVersion}.tgz`),
+    path.join(staging,'npm',`pacificdb-cli-${identity.npmVersion}.tgz`)]);
   await run('node', [path.join(root, 'node_modules/@pacificdb/cli/bin/pacificdb.js'), '--version']);
   await run('python3', ['-m', 'venv', path.join(root, 'venv')]);
   const python = path.join(root, 'venv/bin/python');
-  await run(python, ['-m', 'pip', 'install', '--no-deps', path.join(repository, 'release-sdk/python/pacificdb-1.1.2-py3-none-any.whl')]);
+  await run(python, ['-m', 'pip', 'install', '--no-deps', path.join(staging,'python',`pacificdb-${identity.pythonVersion}-py3-none-any.whl`)]);
   await writeFile(path.join(root, 'hello.mjs'), example('node-code'));
   await writeFile(path.join(root, 'hello.py'), example('python-code'));
   await writeFile(path.join(root, 'Hello.java'), example('java-code'));
   // Arbitrary nonempty bytes are valid for the file-transfer API, regardless of extension.
-  const media = Buffer.from('PacificDB 1.1.2 website transfer fixture\n'.repeat(100));
+  const media = Buffer.from(`PacificDB ${identity.releaseVersion} website transfer fixture\n`.repeat(100));
   await writeFile(path.join(root, 'demo.mp4'), media);
-  await run('mvn', ['-B', '-q', '-f', path.join(repository, 'sdk/java/pom.xml'), 'dependency:build-classpath', `-Dmdep.outputFile=${path.join(root, 'classpath.txt')}`]);
-  const classpath = path.join(repository, 'sdk/java/target/pacificdb-client-1.1.2.jar') + path.delimiter + (await readFile(path.join(root, 'classpath.txt'), 'utf8')).trim();
+  await run('mvn', ['-B', '-q', '-f', path.join(staging,'java',`pacificdb-client-${identity.javaVersion}.pom`), 'dependency:build-classpath', `-Dmdep.outputFile=${path.join(root, 'classpath.txt')}`]);
+  const classpath = path.join(staging,'java',`pacificdb-client-${identity.javaVersion}.jar`) + path.delimiter + (await readFile(path.join(root, 'classpath.txt'), 'utf8')).trim();
   await mkdir(path.join(root, 'classes'));
   await run('javac', ['--release', '11', '-cp', classpath, '-d', path.join(root, 'classes'), path.join(root, 'Hello.java')]);
   engine = await startDesktopEngine({ executable: path.join(build, 'db_engine'), directory: path.join(root, 'engine') });
@@ -53,7 +60,20 @@ try {
     await run(command, args, { PACIFICDB_URL: `pacificdb://127.0.0.1:${engine.port}/${language}_demo` });
     assert.deepEqual(await readFile(path.join(root, `downloaded-${language}.mp4`)), media);
   }
-  console.log(JSON.stringify({ status: 'PASS', version: '1.1.2', npm: 'installed exact local tarballs',
+  await writeFile(path.join(root,'guide.mjs'),guideExample('js'));
+  await writeFile(path.join(root,'guide.py'),guideExample('python'));
+  const javaGuide=guideExample('java'),imports=javaGuide.split('\n').filter(line=>line.startsWith('import ')).join('\n');
+  const body=javaGuide.split('\n').filter(line=>!line.startsWith('import ')).join('\n');
+  await writeFile(path.join(root,'GuideExample.java'),`${imports}\npublic class GuideExample { public static void main(String[] args) throws Exception {\n${body}\n} }\n`);
+  await run('javac',['--release','11','-cp',classpath,'-d',path.join(root,'classes'),path.join(root,'GuideExample.java')]);
+  for(const [language,command,args] of [
+    ['node','node',[path.join(root,'guide.mjs')]],
+    ['python',python,[path.join(root,'guide.py')]],
+    ['java','java',['-cp',path.join(root,'classes')+path.delimiter+classpath,'GuideExample']]
+  ])await run(command,args,{PACIFICDB_URL:`pacificdb://127.0.0.1:${engine.port}/guide_${language}`});
+  succeeded=true;
+  console.log(JSON.stringify({ status: 'PASS', version: identity.releaseVersion, npm: 'installed exact local tarballs',
     python: 'installed exact local wheel', java: 'compiled against exact local packaged JAR',
+    guide: ['Node CRUD/releaseInfo/close','Python CRUD/version/close','Java CRUD/ReleaseInfo/close'],
     examples: ['Node CRUD/vector/media/close', 'Python CRUD/vector/media/close', 'Java CRUD/vector/media/close'], media: 'byte-for-byte equality' }));
-} finally { await engine?.stop(); await rm(root, { recursive: true, force: true }); }
+} finally { await engine?.stop(); if(succeeded)await rm(root, { recursive: true, force: true });else console.error(`preserved failed examples: ${root}`); }

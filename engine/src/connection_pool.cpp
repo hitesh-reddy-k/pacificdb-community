@@ -3,6 +3,7 @@
 #include <iostream>
 #include <algorithm>
 #include "query_cancellation.hpp"
+#include "query_limiter.hpp"
 #include <thread>
 #include <cstdlib>
 #include <string>
@@ -61,7 +62,8 @@ ConnectionPool::Task ConnectionPool::wrapTask(Task task, std::chrono::millisecon
     }
 
     return [task = std::move(task), token, enqueuedAtUs]() mutable {
-        QueryCancel::setToken(token);
+        QueryCancel::Scope cancellation(token);
+        QueryLimiter::Scope requestLimits;
 
         if (enqueuedAtUs > 0) {
             const uint64_t nowUs = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
@@ -80,7 +82,6 @@ ConnectionPool::Task ConnectionPool::wrapTask(Task task, std::chrono::millisecon
         }
 
         token->finished.store(true);
-        QueryCancel::clearToken();
     };
 }
 

@@ -2,12 +2,12 @@
 
 # PacificDB Python client
 
-Version **1.1.2 — prerelease**. Download the matching package from the
-[Community v1.1.2 release](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/1.1.2);
+Version **1.2.0rc1 — prerelease**. Download the matching package from the
+[Community v1.2.0-rc.1 release](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v1.2.0-rc.1);
 registry publication is pending.
 
 A database-first client for the Community engine. Requires Python 3.10 or later;
-no runtime dependencies. These examples describe the 1.1.2 prerelease. The new
+no runtime dependencies. These examples describe the 1.2.0-rc.1 prerelease. The new
 APIs require its published wheel or tagged-source build, not an older registry release.
 
 Start a PacificDB server, then connect to a database directly:

@@ -12,6 +12,8 @@ import tarfile
 import zipfile
 from pathlib import Path, PurePosixPath
 
+from release_identity import load_release_identity
+
 PYTHON_MODULES=('__init__','client','connection','transport','errors','operations','files')
 
 def require(condition,message):
@@ -65,7 +67,7 @@ def python_sdist(path,version):
             require(prefix+file in names and archive.getmember(prefix+file).isfile(),'missing source package file: '+file)
     return inventory(path,names)
 
-JAVA_CLASSES=('PacificDB','PacificDBClient','ConnectionOptions','Operations','PacificDBException','MediaUploadException')
+JAVA_CLASSES=('PacificDB','PacificDBClient','ConnectionOptions','Operations','PacificDBException','MediaUploadException','ReleaseInfo')
 
 def java_pom(path,version):
     import xml.etree.ElementTree as ET
@@ -100,14 +102,16 @@ def java_jars(binary,sources,docs):
             results.append(inventory(path,names))
     return results
 
-def java_artifacts(target,version):
+def java_artifacts(target,version,require_bundle=True):
     target=Path(target);base='pacificdb-client-'+version
     artifacts=java_jars(target/(base+'.jar'),target/(base+'-sources.jar'),target/(base+'-javadoc.jar'))
     pom=target/(base+'.pom')
     require(pom.is_file(),'missing packaged Java POM')
     java_pom(pom,version)
     artifacts.append(inventory(pom,[]))
-    bundles=list((target/'central-publishing').glob('*.zip'));require(len(bundles)==1,'exactly one signed Central bundle required')
+    bundles=list((target/'central-publishing').glob('*.zip'))
+    if not bundles and not require_bundle:return artifacts
+    require(len(bundles)==1,'exactly one signed Central bundle required')
     bundle=bundles[0]
     with zipfile.ZipFile(bundle) as archive:
         names=archive.namelist();names_valid(names);prefix='io/pacificdb/pacificdb-client/'+version+'/'
@@ -117,22 +121,44 @@ def java_artifacts(target,version):
             signature=name+'.asc';require(signature in names and b'BEGIN PGP SIGNATURE' in archive.read(signature),'missing detached bundle signature')
             for algorithm in ('md5','sha1','sha256','sha512'):
                 require(name+'.'+algorithm in names and archive.read(name+'.'+algorithm).decode().strip()==hashlib.new(algorithm,data).hexdigest(),'bundle checksum mismatch')
-            if suffix!='.pom':require(hashlib.sha256(data).hexdigest()==next(a['sha256'] for a in artifacts if Path(a['path']).name==base+suffix),'bundle differs from inspected JAR')
+            require(hashlib.sha256(data).hexdigest()==next(a['sha256'] for a in artifacts if Path(a['path']).name==base+suffix),'bundle differs from inspected artifact')
     artifacts.append(inventory(bundle,names))
     return artifacts
+
+def npm_package(path,version):
+    with tarfile.open(path,'r:gz') as archive:
+        members=archive.getmembers();names=[m.name for m in members];names_valid(names)
+        require(all(m.isfile() or m.isdir() for m in members),'linked/special npm entry')
+        require(all(n.startswith('package/') for n in names),'npm package root mismatch')
+        package=json.loads(archive.extractfile('package/package.json').read())
+        require(package['name'] in ('@pacificdb/client','@pacificdb/cli'),'unexpected npm name')
+        require(package['version']==version and package['engines']['node']=='>=18','npm version/runtime mismatch')
+        for name in ['README.md','LICENSE','src/'+('index.js' if package['name'].endswith('/client') else 'cli.js')]:
+            require('package/'+name in names,'missing npm public file')
+        if package['name'].endswith('/cli'):
+            require(package['dependencies']=={'@pacificdb/client':version},'CLI dependency mismatch')
+            require(package['bin']=={'pacificdb':'bin/pacificdb.js'},'CLI binary mismatch')
+            require('package/workbench/index.html' in names,'missing Workbench asset')
+    return inventory(Path(path),names)
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--python-dist',type=Path);parser.add_argument('--java-target',type=Path)
-    parser.add_argument('--version',default='1.1.2');parser.add_argument('--output',type=Path,required=True)
+    parser.add_argument('--version');parser.add_argument('--python-version');parser.add_argument('--npm-dist',type=Path);parser.add_argument('--allow-unsigned-local',action='store_true');parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--hash-manifest',type=Path)
     args=parser.parse_args();artifacts=[]
+    identity=load_release_identity()
+    args.version=args.version or identity['releaseVersion']
+    python_version=args.python_version or (identity['pythonVersion'] if args.version==identity['releaseVersion'] else args.version)
+    if args.npm_dist:
+        packages=list(args.npm_dist.glob('*.tgz'));require(len(packages)==2,'exactly two npm packages required')
+        artifacts.extend(npm_package(path,args.version) for path in packages)
     if args.python_dist:
         wheels=list(args.python_dist.glob('*.whl'));sources=list(args.python_dist.glob('*.tar.gz'))
         require(len(wheels)==len(sources)==1,'exactly one wheel and source archive required')
-        artifacts.extend([python_wheel(wheels[0],args.version),python_sdist(sources[0],args.version)])
+        artifacts.extend([python_wheel(wheels[0],python_version),python_sdist(sources[0],python_version)])
     if args.java_target:
-        artifacts.extend(java_artifacts(args.java_target,args.version))
+        artifacts.extend(java_artifacts(args.java_target,args.version,not args.allow_unsigned_local))
     require(artifacts,'no artifacts inspected')
     if args.hash_manifest:
         recorded=json.loads(args.hash_manifest.read_text())['artifacts']
@@ -141,7 +167,7 @@ def main():
     import subprocess
     revision=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
     clean=not subprocess.check_output(['git','status','--porcelain'],text=True).strip()
-    report={'status':'PASS','version':args.version,'git_revision':revision,'source_clean':clean,'publication':'not performed','artifacts':artifacts}
+    report={'status':'PASS','version':args.version,'python_version':python_version,'signatures_required':not args.allow_unsigned_local,'git_revision':revision,'source_clean':clean,'publication':'not performed','artifacts':artifacts}
     args.output.parent.mkdir(parents=True,exist_ok=True);args.output.write_text(json.dumps(report,indent=2)+'\n')
     print(f'PASS: inspected {len(artifacts)} SDK artifacts locally')
 

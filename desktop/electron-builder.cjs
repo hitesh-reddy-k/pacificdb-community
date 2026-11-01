@@ -6,7 +6,7 @@ module.exports = {
   artifactName: 'PacificDB-Workbench-${version}-${os}-${arch}.${ext}',
   directories: { app: path.join(__dirname, 'stage'),
     output: path.join(root, 'dist', 'desktop'), buildResources: __dirname },
-  files: ['desktop/**', 'cli/**', 'package.json', 'LICENSE', 'LICENSES/**', 'THIRD_PARTY_NOTICES.md'],
+  files: ['desktop/**', 'cli/**', 'package.json', 'release.json', 'LICENSE', 'LICENSES/**', 'THIRD_PARTY_NOTICES.md'],
   extraResources: [{ from: path.join(__dirname, 'resources', 'engine'), to: 'engine' }],
   asar: true,
   npmRebuild: false,

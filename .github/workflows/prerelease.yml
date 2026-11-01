@@ -1,0 +1,120 @@
+name: Pre-release v1.2
+on:
+  push:
+    branches: [v1.2]
+  workflow_call:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish verified staged assets after release-owner approval
+        type: boolean
+        default: false
+      release_tag:
+        description: Exact validated candidate tag
+        type: string
+        default: v1.2.0-rc.1
+permissions:
+  contents: read
+concurrency:
+  group: prerelease-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.release_tag || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ liblz4-dev libre2-dev libssl-dev
+          python -m pip install pytest build==1.2.2.post1 twine==6.1.0
+          npm ci --ignore-scripts --no-audit --no-fund
+      - name: Validate identity and preview policy
+        run: |
+          python3 scripts/test_release_identity.py
+          python3 scripts/test_prerelease_qualification.py
+          python3 scripts/test_prerelease_workflow.py
+          python3 scripts/test-release-consistency.py
+      - name: Build and qualify native candidate
+        run: |
+          cmake -S engine -B build-rc -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.2.0
+          cmake --build build-rc -j2
+          cmake -S engine -B build-rc-failpoints -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.2.0 -DPACIFICDB_ENABLE_TEST_FAILPOINTS=ON
+          cmake --build build-rc-failpoints --target db_engine -j2
+          python3 scripts/test-vector-checkpoint.py --build build-rc --failpoint-build build-rc-failpoints --expected-version 1.2.0 --evidence build-rc/evidence
+      - name: Qualify Workbench and SDK source integration
+        env:
+          PACIFICDB_EXPECTED_ENGINE_VERSION: 1.2.0
+          PACIFICDB_VECTOR_PREVIEW_ENABLED: '1'
+          PACIFICDB_TEST_NATIVE_VECTOR_PREVIEW: '1'
+          PACIFICDB_TEST_VECTOR_SCHEMA: '1'
+          PACIFICDB_TEST_TYPED_VECTORS: '1'
+        run: |
+          npm run test:npm
+          PYTHONPATH=sdk/python python3 -m pytest -q sdk/python/tests
+          mvn -B -q -f sdk/java/pom.xml test
+          node scripts/test-cross-sdk-e2e.mjs build-rc
+          node scripts/test-workbench-e2e.mjs build-rc
+          node scripts/test-desktop-engine.mjs build-rc
+      - name: Stage and test exact SDK and engine artifacts
+        run: |
+          python3 scripts/stage-prerelease.py --build build-rc --output build-rc/distribution
+      - uses: actions/upload-artifact@v6
+        with:
+          name: prerelease-linux-x64
+          path: build-rc/distribution/*
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: prerelease-linux-x64-evidence
+          path: build-rc/evidence/*.json
+          if-no-files-found: error
+  publish:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish
+    needs: linux
+    runs-on: ubuntu-24.04
+    environment: prerelease-publish
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.release_tag }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: prerelease-linux-x64
+          path: staged
+      - name: Verify tag and staged assets
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          test "$RELEASE_TAG" = "$(python3 scripts/release_identity.py --field tag)"
+          test "$(git rev-parse "$RELEASE_TAG^{commit}")" = "$(git rev-parse HEAD)"
+          (cd staged && sha256sum -c SHA256SUMS)
+          python3 scripts/verify-prerelease-staging.py --directory staged --revision "$(git rev-parse HEAD)" --require-qualified
+      - name: Publish explicitly as prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          gh release create "$RELEASE_TAG" staged/* --repo "$GITHUB_REPOSITORY" \
+            --title 'Pre-release v1.2' --prerelease --latest=false \
+            --notes-file RELEASE_NOTES_v1.2.md
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isPrerelease,tagName,targetCommitish

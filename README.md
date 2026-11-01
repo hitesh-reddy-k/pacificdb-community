@@ -2,11 +2,11 @@
   <img src="site/assets/pacificdb-logo-symbol.png" width="96" alt="PacificDB logo">
 </p>
 
-<h1 align="center">PacificDB Community v1.1.2</h1>
+<h1 align="center">PacificDB Community v1.2.0</h1>
 
 <p align="center">
   Open-source, self-hosted database for documents, vectors, and media.<br>
-  Security and reliability patch — published prerelease.
+  Pre-release v1.2 — candidate 1.2.0-rc.1 for external testing.
 </p>
 
 <p align="center">
@@ -14,6 +14,17 @@
   <a href="https://pacificdb.in/docs.html">Documentation</a> ·
   <a href="https://discord.gg/67w8ET9Sf2">Discord</a>
 </p>
+
+## Pre-release v1.2 status
+
+This branch prepares **1.2.0-rc.1** for external company testing. Production
+readiness remains incomplete. Start with [installation](INSTALLATION.md),
+[company testing](COMPANY_TESTING_GUIDE.md), [release notes](RELEASE_NOTES_v1.2.md)
+and the [release checklist](RELEASE_CHECKLIST.md). Do not assume an artifact or
+registry version is publicly available until its publication status is Passed.
+ANN/hybrid remain opt-in; ANN restart rebuilds, write-time unavailability and
+performance limits are documented. Existing 1.1.2 download links below describe
+the previous published release, not this candidate.
 
 ## Quick Start
 
@@ -342,6 +353,12 @@ mvn -f sdk/java/pom.xml test
 
 ## Release readiness and support
 
+The `v1.2` development branch tracks native vector subsystem work. Read the
+[current acceptance status](docs/V1.2_VECTOR_READINESS.md),
+[architecture and gap assessment](docs/V1.2_VECTOR_ARCHITECTURE.md) and
+[development changes, validation and remaining work](docs/releases/1.2.0-development.md).
+This work is unreleased and is not a production-readiness claim.
+
 Version 1.1.2 is the published Community security prerelease; stable promotion and exact-release external qualification remain separate gates. Retained engineering reports describe their exact revisions, validation scope, known regressions, and release-owner exceptions. See the [changelog](CHANGELOG.md), [patch notes and readiness statement](docs/releases/1.1.2.md), and [upgrade guide](site/docs.html#upgrade). Historical 1.1.1 exceptions do not automatically authorize this patch.
 
 - [Certification report](docs/COMMUNITY_P0_CERTIFICATION.md)
@@ -364,3 +381,20 @@ Version 1.1.2 is the published Community security prerelease; stable promotion a
 Commercial use is allowed under these licenses. Network users of modified
 AGPL-covered server code must be offered the corresponding source. Obtain legal
 advice if your company requires a different licensing model.
+
+For unreleased v1.2 work, see the [native vector readiness matrix](docs/V1.2_VECTOR_READINESS.md)
+and [native service, hybrid retrieval and evidence](docs/V1.2_NATIVE_SERVICE_AND_HYBRID.md).
+The development branch is not a production-readiness announcement.
+
+
+For unreleased v1.2 vector work, see the [native vector preview guide](docs/V1.2_NATIVE_VECTOR_PREVIEW.md)
+and [acceptance status](docs/V1.2_VECTOR_READINESS.md). The development branch is
+not a production-qualified v1.2 release.
+
+The [latest paired vector benchmark report](docs/v1.2-evidence/native-vector-preview/REPORT.md)
+and [review bundle](docs/PacificDB-v1.2-development-native-vector-benchmark-20261030.zip)
+include the tested scope, raw measurements and remaining release gates.
+
+The [2026-10-31 schema and incremental HNSW checkpoint](docs/V1.2_SCHEMAS_AND_INCREMENTAL_ANN.md)
+adds enforced collection vector spaces and opt-in source-certified maintenance.
+Its tested scope and remaining production gates are explicit; it is unreleased.

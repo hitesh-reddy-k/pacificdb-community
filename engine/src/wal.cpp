@@ -340,6 +340,8 @@ namespace {
 
     struct LogicalWalState {
         std::mutex mutex;
+        // High bit = exclusive recovery; remaining bits = admitted operations.
+        std::atomic<uint64_t> admission{0};
         bool clearing{false};
         bool initialized{false};
         bool poisoned{false};
@@ -359,6 +361,29 @@ namespace {
         if (!state) state = std::make_shared<LogicalWalState>();
         return state;
     }
+
+    // Recovery callbacks acquire collection locks, whereas appends are invoked
+    // with a collection lock held. Reserve an idle log without retaining its
+    // append mutex across callbacks. Admission is nonblocking in both directions.
+    class WalOperation {
+    public:
+        explicit WalOperation(LogicalWalState& state) : state_(state) {
+            auto count = state_.admission.load();
+            while (count < (uint64_t{1} << 63) - 1) {
+                if (state_.admission.compare_exchange_weak(count, count + 1)) {
+                    admitted_ = true;
+                    break;
+                }
+            }
+        }
+        ~WalOperation() { if (admitted_) state_.admission.fetch_sub(1); }
+        explicit operator bool() const { return admitted_; }
+        WalOperation(const WalOperation&) = delete;
+        WalOperation& operator=(const WalOperation&) = delete;
+    private:
+        LogicalWalState& state_;
+        bool admitted_{false};
+    };
 
     std::filesystem::path segmentDirectory(const std::string& logicalWal) {
         return logicalWal + ".segments";
@@ -984,6 +1009,12 @@ namespace {
         if (entries.empty()) return {true, {}};
         auto appendStart = std::chrono::steady_clock::now();
         auto logicalState = logicalWalState(file);
+        WalOperation operation(*logicalState);
+        if (!operation) {
+            const std::string error = "wal_recovery_in_progress";
+            completeEntries(entries, false, error);
+            return {false, error};
+        }
         g_walStats.activeAppends.fetch_add(1, std::memory_order_relaxed);
         struct ActiveAppendGuard {
             ~ActiveAppendGuard() {
@@ -1195,6 +1226,9 @@ namespace {
     }
 
     WalAppendResult submitPrepared(const std::string& file, PendingWalEntry pending) {
+        auto state = logicalWalState(file);
+        WalOperation operation(*state);
+        if (!operation) throw std::runtime_error("wal_recovery_in_progress");
         auto completion = pending.completion;
         const uint64_t logicalEntries = pending.logicalEntries;
         const bool useGroupCommit = groupCommitEnabled();
@@ -1254,6 +1288,9 @@ void WAL::shutdown() {
 }
 
 void WAL::flush(const std::string& file, bool forceFsync) {
+    auto reservation = logicalWalState(file);
+    WalOperation operation(*reservation);
+    if (!operation) throw std::runtime_error("wal_recovery_in_progress");
     std::vector<PendingWalEntry> entries;
     {
         std::lock_guard<std::mutex> lk(bufMutex);
@@ -1380,13 +1417,33 @@ void WAL::replay(const std::string& file) {
 
 WalScanResult WAL::scan(const std::string& logicalWal, const WalVisitor& visitor) {
     auto state = logicalWalState(logicalWal);
+    WalOperation operation(*state);
+    if (!operation) return {WalScanStatus::IO_ERROR, 0, 0, 0, "wal_recovery_in_progress"};
     std::lock_guard<std::mutex> lock(state->mutex);
+    return scanWalFiles(logicalWal, visitor).publicResult;
+}
+
+WalScanResult WAL::scanRecovery(const std::string& logicalWal, const WalVisitor& visitor) {
+    auto state = logicalWalState(logicalWal);
+    uint64_t expected = 0;
+    if (!state->admission.compare_exchange_strong(expected, uint64_t{1} << 63))
+        return {WalScanStatus::IO_ERROR, 0, 0, 0,
+            expected & (uint64_t{1} << 63) ? "wal_recovery_in_progress" : "wal_recovery_requires_idle_log"};
+    struct RecoveryGuard {
+        LogicalWalState& state;
+        ~RecoveryGuard() { state.admission.store(0); }
+    } guard{*state};
     return scanWalFiles(logicalWal, visitor).publicResult;
 }
 
 bool WAL::reclaimThrough(const std::string& logicalWal, uint64_t coveredLsn,
                          std::string* error) {
     auto state = logicalWalState(logicalWal);
+    WalOperation operation(*state);
+    if (!operation) {
+        if (error) *error = "wal_recovery_in_progress";
+        return false;
+    }
     std::lock_guard<std::mutex> lock(state->mutex);
     auto scan = scanWalFiles(logicalWal, {});
     if (scan.publicResult.status != WalScanStatus::OK) {
@@ -1466,6 +1523,9 @@ std::vector<std::string> WAL::readAll(const std::string& walFile) {
 }
 
 void WAL::clear(const std::string& file) {
+    auto state = logicalWalState(file);
+    WalOperation operation(*state);
+    if (!operation) throw std::runtime_error("wal_recovery_in_progress");
     std::vector<PendingWalEntry> rejected;
     {
         std::lock_guard<std::mutex> bufferLock(bufMutex);
@@ -1481,7 +1541,6 @@ void WAL::clear(const std::string& file) {
         completeEntries(rejected, false, "collection WAL cleared before append");
     }
 
-    auto state = logicalWalState(file);
     std::lock_guard<std::mutex> lock(state->mutex);
     state->clearing = true;
     closeWalFile(file);

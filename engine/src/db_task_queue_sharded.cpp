@@ -1,3 +1,5 @@
+#include "database_engine.hpp"
+#include "query_limiter.hpp"
 #include "db_task_queue_sharded.hpp"
 #include "metrics_exporter.hpp"
 #include <iostream>
@@ -11,6 +13,11 @@
 #include <cstdlib>
 
 namespace {
+struct WorkerReadContextScope {
+    WorkerReadContextScope() { DatabaseEngine::clearReadContext(); }
+    ~WorkerReadContextScope() { DatabaseEngine::clearReadContext(); }
+};
+
 std::chrono::milliseconds resolveDbqEnqueueWaitBudget() {
     long long waitMs = 40;
     if (const char* env = std::getenv("DBQ_ENQUEUE_WAIT_MS")) {
@@ -114,7 +121,7 @@ bool DBTaskQueueSharded::enqueue(Task task, Priority priority, const std::string
 
     // Create task envelope
     Shard::TaskEnvelope envelope{};
-    envelope.task = std::move(task);
+    envelope.task = QueryLimiter::bind(std::move(task));
     envelope.priority = priority;
     envelope.collection = collection.empty() ? "__default__" : collection;
     envelope.costHint = std::max<size_t>(1, costHint);
@@ -405,6 +412,7 @@ void DBTaskQueueSharded::workerThread(size_t shardId) {
         // Execute batch without holding lock
         shard.activeWorkers.fetch_add(1, std::memory_order_relaxed);
         for (auto& envelope : batch) {
+            WorkerReadContextScope readContext;
             try {
                 envelope.task();
             } catch (const std::exception& e) {

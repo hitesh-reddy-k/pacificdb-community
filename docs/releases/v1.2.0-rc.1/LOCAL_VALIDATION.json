@@ -1,0 +1,116 @@
+{
+  "releaseVersion": "1.2.0-rc.1",
+  "baseVersion": "1.2.0",
+  "scope": "initial dirty-source local qualification; final clean source-bound build required",
+  "status": "Blocked",
+  "engine": {
+    "product": "PacificDB Engine",
+    "engineVersion": "1.2.0",
+    "releaseVersion": "1.2.0-rc.1",
+    "releaseChannel": "prerelease",
+    "releaseName": "Pre-release v1.2",
+    "releaseTag": "v1.2.0-rc.1",
+    "gitCommit": "8732d299008e6cbc581f76e7c2a1eb2f7dad703f",
+    "storageFormatVersion": "2",
+    "raftProtocolVersion": "2",
+    "buildTimestamp": "2026-10-09T17:29:26+05:30",
+    "compiler": "GNU-14.2.0"
+  },
+  "checks": {
+    "regressions": {
+      "status": "PASS",
+      "topLevelChecks": 76,
+      "ctest": 45,
+      "binarySha256": "3bf6f7d56e81be87a2a4baecceaf9e53214d5fe102bd62d61d102cabc5ead2bc"
+    },
+    "sdk": {
+      "status": "PASS",
+      "version": "1.2.0-rc.1",
+      "liveEngine": "PASS",
+      "artifacts": [
+        {
+          "sha256": "1c1421f51ee936e2c1fd8239fc912bd09d84765efe5f90ccf0fe1ac00ef46fd0",
+          "size_bytes": 65807
+        },
+        {
+          "sha256": "3855180dfdd035b44222c4a42425c2cda74a9f6ad6a1c7deb3973e6a450984b7",
+          "size_bytes": 16564
+        },
+        {
+          "sha256": "fc4d61a779dfb06d9acfb7c18218106557379d70049ea3729445dbad81de8518",
+          "size_bytes": 23324
+        },
+        {
+          "sha256": "e1a1c1756c6cd431f0fca85fa49db518e2ab7c02c91c715934dfeea3f84282a3",
+          "size_bytes": 34375
+        },
+        {
+          "sha256": "979db2996da580556ee9958eee0f8f366cefae6e2bf5541779f6a8e3d1998ae1",
+          "size_bytes": 55523
+        },
+        {
+          "sha256": "5e9b5eba2c2a68e374b3b7fe8ae421162abdf1fbf117a41e81c07a3fc37576a3",
+          "size_bytes": 26834
+        },
+        {
+          "sha256": "9e02bddafaf102b962fbd3e1abd2a4da254089d2ceac1cf4f2a858e9f46f9ed6",
+          "size_bytes": 162535
+        },
+        {
+          "sha256": "a1f13aff532695a43062ad4819acfc12babca2ae6b2538e665c0aa1bb242247a",
+          "size_bytes": 3839
+        }
+      ]
+    },
+    "tsan": [
+      {
+        "test": "db_engine_tenant_auth_recovery_test",
+        "status": "Passed",
+        "binarySha256": "7829d21aa4c079470a2e646f701136ffec5105c1d6f6633af63e6061c341c3b8"
+      },
+      {
+        "test": "db_engine_tenant_auth_recovery_test-access",
+        "status": "Passed",
+        "binarySha256": "7829d21aa4c079470a2e646f701136ffec5105c1d6f6633af63e6061c341c3b8"
+      },
+      {
+        "test": "db_engine_lsm_point_read_flush_test",
+        "status": "Passed",
+        "binarySha256": "060b012ba1981ea695bb37c76b9dc4f020c677b8227485b5c1ca26a00321607f"
+      },
+      {
+        "test": "db_engine_vector_safety_concurrency_test",
+        "status": "Passed",
+        "binarySha256": "f635851c4114aa1fc53426fb91b3a6d467907913b7093a7dce761556f9e1e06f"
+      }
+    ],
+    "asan": [
+      {
+        "test": "db_engine_tenant_auth_recovery_test",
+        "status": "Passed",
+        "binarySha256": "b6e7bc59e607dd3fb3db100da8d63da86a3208f3175a6f6dda19bb8ced616fc3"
+      },
+      {
+        "test": "db_engine_tenant_auth_recovery_test-access",
+        "status": "Passed",
+        "binarySha256": "b6e7bc59e607dd3fb3db100da8d63da86a3208f3175a6f6dda19bb8ced616fc3"
+      },
+      {
+        "test": "db_engine_lsm_point_read_flush_test",
+        "status": "Passed",
+        "binarySha256": "8e07ea568d5ffbc99ffb1940e8f70bc7394999b4904ed0608a0be4e861eecc85"
+      }
+    ],
+    "workbench": {
+      "status": "Passed",
+      "scope": "browser/Electron/extracted initial Linux packages; patched Electron revalidation in progress; source-bound repack required"
+    }
+  },
+  "knownIssues": [
+    "ANN graph reconstruction after restart",
+    "strict ANN search unavailability during writes",
+    "performance gaps retained",
+    "moderate build-only npm advisories remain unpatched in supported toolchain"
+  ],
+  "publication": "not performed"
+}

@@ -471,6 +471,20 @@ try {
     const audit = await readFile(path.join(root, 'valid-host', 'data', 'security', 'audit.log'), 'utf8');
     assert.match(audit, /SUPERADMIN_OVERRIDE/);
     assert.match(audit, /tenant-b\/shared/);
+    const ownerPassword = 'tenant-owner-log-check-value';
+    const newPassword = 'tenant-reset-log-check-value';
+    const rejectedPassword = 'tenant-rejected-log-check-value';
+    const tenant = await admin.request({ action: 'createTenant', tenantId: 'log-check',
+      name: 'Log check', ownerUsername: 'owner', ownerPassword });
+    assert.equal(tenant.success, true);
+    const reset = await admin.request({ action: 'updateTenantUserPassword',
+      tenantId: 'log-check', username: 'owner', updatedBy: 'owner', newPassword });
+    assert.equal(reset.success, true);
+    const rejectedClient = new PacificDBClient({ port: active.port, poolSize: 1 });
+    try {
+      await assert.rejects(rejectedClient.request({ action: 'createTenant',
+        tenantId: 'denied-log-check', ownerPassword: rejectedPassword }), /unauthorized/);
+    } finally { rejectedClient.close(); }
   } finally {
     anonymous.close();
     admin.close();
@@ -481,7 +495,8 @@ try {
   await stopEngine(active);
   const deterministicLog = await readFile(path.join(root, 'valid-host', 'requests.jsonl'), 'utf8');
   for (const secret of [adminPassword, 'another-private-value',
-    'mixed-case-private-value']) {
+    'mixed-case-private-value', 'tenant-owner-log-check-value',
+    'tenant-reset-log-check-value', 'tenant-rejected-log-check-value']) {
     assert.equal(deterministicLog.includes(secret), false,
       'deterministic request logging must redact configuration secrets');
   }

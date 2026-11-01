@@ -18,6 +18,20 @@ env:
   # Keep fixture and source decoding deterministic on Windows runners.
   PYTHONUTF8: '1'
 jobs:
+  node-runtimes:
+    strategy:
+      matrix:
+        node: ['18', '22', '24']
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run test:npm
   supported-runtimes:
     strategy:
       fail-fast: false
@@ -47,8 +61,9 @@ jobs:
           python scripts/test-sdk-capability-matrix.py
           python scripts/test-sdk-packages.py
           python scripts/test-sdk-workflows.py
+          python scripts/test-sdk-release-candidate.py
   inspected-artifacts:
-    needs: supported-runtimes
+    needs: [supported-runtimes, node-runtimes]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v7
@@ -71,20 +86,28 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cmake g++ liblz4-dev libre2-dev libssl-dev gnupg
           python -m pip install build==1.2.2.post1 twine==6.1.0 setuptools==80.9.0 pytest==8.3.5
+      - name: Build npm packages and verify installed consumers
+        run: |
+          mkdir -p release-sdk/npm
+          npm pack --workspace @pacificdb/client --pack-destination release-sdk/npm
+          npm pack --workspace @pacificdb/cli --pack-destination release-sdk/npm
+          scripts/test-node-installed-client.sh release-sdk/npm
       - name: Build engine for installed-artifact qualification
         run: |
-          cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.1.2
+          cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION="$(python scripts/release_identity.py --field version)"
           cmake --build build -j2
           node scripts/test-cross-sdk-e2e.mjs build
       - name: Build and test Python distributions
         run: |
           python -m build sdk/python
           python -m twine check sdk/python/dist/*
-          PACIFICDB_TEST_ENGINE_BUILD="$PWD/build" scripts/test-python-installed-client.sh sdk/python/dist/*.whl
+          scripts/test-python-installed-client.sh sdk/python/dist/*.whl
       - name: Build and test installed Java artifacts
         run: |
-          PACIFICDB_TEST_ENGINE_BUILD="$PWD/build" scripts/test-java-installed-client.sh
           mvn -B -q -f sdk/java/pom.xml package
+          version=$(python scripts/release_identity.py --field javaVersion)
+          cp sdk/java/pom.xml "sdk/java/target/pacificdb-client-$version.pom"
+          scripts/test-java-installed-client.sh sdk/java/target
       - name: Local test signatures and bundle (no upload)
         run: |
           set -euo pipefail
@@ -95,16 +118,26 @@ jobs:
           gpg --batch --pinentry-mode loopback --passphrase '' --quick-generate-key 'Local pipeline test ONLY <local-test@example.invalid>' rsa2048 sign 1d
           fingerprint=$(gpg --batch --with-colons --list-secret-keys | awk -F: '$1 == "fpr" {print $10; exit}')
           mkdir -p sdk/java/target/central-publishing
-          cp sdk/java/pom.xml sdk/java/target/pacificdb-client-1.1.2.pom
+          version=$(python scripts/release_identity.py --field javaVersion)
+          cp sdk/java/pom.xml "sdk/java/target/pacificdb-client-$version.pom"
           python scripts/pack-java-sdk.py --target sdk/java/target --output sdk/java/target/central-publishing/central-bundle.zip --fingerprint "$fingerprint" --sign
           gpg --armor --export > sdk/java/target/local-test-public.asc
       - name: Inspect exact distributions and stage tested bytes
         run: |
           mkdir -p release-sdk/python release-sdk/java/central-publishing
-          python scripts/verify-sdk-packages.py --python-dist sdk/python/dist --java-target sdk/java/target --output release-sdk/inspection.json
+          python scripts/verify-sdk-packages.py --npm-dist release-sdk/npm --python-dist sdk/python/dist --java-target sdk/java/target --output release-sdk/inspection.json
           cp sdk/python/dist/* release-sdk/python/
-          cp sdk/java/target/pacificdb-client-1.1.2*.jar sdk/java/target/pacificdb-client-1.1.2.pom sdk/java/target/local-test-public.asc release-sdk/java/
+          version=$(python scripts/release_identity.py --field javaVersion)
+          cp sdk/java/target/pacificdb-client-$version*.jar "sdk/java/target/pacificdb-client-$version.pom" sdk/java/target/local-test-public.asc release-sdk/java/
           cp sdk/java/target/central-publishing/central-bundle.zip release-sdk/java/central-publishing/
+      - name: Qualify exact staged SDKs against fresh engine
+        env:
+          PACIFICDB_TEST_ENGINE_BUILD: ${{ github.workspace }}/build
+          PACIFICDB_VECTOR_PREVIEW_ENABLED: '1'
+          PACIFICDB_TEST_TYPED_VECTORS: '1'
+          PACIFICDB_TEST_NATIVE_VECTOR_PREVIEW: '1'
+          PACIFICDB_TEST_VECTOR_SCHEMA: '1'
+        run: scripts/test-staged-sdk.sh release-sdk release-sdk/evidence
       - uses: actions/upload-artifact@v6
         with:
           name: tested-sdk-packages

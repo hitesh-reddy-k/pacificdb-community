@@ -57,6 +57,18 @@ public final class Operations {
         /** Send queryVector; fields and response retain their engine contracts. */
         public Object query(Map<String, Object> options) { return call("queryVector", options, "collection"); }
         public Object query() { return query(Map.of()); }
+        /** Standalone vector preview; requires server opt-in. Options retain engine names. */
+        public Object createIndex(Map<String,Object> options) { return call("createVectorIndex",options,"collection"); }
+        /** Standalone vector preview; requires server opt-in. Options retain engine names. */
+        public Object listIndexes(Map<String,Object> options) { return call("listVectorIndexes",options,"collection"); }
+        /** Standalone vector preview; requires server opt-in. Options retain engine names. */
+        public Object indexStatus(Map<String,Object> options) { return call("vectorIndexStatus",options,"collection"); }
+        /** Standalone vector preview; requires server opt-in. Options retain engine names. */
+        public Object rebuildIndex(Map<String,Object> options) { return call("rebuildVectorIndex",options,"collection"); }
+        /** Standalone vector preview; requires server opt-in. Options retain engine names. */
+        public Object dropIndex(Map<String,Object> options) { return call("dropVectorIndex",options,"collection"); }
+        /** Standalone vector preview; requires server opt-in. Options retain engine names. */
+        public Object queryHybrid(Map<String,Object> options) { return call("queryHybrid",options,"collection"); }
     }
 
     public static final class Media extends Family {

@@ -47,7 +47,7 @@ def test_entire_matrix_invokes_named_wire_methods():
                 assert sent['userId'] == 'system' and sent['dbName'] == 'app' and sent['token'] == 'fixture-token'
                 for key,value in row['sample'].items(): assert sent[key] == value
                 assert result == reply(sent)
-    assert validator.validate(MATRIX) == 135
+    assert validator.validate(MATRIX) == 141
 
 
 @pytest.mark.parametrize('key,value', [('action','dropDatabase'),('userId','other'),('dbName','other'),('db','other'),('token','private')])

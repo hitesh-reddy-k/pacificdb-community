@@ -621,6 +621,9 @@ json TenantManager::updateTenantUserPassword(const std::string& tenantId,
 
     userIt->second.salt = generateSalt();
     userIt->second.passwordHash = hashPassword(newPassword, userIt->second.salt);
+    userIt->second.isLocked = false;
+    userIt->second.failedLoginAttempts = 0;
+    userIt->second.lockedUntil = 0;
 
     saveTenantUsers(tenantId);
 
@@ -731,7 +734,15 @@ json TenantManager::authenticateTenantUser(const std::string& tenantId,
 
     TenantUser& user = userIt->second;
 
-    // Check if locked
+    const auto now = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    if (user.isLocked && user.lockedUntil > 0 && now >= user.lockedUntil) {
+        user.isLocked = false;
+        user.failedLoginAttempts = 0;
+        user.lockedUntil = 0;
+        saveTenantUsers(tenantId);
+    }
+    // Legacy locks without a deadline require authorized recovery.
     if (user.isLocked) {
         return {{"success", false}, {"error", "Account is locked"}};
     }
@@ -745,6 +756,7 @@ json TenantManager::authenticateTenantUser(const std::string& tenantId,
         user.failedLoginAttempts++;
         if (user.failedLoginAttempts >= maxLoginAttempts_) {
             user.isLocked = true;
+            user.lockedUntil = now + static_cast<int64_t>(lockoutMinutes_) * 60;
             saveTenantUsers(tenantId);
             logTenantAudit(tenantId, username, "LOGIN_FAILED", "auth",
                            "Account locked after " + std::to_string(maxLoginAttempts_) + " failed attempts", false);
@@ -875,19 +887,21 @@ bool TenantManager::canAccessDatabase(const std::string& token, const std::strin
     }
 
     // Check user's allowed databases
-    auto userOpt = getTenantUser(session.tenantId, session.username);
-    if (!userOpt) {
+    const auto tenantUsers = tenantUsers_.find(session.tenantId);
+    if (tenantUsers == tenantUsers_.end()) return false;
+    const auto user = tenantUsers->second.find(session.username);
+    if (user == tenantUsers->second.end()) {
         return false;
     }
 
     // Empty = all databases
-    if (userOpt->allowedDatabases.empty()) {
+    if (user->second.allowedDatabases.empty()) {
         return true;
     }
 
-    return std::find(userOpt->allowedDatabases.begin(),
-                     userOpt->allowedDatabases.end(),
-                     database) != userOpt->allowedDatabases.end();
+    return std::find(user->second.allowedDatabases.begin(),
+                     user->second.allowedDatabases.end(),
+                     database) != user->second.allowedDatabases.end();
 }
 
 json TenantManager::checkAccess(const std::string& token,

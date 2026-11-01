@@ -7,6 +7,7 @@
 #include <cerrno>
 #include <chrono>
 #include <cstring>
+#include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <limits>
@@ -633,7 +634,38 @@ std::shared_ptr<const BloomView> mapBloom(const fs::path& path) {
 
 }  // namespace
 
+void MsgpackRowView::buildFieldIndex() {
+    if (!data_ || !size_) return;
+    const auto* cursor = data_;
+    const auto* end = data_ + size_;
+    std::uint64_t count = 0;
+    const auto tag = *cursor++;
+    if ((tag & 0xf0) == 0x80) count = tag & 0x0f;
+    else if (tag == 0xde || tag == 0xdf) {
+        if (!readBigEndian(cursor, end, tag == 0xde ? 2 : 4, count)) return;
+    } else return;
+    for (std::uint64_t i = 0; i < count; ++i) {
+        std::string_view name;
+        if (!readMsgpackString(cursor, end, name)) return;
+        const auto* begin = cursor;
+        if (!skipMsgpack(cursor, end)) return;
+        if (fieldCount_ < fields_.size()) fields_[fieldCount_++] = {name, begin, cursor};
+    }
+    indexValid_ = cursor == end;
+}
+
 std::optional<json> MsgpackRowView::field(std::string_view name) const {
+    if (indexed_) {
+        if (!indexValid_) return std::nullopt;
+        for (std::size_t i = 0; i < fieldCount_; ++i) {
+            const auto& span = fields_[i];
+            if (span.name == name) {
+                try { return json::from_msgpack(span.begin, span.end, true, true); }
+                catch (...) { return std::nullopt; }
+            }
+        }
+        if (fieldCount_ < fields_.size()) return std::nullopt;
+    }
     if (!data_ || size_ == 0) return std::nullopt;
     const std::uint8_t* cursor = data_;
     const std::uint8_t* end = data_ + size_;
@@ -662,6 +694,99 @@ std::optional<json> MsgpackRowView::field(std::string_view name) const {
         }
     }
     return std::nullopt;
+}
+
+json MsgpackRowView::project(const std::vector<std::string>& names) const {
+    if (indexed_) {
+        if (!indexValid_) throw std::runtime_error("invalid indexed MessagePack row");
+        json selected = json::object();
+        for (const auto& name : names) {
+            if (auto value = field(name)) selected[name] = std::move(*value);
+        }
+        return selected;
+    }
+    if (!data_ || size_ == 0) throw std::runtime_error("empty MessagePack row");
+    const std::uint8_t* cursor = data_;
+    const std::uint8_t* end = data_ + size_;
+    std::uint64_t count = 0;
+    const std::uint8_t tag = *cursor++;
+    if ((tag & 0xf0) == 0x80) count = tag & 0x0f;
+    else if (tag == 0xde || tag == 0xdf) {
+        if (!readBigEndian(cursor, end, tag == 0xde ? 2 : 4, count)) {
+            throw std::runtime_error("invalid MessagePack row map");
+        }
+    } else throw std::runtime_error("MessagePack row must be an object");
+    json selected = json::object();
+    for (std::uint64_t i = 0; i < count; ++i) {
+        std::string_view key;
+        if (!readMsgpackString(cursor, end, key)) throw std::runtime_error("invalid MessagePack field name");
+        const auto* value = cursor;
+        if (!skipMsgpack(cursor, end)) throw std::runtime_error("invalid MessagePack field value");
+        const auto found = std::find_if(names.begin(), names.end(), [&](const std::string& name) { return name == key; });
+        if (found != names.end() && !selected.contains(*found)) {
+            selected[*found] = json::from_msgpack(value, cursor, true, true);
+        }
+    }
+    if (cursor != end) throw std::runtime_error("trailing MessagePack row bytes");
+    return selected;
+}
+
+std::optional<double> MsgpackRowView::denseScore(std::string_view name,
+        const std::vector<double>& query, const std::string& metric, double queryNorm) const {
+    if (!indexed_ || !indexValid_ || query.empty()) return std::nullopt;
+    const FieldSpan* selected = nullptr;
+    for (std::size_t i = 0; i < fieldCount_; ++i)
+        if (fields_[i].name == name) { selected = &fields_[i]; break; }
+    if (!selected) return std::nullopt;
+    const auto* cursor = selected->begin;
+    const auto* end = selected->end;
+    if (cursor == end) return std::nullopt;
+    const auto tag = *cursor++;
+    uint64_t count = 0;
+    if ((tag & 0xf0) == 0x90) count = tag & 15;
+    else if (tag == 0xdc || tag == 0xdd) {
+        if (!readBigEndian(cursor, end, tag == 0xdc ? 2 : 4, count)) return std::nullopt;
+    } else return std::nullopt;
+    if (count != query.size()) return std::nullopt;
+    const bool euclidean = metric == "l2" || metric == "euclidean";
+    const bool dot = metric == "dot" || metric == "dot_product";
+    double sum = 0, norm = 0;
+    for (std::size_t i = 0; i < query.size(); ++i) {
+        if (cursor == end) return std::nullopt;
+        const uint8_t kind = *cursor++;
+        double number;
+        if (kind <= 0x7f) number = kind;
+        else if (kind >= 0xe0) number = -double(256 - kind);
+        else {
+            uint64_t bits = 0;
+            if (kind == 0xca || kind == 0xcb) {
+                if (!readBigEndian(cursor, end, kind == 0xca ? 4 : 8, bits)) return std::nullopt;
+                if (kind == 0xca) {
+                    uint32_t raw = static_cast<uint32_t>(bits); float value;
+                    std::memcpy(&value, &raw, sizeof(value)); number = value;
+                } else std::memcpy(&number, &bits, sizeof(number));
+            } else if (kind >= 0xcc && kind <= 0xd3) {
+                const bool negativeType = kind >= 0xd0;
+                const std::size_t width = std::size_t(1) << (negativeType ? kind - 0xd0 : kind - 0xcc);
+                if (!readBigEndian(cursor, end, width, bits)) return std::nullopt;
+                if (negativeType && (bits & (uint64_t(1) << (width * 8 - 1)))) {
+                    const uint64_t mask = width == 8 ? UINT64_MAX : (uint64_t(1) << (width * 8)) - 1;
+                    number = -static_cast<double>((~bits & mask) + 1);
+                } else number = static_cast<double>(bits);
+            } else return std::nullopt;
+        }
+        if (euclidean) { const double difference = query[i] - number; sum += difference * difference; }
+        else { sum += query[i] * number; if (!dot) norm += number * number; }
+    }
+    if (cursor != end) return std::nullopt;
+    // Let the selective JSON path use wider intermediates for rare ranges;
+    // never report a finite zero caused by an overflowing norm product.
+    if(!std::isfinite(sum))return std::nullopt;
+    if (euclidean) return -std::sqrt(sum);
+    if (dot) return sum;
+    const double denominator = queryNorm * std::sqrt(norm);
+    if(!std::isfinite(denominator))return std::nullopt;
+    return denominator < 1e-12 ? 0.0 : sum / denominator;
 }
 
 json MsgpackRowView::materialize() const {
@@ -1012,6 +1137,7 @@ struct SstCursor::Impl {
     fs::path path;
     std::ifstream input;
     bool binary{true};
+    bool indexFields{false};
     std::uint64_t rowCount{0};
     std::uint64_t rowsRead{0};
     std::uint64_t indexOffset{0};
@@ -1049,7 +1175,7 @@ struct SstCursor::Impl {
                     setError(error, std::string("invalid legacy SST row: ") + exception.what());
                     return false;
                 }
-                current = MsgpackRowView(legacyRow.data(), legacyRow.size());
+                current = MsgpackRowView(legacyRow.data(), legacyRow.size(), indexFields);
                 break;
             }
             if (input.bad()) {
@@ -1078,7 +1204,7 @@ struct SstCursor::Impl {
             setError(error, "invalid SST cursor row");
             return false;
         }
-        current = MsgpackRowView(reinterpret_cast<const std::uint8_t*>(cursor), size);
+        current = MsgpackRowView(reinterpret_cast<const std::uint8_t*>(cursor), size, indexFields);
         cursor += size;
         ++rowIndex;
         ++rowsRead;
@@ -1104,9 +1230,10 @@ SstCursor::SstCursor(SstCursor&&) noexcept = default;
 SstCursor& SstCursor::operator=(SstCursor&&) noexcept = default;
 SstCursor::~SstCursor() = default;
 
-std::optional<SstCursor> SstCursor::open(const fs::path& path, std::string* error) {
+std::optional<SstCursor> SstCursor::open(const fs::path& path, std::string* error, bool indexFields) {
     auto impl = std::make_unique<Impl>();
     impl->path = path;
+    impl->indexFields = indexFields;
     impl->input.open(path, std::ios::binary);
     if (!impl->input) {
         setError(error, "cannot open SST cursor");
@@ -1133,7 +1260,7 @@ bool SstCursor::next(std::string* error) { return impl_ && impl_->advance(error)
 
 bool visitLatestSstRows(const std::vector<fs::path>& oldestToNewest,
                         const std::function<bool(const MsgpackRowView&)>& visitor,
-                        std::string* error) {
+                        std::string* error, bool indexFields, bool includeDeleted) {
     struct Item { std::string id; std::size_t index; };
     struct LaterId {
         bool operator()(const Item& left, const Item& right) const {
@@ -1145,7 +1272,7 @@ bool visitLatestSstRows(const std::vector<fs::path>& oldestToNewest,
     cursors.reserve(oldestToNewest.size());
     std::priority_queue<Item, std::vector<Item>, LaterId> heap;
     for (const auto& path : oldestToNewest) {
-        auto cursor = SstCursor::open(path, error);
+        auto cursor = SstCursor::open(path, error, indexFields);
         if (!cursor) return false;
         cursors.push_back(std::move(*cursor));
         if (cursors.back().valid()) {
@@ -1184,7 +1311,7 @@ bool visitLatestSstRows(const std::vector<fs::path>& oldestToNewest,
             }
         }
         const auto deleted = cursors[newest].row().field("_deleted");
-        if (!(deleted && deleted->is_boolean() && deleted->get<bool>()) &&
+        if ((includeDeleted || !(deleted && deleted->is_boolean() && deleted->get<bool>())) &&
             !visitor(cursors[newest].row())) return true;
         for (const auto index : matching) {
             if (!cursors[index].next(error)) return false;

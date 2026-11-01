@@ -81,4 +81,47 @@ with PacificDB.connect(url,**options) as db:
     target=root/f'python-{phase}-download.bin';db.media.download_file(state['media_id'],target,collection='assets');assert target.read_bytes()==source
     assert db.media.get('assets','tiny')['data']==b'\x00\xff'
     assert db.backups.verify(backup_id=state['backup_id'])
+    if os.environ.get('PACIFICDB_TEST_TYPED_VECTORS') == '1':
+        terms={'format':'sparse-v1','precision':'float64','dimensions':1000000,
+               'indices':[3,999999],'values':[0.125,-2.0]}
+        if phase == 'prepare':
+            db.vectors.insert(collection='vectors',data={'id':'named-typed',
+                'vectors':{'dense':[0.123456789012345,1.0],'terms':terms}})
+        hits=db.vectors.query(collection='vectors',vector=terms,vector_name='terms',
+                              metric='dot',k=10,search_mode='exact')['data']
+        assert len(hits)==1 and hits[0]['id']=='named-typed'
+        assert hits[0]['vectors']['terms']==terms and abs(hits[0]['score']-4.015625)<1e-12
+        assert hits[0]['vectors']['dense'][0]==0.123456789012345
+    if os.environ.get('PACIFICDB_TEST_NATIVE_VECTOR_PREVIEW') == '1':
+        import time
+        if phase == 'prepare':
+            db.create_collection('preview',**({'vector_schema':{'default':{'dimensions':2,'metric':'dot','required':True}}} if os.environ.get('PACIFICDB_TEST_VECTOR_SCHEMA')=='1' else {}))
+            db.vectors.insert(collection='preview',data={'id':'preview-one','vector':[1,0],'title':'rare ocean'})
+            db.vectors.insert(collection='preview',data={'id':'preview-two','vector':[0,1],'title':'ocean'})
+        if os.environ.get('PACIFICDB_TEST_VECTOR_SCHEMA')=='1':
+            try:
+                db.insert('preview',{'id':'bad-schema','vector':[1]})
+                raise AssertionError('schema invalid vector accepted')
+            except PacificDBError as error:
+                assert 'vector_schema' in str(error)
+        db.vectors.create_index(collection='preview',options={'name':'flat','algorithm':'flat','dimensions':2,
+            'metric':'dot','text_field':'title','max_elements':100,'max_source_bytes':1048576,
+            'max_index_bytes':4194304,'max_lexical_bytes':1048576})
+        deadline=time.monotonic()+30
+        while True:
+            state=db.vectors.index_status(collection='preview',name='flat')['index']
+            if state['state']=='READY':break
+            assert state['state']!='FAILED' and time.monotonic()<deadline,state
+            time.sleep(.01)
+        assert len(db.vectors.list_indexes(collection='preview')['indexes'])==1
+        result=db.vectors.query(collection='preview',vector=[1,0],metric='dot',k=1,
+            index_name='flat',require_index=True,search_mode='exact')
+        assert result['data'][0]['id']=='preview-one' and result['search']['index_type']=='flat'
+        hybrid=db.vectors.query_hybrid(collection='preview',index_name='flat',vector=[1,0],text='rare',metric='dot',k=1,candidates=2)
+        assert hybrid['data'][0]['id']=='preview-one'
+        db.vectors.rebuild_index(collection='preview',name='flat')
+        if phase=='tls':
+            db.vectors.drop_index(collection='preview',name='flat')
+            assert db.count('preview')['count']==2
+
 print(json.dumps({'status':'PASS','language':'python','phase':phase,'exact_documents':160,'media_bytes':len(source)}))

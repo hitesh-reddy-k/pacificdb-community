@@ -1,11 +1,9 @@
 name: Publish tested Python SDK
 on:
-  push:
-    tags: ['v*.*.*']
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Exact existing vMAJOR.MINOR.PATCH release tag
+        description: Exact existing release tag (including release candidates)
         required: true
 permissions:
   contents: read

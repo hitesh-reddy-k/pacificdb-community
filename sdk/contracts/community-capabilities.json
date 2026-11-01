@@ -1713,6 +1713,113 @@
       "scope": "global",
       "sample": {},
       "alias_of": "lsm_metrics"
+    },
+    {
+      "action": "createVectorIndex",
+      "classification": "advanced",
+      "python": "vectors.create_index",
+      "java": "vectors.createIndex",
+      "required_fields": [
+        "collection",
+        "options"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "vectors",
+        "options": {
+          "name": "dense",
+          "algorithm": "flat",
+          "dimensions": 2
+        }
+      },
+      "availability": "standalone development preview; PACIFICDB_VECTOR_PREVIEW_ENABLED required; release qualification incomplete"
+    },
+    {
+      "action": "listVectorIndexes",
+      "classification": "advanced",
+      "python": "vectors.list_indexes",
+      "java": "vectors.listIndexes",
+      "required_fields": [
+        "collection"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "vectors"
+      },
+      "availability": "standalone development preview; PACIFICDB_VECTOR_PREVIEW_ENABLED required; release qualification incomplete"
+    },
+    {
+      "action": "vectorIndexStatus",
+      "classification": "advanced",
+      "python": "vectors.index_status",
+      "java": "vectors.indexStatus",
+      "required_fields": [
+        "collection",
+        "name"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "vectors",
+        "name": "dense"
+      },
+      "availability": "standalone development preview; PACIFICDB_VECTOR_PREVIEW_ENABLED required; release qualification incomplete"
+    },
+    {
+      "action": "rebuildVectorIndex",
+      "classification": "advanced",
+      "python": "vectors.rebuild_index",
+      "java": "vectors.rebuildIndex",
+      "required_fields": [
+        "collection",
+        "name"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "vectors",
+        "name": "dense"
+      },
+      "availability": "standalone development preview; PACIFICDB_VECTOR_PREVIEW_ENABLED required; release qualification incomplete"
+    },
+    {
+      "action": "dropVectorIndex",
+      "classification": "advanced",
+      "python": "vectors.drop_index",
+      "java": "vectors.dropIndex",
+      "required_fields": [
+        "collection",
+        "name"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "vectors",
+        "name": "dense"
+      },
+      "availability": "standalone development preview; PACIFICDB_VECTOR_PREVIEW_ENABLED required; release qualification incomplete"
+    },
+    {
+      "action": "queryHybrid",
+      "classification": "advanced",
+      "python": "vectors.query_hybrid",
+      "java": "vectors.queryHybrid",
+      "required_fields": [
+        "collection",
+        "index_name",
+        "vector",
+        "text",
+        "metric"
+      ],
+      "scope": "collection",
+      "sample": {
+        "collection": "vectors",
+        "index_name": "dense",
+        "vector": [
+          1,
+          0
+        ],
+        "text": "ocean",
+        "metric": "cosine"
+      },
+      "availability": "standalone development preview; PACIFICDB_VECTOR_PREVIEW_ENABLED required; release qualification incomplete"
     }
   ]
 }

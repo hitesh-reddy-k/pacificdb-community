@@ -1,6 +1,6 @@
 {
   "name": "pacificdb-community",
-  "version": "1.1.2",
+  "version": "1.2.0-rc.1",
   "private": true,
   "workspaces": [
     "sdk/node",
@@ -18,7 +18,7 @@
     "test:workbench:desktop": "node scripts/test-workbench-desktop.mjs"
   },
   "devDependencies": {
-    "electron": "44.4.5",
+    "electron": "44.10.1",
     "electron-builder": "26.15.3",
     "playwright": "1.63.0"
   }

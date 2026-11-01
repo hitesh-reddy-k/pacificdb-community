@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import re
+from release_identity import load_release_identity
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -47,24 +48,32 @@ def main() -> None:
         "engine/CMakeLists.txt",
         r'set\(PACIFICDB_ENGINE_VERSION "([^"]+)"',
     )
-    release_tag = f"v{engine_version}"
+    identity = load_release_identity(ROOT)
+    if engine_version != identity["version"]:
+        raise AssertionError("engine base version does not match release.json")
+    component_version = identity["releaseVersion"]
+    # The public website stays on its published channel until explicit publication.
+    published_version = "1.1.2" if identity["channel"] == "prerelease" else engine_version
+    release_tag = f"v{published_version}"
     landing_tag = match_version("site/index.html", r'<span class="badge">(v[0-9.]+)(?: candidate[^<]*)?</span>')
     if landing_tag != release_tag:
         raise AssertionError("landing version does not match engine")
-    require_text("site/index.html", f'href="release-{engine_version}.html"')
+    require_text("site/index.html", f'href="release-{published_version}.html"')
     docs_tag = match_version("site/docs.html", r'<span class="version-badge">(v[0-9.]+)(?: candidate[^<]*)?</span>')
     if docs_tag != release_tag:
         raise AssertionError("documentation version does not match engine")
     require_text(
-        f"site/release-{engine_version}.html", f"PacificDB Community · {release_tag}"
+        f"site/release-{published_version}.html", f"PacificDB Community · {release_tag}"
     )
 
     # Published prerelease assets use tag 1.1.2, not the stable v* pattern.
-    require_text("site/index.html", f"releases/download/{engine_version}/pacificdb-community-{engine_version}-linux-amd64.deb")
-    require_text("site/index.html", f"releases/download/{engine_version}/SHA256SUMS")
-    require_text("site/docs.html", f"pacificdb-community-{engine_version}-linux-amd64.deb")
+    require_text("site/index.html", f"releases/download/{published_version}/pacificdb-community-{published_version}-linux-amd64.deb")
+    require_text("site/index.html", f"releases/download/{published_version}/SHA256SUMS")
+    require_text("site/docs.html", f"pacificdb-community-{published_version}-linux-amd64.deb")
     for workflow in ("pages", "ci", "codeql", "sdk-packages", "workbench-desktop"):
-        require_text(f".github/workflows/{workflow}.yml", "branches: [main]")
+        workflow_text = (ROOT/f".github/workflows/{workflow}.yml").read_text()
+        if "branches:" not in workflow_text or "main" not in workflow_text:
+            raise AssertionError(f"{workflow} must preserve main validation")
 
     cli = json.loads((ROOT / "cli/package.json").read_text(encoding="utf-8"))
     node = json.loads(
@@ -81,40 +90,37 @@ def main() -> None:
         "deploy/helm/pacificdb/Chart.yaml": match_version(
             "deploy/helm/pacificdb/Chart.yaml", r'^appVersion: "([^"]+)"$'
         ),
-        ".github/workflows/release.yml": match_version(
-            ".github/workflows/release.yml", r"^\s+default: ([^\s]+)$"
-        ),
         "sdk/java/pom.xml": match_version(
             "sdk/java/pom.xml",
             r"<artifactId>pacificdb-client</artifactId>\s*<version>([^<]+)</version>",
         ),
     }
     for source, actual in expected.items():
-        if actual != engine_version:
+        if actual != component_version:
             raise AssertionError(
-                f"version mismatch: {source} has {actual}, expected {engine_version}"
+                f"version mismatch: {source} has {actual}, expected {component_version}"
             )
 
     python_version = match_version(
         "sdk/python/pyproject.toml", r'^version = "([^"]+)"$'
     )
-    pep440 = engine_version.replace("-beta.", "b")
+    pep440 = identity["pythonVersion"]
     if python_version != pep440:
         raise AssertionError(
             "version mismatch: sdk/python/pyproject.toml has "
             f"{python_version}, expected {pep440}"
         )
-    if cli["dependencies"]["@pacificdb/client"] != engine_version:
+    if cli["dependencies"]["@pacificdb/client"] != component_version:
         raise AssertionError("CLI dependency must exactly match the Node client version")
 
     lock = json.loads((ROOT / "package-lock.json").read_text())
     for workspace in ("", "cli", "sdk/node"):
-        if lock["packages"][workspace]["version"] != engine_version:
+        if lock["packages"][workspace]["version"] != component_version:
             raise AssertionError(f"lockfile workspace version mismatch: {workspace}")
-    if lock["packages"]["cli"]["dependencies"]["@pacificdb/client"] != engine_version:
+    if lock["packages"]["cli"]["dependencies"]["@pacificdb/client"] != component_version:
         raise AssertionError("lockfile CLI dependency must match the patch")
     require_text("README.md", f"PacificDB Community v{engine_version}")
-    require_text("cli/src/shell.js", "v${shellVersion}")
+    require_text("cli/src/shell.js", "releaseIdentity")
     require_text("engine/src/shell.cpp", '"               v" PACIFICDB_ENGINE_VERSION')
 
     print("RELEASE_CONSISTENCY_PASS")

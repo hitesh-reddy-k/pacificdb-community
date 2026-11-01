@@ -10,20 +10,22 @@ spec=importlib.util.spec_from_file_location('verify',Path(__file__).with_name('v
 verify=importlib.util.module_from_spec(spec);spec.loader.exec_module(verify)
 
 class Artifacts(unittest.TestCase):
-    def wheel(self,root,omit=None,metadata=None):
+    def wheel(self,root,omit=None,metadata=None,version="1.1.2"):
         entries={f'pacificdb/{module}.py':b'# module\n' for module in verify.PYTHON_MODULES}
         entries['pacificdb/__init__.py']=b'PacificDB = PacificDBClient\nfrom .errors import PacificDBError, MediaUploadError\n'
         entries['pacificdb-1.1.2.dist-info/METADATA']=(metadata or 'Metadata-Version: 2.4\nName: pacificdb\nVersion: 1.1.2\nRequires-Python: >=3.10\nLicense-Expression: Apache-2.0\nLicense-File: LICENSE\nDescription-Content-Type: text/markdown\nProject-URL: Source, https://github.com/hitesh-reddy-k/pacificdb-community\nAuthor: PacificDB contributors\n\n# PacificDB\nDatabase-first SDK\n').encode()
         entries['pacificdb-1.1.2.dist-info/licenses/LICENSE']=b'Apache License\nVersion 2.0\n'
         entries['pacificdb-1.1.2.dist-info/WHEEL']=b'Wheel-Version: 1.0\nRoot-Is-Purelib: true\nTag: py3-none-any\n'
         if omit:entries.pop(omit)
-        path=root/'pacificdb-1.1.2-py3-none-any.whl'
+        if version!='1.1.2':
+            entries={name.replace('1.1.2',version):data.replace(b'1.1.2',version.encode()) for name,data in entries.items()}
+        path=root/f'pacificdb-{version}-py3-none-any.whl'
         with zipfile.ZipFile(path,'w') as archive:
             import csv,io,hashlib,base64
             rows=[]
             for name,data in entries.items():
                 archive.writestr(name,data);rows.append([name,'sha256='+base64.urlsafe_b64encode(hashlib.sha256(data).digest()).decode().rstrip('='),len(data)])
-            record='pacificdb-1.1.2.dist-info/RECORD';rows.append([record,'','']);out=io.StringIO();csv.writer(out).writerows(rows);archive.writestr(record,out.getvalue())
+            record=f'pacificdb-{version}.dist-info/RECORD';rows.append([record,'','']);out=io.StringIO();csv.writer(out).writerows(rows);archive.writestr(record,out.getvalue())
         return path
     def test_good_wheel_and_missing_modules_license_readme(self):
         with tempfile.TemporaryDirectory() as d:
@@ -37,6 +39,11 @@ class Artifacts(unittest.TestCase):
                 metadata=re.sub('^'+field+':.*$',replacement,metadata,flags=re.M) if field in metadata else replacement+'\n'+metadata
                 with self.assertRaises(ValueError):verify.python_wheel(self.wheel(root,metadata=metadata),'1.1.2')
             with self.assertRaises(ValueError):verify.python_wheel(self.wheel(root,metadata='Name: pacificdb\nVersion: 1.1.2\n'),'1.1.2')
+    def test_candidate_wheel_uses_python_normalized_version(self):
+        with tempfile.TemporaryDirectory() as d:
+            wheel=self.wheel(Path(d),version='1.2.0rc1')
+            verify.python_wheel(wheel,'1.2.0rc1')
+            with self.assertRaises(ValueError):verify.python_wheel(wheel,'1.2.0-rc.1')
     def test_tampering_and_secret_build_files_fail(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d)
@@ -61,13 +68,13 @@ class JavaArtifacts(unittest.TestCase):
     def test_pom_metadata_floor_runtime_dependency_and_no_publish_defaults(self):
         import xml.etree.ElementTree as ET
         root=Path(__file__).resolve().parents[1]
-        verify.java_pom(root/'sdk/java/pom.xml','1.1.2')
+        verify.java_pom(root/'sdk/java/pom.xml','1.2.0-rc.1')
         tree=ET.parse(root/'sdk/java/pom.xml');ns={'m':'http://maven.apache.org/POM/4.0.0'}
         for field in ['description','url','developers','scm']:
             good=ET.fromstring(ET.tostring(tree.getroot()));good.remove(good.find('m:'+field,ns))
             with tempfile.TemporaryDirectory() as d:
                 file=Path(d)/'pom.xml';ET.ElementTree(good).write(file)
-                with self.assertRaises(ValueError):verify.java_pom(file,'1.1.2')
+                with self.assertRaises(ValueError):verify.java_pom(file,'1.2.0-rc.1')
     def test_java_bytecode_docs_sources_and_signatures_required(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d)
@@ -90,5 +97,28 @@ class JavaArtifacts(unittest.TestCase):
                     with self.assertRaises(ValueError):verify.java_jars(binary,sources,docs)
                 else:verify.java_jars(binary,sources,docs)
             with self.assertRaises(ValueError):verify.java_artifacts(root,'1.1.2')
+
+class ExactBytes(unittest.TestCase):
+    def test_bundle_pom_must_equal_inspected_pom(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);version='1.2.0-rc.1';base='pacificdb-client-'+version
+            (root/'central-publishing').mkdir()
+            (root/(base+'.pom')).write_bytes((Path(__file__).resolve().parents[1]/'sdk/java/pom.xml').read_bytes())
+            for suffix,extension in [('.jar','.class'),('-sources.jar','.java'),('-javadoc.jar','.html')]:
+                with zipfile.ZipFile(root/(base+suffix),'w') as archive:
+                    if extension=='.class':archive.writestr('META-INF/LICENSE','Apache License')
+                    for cls in verify.JAVA_CLASSES:
+                        data=b'\xca\xfe\xba\xbe\x00\x00\x00\x37' if extension=='.class' else b'public API'
+                        archive.writestr('io/pacificdb/'+cls+extension,data)
+            with zipfile.ZipFile(root/'central-publishing/bundle.zip','w') as archive:
+                for suffix in ['.pom','.jar','-sources.jar','-javadoc.jar']:
+                    name='io/pacificdb/pacificdb-client/'+version+'/'+base+suffix
+                    data=(root/(base+suffix)).read_bytes() if suffix!='.pom' else b'tampered dependency metadata'
+                    archive.writestr(name,data);archive.writestr(name+'.asc',b'BEGIN PGP SIGNATURE')
+                    for algorithm in ['md5','sha1','sha256','sha512']:
+                        archive.writestr(name+'.'+algorithm,hashlib.new(algorithm,data).hexdigest())
+            with self.assertRaisesRegex(ValueError,'bundle differs'):
+                verify.java_artifacts(root,version)
 
 if __name__=='__main__':unittest.main()

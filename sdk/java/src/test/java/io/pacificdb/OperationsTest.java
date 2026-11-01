@@ -97,4 +97,13 @@ class OperationsTest {
             }
         }
     }
+
+    @Test void optionalCreationSchemaPreservesWireAndScope() throws Exception {
+        var schema=Map.<String,Object>of("default",Map.of("dimensions",2,"metric","dot","required",true));
+        try(var server=new TestPeer(req -> Map.of("status","ok","echo",req));var db=new PacificDBClient("127.0.0.1",server.port,"app")){
+            db.createCollection("vectors",schema);
+            assertEquals(schema,server.frames.get(0).get("vector_schema"));assertEquals("app",server.frames.get(0).get("dbName"));
+            db.createCollection("legacy");assertFalse(server.frames.get(1).containsKey("vector_schema"));
+        }
+    }
 }

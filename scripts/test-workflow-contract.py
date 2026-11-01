@@ -96,26 +96,23 @@ require(
     "source-linux:",
     "contents: read",
     "packages:",
-    "uses: ./.github/workflows/release.yml",
-    "version: 1.1.2",
+    "uses: ./.github/workflows/prerelease.yml",
 )
 forbid(".github/workflows/ci.yml", "secrets: inherit")
 require(
     ".github/workflows/npm-publish.yml",
-    'tags: ["v*.*.*"]',
-    "Verify tag and package versions",
-    '[[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\\.[0-9]+\\.[0-9]+$ ]]',
-    'test "$client_version" = "$version"',
-    'test "$cli_version" = "$version"',
-    'test "$cli_client_version" = "$version"',
+    "workflow_dispatch:",
+    "environment:",
+    "check-sdk-release-tag.py",
+    "--tag next",
 )
-forbid(".github/workflows/npm-publish.yml", "workflow_dispatch:")
+forbid(".github/workflows/npm-publish.yml", "--tag latest")
 require(
     ".github/workflows/workbench-desktop.yml",
     "release_tag:",
     "WORKBENCH_RELEASE_TAG:",
     "WORKBENCH_VERSION=$(node -p",
-    "PACIFICDB_COMPONENT_VERSION=$(node -p",
+    "PACIFICDB_COMPONENT_VERSION=$(python3 scripts/release_identity.py --field version)",
     '-DPACIFICDB_ENGINE_VERSION="$PACIFICDB_COMPONENT_VERSION"',
     '-DPACIFICDB_ENGINE_VERSION="$env:PACIFICDB_COMPONENT_VERSION"',
     '--x-install-root="$pwd/build/vcpkg_installed"',

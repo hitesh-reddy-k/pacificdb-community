@@ -1,0 +1,614 @@
+{
+  "status": "PASS",
+  "status_scope": "original primary run status; a separate continuation does not erase a failed startup budget",
+  "continuation_status": "not needed",
+  "mixed_ann_read_availability_status": "FAIL",
+  "origin": "self-run project candidate benchmark; unpublished local report; no third-party endorsement",
+  "release_status": "INCOMPLETE",
+  "versions": {
+    "checked_date": "2026-11-01",
+    "postgresql": {
+      "version": "18.6",
+      "channel": "stable",
+      "official_policy": "https://www.postgresql.org/support/versioning/",
+      "excluded_preview": "19 RC1"
+    },
+    "pgvector": {
+      "version": "0.8.7",
+      "channel": "tagged stable; 0.9.0 is unreleased",
+      "changelog": "https://github.com/pgvector/pgvector/blob/v0.8.7/CHANGELOG.md"
+    },
+    "postgresql_configure": "local source build, GCC -O2, without ICU/readline; build flags in logs",
+    "pgvector_flags": "OPTFLAGS empty (portable compiler target; no -march=native override)",
+    "pacificdb": {
+      "version": "1.2.0-dev",
+      "branch": "v1.2",
+      "commit": "8732d299008e6cbc581f76e7c2a1eb2f7dad703f",
+      "source_status": "uncommitted development candidate; full source archive supplied"
+    },
+    "benchmark_origin": "self-run project report prepared for user/company review; not audited or endorsed by PostgreSQL, pgvector or an independent lab",
+    "durability": "standalone transactional/committed acknowledgement with fsync enabled; do not extrapolate to RF3 latency",
+    "cpu_model": "Intel(R) Core(TM) i7-10850H CPU @ 2.70GHz",
+    "kernel": "6.12.113+deb13-amd64",
+    "pacific_binary": {
+      "path": "build-v1.2-verified-cache/db_engine",
+      "sha256": "8691496829b0cafc9e04b793058e5e2e860d4351082d852715348ca797dc4a38"
+    },
+    "postgres_binary": {
+      "path": "build-v1.2-official-deps/postgres18/bin/postgres",
+      "sha256": "8ae5015a1cdd37226d1c081fb97512c78888410cd6915835b426b44417cfe5f0"
+    },
+    "pgvector_library": {
+      "path": "build-v1.2-official-deps/postgres18/lib/vector.so",
+      "sha256": "72cdcf350b17e1b1eb068da430ff73e15d00bdf63f0ec1dc14081af0294b0804"
+    },
+    "benchmark_python_dependencies": {
+      "numpy": "2.5.4",
+      "psycopg": "3.3.6",
+      "psutil": "7.2.2",
+      "pacificdb": "1.1.2"
+    },
+    "benchmark_sdk_note": "installed Python SDK 1.1.2 generic request interface; uncommitted source SDK extensions qualified separately",
+    "qualification": "75 top-level checks / 43 CTest; 5 TSAN; 4 ASan/UBSan; 34 Node / 134 Python / 30 Java units; live SDK recovery; fresh 1M dirty recovery"
+  },
+  "queries": [
+    {
+      "rows": 10000,
+      "system": "pacific",
+      "mode": "exact",
+      "p50_ms": 3.760983501706505,
+      "p95_ms": 6.123873252727208,
+      "p99_ms": 8.848914571935891,
+      "serial_qps": 248.3052983336144,
+      "recall_at_10": 1.0,
+      "strict_recall_at_10": 1.0,
+      "round_p50_ms": [
+        4.7732474995427765,
+        3.760983501706505,
+        3.4914140014734585
+      ],
+      "samples_per_round": 1000,
+      "round_cache_reuse": [
+        {
+          "payload_fetches": 10000,
+          "payload_cache_hits": 4452,
+          "hit_fraction": 0.4452
+        },
+        {
+          "payload_fetches": 10000,
+          "payload_cache_hits": 10000,
+          "hit_fraction": 1.0
+        },
+        {
+          "payload_fetches": 10000,
+          "payload_cache_hits": 10000,
+          "hit_fraction": 1.0
+        }
+      ]
+    },
+    {
+      "rows": 10000,
+      "system": "pacific",
+      "mode": "ann",
+      "p50_ms": 5.0104240035580005,
+      "p95_ms": 8.15857220222824,
+      "p99_ms": 10.258998306744616,
+      "serial_qps": 184.24225248475216,
+      "recall_at_10": 0.9949,
+      "strict_recall_at_10": 0.9949,
+      "round_p50_ms": [
+        5.0104240035580005,
+        4.622441498213448,
+        6.046786500519374
+      ],
+      "samples_per_round": 1000,
+      "round_cache_reuse": [
+        {
+          "payload_fetches": 40000,
+          "payload_cache_hits": 37464,
+          "hit_fraction": 0.9366
+        },
+        {
+          "payload_fetches": 40000,
+          "payload_cache_hits": 40000,
+          "hit_fraction": 1.0
+        },
+        {
+          "payload_fetches": 40000,
+          "payload_cache_hits": 40000,
+          "hit_fraction": 1.0
+        }
+      ]
+    },
+    {
+      "rows": 10000,
+      "system": "postgres",
+      "mode": "exact",
+      "p50_ms": 4.8729099944466725,
+      "p95_ms": 7.70807394910662,
+      "p99_ms": 9.12615127301251,
+      "serial_qps": 192.2405440528979,
+      "recall_at_10": 1.0,
+      "strict_recall_at_10": 1.0,
+      "round_p50_ms": [
+        4.8729099944466725,
+        4.7884390005492605,
+        5.004868500691373
+      ],
+      "samples_per_round": 1000,
+      "round_cache_reuse": [
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "rows": 10000,
+      "system": "postgres",
+      "mode": "ann",
+      "p50_ms": 1.0386875001131557,
+      "p95_ms": 2.3122072456317246,
+      "p99_ms": 3.201812507686553,
+      "serial_qps": 840.4349653343492,
+      "recall_at_10": 0.9919,
+      "strict_recall_at_10": 0.9919,
+      "round_p50_ms": [
+        1.0985105000145268,
+        1.0096949990838766,
+        1.0386875001131557
+      ],
+      "samples_per_round": 1000,
+      "round_cache_reuse": [
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "rows": 100000,
+      "system": "pacific",
+      "mode": "exact",
+      "p50_ms": 9.11454650122323,
+      "p95_ms": 13.087149796410811,
+      "p99_ms": 14.926628218236143,
+      "serial_qps": 104.27316323606264,
+      "recall_at_10": 1.0,
+      "strict_recall_at_10": 1.0,
+      "round_p50_ms": [
+        9.553249001328368,
+        9.11454650122323,
+        8.768883999437094
+      ],
+      "samples_per_round": 1000,
+      "round_cache_reuse": [
+        {
+          "payload_fetches": 10000,
+          "payload_cache_hits": 367,
+          "hit_fraction": 0.0367
+        },
+        {
+          "payload_fetches": 10000,
+          "payload_cache_hits": 5044,
+          "hit_fraction": 0.5044
+        },
+        {
+          "payload_fetches": 10000,
+          "payload_cache_hits": 5044,
+          "hit_fraction": 0.5044
+        }
+      ]
+    },
+    {
+      "rows": 100000,
+      "system": "pacific",
+      "mode": "ann",
+      "p50_ms": 9.191671000735369,
+      "p95_ms": 14.766132251679664,
+      "p99_ms": 20.145918466150757,
+      "serial_qps": 101.06358215317074,
+      "recall_at_10": 0.9761,
+      "strict_recall_at_10": 0.9761,
+      "round_p50_ms": [
+        12.204703500174219,
+        9.089099999982864,
+        9.191671000735369
+      ],
+      "samples_per_round": 1000,
+      "round_cache_reuse": [
+        {
+          "payload_fetches": 40000,
+          "payload_cache_hits": 10117,
+          "hit_fraction": 0.252925
+        },
+        {
+          "payload_fetches": 40000,
+          "payload_cache_hits": 20116,
+          "hit_fraction": 0.5029
+        },
+        {
+          "payload_fetches": 40000,
+          "payload_cache_hits": 20116,
+          "hit_fraction": 0.5029
+        }
+      ]
+    },
+    {
+      "rows": 100000,
+      "system": "postgres",
+      "mode": "exact",
+      "p50_ms": 25.7450749995769,
+      "p95_ms": 33.16538139770273,
+      "p99_ms": 40.870969600000535,
+      "serial_qps": 37.83661128331257,
+      "recall_at_10": 1.0,
+      "strict_recall_at_10": 1.0,
+      "round_p50_ms": [
+        25.7450749995769,
+        24.868624997907318,
+        26.018357999419095
+      ],
+      "samples_per_round": 1000,
+      "round_cache_reuse": [
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "rows": 100000,
+      "system": "postgres",
+      "mode": "ann",
+      "p50_ms": 1.3546230002248194,
+      "p95_ms": 2.8602643495105418,
+      "p99_ms": 3.656855156077654,
+      "serial_qps": 667.9334603392382,
+      "recall_at_10": 0.9777,
+      "strict_recall_at_10": 0.9777,
+      "round_p50_ms": [
+        1.3016785014769994,
+        1.3546230002248194,
+        1.4283505006460473
+      ],
+      "samples_per_round": 1000,
+      "round_cache_reuse": [
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "rows": 1000000,
+      "system": "pacific",
+      "mode": "exact",
+      "p50_ms": 49.72714299947256,
+      "p95_ms": 61.18098984843527,
+      "p99_ms": 71.25488920173666,
+      "serial_qps": 19.45981777656933,
+      "recall_at_10": 1.0,
+      "strict_recall_at_10": 1.0,
+      "round_p50_ms": [
+        50.003664997348096,
+        49.080041997513035,
+        49.72714299947256
+      ],
+      "samples_per_round": 1000,
+      "round_cache_reuse": [
+        {
+          "payload_fetches": 10000,
+          "payload_cache_hits": 7,
+          "hit_fraction": 0.0007
+        },
+        {
+          "payload_fetches": 10000,
+          "payload_cache_hits": 501,
+          "hit_fraction": 0.0501
+        },
+        {
+          "payload_fetches": 10000,
+          "payload_cache_hits": 501,
+          "hit_fraction": 0.0501
+        }
+      ]
+    },
+    {
+      "rows": 1000000,
+      "system": "pacific",
+      "mode": "ann",
+      "p50_ms": 18.243077498482307,
+      "p95_ms": 22.482218055301924,
+      "p99_ms": 27.682817114327918,
+      "serial_qps": 53.3424403191182,
+      "recall_at_10": 0.9778,
+      "strict_recall_at_10": 0.9777,
+      "round_p50_ms": [
+        18.32823100266978,
+        18.243077498482307,
+        17.858808998425957
+      ],
+      "samples_per_round": 1000,
+      "round_cache_reuse": [
+        {
+          "payload_fetches": 40000,
+          "payload_cache_hits": 556,
+          "hit_fraction": 0.0139
+        },
+        {
+          "payload_fetches": 40000,
+          "payload_cache_hits": 1997,
+          "hit_fraction": 0.049925
+        },
+        {
+          "payload_fetches": 40000,
+          "payload_cache_hits": 1997,
+          "hit_fraction": 0.049925
+        }
+      ]
+    },
+    {
+      "rows": 1000000,
+      "system": "postgres",
+      "mode": "exact",
+      "p50_ms": 112.22802700285683,
+      "p95_ms": 138.0508785980055,
+      "p99_ms": 146.20586741621082,
+      "serial_qps": 8.739735014828275,
+      "recall_at_10": 1.0,
+      "strict_recall_at_10": 1.0,
+      "round_p50_ms": [
+        113.11163900245447,
+        112.1247615046741,
+        112.22802700285683
+      ],
+      "samples_per_round": 1000,
+      "round_cache_reuse": [
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "rows": 1000000,
+      "system": "postgres",
+      "mode": "ann",
+      "p50_ms": 2.2599965013796464,
+      "p95_ms": 3.155064000748098,
+      "p99_ms": 6.500172895175635,
+      "serial_qps": 422.9931539007473,
+      "recall_at_10": 0.9897,
+      "strict_recall_at_10": 0.9896,
+      "round_p50_ms": [
+        2.3173474983195774,
+        2.2599965013796464,
+        2.185465502407169
+      ],
+      "samples_per_round": 1000,
+      "round_cache_reuse": [
+        null,
+        null,
+        null
+      ]
+    }
+  ],
+  "costs": [
+    {
+      "rows": 10000,
+      "system": "pacific",
+      "ingestion_rows_s": 3352.855377355992,
+      "ingestion_seconds": 2.9825324609992094,
+      "batch_p95_ms": null,
+      "flat_build_seconds": 0.2316346900042845,
+      "ann_build_seconds": 10.467417444997409,
+      "peak_pss_mib": 128.3642578125,
+      "storage_after_ann_mib": 3.2644567489624023,
+      "wal_after_ann_mib": 1.5233402252197266
+    },
+    {
+      "rows": 10000,
+      "system": "postgres",
+      "ingestion_rows_s": 14925.254088720818,
+      "ingestion_seconds": 0.6700053439999465,
+      "batch_p95_ms": null,
+      "flat_build_seconds": 0,
+      "ann_build_seconds": 5.960823661000177,
+      "peak_pss_mib": 63.177734375,
+      "storage_after_ann_mib": 61.32425308227539,
+      "wal_after_ann_mib": 32.0
+    },
+    {
+      "rows": 100000,
+      "system": "pacific",
+      "ingestion_rows_s": 3052.575328747068,
+      "ingestion_seconds": 32.75922433699452,
+      "batch_p95_ms": 454.94595834788925,
+      "flat_build_seconds": 1.5614564619972953,
+      "ann_build_seconds": 198.30160919800255,
+      "peak_pss_mib": 438.5205078125,
+      "storage_after_ann_mib": 32.64642906188965,
+      "wal_after_ann_mib": 15.238883018493652
+    },
+    {
+      "rows": 100000,
+      "system": "postgres",
+      "ingestion_rows_s": 20519.86437401145,
+      "ingestion_seconds": 4.873326557004475,
+      "batch_p95_ms": 57.85879200520866,
+      "flat_build_seconds": 0,
+      "ann_build_seconds": 29.790985308995005,
+      "peak_pss_mib": 192.1513671875,
+      "storage_after_ann_mib": 169.6183681488037,
+      "wal_after_ann_mib": 80.0
+    },
+    {
+      "rows": 1000000,
+      "system": "pacific",
+      "ingestion_rows_s": 2547.971735892529,
+      "ingestion_seconds": 392.46903170600126,
+      "batch_p95_ms": 520.3066462992865,
+      "flat_build_seconds": 15.45364804300334,
+      "ann_build_seconds": 2749.0092354000008,
+      "peak_pss_mib": 2342.99609375,
+      "storage_after_ann_mib": 325.2825746536255,
+      "wal_after_ann_mib": 152.7048511505127
+    },
+    {
+      "rows": 1000000,
+      "system": "postgres",
+      "ingestion_rows_s": 23505.313505609563,
+      "ingestion_seconds": 42.543572105998464,
+      "batch_p95_ms": 44.30078425248211,
+      "flat_build_seconds": 0,
+      "ann_build_seconds": 481.8750351800045,
+      "peak_pss_mib": 1308.8701171875,
+      "storage_after_ann_mib": 1088.6574325561523,
+      "wal_after_ann_mib": 400.0
+    }
+  ],
+  "operational": [
+    {
+      "rows": 10000,
+      "system": "pacific",
+      "filter_1percent_p50_ms": 93.79805449862033,
+      "concurrency4_qps": 571.9828816773377,
+      "concurrency4_p95_ms": 9.072848248251828,
+      "update_commit_p50_ms": 23.005111503152875,
+      "post_ack_index_wait_p50_ms": 106.50831200109678,
+      "delete_commit_p50_ms": 21.698658994864672,
+      "mixed_reads": 360,
+      "mixed_read_successes": 10,
+      "mixed_read_success_fraction": 0.027777777777777776,
+      "mixed_read_error_count": 350,
+      "mixed_write_p50_ms": 35.63256499910494,
+      "restart_to_connection_s": 1.0250317559984978,
+      "restart_ann_rebuild_s": 11.665368893001869,
+      "recovery_count": 9995,
+      "recovery_ann_recall": 1.0
+    },
+    {
+      "rows": 10000,
+      "system": "postgres",
+      "filter_1percent_p50_ms": 1.4545644989993889,
+      "concurrency4_qps": 1041.7169837581266,
+      "concurrency4_p95_ms": 5.665664650223331,
+      "update_commit_p50_ms": 4.9838560007628985,
+      "post_ack_index_wait_p50_ms": 0.000984498910838738,
+      "delete_commit_p50_ms": 1.8319349983357824,
+      "mixed_reads": 360,
+      "mixed_read_successes": 360,
+      "mixed_read_success_fraction": 1.0,
+      "mixed_read_error_count": 0,
+      "mixed_write_p50_ms": 5.599907999567222,
+      "restart_to_connection_s": 0.6219086280034389,
+      "restart_ann_rebuild_s": 0,
+      "recovery_count": 9995,
+      "recovery_ann_recall": 1.0
+    },
+    {
+      "rows": 100000,
+      "system": "pacific",
+      "filter_1percent_p50_ms": 959.2045575009251,
+      "concurrency4_qps": 291.579849251807,
+      "concurrency4_p95_ms": 16.185122197202872,
+      "update_commit_p50_ms": 25.357282498589484,
+      "post_ack_index_wait_p50_ms": 106.42318899772363,
+      "delete_commit_p50_ms": 19.029832001251634,
+      "mixed_reads": 360,
+      "mixed_read_successes": 9,
+      "mixed_read_success_fraction": 0.025,
+      "mixed_read_error_count": 351,
+      "mixed_write_p50_ms": 39.17631749936845,
+      "restart_to_connection_s": 10.314564528998744,
+      "restart_ann_rebuild_s": 181.34933997599728,
+      "recovery_count": 99995,
+      "recovery_ann_recall": 0.99
+    },
+    {
+      "rows": 100000,
+      "system": "postgres",
+      "filter_1percent_p50_ms": 11.003747000358999,
+      "concurrency4_qps": 657.2761578173596,
+      "concurrency4_p95_ms": 10.604180748487124,
+      "update_commit_p50_ms": 6.7884484997193795,
+      "post_ack_index_wait_p50_ms": 0.0009060022421181202,
+      "delete_commit_p50_ms": 2.043804997811094,
+      "mixed_reads": 360,
+      "mixed_read_successes": 360,
+      "mixed_read_success_fraction": 1.0,
+      "mixed_read_error_count": 0,
+      "mixed_write_p50_ms": 6.642449003265938,
+      "restart_to_connection_s": 0.6249481300037587,
+      "restart_ann_rebuild_s": 0,
+      "recovery_count": 99995,
+      "recovery_ann_recall": 1.0
+    },
+    {
+      "rows": 1000000,
+      "system": "pacific",
+      "filter_1percent_p50_ms": 7031.4878245008,
+      "concurrency4_qps": 125.16881204717895,
+      "concurrency4_p95_ms": 40.12352840145467,
+      "update_commit_p50_ms": 19.378218999918317,
+      "post_ack_index_wait_p50_ms": 102.99031749673304,
+      "delete_commit_p50_ms": 17.894969001645222,
+      "mixed_reads": 360,
+      "mixed_read_successes": 26,
+      "mixed_read_success_fraction": 0.07222222222222222,
+      "mixed_read_error_count": 334,
+      "mixed_write_p50_ms": 50.42912549834,
+      "restart_to_connection_s": 99.03751722000015,
+      "restart_ann_rebuild_s": 2158.0694126529997,
+      "recovery_count": 999995,
+      "recovery_ann_recall": 0.96
+    },
+    {
+      "rows": 1000000,
+      "system": "postgres",
+      "filter_1percent_p50_ms": 76.90421550069004,
+      "concurrency4_qps": 931.8587209580039,
+      "concurrency4_p95_ms": 9.236422901085461,
+      "update_commit_p50_ms": 6.857564498204738,
+      "post_ack_index_wait_p50_ms": 0.0004784997145179659,
+      "delete_commit_p50_ms": 1.6806679996079765,
+      "mixed_reads": 360,
+      "mixed_read_successes": 360,
+      "mixed_read_success_fraction": 1.0,
+      "mixed_read_error_count": 0,
+      "mixed_write_p50_ms": 6.96868700106279,
+      "restart_to_connection_s": 0.61468572600279,
+      "restart_ann_rebuild_s": 0,
+      "recovery_count": 999995,
+      "recovery_ann_recall": 0.99
+    }
+  ],
+  "exact_ratios": [
+    {
+      "rows": 10000,
+      "postgres_exact_p50_divided_by_pacific_exact_p50": 1.2956477985706778
+    },
+    {
+      "rows": 100000,
+      "postgres_exact_p50_divided_by_pacific_exact_p50": 2.824613928528616
+    },
+    {
+      "rows": 1000000,
+      "postgres_exact_p50_divided_by_pacific_exact_p50": 2.2568766318235336
+    }
+  ],
+  "supplement_status": "PASS",
+  "qualification_checks": 75,
+  "source_status": "uncommitted v1.2 candidate; complete source archive and binary hashes retained",
+  "unexecuted": [
+    "actual physical power loss",
+    "complete mixed-version/platform packaging matrix",
+    "sustained multi-hour production load",
+    "distributed vector search"
+  ],
+  "limitations": [
+    "p99 is empirical on 1000 held-out queries, not a production SLO",
+    "three rounds repeat the same held-out queries",
+    "Pacific float64 packed exact versus PostgreSQL float32 vector exact; both checked against float64 reference within declared tolerance",
+    "full-build HNSW and replica-local maintenance differ from PostgreSQL persistent index recovery",
+    "separate synthetic high-dimensional workloads do not establish million-row high-dimensional performance",
+    "BM25 versus ts_rank_cd hybrid scores are not relevance-equivalent",
+    "portable pgvector build uses OPTFLAGS empty; full build logs supplied"
+  ]
+}

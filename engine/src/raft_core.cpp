@@ -4030,6 +4030,23 @@ void RaftCore::scheduleFollowerApply(uint64_t upToIndex) {
     publishApplyTarget(upToIndex);
 }
 
+// Failure diagnostics must not interpret a byte limit as JSON indentation.
+// Keep output bounded without serializing full vector/media payloads per retry.
+static std::string raftApplyFailureSummary(const json& payload) {
+    json summary=json::object();
+    for(const char* key:{"op","action","userId","db","collection","requestId"}){
+        const auto it=payload.find(key);if(it!=payload.end()&&it->is_string())summary[key]=it->get_ref<const std::string&>().substr(0,64);
+    }
+    const auto data=payload.find("data");
+    if(data!=payload.end()){
+        if(data->is_array())summary["documents"]=data->size();
+        else if(data->is_object()){
+            const auto id=data->find("id");if(id!=data->end()&&id->is_string())summary["id"]=id->get_ref<const std::string&>().substr(0,64);
+        }
+    }
+    return summary.dump();
+}
+
 void RaftCore::applyWorkerLoop() {
     std::cerr << "[RAFTCORE] apply worker started node=" << nodeId_ << std::endl;
     while (running_.load()) {
@@ -4047,14 +4064,22 @@ void RaftCore::applyWorkerLoop() {
         if (target <= lastApplied_.load(std::memory_order_acquire)) continue;
 
         applyWorkerActive_.store(true, std::memory_order_release);
+        bool completed=false;
         try {
-            applyCommittedEntries(target, ApplySource::WORKER);
+            completed=applyCommittedEntries(target, ApplySource::WORKER);
         } catch (const std::exception& e) {
             std::cerr << "[RAFTCORE] apply worker exception: " << e.what() << std::endl;
         } catch (...) {
             std::cerr << "[RAFTCORE] apply worker unknown exception" << std::endl;
         }
         applyWorkerActive_.store(false, std::memory_order_release);
+        if(!completed&&running_.load()){
+            // Leave the failed index/progress untouched. Retry transient storage
+            // failures at a bounded rate, without holding storage/Raft locks.
+            // New submissions cannot bypass the delay; shutdown wakes promptly.
+            std::unique_lock<std::mutex> lock(applyWorkerMutex_);
+            applyWorkerCv_.wait_for(lock,std::chrono::milliseconds(250),[&]{return !running_.load();});
+        }
     }
     std::cerr << "[RAFTCORE] apply worker stopped node=" << nodeId_ << std::endl;
 }
@@ -6886,7 +6911,7 @@ bool RaftCore::applyCommittedEntries(uint64_t upToIndex, ApplySource source) {
                     g_applyEntryFailed.fetch_add(1, std::memory_order_relaxed);
                     g_applyFatalStopCount.fetch_add(1, std::memory_order_relaxed);
                     std::cerr << "[RAFTCORE][APPLY] storage apply failed index=" << entry.index
-                              << " payload=" << payload.dump(512) << std::endl;
+                              << " payload=" << raftApplyFailureSummary(payload) << std::endl;
                     return false;
                 }
                 pacificdb::test::hitFailpoint(
@@ -6900,7 +6925,7 @@ bool RaftCore::applyCommittedEntries(uint64_t upToIndex, ApplySource source) {
                     g_applyFatalStopCount.fetch_add(1, std::memory_order_relaxed);
                     std::cerr << "[RAFTCORE][APPLY] visibility check failed index=" << entry.index
                               << " reason=" << visibilityReason
-                              << " payload=" << payload.dump(512) << std::endl;
+                              << " payload=" << raftApplyFailureSummary(payload) << std::endl;
                     return false;
                 }
                 pacificdb::test::hitFailpoint(

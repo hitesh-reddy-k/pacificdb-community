@@ -13,6 +13,8 @@ import { PacificDBClient } from '../sdk/node/src/index.js';
 
 const root = path.resolve(import.meta.dirname, '..');
 const build = path.resolve(process.argv[2] || path.join(root, 'build'));
+const expectedEngineVersion = process.env.PACIFICDB_EXPECTED_ENGINE_VERSION || '1.2.0';
+assert.match(expectedEngineVersion, /^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/);
 const engineBinary = path.join(build, 'db_engine');
 const cliBinary = path.join(build, 'pacificdb');
 const testRoot = await mkdtemp(path.join(os.tmpdir(), 'pacificdb-community-e2e-'));
@@ -211,6 +213,11 @@ try {
       index + 1);
   }
 
+  // Include vector records in the backup we later restore and search.
+  await client.putVector('vectors', 'east', [1, 0]);
+  await client.putVector('vectors', 'north', [0, 1]);
+  assert.equal((await client.queryVector('vectors', [0.9, 0.1],
+    { k: 1, searchMode: 'exact' })).data[0].id, 'east');
   const backup = await client.request({ action: 'create_backup', description: 'e2e' });
   assert.ok(backup.backup_id);
   await assert.rejects(client.request({ action: 'verify_backup',
@@ -295,8 +302,6 @@ try {
   assert.equal((await client.request({ action: 'community_media_finalize',
     media_id: parallelMedia.id })).media.status, 'ready');
 
-  await client.putVector('vectors', 'east', [1, 0]);
-  await client.putVector('vectors', 'north', [0, 1]);
   assert.throws(() => client.queryVector('vectors', []), /non-empty array/);
   await assert.rejects(client.queryVector('vectors', [1, 0], { metric: 'unknown' }),
     /unsupported vector metric/);
@@ -340,7 +345,8 @@ try {
   const shellOutput = await runShell(shellCommands);
   console.log('E2E: advertised shell command matrix complete');
   assertPublicOutput(shellOutput);
-  assert.match(shellOutput, /PacificDB[\s\S]*v1\.1\.2/);
+  const escapedVersion = expectedEngineVersion.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  assert.match(shellOutput, new RegExp(`PacificDB[\\s\\S]*v${escapedVersion}(?:\\s|$)`));
   assert.match(shellOutput, /Grace Hopper/);
   assert.match(shellOutput, /"status": "pong"/);
   assert.match(shellOutput, /"chunk_count": 6/);
@@ -400,6 +406,8 @@ try {
   console.log('E2E: graceful restart complete');
   client.token = durableAdmin.key;
   client.database = 'app';
+  assert.equal((await client.queryVector('vectors', [0.9, 0.1],
+    { k: 1, searchMode: 'exact' })).data[0].id, 'east');
   assert.equal((await client.find('users', { id: 'persistent' })).data[0].name, 'Ada');
   assert.equal((await client.request({ action: 'count', collection: 'users',
     filter: { batch: 'insertMany-e2e' } })).count, batchDocuments.length);
@@ -437,6 +445,8 @@ try {
   console.log('E2E: abrupt restart complete');
   client.token = durableAdmin.key;
   client.database = 'app';
+  assert.equal((await client.queryVector('vectors', [0.9, 0.1],
+    { k: 1, searchMode: 'exact' })).data[0].id, 'east');
   assert.equal((await client.find('users', { id: 'persistent' })).data[0].name,
     'Ada Lovelace');
   assert.equal((await client.request({ action: 'community_project_get',
@@ -488,6 +498,8 @@ try {
   restoredClient.database = 'app';
   const restoredDocument = await restoredClient.find('users', { id: 'persistent' });
   assert.equal(restoredDocument.data[0].name, 'Ada');
+  assert.equal((await restoredClient.queryVector('vectors', [0.9, 0.1],
+    { k: 1, searchMode: 'exact' })).data[0].id, 'east');
   assert.equal((await restoredClient.request({ action: 'community_project_get',
     id: alpha.id })).project.name, 'alpha');
   restoredClient.close();

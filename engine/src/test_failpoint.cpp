@@ -44,7 +44,8 @@ bool allowedTestMode() {
         || std::strcmp(mode, "div001_safety_fences") == 0
         || std::strcmp(mode, "local_engine_startup") == 0
         || std::strcmp(mode, "media_upload_recovery") == 0
-        || std::strcmp(mode, "lsm_checkpoint_crash") == 0;
+        || std::strcmp(mode, "lsm_checkpoint_crash") == 0
+        || std::strcmp(mode, "vector_index_crash") == 0;
 }
 
 std::uint64_t selectedIndex() {

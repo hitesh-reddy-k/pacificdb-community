@@ -94,7 +94,7 @@ test('plain pacificdb opens the branded shell', async () => {
   input.end('quit\n');
   await running;
   const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
-  assert.match(text, new RegExp(`PacificDB[\\s\\S]*v${packageJson.version.replaceAll('.', '\\.')}`));
+  assert.match(text, new RegExp(`PacificDB[\\s\\S]*v${packageJson.version.split('-')[0].replaceAll('.', '\\.')}`));
   assert.match(text, /Documents · Vectors · Media/);
 });
 
@@ -117,7 +117,11 @@ test('--version and -V print the package version without starting an engine', as
     let text = '';
     output.on('data', (chunk) => { text += chunk; });
     await main([flag], { input: new PassThrough(), output });
-    assert.equal(text, `PacificDB ${packageJson.version}\n`);
+    assert.ok(text.startsWith(`PacificDB ${packageJson.version.split('-')[0]}`));
+    if (packageJson.version.includes('-')) {
+      assert.match(text, /Pre-release/);
+      assert.ok(text.includes(packageJson.version));
+    } else assert.equal(text, `PacificDB ${packageJson.version}\n`);
   }
 });
 
