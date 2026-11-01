@@ -73,7 +73,7 @@ The portable preparation helper is available on the `v1.2` branch at
 `scripts/prepare-community-benchmark.py`; it is a transcription of the original
 preparer, added after the engine tag. It refuses to replace an existing dataset
 and checks all five frozen input hashes. Use a separate preparation environment
-with the original versions; do this **before** starting measured servers:
+with the original versions and Python **3.12+** (NumPy2.5.4 requires it); do this **before** starting measured servers:
 
 ```sh
 python3 -m venv preparation-venv

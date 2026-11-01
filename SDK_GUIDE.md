@@ -2,11 +2,12 @@
 
 The engine base version is `1.2.0`; the candidate is `v1.2.0-rc.2` (Pre-release
 v1.2). Node and Java packages use `1.2.0-rc.2`; Python uses PEP 440 `1.2.0rc2`.
-RC.2 is being qualified after fresh-install testing exposed the short-window
-Workbench defect in RC.1. RC.1's npm/GitHub packages remain published unchanged;
-do not assume the RC.2 versions below are available until its actual release
-manifest and registry checks confirm publication. PyPI/Maven still require owner
-setup. The version-pinned commands below apply to RC.2 packages after publication.
+RC.2 is public on GitHub with checksummed SDK packages, after correcting RC.1's
+fresh-install short-window Workbench defect. RC.1 packages remain unchanged.
+The RC.2 npm client and CLI are public under `next`; registry-installed consumers
+passed the independent live verification. PyPI/Maven still require owner setup, confirmed
+by the owner. The wheel/JAR/POM installation commands below work independently
+of those registries. The release manifest identifies actual tested bytes.
 
 | Client | Package | Minimum runtime | Runtime dependencies |
 |---|---|---|---|
@@ -28,9 +29,10 @@ npm install @pacificdb/client@1.2.0-rc.2 @pacificdb/cli@1.2.0-rc.2
 ./node_modules/.bin/pacificdb --version
 ```
 
-Registry installation requires its own recorded verification for the selected
-candidate. RC.1's registry-installed client passed TCP/TLS/media/crash tests;
-those results are not renamed as RC.2 evidence. A native engine is still required.
+RC.2's registry-installed consumers passed authenticated TCP/TLS, document/media
+roundtrips and SIGKILL recovery in public-install run41324080656, attempt2.
+The initial attempt's CLI-registry propagation failure is retained separately.
+A native engine is still required.
 `@latest` selects a different release.
 
 After verifying the release checksums, create a clean consumer directory. Install

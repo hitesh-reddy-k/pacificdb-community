@@ -16,8 +16,11 @@ Linux packaging retains the upstream installer script. A short-window regression
 reproduces the original click failure and passes at650/653/900px heights after
 the change. Fresh installed-desktop tests are separate from upgrade tests.
 
-RC.1 assets/tags/npm packages remain unchanged. RC.2 publication/qualification
-is in progress. Engine/storage/vector source remains unchanged from RC.1;
+RC.1 assets/tags/npm packages remain unchanged. RC.2 is public on GitHub at
+`e3d70761f03341acc13130d17b75fed2bc758a29`, with scoped native/SDK/platform and
+complete Community/actual ENOSPC qualification. Public desktop/SDK installations,
+npm publication/consumers and the public GHCR image passed independent checks.
+PyPI/Maven remain owner-blocked. Engine/storage/vector source remains unchanged from RC.1;
 component release metadata is advanced consistently. RC.1 benchmark results
 keep their original artifact identity and are not called RC.2 measurements.
 

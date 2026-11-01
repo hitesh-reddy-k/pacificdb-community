@@ -62,19 +62,32 @@ def render(main_runs, supplemental, release_url, complete=False):
         '| ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |']
     for dataset in datasets:
         for kind in ['pacific', 'postgres']:
-            system = dataset['systems'][kind]
+            system = dataset['systems'].get(kind, {})
             load = system.get('load', {})
             indexes = system.get('indexes', {})
             ann = indexes.get('ann', {})
             memory = [number(system[key] / 1024**2) if key in system else 'INCOMPLETE' for key in ['peak_sampled_pss_bytes', 'peak_sampled_rss_bytes']]
-            exact = number(indexes.get('exact', {}).get('source_and_build_seconds')) if kind == 'pacific' else 'none (scan)'
+            exact = number(indexes.get('exact', {}).get('source_and_build_seconds')) if kind == 'pacific' else 'none (scan)' if 'exact' in indexes else 'INCOMPLETE'
             lines.append(f'| {dataset["rows"]} | {kind} | ' + number(load.get('rows_per_second'), 1) + ' | ' + number(load.get('seconds_including_preparation_and_final_flush')) + ' | ' + exact + ' | ' + number(ann.get('source_and_build_seconds', ann.get('build_seconds'))) + ' | ' + ' | '.join(memory) + ' |')
-    lines += ['', '## Filtering, concurrent reads and mutation availability', '',
+    lines += ['', '## Storage after initial ANN construction', '',
+        '| Vectors | System | Data-root MiB | WAL/log MiB | Pacific graph bytes at READY MiB |',
+        '| ---: | --- | ---: | ---: | ---: |']
+    for dataset in datasets:
+        for kind in ['pacific', 'postgres']:
+            system = dataset['systems'].get(kind, {})
+            storage = system.get('storage_after_build', {}).get('ann', {})
+            resource = system.get('indexes', {}).get('ann', {}).get('index', {}).get('resources', {})
+            lines.append(f'| {dataset["rows"]} | {kind} | ' + ' | '.join([
+                number(storage['bytes'] / 1024**2) if 'bytes' in storage else 'INCOMPLETE',
+                number(storage['wal_bytes'] / 1024**2) if 'wal_bytes' in storage else 'INCOMPLETE',
+                number(resource['graph_bytes'] / 1024**2) if 'graph_bytes' in resource else 'not reported here']) + ' |')
+    lines += ['', 'Data-root totals include each engine\'s own WAL/retention policy, not equivalent table/index-only storage. PacificDB ANN graphs occupy RAM and are rebuilt after restart; PostgreSQL persists its graph on disk. Retained forensic copies and benchmark input/output files are separate space. Graph-accounted bytes at READY differ from sampled process RSS/PSS.', '',
+        '## Filtering, concurrent reads and mutation availability', '',
         '| Vectors | System | 1% filter exact p50 ms | Static four-reader ANN QPS | Mixed strict ANN reads succeeded/attempted | Update commit p50 ms | Post-ack ANN readiness wait p50 ms |',
         '| ---: | --- | ---: | ---: | ---: | ---: | ---: |']
     for dataset in datasets:
         for kind in ['pacific', 'postgres']:
-            system = dataset['systems'][kind]
+            system = dataset['systems'].get(kind, {})
             extended = system.get('extended', {})
             mixed = extended.get('mixed_90_read_10_write', {})
             updates = extended.get('updates', {})
@@ -90,7 +103,7 @@ def render(main_runs, supplemental, release_url, complete=False):
         '| ---: | --- | ---: | ---: | ---: | ---: | ---: |']
     for dataset in datasets:
         for kind in ['pacific', 'postgres']:
-            recovery = dataset['systems'][kind].get('extended', {}).get('crash_recovery', {})
+            recovery = dataset['systems'].get(kind, {}).get('extended', {}).get('crash_recovery', {})
             lines.append(f'| {dataset["rows"]} | {kind} | ' + ' | '.join([
                 number(recovery.get('restart_to_connection_seconds')),
                 number(recovery.get('count'), 0), number(recovery.get('mutation_verification', {}).get('changed_records_verified'), 0),
@@ -103,9 +116,21 @@ def render(main_runs, supplemental, release_url, complete=False):
         for kind, system in workload.get('systems', {}).items():
             values = [system.get('modes', {}).get(mode, {}) for mode in ['exact', 'ann']]
             lines.append(f'| {workload["rows"]} | {workload["dimensions"]} | {workload["metric"]} | {kind} | ' + ' | '.join(number(value.get('p50_ms')) + ' / ' + number(value.get('recall_at_10'), 4) for value in values) + ' |')
+    lines += ['', '| Capability | System | Rows | p50 ms | p95 ms | Index/lexical setup s |',
+        '| --- | --- | ---: | ---: | ---: | ---: |']
+    for workload in supplemental.get('workloads', []):
+        for kind, system in workload.get('systems', {}).items():
+            capability = system.get('sparse_named_hybrid')
+            if not capability:
+                continue
+            for mode in ['sparse_named_exact', 'hybrid']:
+                value = capability[mode]
+                lines.append(f'| {mode} | {kind} | {capability["rows"]} | ' + ' | '.join([
+                    number(value.get('p50_ms')), number(value.get('p95_ms')),
+                    number(value.get('build_seconds')) if mode == 'hybrid' else 'scan']) + ' |')
     lines += ['', 'Supplemental dense cases have100 measured queries (p95, no p99). Sparse/named/hybrid diagnostics use1000 records and independently check expected IDs/scores. Native BM25 and PostgreSQL ts_rank_cd are different lexical scorers; the RRF hybrid comparison is not equal retrieval-quality certification.', '',
         '## Interpretation and reproducibility limits', '',
-        '- PostgreSQL18.6 and pgvector0.8.7 are recorded in raw version/configuration output. Both systems retain durable WAL/fsync acknowledgements. No durability setting was weakened.',
+        '- PostgreSQL 18.6 and pgvector 0.8.7 are recorded in raw version/configuration output. Both systems retain durable WAL/fsync acknowledgements. No durability setting was weakened.',
         '- PacificDB uses JSON batch insertion; PostgreSQL uses transactional COPY,1000 rows per batch. Dense JSON numeric precision is preserved versus pgvector float32. Wire formats and payload metadata differ.',
         '- Exact timing compares a separately built PacificDB packed derived index against PostgreSQL verified sequential/parallel exact scan. Include packed-index setup. It does not imply every unindexed exact query has this latency.',
         '- HNSW M=16/ef_construction=200; ef_search is selected separately on100 tuning queries to reach0.97 recall. Held-out minimum Recall@10 is0.95. Raw curves and plans are retained.',

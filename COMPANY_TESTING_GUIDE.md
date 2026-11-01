@@ -119,12 +119,15 @@ production SLO is promised.
 
 ## Known results and limits
 
-The new post-publication run uses the exact `v1.2.0-rc.1` Linux release archive
+The interrupted RC.1 post-publication run used its exact Linux release archive
 against PostgreSQL18.6 + pgvector0.8.7. The 10K/100K workloads and supplemental
-dense/sparse/named/hybrid cases completed; 1M ANN/lifecycle qualification remains
-in progress. Three completed 1M exact rounds matched ground truth (1,000 held-out
+dense/sparse/named/hybrid cases completed. Its controller stopped without a final
+receipt during 1M recovery, leaving that full study INCOMPLETE. Three completed
+RC.1 1M exact rounds matched ground truth (1,000 held-out
 queries per round), with median round p50 37.685ms PacificDB versus82.535ms
-PostgreSQL on this host. These partial results are not a completed 1M comparison.
+PostgreSQL on this host. These partial results are not a completed 1M comparison
+or RC.2 measurements. A new detached RC.2 run records controller/phase PIDs,
+heartbeats and explicit exit status; its 1M results remain pending.
 Follow [the frozen reproduction protocol](docs/releases/v1.2.0-rc.1/BENCHMARK_REPRODUCTION.md).
 Exact timing uses a separately built PacificDB packed derived index; include its
 setup cost. Smaller completed workloads show slower ANN, ingestion and lifecycle

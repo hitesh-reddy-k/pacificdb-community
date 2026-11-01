@@ -7,17 +7,21 @@ Use an isolated data directory and copies of test data. Keep production unchange
 
 ## Native Linux x64 staging
 
-RC.2 is in preparation. The [RC.2 release destination](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v1.2.0-rc.2)
-is an intended destination until publication and download checks pass. RC.1's
-public artifacts remain unchanged. Use the actual manifest's runtime ABI and
-installation evidence: Debian13 and Ubuntu24 native libraries differ. RC.2 npm,
-GitHub and container availability must be independently verified; PyPI/Maven
-require [owner setup](PUBLISHING_OWNER_GUIDE.md). The commands below pin RC.2.
+The [public RC.2 prerelease](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v1.2.0-rc.2)
+contains the native engine/CLI, Linux/Windows/macOS desktop installers and SDK
+packages. RC.1 assets remain unchanged. **RC.2 Linux native packages target
+Ubuntu24.04 x64.** Do not install them as Debian13 packages: their RE2 runtime
+requirements differ. Use the public container for other Linux hosts with a
+compatible container runtime; other distribution-native packages are unverified.
+PyPI/Maven require [owner setup](PUBLISHING_OWNER_GUIDE.md). npm client/CLI and
+the independent fresh public-install matrix have Passed evidence in the release
+checklist. The initial npm registry propagation failure is preserved.
 
-The staged Debian package includes `db_engine` and native `pacificdb` plus notices.
+The Ubuntu Debian-format package includes `db_engine` and native `pacificdb` plus notices.
 A Linux archive contains the same native commands under `bin/`. Use the artifact
-built for your actual distribution/runtime. The local environment is Debian 13
-x64; Ubuntu, Windows, macOS and ARM64 claims require their own CI/runtime evidence.
+built for your actual distribution/runtime. RC.2's Ubuntu24 x64 native/desktop
+packages have CI install/runtime evidence. Windows x64 and macOS15 Intel/Apple
+Silicon desktop installers have separate fresh/upgrade runtime evidence.
 Native shared dependencies include OpenSSL3, LZ4, RE2 and the platform C++ runtime.
 For `.deb`, inspect its declared dependencies before installation:
 
@@ -128,10 +132,10 @@ fresh binary path. Package output is not verified until its own install smoke pa
 
 ## Containers and troubleshooting
 
-The previously published RC.1 container is
-`ghcr.io/hitesh-reddy-k/pacificdb-community:1.2.0-rc.1`, with verified digest
-`sha256:656b5ab4bfe4f6b074400ed0a0557988e4583b2ce3b4290ff9d5fa6b79c645e9`.
-The RC.1 publishing workflow pulled and smoke-tested that digest; anonymous manifest
+The public RC.2 container is
+`ghcr.io/hitesh-reddy-k/pacificdb-community:1.2.0-rc.2`, with verified digest
+`sha256:bda3cc787d33ff93d34f5545d9c4bd77dcc3f25d051fd8eda4c954733438ad26`.
+The publishing workflow pulled and smoke-tested that digest; anonymous manifest
 access was independently checked. It is a Linux x64 prerelease image. Use the
 existing isolated-volume/authentication configuration in `deploy/docker/`; a
 public image does not qualify an exposed or production deployment.

@@ -61,6 +61,10 @@ on:
         description: Qualify and publish the existing RC tag from successful frozen-source CI artifacts
         type: boolean
         default: false
+      attach_company_guide:
+        description: Attach current company guidance without replacing released program bytes
+        type: boolean
+        default: false
       native_source_run:
         description: Successful native and SDK prerelease qualification run
         required: false
@@ -88,10 +92,17 @@ permissions:
   contents: read
 
 concurrency:
-  group: workbench-${{ github.ref }}-${{ inputs.assemble_candidate && 'assembly' || inputs.qualify_candidate && 'qualification' || inputs.publish_desktop && 'desktop-publication' || inputs.verify_publication && 'public-consumer' || inputs.source_ref || 'platform' }}
+  group: workbench-${{ github.ref }}-${{ inputs.attach_company_guide && 'company-guide' || inputs.assemble_candidate && 'assembly' || inputs.qualify_candidate && 'qualification' || inputs.publish_desktop && 'desktop-publication' || inputs.verify_publication && 'public-consumer' || inputs.source_ref || 'platform' }}
   cancel-in-progress: false
 
 jobs:
+  company_guide:
+    if: github.event_name == 'workflow_dispatch' && inputs.attach_company_guide
+    uses: ./.github/workflows/company-guide.yml
+    permissions:
+      contents: write
+    with:
+      release_tag: ${{ inputs.release_tag }}
   assemble_frozen_candidate:
     if: github.event_name == 'workflow_dispatch' && inputs.assemble_candidate
     uses: ./.github/workflows/assemble-prerelease.yml
