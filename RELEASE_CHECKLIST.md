@@ -1,3 +1,21 @@
+# RC.2 qualification in progress
+
+Candidate `v1.2.0-rc.2` corrects the RC.1 fresh-install short-window layout and
+Linux AppArmor installer findings. RC.2 has not yet been published. RC.1 remains
+published unchanged. The historical checklist below records **RC.1** evidence;
+it must not be used as fresh RC.2 qualification. RC.2 requires its own source-bound
+native checkpoint, SDK artifacts, installed-platform tests, hashes and publication
+receipts. Full production readiness remains INCOMPLETE.
+
+- RC.2 layout regression: Passed (original failure reproduced,650/653/900px green).
+- RC.2 canonical version consistency: Passed.
+- RC.2 native/SDK/platform/distribution qualification: Not tested (queued after source freeze).
+- RC.2 GitHub/npm/GHCR publication: Not tested.
+- PyPI/Maven owner setup: Blocked (unchanged owner dependency).
+- RC.1 full post-publication1M benchmark: in progress; retain original identity.
+
+---
+
 # Pre-release v1.2 release checklist
 
 Base `1.2.0`; candidate/tag `v1.2.0-rc.1`; branch `v1.2`; title **Pre-release v1.2**.

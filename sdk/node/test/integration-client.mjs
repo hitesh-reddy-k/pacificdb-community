@@ -7,7 +7,7 @@ import { promisify } from 'node:util';
 const execute=promisify(execFile);
 assert.ok(process.env.PACIFICDB_TEST_NODE_MODULE,'installed Node module required');
 const { PacificDB, releaseInfo }=await import(process.env.PACIFICDB_TEST_NODE_MODULE);
-assert.equal(releaseInfo.releaseVersion,'1.2.0-rc.1');
+assert.equal(releaseInfo.releaseVersion,'1.2.0-rc.2');
 const phase=process.env.PACIFICDB_SDK_PHASE,root=process.env.PACIFICDB_SDK_TEST_ROOT;
 const db=await PacificDB.connect(process.env.PACIFICDB_URL,{timeoutMs:120000,...process.env.PACIFICDB_SDK_CA?{caFile:process.env.PACIFICDB_SDK_CA}:{}});
 const bytes=Buffer.from(Array.from({length:700000},(_,i)=>i%251));

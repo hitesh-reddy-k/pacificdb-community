@@ -13,9 +13,9 @@ class ReleaseIdentity(unittest.TestCase):
         from release_identity import load_release_identity
         value = load_release_identity(ROOT)
         self.assertEqual(value['version'], '1.2.0')
-        self.assertEqual(value['releaseVersion'], '1.2.0-rc.1')
-        self.assertEqual(value['tag'], 'v1.2.0-rc.1')
-        self.assertEqual(value['pythonVersion'], '1.2.0rc1')
+        self.assertEqual(value['releaseVersion'], '1.2.0-rc.2')
+        self.assertEqual(value['tag'], 'v1.2.0-rc.2')
+        self.assertEqual(value['pythonVersion'], '1.2.0rc2')
         self.assertEqual(value['npmVersion'], value['javaVersion'])
         self.assertEqual(value['channel'], 'prerelease')
 
@@ -35,7 +35,7 @@ class ReleaseIdentity(unittest.TestCase):
         result = subprocess.run(['python3',str(ROOT/'scripts/release_identity.py'),
                                  '--field','releaseVersion'],capture_output=True,text=True)
         self.assertEqual(result.returncode,0,result.stderr)
-        self.assertEqual(result.stdout.strip(),'1.2.0-rc.1')
+        self.assertEqual(result.stdout.strip(),'1.2.0-rc.2')
 
 
 if __name__ == '__main__':

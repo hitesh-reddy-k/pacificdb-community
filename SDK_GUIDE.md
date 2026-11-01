@@ -1,18 +1,19 @@
 # Pre-release v1.2 SDK guide
 
-The engine base version is `1.2.0`; the candidate is `v1.2.0-rc.1` (Pre-release
-v1.2). Node and Java packages use `1.2.0-rc.1`; Python uses PEP 440 `1.2.0rc1`.
-The npm client and CLI are published at this exact version under `next`.
-PyPI and Maven Central publication remain blocked on owner setup (both candidate
-endpoints returned HTTP404 on 2026-11-01). Use the checksummed GitHub wheel/JAR/POM
-for those clients; older registry packages do not contain these preview APIs.
+The engine base version is `1.2.0`; the candidate is `v1.2.0-rc.2` (Pre-release
+v1.2). Node and Java packages use `1.2.0-rc.2`; Python uses PEP 440 `1.2.0rc2`.
+RC.2 is being qualified after fresh-install testing exposed the short-window
+Workbench defect in RC.1. RC.1's npm/GitHub packages remain published unchanged;
+do not assume the RC.2 versions below are available until its actual release
+manifest and registry checks confirm publication. PyPI/Maven still require owner
+setup. The version-pinned commands below apply to RC.2 packages after publication.
 
 | Client | Package | Minimum runtime | Runtime dependencies |
 |---|---|---|---|
-| Node | `@pacificdb/client@1.2.0-rc.1` | Node 18 | None |
-| CLI/browser Workbench | `@pacificdb/cli@1.2.0-rc.1` | Node 18 | Matching Node client |
-| Python | `pacificdb==1.2.0rc1` | Python 3.10 | None |
-| Java | `io.pacificdb:pacificdb-client:1.2.0-rc.1` | Java 11 | Jackson Databind 2.22.3 and its transitive dependencies |
+| Node | `@pacificdb/client@1.2.0-rc.2` | Node 18 | None |
+| CLI/browser Workbench | `@pacificdb/cli@1.2.0-rc.2` | Node 18 | Matching Node client |
+| Python | `pacificdb==1.2.0rc2` | Python 3.10 | None |
+| Java | `io.pacificdb:pacificdb-client:1.2.0-rc.2` | Java 11 | Jackson Databind 2.22.3 and its transitive dependencies |
 
 The npm CLI does not install the engine. Install the matching native package or
 connect to an existing engine. The CLI and native shell both use the command
@@ -23,22 +24,23 @@ connect to an existing engine. The CLI and native shell both use the command
 For the published npm packages, install the explicit candidate version:
 
 ```sh
-npm install @pacificdb/client@1.2.0-rc.1 @pacificdb/cli@1.2.0-rc.1
+npm install @pacificdb/client@1.2.0-rc.2 @pacificdb/cli@1.2.0-rc.2
 ./node_modules/.bin/pacificdb --version
 ```
 
-This registry-installed client passed authenticated TCP/TLS, document/media
-roundtrips and process-crash recovery against the candidate engine. It still
-requires an installed/running native engine. `@latest` selects a different release.
+Registry installation requires its own recorded verification for the selected
+candidate. RC.1's registry-installed client passed TCP/TLS/media/crash tests;
+those results are not renamed as RC.2 evidence. A native engine is still required.
+`@latest` selects a different release.
 
 After verifying the release checksums, create a clean consumer directory. Install
 both npm archives together so the CLI resolves its exact candidate dependency:
 
 ```sh
-npm install /absolute/path/pacificdb-client-1.2.0-rc.1.tgz /absolute/path/pacificdb-cli-1.2.0-rc.1.tgz
+npm install /absolute/path/pacificdb-client-1.2.0-rc.2.tgz /absolute/path/pacificdb-cli-1.2.0-rc.2.tgz
 ./node_modules/.bin/pacificdb --version
 python3 -m venv .venv
-.venv/bin/python -m pip install /absolute/path/pacificdb-1.2.0rc1-py3-none-any.whl
+.venv/bin/python -m pip install /absolute/path/pacificdb-1.2.0rc2-py3-none-any.whl
 ```
 
 Java's binary, source and Javadoc JARs and dependency-bearing POM are staged
@@ -47,8 +49,8 @@ publish it remotely:
 
 ```sh
 mvn org.apache.maven.plugins:maven-install-plugin:3.1.2:install-file \
-  -Dfile=/absolute/path/pacificdb-client-1.2.0-rc.1.jar \
-  -DpomFile=/absolute/path/pacificdb-client-1.2.0-rc.1.pom
+  -Dfile=/absolute/path/pacificdb-client-1.2.0-rc.2.jar \
+  -DpomFile=/absolute/path/pacificdb-client-1.2.0-rc.2.pom
 ```
 
 Then declare this dependency in the consumer's POM:
@@ -57,7 +59,7 @@ Then declare this dependency in the consumer's POM:
 <dependency>
   <groupId>io.pacificdb</groupId>
   <artifactId>pacificdb-client</artifactId>
-  <version>1.2.0-rc.1</version>
+  <version>1.2.0-rc.2</version>
 </dependency>
 ```
 

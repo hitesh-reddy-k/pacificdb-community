@@ -4,8 +4,8 @@
 
 # PacificDB Node.js client
 
-Version **1.2.0-rc.1 — prerelease**. Download the matching package from the
-[Community v1.2.0-rc.1 release](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v1.2.0-rc.1);
+Version **1.2.0-rc.2 — prerelease**. Download the matching package from the
+[Community v1.2.0-rc.2 release](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v1.2.0-rc.2);
 registry publication is pending.
 
 Apache-2.0 client for the Community engine JSON protocol.

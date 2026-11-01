@@ -18,16 +18,16 @@ jobs:
         include:
           - runner: ubuntu-24.04
             platform: linux-x64
-            filename: PacificDB-Workbench-1.2.0-rc.1-linux-amd64.deb
+            filename: PacificDB-Workbench-1.2.0-rc.2-linux-amd64.deb
           - runner: windows-2025
             platform: windows-x64
-            filename: PacificDB-Workbench-1.2.0-rc.1-win-x64.exe
+            filename: PacificDB-Workbench-1.2.0-rc.2-win-x64.exe
           - runner: macos-15
             platform: macos-arm64
-            filename: PacificDB-Workbench-1.2.0-rc.1-mac-arm64.dmg
+            filename: PacificDB-Workbench-1.2.0-rc.2-mac-arm64.dmg
           - runner: macos-15-intel
             platform: macos-x64
-            filename: PacificDB-Workbench-1.2.0-rc.1-mac-x64.dmg
+            filename: PacificDB-Workbench-1.2.0-rc.2-mac-x64.dmg
     runs-on: ${{ matrix.runner }}
     env:
       GH_TOKEN: ${{ github.token }}
@@ -131,7 +131,7 @@ jobs:
           cd build/public-npm-consumer
           npm init -y
           npm install --ignore-scripts --no-audit --no-fund \
-            @pacificdb/client@1.2.0-rc.1 @pacificdb/cli@1.2.0-rc.1
+            @pacificdb/client@1.2.0-rc.2 @pacificdb/cli@1.2.0-rc.2
           ./node_modules/.bin/pacificdb --version
           cd ../..
           export PACIFICDB_TEST_ENGINE_BUILD='/opt/PacificDB Workbench/resources/engine'
@@ -142,7 +142,7 @@ jobs:
           PACIFICDB_TEST_LANGUAGES=node PACIFICDB_TEST_SKIP_JAVA_BUILD=1 \
             node scripts/test-cross-sdk-e2e.mjs "$PACIFICDB_TEST_ENGINE_BUILD" | tee build/public-node-live.log
           scripts/test-python-installed-client.sh \
-            build/complete-public-distribution/pacificdb-1.2.0rc1-py3-none-any.whl | tee build/public-python.log
+            build/complete-public-distribution/pacificdb-1.2.0rc2-py3-none-any.whl | tee build/public-python.log
           scripts/test-java-installed-client.sh build/complete-public-distribution | tee build/public-java.log
       - name: Record public package verification
         run: |

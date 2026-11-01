@@ -1,7 +1,7 @@
 # Owner publication process — Pre-release v1.2
 
-Release identity: base `1.2.0`, Git tag `v1.2.0-rc.1`, branch `v1.2`, title
-**Pre-release v1.2**. npm/Java version `1.2.0-rc.1`; Python version `1.2.0rc1`.
+Release identity: base `1.2.0`, Git tag `v1.2.0-rc.2`, branch `v1.2`, title
+**Pre-release v1.2**. npm/Java version `1.2.0-rc.2`; Python version `1.2.0rc2`.
 
 Account/publisher setup can be completed now. Run publication only after the exact
 RC tag exists and release qualification passes. Do not create, move or overwrite
@@ -33,13 +33,13 @@ commit and scoped tests. This is a prerelease, not stable/production certificati
    The workflow requests an OIDC token. No PyPI password/API token belongs in code
    or chat, and this OIDC workflow does not need a `PYPI_TOKEN` secret.
 5. Once the validated tag exists, open Actions → **Publish tested Python SDK** →
-   **Run workflow**, choose branch `v1.2`, and enter release tag `v1.2.0-rc.1`.
+   **Run workflow**, choose branch `v1.2`, and enter release tag `v1.2.0-rc.2`.
    Alternatively, from an authenticated owner terminal:
 
    ```sh
    gh workflow run python-publish.yml \
      --repo hitesh-reddy-k/pacificdb-community --ref v1.2 \
-     -f release_tag=v1.2.0-rc.1
+     -f release_tag=v1.2.0-rc.2
    gh run list --repo hitesh-reddy-k/pacificdb-community \
      --workflow python-publish.yml --limit 3
    ```
@@ -47,13 +47,13 @@ commit and scoped tests. This is a prerelease, not stable/production certificati
 6. Wait for both qualification and publish jobs. `invalid-publisher` means the
    owner/repository/filename/environment mapping does not match, even if GitHub
    issued a valid OIDC token. Fix that mapping; do not bypass the checks.
-7. Verify the actual release at [PyPI pacificdb 1.2.0rc1](https://pypi.org/project/pacificdb/1.2.0rc1/).
+7. Verify the actual release at [PyPI pacificdb 1.2.0rc2](https://pypi.org/project/pacificdb/1.2.0rc2/).
    A link here is an intended destination, not a claim that it is published.
 
    ```sh
    python3 -m venv /tmp/pacificdb-pypi-rc-consumer
    /tmp/pacificdb-pypi-rc-consumer/bin/python -m pip install \
-     --no-cache-dir 'pacificdb==1.2.0rc1'
+     --no-cache-dir 'pacificdb==1.2.0rc2'
    /tmp/pacificdb-pypi-rc-consumer/bin/python -c \
      'import importlib.metadata; print(importlib.metadata.version("pacificdb"))'
    ```
@@ -136,12 +136,12 @@ Official references: [existing project publisher](https://docs.pypi.org/trusted-
    ```
 
 7. Once the validated tag exists, run Actions → **Validate tested Java SDK on Central**
-   with branch `v1.2` and release tag `v1.2.0-rc.1`:
+   with branch `v1.2` and release tag `v1.2.0-rc.2`:
 
    ```sh
    gh workflow run java-publish.yml \
      --repo hitesh-reddy-k/pacificdb-community --ref v1.2 \
-     -f release_tag=v1.2.0-rc.1
+     -f release_tag=v1.2.0-rc.2
    gh run list --repo hitesh-reddy-k/pacificdb-community \
      --workflow java-publish.yml --limit 3
    ```
@@ -155,7 +155,7 @@ Official references: [existing project publisher](https://docs.pypi.org/trusted-
    ```sh
    mvn -U -Dmaven.repo.local=/tmp/pacificdb-central-rc-consumer \
      org.apache.maven.plugins:maven-dependency-plugin:3.8.1:get \
-     -Dartifact=io.pacificdb:pacificdb-client:1.2.0-rc.1
+     -Dartifact=io.pacificdb:pacificdb-client:1.2.0-rc.2
    ```
 
    Then execute the Java example in SDK_GUIDE.md against the candidate engine.

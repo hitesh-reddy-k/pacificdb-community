@@ -1,18 +1,18 @@
 # Install Pre-release v1.2
 
-Candidate: `v1.2.0-rc.1`, base `1.2.0`. This is an external-testing release.
+Candidate: `v1.2.0-rc.2`, base `1.2.0`. This is an external-testing release.
 Check [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) before downloading: Not tested
 or Blocked is not verified support, and an intended URL is not proof of publication.
 Use an isolated data directory and copies of test data. Keep production unchanged.
 
 ## Native Linux x64 staging
 
-The [public GitHub prerelease](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v1.2.0-rc.1)
-contains the Debian13 native engine/CLI package and archive, SDK packages,
-documentation and checksums. Desktop installer attachment and host-specific
-qualification are tracked separately; do not substitute Debian13 binaries on
-Ubuntu24. npm client/CLI `1.2.0-rc.1` are public under `next`; PyPI/Maven owner
-publication is still pending. See [the owner process](PUBLISHING_OWNER_GUIDE.md).
+RC.2 is in preparation. The [RC.2 release destination](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v1.2.0-rc.2)
+is an intended destination until publication and download checks pass. RC.1's
+public artifacts remain unchanged. Use the actual manifest's runtime ABI and
+installation evidence: Debian13 and Ubuntu24 native libraries differ. RC.2 npm,
+GitHub and container availability must be independently verified; PyPI/Maven
+require [owner setup](PUBLISHING_OWNER_GUIDE.md). The commands below pin RC.2.
 
 The staged Debian package includes `db_engine` and native `pacificdb` plus notices.
 A Linux archive contains the same native commands under `bin/`. Use the artifact
@@ -23,8 +23,8 @@ For `.deb`, inspect its declared dependencies before installation:
 
 ```sh
 sha256sum -c SHA256SUMS
-dpkg-deb --info pacificdb-community-1.2.0-rc.1-linux-x64.deb
-sudo apt install ./pacificdb-community-1.2.0-rc.1-linux-x64.deb
+dpkg-deb --info pacificdb-community-1.2.0-rc.2-linux-x64.deb
+sudo apt install ./pacificdb-community-1.2.0-rc.2-linux-x64.deb
 pacificdb --version
 db_engine --build-info
 ```
@@ -33,7 +33,7 @@ For testing without modifying system packages, extract into a private directory:
 
 ```sh
 mkdir -p "$PWD/pacificdb-rc-extracted"
-dpkg-deb -x pacificdb-community-1.2.0-rc.1-linux-x64.deb "$PWD/pacificdb-rc-extracted"
+dpkg-deb -x pacificdb-community-1.2.0-rc.2-linux-x64.deb "$PWD/pacificdb-rc-extracted"
 export PATH="$PWD/pacificdb-rc-extracted/usr/bin:$PATH"
 export PACIFICDB_HOME="$PWD/pacificdb-company-data"
 pacificdb --version
@@ -57,8 +57,8 @@ be available. Do not run the GUI as root or disable its sandbox for normal use.
 
 ```sh
 sha256sum -c SHA256SUMS
-tar -xzf PacificDB-Workbench-1.2.0-rc.1-linux-x64.tar.gz
-./PacificDB-Workbench-1.2.0-rc.1-linux-x64/pacificdb-workbench
+tar -xzf PacificDB-Workbench-1.2.0-rc.2-linux-x64.tar.gz
+./PacificDB-Workbench-1.2.0-rc.2-linux-x64/pacificdb-workbench
 ```
 
 Actual archive root names are recorded in the distribution manifest. If using
@@ -82,8 +82,8 @@ instructions/checklist; do not use a Linux binary on another OS.
 
 The packages are transport clients and need a running engine, or an installed
 native engine for CLI-managed startup. Their staged installation examples are in
-[SDK_GUIDE.md](SDK_GUIDE.md). npm packages use `1.2.0-rc.1`, Python uses equivalent
-`1.2.0rc1`, Java uses `1.2.0-rc.1`. Installing one does not install the engine.
+[SDK_GUIDE.md](SDK_GUIDE.md). npm packages use `1.2.0-rc.2`, Python uses equivalent
+`1.2.0rc2`, Java uses `1.2.0-rc.2`. Installing one does not install the engine.
 Do not use `npm install ...@latest` to obtain this prerelease. npm/PyPI/Central
 availability must be independently verified; GitHub assets provide an alternative
 staged distribution when registry publication is Blocked.
@@ -128,10 +128,10 @@ fresh binary path. Package output is not verified until its own install smoke pa
 
 ## Containers and troubleshooting
 
-The public candidate container is
+The previously published RC.1 container is
 `ghcr.io/hitesh-reddy-k/pacificdb-community:1.2.0-rc.1`, with verified digest
 `sha256:656b5ab4bfe4f6b074400ed0a0557988e4583b2ce3b4290ff9d5fa6b79c645e9`.
-The publishing workflow pulled and smoke-tested that digest; anonymous manifest
+The RC.1 publishing workflow pulled and smoke-tested that digest; anonymous manifest
 access was independently checked. It is a Linux x64 prerelease image. Use the
 existing isolated-volume/authentication configuration in `deploy/docker/`; a
 public image does not qualify an exposed or production deployment.

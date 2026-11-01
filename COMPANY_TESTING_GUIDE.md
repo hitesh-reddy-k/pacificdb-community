@@ -2,7 +2,7 @@
 
 PacificDB is a self-hosted unified document/vector/media database. This candidate
 is for professional evaluation and feedback, not a production-readiness claim.
-Base version `1.2.0`, candidate/tag `v1.2.0-rc.1`, branch `v1.2`, title
+Base version `1.2.0`, candidate/tag `v1.2.0-rc.2`, branch `v1.2`, title
 **Pre-release v1.2**. Check the exact artifact/publication/platform outcomes in
 [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) before using a download or registry.
 
@@ -27,7 +27,7 @@ Java>=11 metadata, with actually tested versions listed separately.
 3. Follow [INSTALLATION.md](INSTALLATION.md). Prefer extracted/staged packages and
    new test directories first; do not upgrade a live database for this evaluation.
 4. Record `db_engine --build-info` and `pacificdb --version`. Expect base 1.2.0 with
-   explicit 1.2.0-rc.1 prerelease metadata. npm/Java use 1.2.0-rc.1; Python 1.2.0rc1.
+   explicit 1.2.0-rc.2 prerelease metadata. npm/Java use 1.2.0-rc.2; Python 1.2.0rc2.
 
 ## Native CLI quickstart
 

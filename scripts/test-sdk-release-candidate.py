@@ -11,9 +11,9 @@ def module(name):
 class Candidate(unittest.TestCase):
     def test_candidate_and_stable_tag_mapping(self):
         guard=module('check-sdk-release-tag')
-        guard.validate('v1.2.0-rc.1','1.2.0rc1',java_version='1.2.0-rc.1')
+        guard.validate('v1.2.0-rc.2','1.2.0rc2',java_version='1.2.0-rc.2')
         guard.validate('v1.1.2','1.1.2',java_version='1.1.2')
-        for tag,python,java in [('v1.2.0-rc.1','1.2.0','1.2.0-rc.1'),('v1.2.0','1.2.0rc1','1.2.0-rc.1'),('v1.2.0-rc.01','1.2.0rc1','1.2.0-rc.01')]:
+        for tag,python,java in [('v1.2.0-rc.2','1.2.0','1.2.0-rc.2'),('v1.2.0','1.2.0rc2','1.2.0-rc.2'),('v1.2.0-rc.01','1.2.0rc2','1.2.0-rc.01')]:
             with self.assertRaises(ValueError):guard.validate(tag,python,java_version=java)
     def test_registry_workflows_are_explicit_and_prerelease_channel_is_next(self):
         for file in ['npm-publish.yml','python-publish.yml','java-publish.yml']:
@@ -34,10 +34,10 @@ class Candidate(unittest.TestCase):
         self.assertIn('node --test test/*.test.js',node)
     def test_publication_rejects_dirty_or_other_revision_candidate(self):
         guard=module('check-sdk-release-tag')
-        manifest={'status':'PASS','version':'1.2.0-rc.1','git_revision':'abc','source_clean':True}
-        guard.validate('v1.2.0-rc.1','1.2.0rc1',manifest,'abc','1.2.0-rc.1')
+        manifest={'status':'PASS','version':'1.2.0-rc.2','git_revision':'abc','source_clean':True}
+        guard.validate('v1.2.0-rc.2','1.2.0rc2',manifest,'abc','1.2.0-rc.2')
         for field,value in [('version','1.2.0'),('git_revision','other'),('source_clean',False),('status','FAIL')]:
-            with self.assertRaises(ValueError):guard.validate('v1.2.0-rc.1','1.2.0rc1',{**manifest,field:value},'abc','1.2.0-rc.1')
+            with self.assertRaises(ValueError):guard.validate('v1.2.0-rc.2','1.2.0rc2',{**manifest,field:value},'abc','1.2.0-rc.2')
     def test_runtime_candidate_metadata(self):
         identity=json.loads((ROOT/'release.json').read_text())
         self.assertEqual(json.loads((ROOT/'sdk/node/package.json').read_text())['version'],identity['npmVersion'])

@@ -45,6 +45,10 @@ on:
         description: Build Linux RC and publish tested desktop installers
         type: boolean
         default: false
+      desktop_source_run:
+        description: Exact successful source-build run containing Windows and macOS installers
+        required: false
+        type: string
       publish_container:
         description: Publish only the qualified public RC container
         type: boolean
@@ -126,6 +130,7 @@ jobs:
           test -f "$helper"
           test "$(stat -c '%u:%a' "$helper")" = 0:4755
           CHROME_DEVEL_SANDBOX="$helper" npm run test:workbench:browser -- build
+          CHROME_DEVEL_SANDBOX="$helper" node scripts/test-workbench-short-window.mjs
       - name: Package Workbench for Ubuntu 24.04
         env:
           PACIFICDB_DESKTOP_UBUNTU_24: '1'
@@ -155,6 +160,8 @@ jobs:
           PACIFICDB_TEST_DESKTOP_PREVIOUS="$RUNNER_TEMP/workbench-previous-linux/pacificdb-workbench" \
             PACIFICDB_TEST_DESKTOP="/opt/PacificDB Workbench/pacificdb-workbench" \
             PACIFICDB_TEST_DESKTOP_DATA="$RUNNER_TEMP/workbench-data-linux" \
+            xvfb-run -a npm run test:workbench:desktop
+          PACIFICDB_TEST_DESKTOP="/opt/PacificDB Workbench/pacificdb-workbench" \
             xvfb-run -a npm run test:workbench:desktop
       - name: Remove candidate Workbench Debian and verify data preservation
         shell: bash
@@ -315,6 +322,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           npm run test:workbench:desktop
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Remove-Item Env:PACIFICDB_TEST_DESKTOP_PREVIOUS,Env:PACIFICDB_TEST_DESKTOP_DATA -ErrorAction SilentlyContinue
+          npm run test:workbench:desktop
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Uninstall candidate Workbench NSIS and verify data preservation
         shell: pwsh
         run: |
@@ -462,6 +472,7 @@ jobs:
             PACIFICDB_TEST_DESKTOP="$executable" \
             PACIFICDB_TEST_DESKTOP_DATA="$RUNNER_TEMP/workbench-data-macos" \
             npm run test:workbench:desktop
+          PACIFICDB_TEST_DESKTOP="$executable" npm run test:workbench:desktop
           if [[ "$PACIFICDB_DESKTOP_RELEASE" == 1 && "$WORKBENCH_RELEASE_TAG" != workbench-v1.1.1 ]]; then
             contents="$installed/Contents"
             codesign --verify --deep --strict --verbose=2 "$installed"
@@ -644,6 +655,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       RELEASE_TAG: ${{ inputs.release_tag }}
+      PLATFORM_RUN_ID: ${{ inputs.desktop_source_run || '41302007858' }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -680,12 +692,12 @@ jobs:
       - name: Install candidate and test its GUI with normal sandbox
         run: |
           set -euo pipefail
-          sudo apt-get install -y ./dist/desktop/PacificDB-Workbench-1.2.0-rc.1-linux-amd64.deb
+          sudo apt-get install -y ./dist/desktop/PacificDB-Workbench-1.2.0-rc.2-linux-amd64.deb
           stat -c '%U:%G %a %n' '/opt/PacificDB Workbench/chrome-sandbox'
           DEBUG=pw:browser PACIFICDB_TEST_DESKTOP='/opt/PacificDB Workbench/pacificdb-workbench' xvfb-run -a npm run test:workbench:desktop
           mkdir -p build/release-platforms
-          cp dist/desktop/PacificDB-Workbench-1.2.0-rc.1-linux-amd64.deb build/release-platforms/
-          node scripts/workbench-preview-evidence.mjs linux-x64 build/release-platforms/PacificDB-Workbench-1.2.0-rc.1-linux-amd64.deb build/release-platforms/workbench-linux-x64-preview.json
+          cp dist/desktop/PacificDB-Workbench-1.2.0-rc.2-linux-amd64.deb build/release-platforms/
+          node scripts/workbench-preview-evidence.mjs linux-x64 build/release-platforms/PacificDB-Workbench-1.2.0-rc.2-linux-amd64.deb build/release-platforms/workbench-linux-x64-preview.json
           python3 - <<'PYCODE'
           import json,hashlib,os
           from pathlib import Path
@@ -698,7 +710,7 @@ jobs:
       - name: Get Windows/macOS installers from successful exact-source jobs
         run: |
           set -euo pipefail
-          gh run view 41302007858 --json headSha,jobs > build/platform-run.json
+          gh run view "$PLATFORM_RUN_ID" --json headSha,jobs > build/platform-run.json
           python3 - <<'PYCODE'
           import json,subprocess
           d=json.load(open('build/platform-run.json'))
@@ -707,7 +719,7 @@ jobs:
           assert all(any(j['name']==n and j['conclusion']=='success' for j in d['jobs']) for n in names)
           PYCODE
           for platform in windows-x64 macos-x64 macos-arm64; do
-            gh run download 41302007858 --name "workbench-$platform" --dir "build/downloaded-$platform"
+            gh run download "$PLATFORM_RUN_ID" --name "workbench-$platform" --dir "build/downloaded-$platform"
             cp "build/downloaded-$platform/"* build/release-platforms/
           done
       - name: Bind tested packages to qualified release manifest

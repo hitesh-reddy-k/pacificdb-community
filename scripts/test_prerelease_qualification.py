@@ -3,7 +3,7 @@ from prerelease_qualification import assess
 
 class PreviewQualification(unittest.TestCase):
     def baseline(self):
-        return {'releaseVersion':'1.2.0-rc.1','revision':'a'*40,'sourceClean':True,
+        return {'releaseVersion':'1.2.0-rc.2','revision':'a'*40,'sourceClean':True,
           'checks':[{'name':n,'status':'Passed'} for n in ('identity','engine','document-media','authentication','vector','cli','workbench','installed-sdks','artifact-integrity','security-blockers','disk-full-recovery')],
           'artifacts':[{'name':'engine.tgz','sha256':'f'*64,'tested':True,'platform':'linux-x64'}],
           'knownIssues':['ANN rebuild required after restart'],'productionReady':False}

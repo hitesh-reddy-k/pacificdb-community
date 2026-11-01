@@ -1,3 +1,28 @@
+# Candidate RC.2 follow-up —1.2.0-rc.2 (qualification in progress)
+
+## Fixed
+
+- Keep database-tree and collection controls reachable in short Workbench windows;
+  reproduce the original sidebar overlap and verify real pointer clicks at650,
+  653 and900px heights.
+- Retain electron-builder's upstream Linux post-install behavior, including the
+  application-specific Ubuntu AppArmor profile and launcher registration.
+
+## Changed
+
+- Advance compatible engine/CLI/Workbench/SDK prerelease identities toRC.2 without
+  overwriting publishedRC.1 tags or packages. Database/storage/vector implementation
+  source is unchanged; release metadata and Workbench layout/packaging differ.
+- Add independent public-package installation tests and GUI failure diagnostics.
+
+## Known issues
+
+- RC.2 release qualification/publication is not complete. RC.1 benchmark results
+  are retained asRC.1 measurements. Existing ANN/distributed/production limits
+  remain. PyPI/Maven publication still needs owner setup.
+
+---
+
 # Changelog
 
 ## Pre-release v1.2 reliability follow-through

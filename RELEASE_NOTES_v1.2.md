@@ -1,12 +1,25 @@
 # Pre-release v1.2
 
-**Base version 1.2.0 · candidate/tag v1.2.0-rc.1 · branch v1.2 · GitHub type: Pre-release.**
+**Base version 1.2.0 · candidate/tag v1.2.0-rc.2 · branch v1.2 · GitHub type: Pre-release.**
 Intended for external company testers and developers. Production qualification
 remains INCOMPLETE. Publication and platform status are recorded in
 [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md); a candidate name alone does not prove
 an artifact is published, installed or tested.
 
 ## Changes in this candidate
+
+RC.2 corrects two installer/Workbench findings from RC.1: short desktop windows
+could collapse the database tree behind the sidebar actions, and the custom
+Linux installer omitted electron-builder's application-scoped AppArmor setup.
+Navigation now scrolls while preserving an accessible database-tree area, and
+Linux packaging retains the upstream installer script. A short-window regression
+reproduces the original click failure and passes at650/653/900px heights after
+the change. Fresh installed-desktop tests are separate from upgrade tests.
+
+RC.1 assets/tags/npm packages remain unchanged. RC.2 publication/qualification
+is in progress. Engine/storage/vector source remains unchanged from RC.1;
+component release metadata is advanced consistently. RC.1 benchmark results
+keep their original artifact identity and are not called RC.2 measurements.
 
 The existing unified C++ engine now includes durable dense, sparse and named
 vectors; creation-time schemas; bounded exact top-K; explicit search modes and
@@ -20,8 +33,8 @@ row-cache reuse without a result cache or weakened acknowledgements.
 
 Release engineering aligns native, npm, Python, Java and Workbench candidate
 identity, staged-artifact verification and prerelease-only publishing. The engine
-reports base 1.2.0 plus explicit release metadata. npm/Java identify 1.2.0-rc.1;
-Python's equivalent is 1.2.0rc1. Storage-format and Raft protocol versions remain2.
+reports base 1.2.0 plus explicit release metadata. npm/Java identify 1.2.0-rc.2;
+Python's equivalent is 1.2.0rc2. Storage-format and Raft protocol versions remain2.
 New tenant authentication/logging fixes have targeted tests; final execution
 status belongs to the release checklist, not this narrative.
 
@@ -52,7 +65,7 @@ this is not a universal mixed-version or downgrade guarantee.
 
 - Standalone commit publication and rejected-tail cleanup now fail closed under
   ENOSPC and synchronous I/O errors. Uncertain post-rename outcomes fence the node
-  until restart. See [the storage findings](docs/releases/v1.2.0-rc.1/STORAGE_FAILURE_FINDINGS.md).
+  until restart. See [the storage findings](docs/releases/v1.2.0-rc.2/STORAGE_FAILURE_FINDINGS.md).
 
 - ANN graphs rebuild after restart. Measured 1M initial construction 45.82 minutes,
   post-crash reconstruction 35.97 minutes on the recorded 25D workstation workload.

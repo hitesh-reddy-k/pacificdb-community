@@ -10,7 +10,7 @@ on:
       release_tag:
         description: Exact existing qualified RC tag
         required: true
-        default: v1.2.0-rc.1
+        default: v1.2.0-rc.2
 permissions:
   contents: read
 jobs:

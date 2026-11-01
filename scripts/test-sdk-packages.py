@@ -41,9 +41,9 @@ class Artifacts(unittest.TestCase):
             with self.assertRaises(ValueError):verify.python_wheel(self.wheel(root,metadata='Name: pacificdb\nVersion: 1.1.2\n'),'1.1.2')
     def test_candidate_wheel_uses_python_normalized_version(self):
         with tempfile.TemporaryDirectory() as d:
-            wheel=self.wheel(Path(d),version='1.2.0rc1')
-            verify.python_wheel(wheel,'1.2.0rc1')
-            with self.assertRaises(ValueError):verify.python_wheel(wheel,'1.2.0-rc.1')
+            wheel=self.wheel(Path(d),version='1.2.0rc2')
+            verify.python_wheel(wheel,'1.2.0rc2')
+            with self.assertRaises(ValueError):verify.python_wheel(wheel,'1.2.0-rc.2')
     def test_tampering_and_secret_build_files_fail(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d)
@@ -68,13 +68,13 @@ class JavaArtifacts(unittest.TestCase):
     def test_pom_metadata_floor_runtime_dependency_and_no_publish_defaults(self):
         import xml.etree.ElementTree as ET
         root=Path(__file__).resolve().parents[1]
-        verify.java_pom(root/'sdk/java/pom.xml','1.2.0-rc.1')
+        verify.java_pom(root/'sdk/java/pom.xml','1.2.0-rc.2')
         tree=ET.parse(root/'sdk/java/pom.xml');ns={'m':'http://maven.apache.org/POM/4.0.0'}
         for field in ['description','url','developers','scm']:
             good=ET.fromstring(ET.tostring(tree.getroot()));good.remove(good.find('m:'+field,ns))
             with tempfile.TemporaryDirectory() as d:
                 file=Path(d)/'pom.xml';ET.ElementTree(good).write(file)
-                with self.assertRaises(ValueError):verify.java_pom(file,'1.2.0-rc.1')
+                with self.assertRaises(ValueError):verify.java_pom(file,'1.2.0-rc.2')
     def test_java_bytecode_docs_sources_and_signatures_required(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d)
@@ -102,7 +102,7 @@ class ExactBytes(unittest.TestCase):
     def test_bundle_pom_must_equal_inspected_pom(self):
         import hashlib
         with tempfile.TemporaryDirectory() as d:
-            root=Path(d);version='1.2.0-rc.1';base='pacificdb-client-'+version
+            root=Path(d);version='1.2.0-rc.2';base='pacificdb-client-'+version
             (root/'central-publishing').mkdir()
             (root/(base+'.pom')).write_bytes((Path(__file__).resolve().parents[1]/'sdk/java/pom.xml').read_bytes())
             for suffix,extension in [('.jar','.class'),('-sources.jar','.java'),('-javadoc.jar','.html')]:

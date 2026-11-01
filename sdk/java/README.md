@@ -2,12 +2,12 @@
 
 # PacificDB Java client
 
-Version **1.2.0-rc.1 — prerelease**. Download the matching package from the
-[Community v1.2.0-rc.1 release](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v1.2.0-rc.1);
+Version **1.2.0-rc.2 — prerelease**. Download the matching package from the
+[Community v1.2.0-rc.2 release](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v1.2.0-rc.2);
 registry publication is pending.
 
 A database-first client for the Community engine. Requires Java 11 or later;
-Jackson is the only runtime dependency. These examples describe the 1.2.0-rc.1
+Jackson is the only runtime dependency. These examples describe the 1.2.0-rc.2
 prerelease and require its published JAR or tagged-source build, not an older
 registry release.
 

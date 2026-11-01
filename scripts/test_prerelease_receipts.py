@@ -15,11 +15,11 @@ class Receipts(unittest.TestCase):
             root = Path(tmp); out = root / 'staged'; out.mkdir()
             payload = out / 'engine.tgz'; payload.write_bytes(b'tested bytes')
             artifact = {'filename':payload.name,'sha256':hashlib.sha256(payload.read_bytes()).hexdigest(),'sizeBytes':payload.stat().st_size}
-            manifest = {'version':'1.2.0','releaseVersion':'1.2.0-rc.1','revision':'a'*40,'sourceClean':True,'prerelease':True,'productionReady':False,'publicationDecision':'BLOCKED','knownIssues':['ANN rebuild after restart'],'artifacts':[artifact]}
+            manifest = {'version':'1.2.0','releaseVersion':'1.2.0-rc.2','revision':'a'*40,'sourceClean':True,'prerelease':True,'productionReady':False,'publicationDecision':'BLOCKED','knownIssues':['ANN rebuild after restart'],'artifacts':[artifact]}
             (out/'RELEASE-MANIFEST.json').write_text(json.dumps(manifest))
             log = root/'observed.log'; log.write_text('test receipt')
             evidence = {'path':log.name,'sha256':hashlib.sha256(log.read_bytes()).hexdigest()}
-            receipt = {'releaseVersion':'1.2.0-rc.1','revision':'a'*40,'checks':[{'name':name,'status':'Passed','evidence':[evidence]} for name in REQUIRED], 'artifacts':[{'name':payload.name,'sha256':artifact['sha256'],'platform':'linux-x64','tested':True}]}
+            receipt = {'releaseVersion':'1.2.0-rc.2','revision':'a'*40,'checks':[{'name':name,'status':'Passed','evidence':[evidence]} for name in REQUIRED], 'artifacts':[{'name':payload.name,'sha256':artifact['sha256'],'platform':'linux-x64','tested':True}]}
             file = root/'receipt.json'; file.write_text(json.dumps(receipt))
             result = module.qualify(out,file,'a'*40)
             self.assertEqual(result['publicationDecision'],'PREVIEW_QUALIFIED')

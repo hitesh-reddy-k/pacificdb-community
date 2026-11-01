@@ -1,6 +1,6 @@
 {
   "name": "@pacificdb/cli",
-  "version": "1.2.0-rc.1",
+  "version": "1.2.0-rc.2",
   "description": "PacificDB Community command-line client",
   "license": "Apache-2.0",
   "type": "module",
@@ -15,7 +15,7 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@pacificdb/client": "1.2.0-rc.1"
+    "@pacificdb/client": "1.2.0-rc.2"
   },
   "repository": {
     "type": "git",

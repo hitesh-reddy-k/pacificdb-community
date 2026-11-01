@@ -25,6 +25,6 @@ with tempfile.TemporaryDirectory(prefix='pacificdb-build-identity-') as director
         header = (build / 'generated/build_identity.hpp').read_text()
         assert f'#define PACIFICDB_GIT_COMMIT "{expected}"' in header, (name, header)
         assert '#define PACIFICDB_ENGINE_VERSION "1.2.0"' in header, header
-        assert '#define PACIFICDB_RELEASE_VERSION "1.2.0-rc.1"' in header, header
+        assert '#define PACIFICDB_RELEASE_VERSION "1.2.0-rc.2"' in header, header
         assert '#define PACIFICDB_RELEASE_CHANNEL "prerelease"' in header, header
 print('BUILD_IDENTITY_PASS: explicit archive revision retained; absent metadata stays unknown')

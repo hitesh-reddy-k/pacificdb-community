@@ -8,8 +8,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const script = fileURLToPath(new URL('./workbench-preview-evidence.mjs', import.meta.url));
-const release = { schemaVersion: 1, version: '1.2.0', releaseVersion: '1.2.0-rc.1',
-  name: 'Pre-release v1.2', channel: 'prerelease', tag: 'v1.2.0-rc.1', npmVersion: '1.2.0-rc.1' };
+const release = { schemaVersion: 1, version: '1.2.0', releaseVersion: '1.2.0-rc.2',
+  name: 'Pre-release v1.2', channel: 'prerelease', tag: 'v1.2.0-rc.2', npmVersion: '1.2.0-rc.2' };
 test('preview staging binds native bytes and identity without claiming stable qualification', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'workbench-preview-contract-'));
   try {

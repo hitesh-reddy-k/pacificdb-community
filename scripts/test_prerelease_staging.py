@@ -6,7 +6,7 @@ class Staging(unittest.TestCase):
   m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
   with tempfile.TemporaryDirectory() as t:
    p=Path(t);(p/'engine.tgz').write_bytes(b'example-test-artifact')
-   data={'version':'1.2.0','releaseVersion':'1.2.0-rc.1','revision':'a'*40,'sourceClean':True,'prerelease':True,'productionReady':False,'artifacts':[{'filename':'engine.tgz','sha256':hashlib.sha256((p/'engine.tgz').read_bytes()).hexdigest()}]}
+   data={'version':'1.2.0','releaseVersion':'1.2.0-rc.2','revision':'a'*40,'sourceClean':True,'prerelease':True,'productionReady':False,'artifacts':[{'filename':'engine.tgz','sha256':hashlib.sha256((p/'engine.tgz').read_bytes()).hexdigest()}]}
    (p/'RELEASE-MANIFEST.json').write_text(json.dumps(data));self.assertTrue(m.verify(p,'a'*40))
    data['publicationDecision']='PREVIEW_QUALIFIED'
    (p/'RELEASE-MANIFEST.json').write_text(json.dumps(data))
