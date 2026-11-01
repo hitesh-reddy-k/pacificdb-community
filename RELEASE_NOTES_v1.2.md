@@ -85,11 +85,20 @@ Community/21 real disk-full categories, and scoped installed-desktop/public SDK
 checks. Separate targeted TSAN and ASan/UBSan jobs passed. Exact scopes and CI
 receipts are in [the release checklist](RELEASE_CHECKLIST.md).
 
-The complete post-publication RC.2 1M benchmark remains in progress. Historical
-development and RC.1 measurements retain their own identities and are not RC.2
-results. [Reproduction instructions](docs/releases/v1.2.0-rc.2/BENCHMARK_REPRODUCTION.md)
-disclose workload, versions and comparison limits. No general performance
-superiority or identical timing across different machines is promised.
+The post-publication RC.2 study completed at 10K/100K/1M plus smaller metric,
+dimension, sparse/named/hybrid diagnostics. At 1M GloVe25 cosine, median round p50
+was 50.641ms versus PostgreSQL94.017ms for packed exact, and21.139ms versus1.521ms
+for ANN, with Recall@10 0.9782 versus0.9899. Initial ANN builds took2045.841s
+versus350.554s. **Mixed strict ANN reads succeeded0/360 versus360/360**; this is a
+failed availability result, not hidden by the study execution PASS.
+
+[Published report](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v1.2.0-rc.2/BENCHMARK_REPORT_1.2.0-rc.2.txt) and
+[per-query evidence](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v1.2.0-rc.2/pacificdb-benchmarks-1.2.0-rc.2-20261101.tar.gz) include
+filter/concurrency/ingestion/resource costs and SIGKILL/rebuild results.
+[Reproduction](docs/releases/v1.2.0-rc.2/BENCHMARK_REPRODUCTION.md) discloses precision,
+protocol and packed-index setup differences. This is a project-run comparison,
+not independent certification, a general speed claim or a promise of identical
+company timings. Full production qualification remains incomplete.
 
 ## Feedback
 

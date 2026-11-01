@@ -66,8 +66,10 @@ incomplete. Do not use the prerelease as a production-readiness guarantee.
 Company testers should start with [COMPANY_TESTING_GUIDE.md](COMPANY_TESTING_GUIDE.md).
 [Release status](RELEASE_CHECKLIST.md) records actual scoped verification.
 [Benchmark reproduction](docs/releases/v1.2.0-rc.2/BENCHMARK_REPRODUCTION.md) identifies
-inputs, settings and limitations. The complete RC.2 1M comparison is still running;
-no final result is claimed. Timings vary across machines.
+inputs, settings and limitations. The complete project-run RC.2 10K/100K/1M study is published, including failed
+request availability and recovery costs. [Report](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v1.2.0-rc.2/BENCHMARK_REPORT_1.2.0-rc.2.txt) and
+[evidence archive](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v1.2.0-rc.2/pacificdb-benchmarks-1.2.0-rc.2-20261101.tar.gz). Timings vary across machines;
+completed study execution is not production certification.
 
 Report bugs through the [issue tracker](https://github.com/hitesh-reddy-k/pacificdb-community/issues)
 with version, sanitized reproduction and expected/actual behavior. Send suspected

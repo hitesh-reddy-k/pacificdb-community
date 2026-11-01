@@ -136,9 +136,9 @@ def render(main_runs, supplemental, release_url, complete=False):
         '- HNSW M=16/ef_construction=200; ef_search is selected separately on100 tuning queries to reach0.97 recall. Held-out minimum Recall@10 is0.95. Raw curves and plans are retained.',
         '- Four logical CPUs are assigned to each server, two to the client. Affinity does not isolate unrelated host activity, thermal/power conditions or shared memory bandwidth. Operating-system caches are not dropped.',
         '- Peak RSS/PSS is sampled. Raw per-phase disk/WAL bytes reflect different retention/format policies, not normalized index-only space. All raw measurements, including failures and explicit availability errors, remain in the archive.',
-        '- The original host used exact cached release bytes downloaded while draft, published unchanged and checked against GitHub digests. A fresh anonymous redownload was slow/incomplete; no development binary was substituted.',
+        '- The benchmark used cached native/SDK bytes checked against the exact public release digests. Separate fresh public-package consumer tests identify their own receipts; no development executable was substituted.',
         '- Timings change with hardware/cache/concurrency. This is not a promise of identical company results or superiority across workloads. Complete distribution/security/upgrade/distributed/power-loss qualification is separate.', '',
-        'Follow `docs/releases/v1.2.0-rc.1/BENCHMARK_REPRODUCTION.md` for the frozen RC.1 inputs, hashes and commands. RC.2 needs its own artifact run. Raw summary/methodology/per-query/server/progress/error evidence accompanies this report.']
+        f'Follow `docs/releases/{release_url.rstrip("/").split("/")[-1]}/BENCHMARK_REPRODUCTION.md` for the frozen inputs, hashes and commands. Summary/methodology/per-query/progress/error evidence accompanies this report. Public copies redact private host/path identifiers only; original local evidence is preserved.']
     return '\n'.join(lines) + '\n'
 
 

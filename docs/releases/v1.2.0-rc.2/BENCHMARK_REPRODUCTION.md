@@ -18,8 +18,11 @@ the installed artifact/compiler/runtime identities differ and are recorded.
 The RC.2 run uses the exact tested CI archive cached locally, checked against the
 now-public release asset digest before starting; no local development executable
 was substituted. Independent public installation tests separately download and
-verify the released packages on all desktop targets. The1M matrix remains
-INCOMPLETE until its controller and phase exit receipts finish.
+verify the released packages on all desktop targets. All declared study phases
+completed with exit0 and summaryPASS. [Final report](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v1.2.0-rc.2/BENCHMARK_REPORT_1.2.0-rc.2.txt) and
+[public evidence](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v1.2.0-rc.2/pacificdb-benchmarks-1.2.0-rc.2-20261101.tar.gz) retain measured failures and limitations.
+Study execution completion does not mean every request succeeded or production
+qualification passed. Mixed strict ANN availability at1M was0/360 versus360/360.
 
 On Ubuntu24, use its normal package-provided RE2 dependency. The Debian13 benchmark
 host extracted Ubuntu's `libre2-10_20230301-3build1_amd64.deb` into a private runtime

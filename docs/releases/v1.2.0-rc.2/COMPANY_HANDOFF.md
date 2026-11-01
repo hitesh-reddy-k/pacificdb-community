@@ -120,13 +120,13 @@ Use the native vector readiness documents for exact supported scopes.
 
 ## Benchmark evidence and feedback
 
-The RC.1 run's controller stopped during 1M reconstruction without a completion
-receipt. Its completed static measurements and record recovery are retained,
-but the full RC.1 study is INCOMPLETE. RC.2 is being benchmarked independently
-against PostgreSQL 18.6 + pgvector 0.8.7 at 10K/100K/1M, with supplemental metrics,
-dimensions and sparse/named/hybrid diagnostics. Do not relabel RC.1 numbers RC.2.
-No complete RC.2 1M result is claimed until its controller/phase exit receipts
-and raw evidence finish. Timings vary with hardware, cache and workload.
+The published RC.2 project-run comparison completed at10K/100K/1M against
+PostgreSQL18.6 + pgvector0.8.7, plus smaller dimensional/metric and sparse/named/
+hybrid diagnostics. [Final report](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v1.2.0-rc.2/BENCHMARK_REPORT_1.2.0-rc.2.txt) and
+[per-query evidence](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v1.2.0-rc.2/pacificdb-benchmarks-1.2.0-rc.2-20261101.tar.gz) include all numerical results,
+failed strict ANN reads, build/recovery costs and comparison limits. At1M,
+strict ANN mixed reads succeeded0/360 versus360/360. Timings vary by host/workload;
+execution PASS is not a high-availability or production-readiness PASS.
 
 Report candidate/build-info, artifact hash, OS/CPU/RAM, settings, minimal steps,
 expected/actual result and sanitized logs. Include errors and unsuccessful
