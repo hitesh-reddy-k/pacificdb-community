@@ -37,6 +37,10 @@ on:
       - 'package-lock.json'
   workflow_dispatch:
     inputs:
+      verify_publication:
+        description: Download and install-test the public RC packages on all desktop platforms
+        type: boolean
+        default: false
       publish_desktop:
         description: Build Linux RC and publish tested desktop installers
         type: boolean
@@ -60,6 +64,13 @@ concurrency:
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
+  verify_prerelease_publication:
+    if: github.event_name == 'workflow_dispatch' && inputs.verify_publication
+    uses: ./.github/workflows/verify-prerelease.yml
+    permissions:
+      contents: read
+    with:
+      release_tag: ${{ inputs.release_tag }}
   prerelease_container:
     if: github.event_name == 'workflow_dispatch' && inputs.publish_container
     uses: ./.github/workflows/container-prerelease.yml

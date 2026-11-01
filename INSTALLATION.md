@@ -7,6 +7,13 @@ Use an isolated data directory and copies of test data. Keep production unchange
 
 ## Native Linux x64 staging
 
+The [public GitHub prerelease](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v1.2.0-rc.1)
+contains the Debian13 native engine/CLI package and archive, SDK packages,
+documentation and checksums. Desktop installer attachment and host-specific
+qualification are tracked separately; do not substitute Debian13 binaries on
+Ubuntu24. npm client/CLI `1.2.0-rc.1` are public under `next`; PyPI/Maven owner
+publication is still pending. See [the owner process](PUBLISHING_OWNER_GUIDE.md).
+
 The staged Debian package includes `db_engine` and native `pacificdb` plus notices.
 A Linux archive contains the same native commands under `bin/`. Use the artifact
 built for your actual distribution/runtime. The local environment is Debian 13
@@ -120,6 +127,14 @@ access to build tooling; follow `scripts/prepare-workbench-desktop.mjs` using th
 fresh binary path. Package output is not verified until its own install smoke passes.
 
 ## Containers and troubleshooting
+
+The public candidate container is
+`ghcr.io/hitesh-reddy-k/pacificdb-community:1.2.0-rc.1`, with verified digest
+`sha256:656b5ab4bfe4f6b074400ed0a0557988e4583b2ce3b4290ff9d5fa6b79c645e9`.
+The publishing workflow pulled and smoke-tested that digest; anonymous manifest
+access was independently checked. It is a Linux x64 prerelease image. Use the
+existing isolated-volume/authentication configuration in `deploy/docker/`; a
+public image does not qualify an exposed or production deployment.
 
 `deploy/docker/Dockerfile` is a source build definition. The exact candidate image
 and smoke evidence must be Passed before calling it verified. Local builds do

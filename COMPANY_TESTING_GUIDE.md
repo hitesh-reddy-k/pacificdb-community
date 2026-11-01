@@ -119,6 +119,18 @@ production SLO is promised.
 
 ## Known results and limits
 
+The new post-publication run uses the exact `v1.2.0-rc.1` Linux release archive
+against PostgreSQL18.6 + pgvector0.8.7. The 10K/100K workloads and supplemental
+dense/sparse/named/hybrid cases completed; 1M ANN/lifecycle qualification remains
+in progress. Three completed 1M exact rounds matched ground truth (1,000 held-out
+queries per round), with median round p50 37.685ms PacificDB versus82.535ms
+PostgreSQL on this host. These partial results are not a completed 1M comparison.
+Follow [the frozen reproduction protocol](docs/releases/v1.2.0-rc.1/BENCHMARK_REPRODUCTION.md).
+Exact timing uses a separately built PacificDB packed derived index; include its
+setup cost. Smaller completed workloads show slower ANN, ingestion and lifecycle
+costs than pgvector; strict ANN reads can be unavailable during concurrent writes.
+Company hardware/settings/cache state will change timings.
+
 The previous frozen dev comparison passed static correctness/recall at 10K/100K/1M
 GloVe25, but ANN latency, ingestion, selective filtering and mixed-read availability
 had material gaps. Initial 1M ANN construction took 45.82 minutes; reconstruction

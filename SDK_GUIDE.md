@@ -2,8 +2,10 @@
 
 The engine base version is `1.2.0`; the candidate is `v1.2.0-rc.1` (Pre-release
 v1.2). Node and Java packages use `1.2.0-rc.1`; Python uses PEP 440 `1.2.0rc1`.
-Registry publication is pending. Use the exact checksummed candidate assets;
-older registry packages do not contain the native vector preview APIs.
+The npm client and CLI are published at this exact version under `next`.
+PyPI and Maven Central publication remain blocked on owner setup (both candidate
+endpoints returned HTTP404 on 2026-11-01). Use the checksummed GitHub wheel/JAR/POM
+for those clients; older registry packages do not contain these preview APIs.
 
 | Client | Package | Minimum runtime | Runtime dependencies |
 |---|---|---|---|
@@ -17,6 +19,17 @@ connect to an existing engine. The CLI and native shell both use the command
 `pacificdb`; invoke the project-local npm binary explicitly when testing it.
 
 ## Install exact local assets
+
+For the published npm packages, install the explicit candidate version:
+
+```sh
+npm install @pacificdb/client@1.2.0-rc.1 @pacificdb/cli@1.2.0-rc.1
+./node_modules/.bin/pacificdb --version
+```
+
+This registry-installed client passed authenticated TCP/TLS, document/media
+roundtrips and process-crash recovery against the candidate engine. It still
+requires an installed/running native engine. `@latest` selects a different release.
 
 After verifying the release checksums, create a clean consumer directory. Install
 both npm archives together so the CLI resolves its exact candidate dependency:
