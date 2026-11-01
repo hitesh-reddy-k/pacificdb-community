@@ -25,23 +25,27 @@ test('website validation still rejects missing files, fragments, assets and obso
     ['<a href="missing.html#anchor">missing page</a>', 'ENOENT'],
     ['<a href="docs.html#missing-anchor">missing fragment</a>', 'missing fragment target'],
     ['<!-- hitesh-reddy-k.github.io/pacificdb-community/docs.html -->', 'AssertionError'],
-    ['<p>Install version 1.1.1</p>', 'current guides must use 1.1.2'],
-    ['<a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/1.1.2/pacificdb-community-1.1.2-windows-x64.exe">unpublished</a>', 'unpublished release download'],
-    ['<a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v1.1.2/SHA256SUMS">wrong tag</a>', 'download tags must match'],
+    ['<p>Install version 1.1.1</p>', 'current guides must use the RC2 release'],
+    ['<a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v1.2.0-rc.2/pacificdb-community-1.2.0-rc.2-windows-x64.exe">unpublished</a>', 'unpublished release download'],
+    ['<a href="https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v1.2.0/SHA256SUMS">wrong tag</a>', 'download tags must match'],
   ]) {
     await writeFile(indexPath, index + extra);
     await assert.rejects(execFileAsync(process.execPath, [script]), (error) =>
       error.code === 1 && error.stderr.includes(expected));
   }
   for (const [changed, expected] of [
-    [index.replace('1.1.2/PacificDB-Workbench-1.1.2-linux-amd64.deb',
-      '1.1.2/pacificdb-community-1.1.2-linux-amd64.deb'), 'Workbench must link the published Linux desktop installer'],
-    [index.replace('workbench-windows-v1.1.2/PacificDB-Workbench-1.1.2-win-x64.exe',
-      '1.1.2/PacificDB-Workbench-1.1.2-win-x64.exe'), 'Windows Workbench must have an actionable installer download'],
-    [index.replace('workbench-windows-v1.1.2/SHA256SUMS', '1.1.2/SHA256SUMS'),
-      'Windows Workbench must link its own release checksum manifest'],
-    [index.replace('type="button" disabled>macOS', 'type="button">macOS'),
-      'unpublished Workbench platforms must be visibly unavailable and disabled'],
+    [index.replace('v1.2.0-rc.2/PacificDB-Workbench-1.2.0-rc.2-linux-amd64.deb',
+      'v1.2.0-rc.2/pacificdb-community-1.2.0-rc.2-linux-x64.deb'), 'Workbench must link the published linux-amd64.deb installer'],
+    [index.replace('v1.2.0-rc.2/PacificDB-Workbench-1.2.0-rc.2-win-x64.exe',
+      'v1.2.0-rc.2/missing-win-x64.exe'), 'Workbench must link the published win-x64.exe installer'],
+    [index.replace('v1.2.0-rc.2/SHA256SUMS', 'v1.2.0-rc.2/wrong-checksums.txt'),
+      'Workbench must link its release checksum manifest'],
+    [index.replace('v1.2.0-rc.2/PacificDB-Workbench-1.2.0-rc.2-mac-arm64.dmg',
+      'v1.2.0-rc.2/missing-mac-arm64.dmg'), 'Workbench must link the published mac-arm64.dmg installer'],
+    [index.replace('v1.2.0-rc.2/PacificDB-Workbench-1.2.0-rc.2-mac-x64.dmg',
+      'v1.2.0-rc.2/missing-mac-x64.dmg'), 'Workbench must link the published mac-x64.dmg installer'],
+    [index.replace('<select id="mac-arch">', '<select id="mac-arch" disabled>'),
+      'AssertionError'],
   ]) {
     assert.notEqual(changed, index, 'download regression fixture must change the rendered HTML');
     await writeFile(indexPath, changed);
