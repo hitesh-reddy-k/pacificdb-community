@@ -667,38 +667,38 @@ jobs:
           set -euo pipefail
           sudo apt-get install -y ./dist/desktop/PacificDB-Workbench-1.2.0-rc.1-linux-amd64.deb
           PACIFICDB_TEST_DESKTOP='/opt/PacificDB Workbench/pacificdb-workbench' xvfb-run -a npm run test:workbench:desktop
-          mkdir -p release-platforms
-          cp dist/desktop/PacificDB-Workbench-1.2.0-rc.1-linux-amd64.deb release-platforms/
-          node scripts/workbench-preview-evidence.mjs linux-x64 release-platforms/PacificDB-Workbench-1.2.0-rc.1-linux-amd64.deb release-platforms/workbench-linux-x64-preview.json
+          mkdir -p build/release-platforms
+          cp dist/desktop/PacificDB-Workbench-1.2.0-rc.1-linux-amd64.deb build/release-platforms/
+          node scripts/workbench-preview-evidence.mjs linux-x64 build/release-platforms/PacificDB-Workbench-1.2.0-rc.1-linux-amd64.deb build/release-platforms/workbench-linux-x64-preview.json
       - name: Get Windows/macOS installers from successful exact-source jobs
         run: |
           set -euo pipefail
-          gh run view 41302007858 --json headSha,jobs > platform-run.json
+          gh run view 41302007858 --json headSha,jobs > build/platform-run.json
           python3 - <<'PYCODE'
           import json,subprocess
-          d=json.load(open('platform-run.json'))
+          d=json.load(open('build/platform-run.json'))
           assert d['headSha']==subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
           names={'windows','macos (macos-15, arm64)','macos (macos-15-intel, x64)'}
           assert all(any(j['name']==n and j['conclusion']=='success' for j in d['jobs']) for n in names)
           PYCODE
           for platform in windows-x64 macos-x64 macos-arm64; do
-            gh run download 41302007858 --name "workbench-$platform" --dir "downloaded-$platform"
-            cp "downloaded-$platform/"* release-platforms/
+            gh run download 41302007858 --name "workbench-$platform" --dir "build/downloaded-$platform"
+            cp "build/downloaded-$platform/"* build/release-platforms/
           done
       - name: Bind tested packages to qualified release manifest
         run: |
           set -euo pipefail
-          mkdir staged
-          gh release download "$RELEASE_TAG" --dir staged
-          python3 scripts/verify-prerelease-staging.py --directory staged --revision "$(git rev-parse HEAD)" --require-qualified
+          mkdir -p build/release-staged
+          gh release download "$RELEASE_TAG" --dir build/release-staged
+          python3 scripts/verify-prerelease-staging.py --directory build/release-staged --revision "$(git rev-parse HEAD)" --require-qualified
           python3 - <<'PYCODE'
           import json,hashlib,shutil,subprocess
           from pathlib import Path
           from scripts.prerelease_qualification import assess
-          root=Path('staged');m=json.load(open(root/'RELEASE-MANIFEST.json'));revision=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
-          for p in Path('release-platforms').glob('*preview.json'):
+          root=Path('build/release-staged');m=json.load(open(root/'RELEASE-MANIFEST.json'));revision=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
+          for p in Path('build/release-platforms').glob('*preview.json'):
               receipt=json.load(open(p));assert receipt['revision']==revision and not receipt['sourceDirty']
-              artifact=Path('release-platforms')/Path(receipt['artifact']['path']).name
+              artifact=Path('build/release-platforms')/Path(receipt['artifact']['path']).name
               assert hashlib.sha256(artifact.read_bytes()).hexdigest()==receipt['artifact']['sha256']
               for f,platform in [(artifact,receipt['platform']),(p,'portable-platform-receipt')]:
                   assert not (root/f.name).exists();shutil.copy2(f,root/f.name);h=hashlib.sha256(f.read_bytes()).hexdigest()
@@ -711,15 +711,15 @@ jobs:
           sums={a['filename']:a['sha256'] for a in m['artifacts']};sums['RELEASE-MANIFEST.json']=hashlib.sha256((root/'RELEASE-MANIFEST.json').read_bytes()).hexdigest()
           (root/'SHA256SUMS').write_text(''.join(h+'  '+n+'\n' for n,h in sorted(sums.items())))
           PYCODE
-          python3 scripts/verify-prerelease-staging.py --directory staged --revision "$(git rev-parse HEAD)" --require-qualified
-          gh release upload "$RELEASE_TAG" release-platforms/*
-          gh release upload "$RELEASE_TAG" staged/RELEASE-MANIFEST.json staged/SHA256SUMS --clobber
+          python3 scripts/verify-prerelease-staging.py --directory build/release-staged --revision "$(git rev-parse HEAD)" --require-qualified
+          gh release upload "$RELEASE_TAG" build/release-platforms/*
+          gh release upload "$RELEASE_TAG" build/release-staged/RELEASE-MANIFEST.json build/release-staged/SHA256SUMS --clobber
       - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: desktop-publication-receipts
           path: |
-            platform-run.json
-            release-platforms/*preview.json
-            staged/RELEASE-MANIFEST.json
-            staged/SHA256SUMS
+            build/platform-run.json
+            build/release-platforms/*preview.json
+            build/release-staged/RELEASE-MANIFEST.json
+            build/release-staged/SHA256SUMS
