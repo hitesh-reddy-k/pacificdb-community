@@ -100,7 +100,7 @@ and launching its actual executable. For a separately managed engine use
 `PACIFICDB_VECTOR_PREVIEW_ENABLED=1` before startup. Existing running processes
 do not acquire environment changes from a new terminal.
 
-Follow the vector preview/schema guides from the documentation archive for
+Follow `docs/VECTORS.md` from the current documentation archive for
 dimension/metric schemas, dense/sparse/named CRUD, explicit exact/ANN modes,
 index creation/status/rebuild and hybrid requests. Schema/index administration
 and hybrid operations use the SDK/raw operations; every function does not have a

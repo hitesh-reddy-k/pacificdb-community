@@ -40,18 +40,12 @@ self-certify either result. Until complete external records are attached to the
 same revision, both gates remain `BLOCKED`.
 
 
-## Database-first CLI, Workbench and SDK candidate
+## Current prerelease evidence
 
-The [3 October database-first qualification](evidence/2026-10-03-database-first-package-readiness.md)
-records isolated direct-database UX, Java/Python client and local distribution checks,
-including independent review findings and their tested corrections. Its
-[artifact manifest](evidence/2026-10-03-sdk-package-artifacts.json) identifies exact
-clean-source candidate hashes and explicitly test-only signing.
-
-These scoped checks do not waive the required external gates above. No package,
-release tag or installer was published or deployed. Registry ownership/protected
-publisher setup, supported-platform execution, and release-owner approval remain
-separate prerequisites; see [publication instructions](SDK_PUBLISHING.md).
+See [the v1.2 release checklist](../RELEASE_CHECKLIST.md) for exact source,
+platform, artifact and CI scopes. Internal development notes are retained locally.
+Public test receipts and benchmark methodology remain available for reproducibility.
+Scoped prerelease results do not waive the stable external gates above.
 
 ## Workbench installer qualification
 

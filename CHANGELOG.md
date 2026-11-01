@@ -1,4 +1,4 @@
-# Candidate RC.2 follow-up —1.2.0-rc.2 (qualification in progress)
+# 1.2.0-rc.2 — Pre-release v1.2
 
 ## Fixed
 
@@ -17,9 +17,9 @@
 
 ## Known issues
 
-- RC.2 release qualification/publication is not complete. RC.1 benchmark results
-  are retained asRC.1 measurements. Existing ANN/distributed/production limits
-  remain. PyPI/Maven publication still needs owner setup.
+- RC.2 is published with scoped installation/test evidence. The complete fresh
+  1M benchmark is still running; RC.1 measurements retain their original identity.
+  ANN/distributed/production limits remain. PyPI/Maven need owner setup.
 
 ---
 

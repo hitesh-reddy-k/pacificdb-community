@@ -51,8 +51,7 @@ snapshot/recovery and quotas are shared infrastructure. Native storage is not
 silently encrypted by a flag: production requires the existing reviewed encrypted
 storage/deployment evidence. This preview does not certify a production deployment.
 
-See [the current implementation assessment](docs/releases/v1.2.0-rc.2/PROJECT_ANALYSIS.md),
-[vector architecture](docs/V1.2_VECTOR_ARCHITECTURE.md),
+See [the vector usage guide](docs/VECTORS.md),
 [release scope](docs/V1.2_COMMUNITY_SCOPE.md), [installation](INSTALLATION.md) and
 [testing](TESTING.md). Historical benchmark results retain their original dev
 binary identities and do not automatically qualify release-candidate packages.

@@ -64,44 +64,32 @@ Vector preview stays default-off. Standalone operators explicitly enable
 remain gated. Existing document/media APIs are preserved in exercised regressions;
 this is not a universal mixed-version or downgrade guarantee.
 
-## Known issues
+## Known limitations
 
-- Standalone commit publication and rejected-tail cleanup now fail closed under
-  ENOSPC and synchronous I/O errors. Uncertain post-rename outcomes fence the node
-  until restart. See [the storage findings](docs/releases/v1.2.0-rc.2/STORAGE_FAILURE_FINDINGS.md).
-
-- ANN graphs rebuild after restart. Measured 1M initial construction 45.82 minutes,
-  post-crash reconstruction 35.97 minutes on the recorded 25D workstation workload.
-- Strict ANN queries can be unavailable during writes; measured 1M mixed reads
-  succeeded 26/360 times against an error-free target. Explicit freshness errors
-  protect correctness but do not meet high-availability expectations.
-- ANN, ingestion and selective filtering remain slower than PostgreSQL/pgvector
-  on the documented workload. Performance is dataset/configuration dependent.
-- Sparse/flat/lexical incremental maintenance, online schema evolution, automatic
-  graph compaction, advanced compression/disk indexes and complete distributed
-  vector search are incomplete/deferred. Bound physical history requires manual
-  maintenance; no unlimited-update promise is made.
-- Production/platform/upgrade/security/power-loss/sustained qualification is not
-  complete. Existing strict stable-release policy is preserved; prerelease
-  staging evidence is separately scoped.
+- Native vector/index/hybrid operations are an explicit standalone preview.
+- ANN graphs require rebuilding after restart; strict ANN may be unavailable
+  during writes. Large builds and recovery reconstruction can take many minutes.
+- Sparse/flat/lexical incremental maintenance, online schema evolution,
+  automatic graph compaction, advanced compression/disk ANN and complete
+  distributed vector search remain incomplete. Physical history needs manual
+  maintenance at configured bounds.
+- Full production, physical power-loss, independent security and complete
+  mixed-version/platform upgrade qualification is incomplete.
+- PyPI/Maven Central publication awaits owner setup. GitHub wheel/JAR/POM
+  distribution is available. Platform signing/notarization limits are documented.
 
 ## Testing and benchmarks
 
-The previous frozen 1.2.0-dev checkpoint passed 75 top-level/43CTest, fiveTSAN,
-fourASan/UBSan,34Node/134Python/30Java units and live SDK recovery. The completed
-self-run comparison covers 10K/100K/1M GloVe25 plus smaller dimensional/metric and
-sparse/named/hybrid supplements. At 1M, indexed exact p50 was 49.73ms versus 112.23ms
-PostgreSQL; ANN 18.24ms versus 2.26ms, Recall@10 0.9778 versus 0.9897. Exact packed
-index build cost 15.45s is disclosed. This is not independent certification or a
-benchmark of renamedRC bytes. See [original report](docs/v1.2-evidence/community-verified-cache-comparison-20261101/REPORT.md)
-and [current tests/checklist](TESTING.md). Fresh RC tests remain separately recorded.
+Frozen RC.2 passed 78 checkpoint checks/50 CTest cases, 16 SDK jobs, complete
+Community/21 real disk-full categories, and scoped installed-desktop/public SDK
+checks. Separate targeted TSAN and ASan/UBSan jobs passed. Exact scopes and CI
+receipts are in [the release checklist](RELEASE_CHECKLIST.md).
 
-Current RC validation additionally passed 76 top-level checks/45 CTest on the
-initial RC build, source/installed Node, Python and Java checks, and sandboxed
-Linux Workbench package tests. Clean-source delivery receipts identify their own
-binary hashes. The matcher compatibility repair clears the full/runtime desktop dependency
-audits without an exception. Publication and platform support still require exact
-final artifact receipts. No new benchmark run is attributed to RC artifacts.
+The complete post-publication RC.2 1M benchmark remains in progress. Historical
+development and RC.1 measurements retain their own identities and are not RC.2
+results. [Reproduction instructions](docs/releases/v1.2.0-rc.2/BENCHMARK_REPRODUCTION.md)
+disclose workload, versions and comparison limits. No general performance
+superiority or identical timing across different machines is promised.
 
 ## Feedback
 

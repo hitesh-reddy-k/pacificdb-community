@@ -7,9 +7,8 @@ Base version `1.2.0`, candidate/tag `v1.2.0-rc.2`, branch `v1.2`, title
 [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) before using a download or registry.
 
 Publication/platform status belongs to the final release manifest and checklist.
-The original disk-full and desktop dependency failures are retained with the fixes. Review
-[the storage findings](docs/releases/v1.2.0-rc.1/STORAGE_FAILURE_FINDINGS.md) before
-planning evaluation; use disposable data only.
+The release checklist records verified storage/recovery fixes and test scope.
+Use disposable evaluation data only.
 
 ## Requirements and first installation
 

@@ -37,12 +37,10 @@ jobs:
           set -euo pipefail
           candidate=$(python3 scripts/release_identity.py --field releaseVersion)
           filename="pacificdb-company-guide-$candidate-${GITHUB_SHA:0:7}.tar.gz"
+          git show "$GITHUB_SHA:docs/PUBLIC_DOCUMENTATION.json" > build/public-docs.json
+          mapfile -t public_docs < <(python3 -c 'import json; print("\n".join(json.load(open("build/public-docs.json"))["files"]))')
           git archive --format=tar.gz --output="build/$filename" "$GITHUB_SHA" \
-            INSTALLATION.md SDK_GUIDE.md COMPANY_TESTING_GUIDE.md RELEASE_CHECKLIST.md \
-            RELEASE_NOTES_v1.2.md ARCHITECTURE.md TESTING.md PUBLISHING_OWNER_GUIDE.md \
-            LICENSE THIRD_PARTY_NOTICES.md release.json \
-            docs/releases/v1.2.0-rc.2/COMPANY_HANDOFF.md \
-            docs/releases/v1.2.0-rc.2/BENCHMARK_REPRODUCTION.md
+            "${public_docs[@]}" docs/PUBLIC_DOCUMENTATION.json
           export GUIDE_FILE="$filename"
           python3 - <<'PYCODE'
           import hashlib,json,os,shutil,tarfile
