@@ -49,6 +49,14 @@ on:
         description: Exact successful source-build run containing Windows and macOS installers
         required: false
         type: string
+      source_ref:
+        description: Existing source commit to qualify without changing its identity
+        required: false
+        type: string
+      qualify_candidate:
+        description: Run complete Community regressions and real ENOSPC on the frozen source
+        type: boolean
+        default: false
       publish_container:
         description: Publish only the qualified public RC container
         type: boolean
@@ -64,10 +72,17 @@ permissions:
   contents: read
 
 concurrency:
-  group: workbench-${{ github.ref }}
-  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+  group: workbench-${{ github.ref }}-${{ inputs.qualify_candidate && 'qualification' || inputs.publish_desktop && 'desktop-publication' || inputs.verify_publication && 'public-consumer' || inputs.source_ref || 'platform' }}
+  cancel-in-progress: false
 
 jobs:
+  qualify_frozen_candidate:
+    if: github.event_name == 'workflow_dispatch' && inputs.qualify_candidate
+    uses: ./.github/workflows/qualify-candidate.yml
+    permissions:
+      contents: read
+    with:
+      source_ref: ${{ inputs.source_ref }}
   verify_prerelease_publication:
     if: github.event_name == 'workflow_dispatch' && inputs.verify_publication
     uses: ./.github/workflows/verify-prerelease.yml
@@ -84,12 +99,12 @@ jobs:
     with:
       release_tag: ${{ inputs.release_tag }}
   linux:
-    if: inputs.release_tag == ''
+    if: inputs.release_tag == '' && !inputs.qualify_candidate
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ env.WORKBENCH_RELEASE_TAG || github.ref }}
+          ref: ${{ env.WORKBENCH_RELEASE_TAG || inputs.source_ref || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -123,11 +138,14 @@ jobs:
       - name: Browser workflow
         run: |
           npx playwright install --with-deps chromium
-          # Ubuntu AppArmor restricts developer-browser user namespaces. Use the
-          # runner's installed, root-owned Chrome sandbox helper, preserving the
-          # normal Chromium sandbox instead of disabling it or changing sysctls.
-          helper=/opt/google/chrome/chrome-sandbox
-          test -f "$helper"
+          # The runner no longer consistently installs Google Chrome's helper.
+          # Install the helper from the pinned Playwright Chrome download into a
+          # root-owned directory, preserving the normal Chromium OS sandbox.
+          bundled_helper=$(node --input-type=module -e 'import {chromium} from "playwright";import path from "node:path";process.stdout.write(path.join(path.dirname(chromium.executablePath()),"chrome_sandbox"))')
+          test -f "$bundled_helper"
+          sudo install -d -m 0755 /usr/local/libexec/pacificdb-ci
+          helper=/usr/local/libexec/pacificdb-ci/chrome-sandbox
+          sudo install -o root -g root -m 4755 "$bundled_helper" "$helper"
           test "$(stat -c '%u:%a' "$helper")" = 0:4755
           CHROME_DEVEL_SANDBOX="$helper" npm run test:workbench:browser -- build
           CHROME_DEVEL_SANDBOX="$helper" node scripts/test-workbench-short-window.mjs
@@ -192,7 +210,7 @@ jobs:
           path: build/workbench-upload/*
 
   windows:
-    if: inputs.release_tag == ''
+    if: inputs.release_tag == '' && !inputs.qualify_candidate
     runs-on: windows-2025
     env:
       CSC_LINK: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
@@ -201,7 +219,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ env.WORKBENCH_RELEASE_TAG || github.ref }}
+          ref: ${{ env.WORKBENCH_RELEASE_TAG || inputs.source_ref || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -363,7 +381,7 @@ jobs:
           path: build/workbench-upload/*
 
   macos:
-    if: inputs.release_tag == ''
+    if: inputs.release_tag == '' && !inputs.qualify_candidate
     strategy:
       fail-fast: false
       matrix:
@@ -383,7 +401,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ env.WORKBENCH_RELEASE_TAG || github.ref }}
+          ref: ${{ env.WORKBENCH_RELEASE_TAG || inputs.source_ref || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
