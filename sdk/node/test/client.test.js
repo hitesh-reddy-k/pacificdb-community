@@ -10,8 +10,16 @@ import { MediaUploadError, PacificDBClient } from '../src/index.js';
 
 test('a timed out TLS handshake cannot poison the queued reconnect', async (t) => {
   const sockets = new Set();
+  let firstPeer, resets = 0;
   const server = net.createServer(socket => {
+    firstPeer ||= socket;
     sockets.add(socket); socket.on('close', () => sockets.delete(socket));
+    // The intentional client timeout can reset this fixture's accepted socket
+    // on Windows. Only that expected reset is allowed; other errors fail.
+    socket.on('error', error => {
+      assert.equal(error.code, 'ECONNRESET');
+      resets++;
+    });
     let buffer = '';
     socket.on('data', bytes => {
       buffer += bytes;
@@ -41,6 +49,11 @@ test('a timed out TLS handshake cannot poison the queued reconnect', async (t) =
     { status: 'fulfilled', value: { sequence: 3 } }
   ]);
   assert.equal(attempts, 2);
+  // Exercise the accepted peer's reset path on every OS rather than depending
+  // on whether its TCP stack reports FIN or ECONNRESET for the timed-out peer.
+  const before = resets;
+  firstPeer.emit('error', Object.assign(new Error('fixture peer reset'), { code: 'ECONNRESET' }));
+  assert.equal(resets, before + 1);
 });
 
 test('a refused connection cannot reject the queued request reconnecting after it', async (t) => {
