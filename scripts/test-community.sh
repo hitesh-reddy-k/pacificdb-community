@@ -49,6 +49,7 @@ node intelligence/test.js
 python3 scripts/test-release-consistency.py
 python3 scripts/test-build-identity.py
 python3 scripts/test-workflow-contract.py
+python3 scripts/test-repository-controls.py
 python3 scripts/test-deployment-contract.py
 python3 scripts/test-native-signing-contract.py
 test -s site/assets/pacificdb-logo-symbol.png

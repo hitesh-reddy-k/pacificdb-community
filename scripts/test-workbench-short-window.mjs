@@ -7,8 +7,6 @@ import { chromium } from 'playwright';
 
 const release = JSON.parse(await readFile(new URL('../release.json', import.meta.url), 'utf8'));
 const html = (await readFile(new URL('../cli/workbench/index.html', import.meta.url), 'utf8'))
-  .replace(/<script[^>]*src="\/app\.js"[^>]*><\/script>/, '')
-  .replace(/<link[^>]*href="\/app\.css"[^>]*>/, '')
   .replace('__RELEASE_LABEL__', `${release.version} (${release.name}; ${release.releaseVersion})`);
 const css = await readFile(new URL('../cli/workbench/app.css', import.meta.url), 'utf8');
 const browser = await chromium.launch({ chromiumSandbox: true });
@@ -16,6 +14,10 @@ try {
   for (const viewport of [{ width: 1024, height: 650 }, { width: 1024, height: 653 },
     { width: 1360, height: 900 }]) {
     const page = await browser.newPage({ viewport });
+    // Render trusted repository markup without loading scripts, stylesheets or
+    // other network resources. Asset removal by string replacement is neither
+    // needed for this layout fixture nor a safe HTML sanitization strategy.
+    await page.route('**/*', route => route.abort());
     await page.setContent(html);
     await page.addStyleTag({ content: css });
     await page.evaluate(() => {
