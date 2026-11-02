@@ -465,7 +465,7 @@ jobs:
           printf 'IMAGE_VERSION=%s\nIMAGE_CREATED=%s\nLOCAL_IMAGE=pacificdb-community:ci-%s\n' \
             "$version" "$created" "$GITHUB_SHA" >> "$GITHUB_ENV"
       - name: Build local validation image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: deploy/docker/Dockerfile
@@ -514,7 +514,7 @@ jobs:
           password: ${{ github.token }}
       - name: Build and push release image by digest
         id: release_image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: deploy/docker/Dockerfile

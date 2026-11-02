@@ -65,6 +65,20 @@ class Artifacts(unittest.TestCase):
                 else:verify.python_sdist(path,'1.1.2')
 
 class JavaArtifacts(unittest.TestCase):
+    def test_central_upgrade_keeps_publication_guards_strict(self):
+        import xml.etree.ElementTree as ET
+        root=Path(__file__).resolve().parents[1]
+        ns={'m':'http://maven.apache.org/POM/4.0.0'}
+        original=ET.parse(root/'sdk/java/pom.xml').getroot()
+        for field,value in [('version','0.11.0'),('configuration/autoPublish','true'),
+                            ('configuration/waitUntil','published'),('configuration/checksums','none'),
+                            ('configuration/skipPublishing','false')]:
+            changed=ET.fromstring(ET.tostring(original))
+            plugin=changed.find("m:profiles/m:profile[m:id='central']/m:build/m:plugins/m:plugin[m:artifactId='central-publishing-maven-plugin']",ns)
+            plugin.find('/'.join('m:'+part for part in field.split('/')),ns).text=value
+            with tempfile.TemporaryDirectory() as d:
+                file=Path(d)/'pom.xml';ET.ElementTree(changed).write(file)
+                with self.assertRaises(ValueError):verify.java_pom(file,'1.1.2')
     def test_pom_metadata_floor_runtime_dependency_and_no_publish_defaults(self):
         import xml.etree.ElementTree as ET
         root=Path(__file__).resolve().parents[1]

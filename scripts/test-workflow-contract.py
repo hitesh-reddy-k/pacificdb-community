@@ -150,7 +150,7 @@ require(
     "container:",
     "docker/setup-buildx-action@v3",
     "docker/login-action@v4",
-    "docker/build-push-action@v6",
+    "docker/build-push-action@v7",
     "push-by-digest=true",
     "p0-evidence-linux-amd64-container.json",
     "container_publish:",

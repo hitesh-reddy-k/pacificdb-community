@@ -150,7 +150,10 @@ class SecurityWorkflowContractTests(unittest.TestCase):
     def test_ci_runs_dependency_review_with_read_only_permissions(self):
         workflow = (self.root / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertIn("dependency-review:", workflow)
-        self.assertIn("actions/dependency-review-action@v4", workflow)
+        self.assertIn("actions/dependency-review-action@v5", workflow)
+        dependency_job = workflow.split("  dependency-review:", 1)[1].split("  source-linux:", 1)[0]
+        self.assertRegex(dependency_job, r"permissions:\n\s+contents: read\n")
+        self.assertNotIn("contents: write", dependency_job)
         self.assertNotIn("secrets: inherit", workflow)
 
     def test_all_new_workflow_actions_use_reviewed_major_or_commit_ref(self):
