@@ -4,6 +4,7 @@ BUILD_DIR="${1:-build}"
 cmake -S engine -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.1.2
 cmake --build "$BUILD_DIR" -j"${BUILD_JOBS:-2}"
 for test in \
+  db_engine_time_format_test db_engine_wal_private_permissions_test \
   v11_4_apply_exact_boundary_failpoints_test storage_path_security_test \
   db_engine_vector_correctness_test db_engine_lsm_compaction_test \
   db_engine_strong_read_memtable_test db_engine_comprehensive_test \
@@ -64,6 +65,7 @@ node scripts/test-p0-protocol-errors.mjs "$BUILD_DIR"
 node scripts/test-raft-frame-limit.mjs "$BUILD_DIR"
 node scripts/test-community-contract-matrix.mjs "$BUILD_DIR"
 node --test scripts/test-replica-integrity-monitor.mjs
+node --test scripts/test-monitor-private-files.mjs
 node --test scripts/test-build-tool-advisories.mjs
 node scripts/test-replica-integrity-rf3.mjs "$BUILD_DIR"
 node scripts/test-community-restart-matrix.mjs "$BUILD_DIR"

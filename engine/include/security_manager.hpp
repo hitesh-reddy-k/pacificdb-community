@@ -14,6 +14,7 @@
 #include <functional>
 #include <atomic>
 #include <nlohmann/json.hpp>
+#include "thread_safe_time.hpp"
 
 using json = nlohmann::json;
 
@@ -264,7 +265,10 @@ struct AuditLogEntry {
     json toJson() const {
         auto time = std::chrono::system_clock::to_time_t(timestamp);
         std::stringstream ss;
-        ss << std::put_time(std::gmtime(&time), "%Y-%m-%dT%H:%M:%SZ");
+        std::tm utc{};
+        if (pacificdb::time_format::utc(time, utc))
+            ss << std::put_time(&utc, "%Y-%m-%dT%H:%M:%SZ");
+        else ss << "unavailable";
 
         return {
             {"timestamp", ss.str()},
