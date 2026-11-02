@@ -13,6 +13,18 @@ Verify without changing settings:
 scripts/check-repository-controls.sh
 ```
 
+The checker discovers the default branch and reads its effective rules, including
+rulesets. An obsolete branch name, the presence of a ruleset alone, or a successful
+API response cannot produce PASS. It requires a stale-dismissed approval,
+`source-linux`, all four native package check names, strict status checks,
+CodeQL's high-severity gate, deletion/force-push protection and both secret
+protections. It is read-only and reports `BLOCKED` for missing controls or access.
+
+On 2026-11-02 secret scanning and push protection were enabled and independently
+read back. The current default-branch rules still have zero required approvals
+and no named required status checks, so the production-control gate is BLOCKED.
+Successful manually reviewed PR checks do not substitute for enforced controls.
+
 ## Candidate qualification
 
 Run `scripts/test-community.sh build`, `scripts/test-helm-deployment.sh`, all
