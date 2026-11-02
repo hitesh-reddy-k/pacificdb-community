@@ -77,7 +77,9 @@ def main() -> None:
     require_text("site/docs.html", native)
     for workflow in ("pages", "ci", "codeql", "sdk-packages", "workbench-desktop"):
         workflow_text = (ROOT/f".github/workflows/{workflow}.yml").read_text()
-        if "branches:" not in workflow_text or "main" not in workflow_text:
+        branch_lists = re.findall(r"(?m)^\s+branches:\s*\[([^\]]+)\]\s*$", workflow_text)
+        if not any("main" in [branch.strip().strip("\"'") for branch in branches.split(",")]
+                   for branches in branch_lists):
             raise AssertionError(f"{workflow} must preserve main validation")
 
     cli = json.loads((ROOT / "cli/package.json").read_text(encoding="utf-8"))

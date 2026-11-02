@@ -55,6 +55,14 @@ checksum. Registry installation does not install the native engine.
 
 ## Remaining release blockers
 
+Security follow-up: repository scanning findings are being reviewed separately
+from successful CI execution. Confirmed logging/private-I/O and source-evidence
+issues have targeted fixes in
+[PR #54](https://github.com/hitesh-reddy-k/pacificdb-community/pull/54).
+Targeted tests passed; full rebuilt-engine, platform and post-fix scan
+verification remain INCOMPLETE. Findings are not dismissed merely to obtain a
+passing status. The source-review bundle still requires an independent result.
+
 - Physically immutable incremental ANN generations and automatic graph
   compaction are incomplete. The current graph uses per-index synchronization
   and final freshness validation; configured history/capacity limits can require
