@@ -20,9 +20,14 @@ vector subsystem to a stable release.
   formats and RF3 consensus are unchanged by this fix.
 - The Linux Workbench package selects its existing standard-size logo assets.
   A real GTK resolver test now checks the installed launcher resource in CI.
-- Dependency updates and publication-guard repairs are reviewed together in
-  [PR #53](https://github.com/hitesh-reddy-k/pacificdb-community/pull/53).
-  Existing PRs are retained until that integration is verified and merged.
+- Dependency updates and publication-guard repairs passed combined qualification
+  and merged through [PR #53](https://github.com/hitesh-reddy-k/pacificdb-community/pull/53),
+  commit `2d7493a8...` on `main`. PRs #38–#52 were closed as superseded, with
+  their branches/history preserved. A fresh query found no open PRs. The
+  [cleanup receipt](benchmarks/results/ann-availability-398316c/pr-cleanup.json)
+  links the exact-head tests. The updates are synchronized into `v1.2` at
+  `0c86f579...`, with engine/storage code unchanged; new combined branch CI
+  is qualified separately from the frozen-engine scale run.
 
 ## Evidence and acceptance status
 

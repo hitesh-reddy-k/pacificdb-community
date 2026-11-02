@@ -29,6 +29,14 @@ RC.2 is a public **prerelease**, not latest/stable or production-ready.
 
 ## Limits and publication dependencies
 
+Dependency maintenance: [PR #53](https://github.com/hitesh-reddy-k/pacificdb-community/pull/53)
+merged only after exact-head source/SDK/CodeQL/four-platform checks passed.
+All 15 superseded proposals were closed, preserving their branches/history;
+a fresh PR search found none open. The website deployment and independent
+public-page checks passed. These dependency changes are synchronized into
+`v1.2` at `0c86f579...`; this does not publish new program artifacts or qualify
+all production gates.
+
 Unreleased follow-up (2026-11-02): bounded ANN freshness waits passed the local
 78-check checkpoint, broader Community/disk-full/SDK regressions and three
 targeted ThreadSanitizer checks. A separate published-RC.2-to-candidate rolling
