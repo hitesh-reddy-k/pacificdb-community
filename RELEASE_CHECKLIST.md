@@ -41,8 +41,12 @@ Unreleased follow-up (2026-11-02): bounded ANN freshness waits passed the local
 78-check checkpoint, broader Community/disk-full/SDK regressions and three
 targeted ThreadSanitizer checks. A separate published-RC.2-to-candidate rolling
 RF3 upgrade and full restart passed; this is a scoped exact-artifact result.
-The small mixed-write case achieved 360/360;
-the published 1M failure above remains unchanged until that workload is rerun.
+The follow-up 1M qualification passed all 360 strict mixed reads at
+ef_search=600, initial Recall@10 0.993 and rebuilt Recall@10 0.96, with 45
+surviving changes and five deletions verified after SIGKILL.
+[Raw receipts](benchmarks/results/ann-availability-398316c/README.md) retain
+the measurements. This is a different configuration/query sample from the
+published RC.2 study; its historical failed result remains unchanged.
 The Linux launcher icon packaging correction passed real GTK lookup and
 packaged Workbench checks locally. These changes are not yet in released
 packages. [Fresh 398316c desktop CI](https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/41454844337)
