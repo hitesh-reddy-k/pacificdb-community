@@ -1,0 +1,67 @@
+{
+  "checked_at": "2026-11-02T16:24:41.104044+00:00",
+  "heads": {
+    "v1.2": "79fdf77573953df9b09b7e32329940faaa9881ea",
+    "release/security-qa-hardening": "836bd87d1e9617935440e916d75ebd7dcd52a0c4"
+  },
+  "runs": [
+    {
+      "conclusion": "success",
+      "databaseId": 41476627331,
+      "headSha": "79fdf77573953df9b09b7e32329940faaa9881ea",
+      "name": "CodeQL",
+      "status": "completed",
+      "url": "https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/41476627331"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 41476627728,
+      "headSha": "79fdf77573953df9b09b7e32329940faaa9881ea",
+      "name": "PacificDB Workbench desktop",
+      "status": "completed",
+      "url": "https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/41476627728"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 41476627505,
+      "headSha": "79fdf77573953df9b09b7e32329940faaa9881ea",
+      "name": "Pre-release v1.2",
+      "status": "completed",
+      "url": "https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/41476627505"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 41476627770,
+      "headSha": "836bd87d1e9617935440e916d75ebd7dcd52a0c4",
+      "name": "SDK package qualification",
+      "status": "completed",
+      "url": "https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/41476627770"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 41476627732,
+      "headSha": "836bd87d1e9617935440e916d75ebd7dcd52a0c4",
+      "name": "CodeQL",
+      "status": "completed",
+      "url": "https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/41476627732"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 41476627736,
+      "headSha": "836bd87d1e9617935440e916d75ebd7dcd52a0c4",
+      "name": "PacificDB Workbench desktop",
+      "status": "completed",
+      "url": "https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/41476627736"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 41476627803,
+      "headSha": "836bd87d1e9617935440e916d75ebd7dcd52a0c4",
+      "name": "Required production checks",
+      "status": "completed",
+      "url": "https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/41476627803"
+    }
+  ],
+  "errors": [],
+  "status": "PASS"
+}

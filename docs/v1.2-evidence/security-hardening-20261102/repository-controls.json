@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "reasons": [],
+  "default_branch": "main",
+  "required_checks": [
+    "packages / linux",
+    "packages / macos (macos-15, arm64)",
+    "packages / macos (macos-15-intel, x86_64)",
+    "packages / windows",
+    "source-linux"
+  ],
+  "scope": "Effective default-branch rules; not artifact or production certification",
+  "repository": "hitesh-reddy-k/pacificdb-community"
+}

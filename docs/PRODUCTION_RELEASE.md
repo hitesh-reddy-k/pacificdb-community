@@ -20,10 +20,13 @@ API response cannot produce PASS. It requires a stale-dismissed approval,
 CodeQL's high-severity gate, deletion/force-push protection and both secret
 protections. It is read-only and reports `BLOCKED` for missing controls or access.
 
-On 2026-11-02 secret scanning and push protection were enabled and independently
-read back. The current default-branch rules still have zero required approvals
-and no named required status checks, so the production-control gate is BLOCKED.
-Successful manually reviewed PR checks do not substitute for enforced controls.
+The initial 2026-11-02 audit found zero required approvals and no named status
+checks. After PR #54 passed and merged, the existing ruleset was strengthened
+to require one approval, stale-review dismissal and all five named checks above.
+Secret scanning and push protection were enabled and independently read back.
+The [effective-rules receipt](v1.2-evidence/security-hardening-20261102/repository-controls.json)
+is PASS. This verifies repository controls; independent security and artifact
+qualification remain separate gates. Re-run the checker for current state.
 
 ## Candidate qualification
 

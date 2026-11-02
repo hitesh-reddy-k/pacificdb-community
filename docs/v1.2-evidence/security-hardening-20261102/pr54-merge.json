@@ -1,0 +1,14 @@
+{
+  "merge": {
+    "headRefOid": "836bd87d1e9617935440e916d75ebd7dcd52a0c4",
+    "mergeCommit": {
+      "oid": "ea77186855e0f355d97ccfe54435fb2dcd13b57d"
+    },
+    "mergedAt": "2026-11-02T16:26:05Z",
+    "state": "MERGED",
+    "url": "https://github.com/hitesh-reddy-k/pacificdb-community/pull/54"
+  },
+  "tested_head": "836bd87d1e9617935440e916d75ebd7dcd52a0c4",
+  "merged_tree_matches_tested_head": true,
+  "tree_sha": "9ddd51a38cad596cf5e213f9685d2ec725d195ba"
+}

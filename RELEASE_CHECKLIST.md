@@ -29,6 +29,13 @@ RC.2 is a public **prerelease**, not latest/stable or production-ready.
 
 ## Limits and publication dependencies
 
+Unreleased security follow-up: [79-check/52-CTest checkpoint, complete Community
+rerun, exact-artifact RF3 rolling upgrade and live mTLS monitor results](docs/v1.2-evidence/security-hardening-20261102/README.md)
+passed for their recorded revisions. [Exact-head hosted qualification](docs/v1.2-evidence/security-hardening-20261102/hosted-workflows.json)
+also passed. PR #54 merged as `ea771868...`; no PRs remain open at the final
+check. Effective repository protections passed after enforcement. External
+finding review remains a separate gate. No new program packages are published.
+
 Dependency maintenance: [PR #53](https://github.com/hitesh-reddy-k/pacificdb-community/pull/53)
 merged only after exact-head source/SDK/CodeQL/four-platform checks passed.
 All 15 superseded proposals were closed, preserving their branches/history;

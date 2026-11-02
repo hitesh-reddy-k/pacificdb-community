@@ -6,6 +6,13 @@ remains INCOMPLETE. Publication and platform status are recorded in
 [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md); a candidate name alone does not prove
 an artifact is published, installed or tested.
 
+Unreleased follow-up: the request-bounded ANN freshness fix passed a separate
+10K/100K/1M lifecycle study, including every mixed read and crash reconstruction.
+It does not change the historical RC.2 comparison below. Launcher packaging,
+dependency and security hardening are also on `v1.2`; see the
+[current readiness report](PRODUCTION_READINESS_REPORT.md) for exact revisions
+and remaining gates. These fixes are not yet in published RC.2 packages.
+
 ## Changes in this candidate
 
 RC.2 corrects two installer/Workbench findings from RC.1: short desktop windows

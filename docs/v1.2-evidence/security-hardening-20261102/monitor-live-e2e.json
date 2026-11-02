@@ -1,0 +1,26 @@
+{
+  "status": "PASS",
+  "engineIdentity": {
+    "product": "PacificDB Engine",
+    "engineVersion": "1.2.0",
+    "releaseVersion": "1.2.0-rc.2",
+    "releaseChannel": "prerelease",
+    "releaseName": "Pre-release v1.2",
+    "releaseTag": "v1.2.0-rc.2",
+    "gitCommit": "18ba1ddc69d089a5039bd75fb9163f47042547d3",
+    "storageFormatVersion": "2",
+    "raftProtocolVersion": "2",
+    "buildTimestamp": "2026-11-02T21:21:46+05:30",
+    "compiler": "GNU-14.2.0"
+  },
+  "alertmanagerImage": "prom/alertmanager@sha256:e9733bafb1bdef9b00e25a21f8f99dc26a22224bf16641ad754d1649f4c3357a",
+  "mTLS": true,
+  "leastPrivilege": true,
+  "readinessRejectsAuditFailure": true,
+  "livenessSurvivesAuditFailure": true,
+  "receiverRejectedThenRecovered": true,
+  "firingReceived": true,
+  "resolvedReceived": true,
+  "deliveryFailureDetected": true,
+  "scope": "Owned loopback fixture, not production operator notification delivery"
+}

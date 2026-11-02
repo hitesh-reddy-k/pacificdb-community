@@ -1,0 +1,59 @@
+{
+  "scope": "Targeted follow-up checks; not full-engine sanitizer or production certification",
+  "checks": [
+    {
+      "check": "concurrent_timestamp_tsan",
+      "status": "PASS",
+      "log_sha256": "5dfbc3d97c8b4c1e2554ae7841756f67572759bbdb721d1e74eb24a927048d91"
+    },
+    {
+      "check": "monitor_private_file_tests",
+      "status": "PASS",
+      "log_sha256": "b08e9a82383cddb7ac1e3df183ef9db60b239d5996d0b41c0142b4eb6756c093"
+    },
+    {
+      "check": "source_review_negative_tests",
+      "status": "PASS",
+      "log_sha256": "a6f563178ff8b9c8e4c87ae1d9b3ae249ba797d40ba5463fab437a1bd3bb495d"
+    },
+    {
+      "check": "repository_controls_negative_tests",
+      "status": "PASS",
+      "log_sha256": "d9d734ee1c2de67b748aeef1c4126433aa438ad8375ca953916f12b1df11414d"
+    },
+    {
+      "check": "browser_layout_sandbox",
+      "status": "PASS",
+      "log_sha256": "8f425455297843d55197b3d2c2cdfa5fad5161da775929fdce4c9bf8b5d01c3f"
+    },
+    {
+      "check": "node_timeout_reconnect_fixture",
+      "status": "PASS",
+      "log_sha256": "0f44d19f379ae55ad35798bd30d936f86f0ac7d29cfd7b5dd34984ed2e75e899"
+    }
+  ],
+  "negative_controls": [
+    {
+      "check": "old_wal_permissions",
+      "result": "Expected failing control retained; not a passing candidate test",
+      "log_sha256": "cc6afd281e1e04c7cf9a3f517ed93ad814e0fddc327d1e381e97ebc4dcc81f5c"
+    },
+    {
+      "check": "old_monitor_output",
+      "result": "Expected failing control retained; not a passing candidate test",
+      "log_sha256": "eff7312a3ff9e6683729805fc1ac893e6125e415074872ea1cd684abae8a8823"
+    },
+    {
+      "check": "old_source_bundle",
+      "result": "Expected failing control retained; not a passing candidate test",
+      "log_sha256": "567d9ddda99177e5fe2d384e97f27a00f01cadf151cde3bef131862701c90b2a"
+    },
+    {
+      "check": "old_node_fixture_reset_handling",
+      "result": "Expected failing control retained; not a passing candidate test",
+      "log_sha256": "7a7afa35028bf218c4d2937b71783a5966e43aae3b0d4fe1759a571a1fa83285"
+    }
+  ],
+  "hosted_windows_fixture_failure": "https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/41475770838/job/125381355065",
+  "compatibility": "Expected peer reset is handled only by the test server. SDK request-timeout and queued reconnect assertions remain unchanged."
+}

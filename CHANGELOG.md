@@ -1,3 +1,22 @@
+# Unreleased v1.2 follow-up
+
+- Bound strict incremental ANN freshness waits to each request's original
+  deadline, cancellation and cumulative scan budget; explicit fail-fast remains
+  available. The separate 10K/100K/1M lifecycle qualification passed all 360
+  mixed reads per size. These are not new paired PostgreSQL latency results.
+- Correct Linux Workbench launcher icon packaging using existing logo assets.
+- Use caller-owned timestamp conversion and private creation of new POSIX
+  WAL-integrity files, retaining existing serialized data and fsync behavior.
+  POSIX integrity writes now reject final-component symlinks; regular existing
+  file modes are preserved. The POSIX monitor credential reader reports an
+  explicit unsupported-platform error elsewhere; Windows engine/SDK paths remain.
+- Validate monitor credentials through the descriptor actually read and publish
+  monitor output with exclusive private temporary files.
+- Bind source-review dependency evidence to the archived revision; add negative
+  regressions, wider branch scanning and effective repository-control checks.
+- Integrate reviewed dependency updates through PR #53. Publication and complete
+  production qualification remain separate; RC.2 assets are unchanged.
+
 # 1.2.0-rc.2 — Pre-release v1.2
 
 ## Fixed
@@ -17,9 +36,10 @@
 
 ## Known issues
 
-- RC.2 is published with scoped installation/test evidence. The complete fresh
-  1M benchmark is still running; RC.1 measurements retain their original identity.
-  ANN/distributed/production limits remain. PyPI/Maven need owner setup.
+- RC.2 is published with scoped installation/test evidence and a completed
+  10K/100K/1M benchmark. Its strict mixed ANN availability failed at 1M; the
+  follow-up fix above is not in published RC.2. ANN/distributed/production limits
+  remain. Python RC.2 is published on PyPI; Maven Central needs owner setup.
 
 ---
 
