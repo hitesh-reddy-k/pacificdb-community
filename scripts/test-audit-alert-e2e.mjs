@@ -20,6 +20,7 @@ let engine, alertmanager, receiver;
 const receipts = [];
 let receiverRejects = true;
 let engineLogs = '', monitorLogs = '';
+let succeeded = false;
 const password = 'disposable-audit-fixture-password';
 async function port() {
   const server = net.createServer();
@@ -42,19 +43,28 @@ async function stop(child) {
   await closed; clearTimeout(force);
 }
 try {
-  execFileSync('docker', ['pull', image], { stdio: 'pipe' });
+  try {
+    // The exact digest is sufficient when already cached; never substitute a
+    // mutable tag or make a working fixture depend on registry availability.
+    execFileSync('docker', ['image', 'inspect', image], { stdio: 'pipe' });
+  } catch {
+    execFileSync('docker', ['pull', image], { stdio: 'pipe', encoding: 'utf8' });
+  }
   const tlsRoot = path.join(root, 'tls');
   const data = path.join(root, 'data');
   await mkdir(tlsRoot); await mkdir(data);
   const openssl = args => execFileSync('openssl', args, { cwd: tlsRoot, stdio: 'pipe' });
   openssl(['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '2',
-    '-subj', '/CN=PacificDB-disposable-test-CA', '-keyout', 'ca.key', '-out', 'ca.crt']);
+    '-subj', '/CN=PacificDB-disposable-test-CA', '-keyout', 'ca.key', '-out', 'ca.crt',
+    '-addext', 'basicConstraints=critical,CA:TRUE',
+    '-addext', 'keyUsage=critical,keyCertSign,cRLSign']);
   for (const [name, usage] of [['server', 'serverAuth'], ['health', 'clientAuth']]) {
     openssl(['req', '-newkey', 'rsa:2048', '-nodes', '-subj', `/CN=${name}`,
       '-keyout', `${name}.key`, '-out', `${name}.csr`,
       '-addext', 'subjectAltName=DNS:localhost,IP:127.0.0.2', '-addext', `extendedKeyUsage=${usage}`]);
     openssl(['x509', '-req', '-in', `${name}.csr`, '-CA', 'ca.crt', '-CAkey', 'ca.key',
       '-CAcreateserial', '-days', '2', '-copy_extensions', 'copy', '-out', `${name}.crt`]);
+    openssl(['verify', '-x509_strict', '-CAfile', 'ca.crt', `${name}.crt`]);
   }
   const enginePort = await port(), raftPort = await port(), amPort = await port();
   const node = { host: '127.0.0.2', port: enginePort, tls: true, servername: 'localhost',
@@ -164,10 +174,16 @@ try {
   assert.match(engineLogs, /audit_write_failed/); assert.match(engineLogs, /audit_write_recovered/);
   console.log(JSON.stringify(report, null, 2));
   if (process.argv[3]) await writeFile(path.resolve(process.argv[3]), JSON.stringify(report, null, 2) + '\n');
+  succeeded = true;
 } finally {
   // Only the exact named disposable container and newly owned fixture are removed.
   try { execFileSync('docker', ['rm', '-f', container], { stdio: 'ignore' }); } catch { /* never started */ }
   await stop(alertmanager); await stop(engine);
   if (receiver) await new Promise(resolve => receiver.close(resolve));
-  await rm(root, { recursive: true, force: true });
+  if (succeeded) await rm(root, { recursive: true, force: true });
+  else {
+    await writeFile(path.join(root, 'engine.log'), engineLogs, { mode: 0o600 });
+    await writeFile(path.join(root, 'monitor.log'), monitorLogs, { mode: 0o600 });
+    console.error(`Audit fixture failure evidence retained: ${root}`);
+  }
 }

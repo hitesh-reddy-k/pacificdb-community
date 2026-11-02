@@ -2,7 +2,8 @@
 
 import net from 'node:net';
 import tls from 'node:tls';
-import { readFile, rename, writeFile } from 'node:fs/promises';
+import { readFile, rename, open, unlink } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 
 const EXIT = {
@@ -229,9 +230,19 @@ function result(status, startedAt, observations, fence, digestSchema) {
 }
 
 export async function atomicWrite(filename, content) {
-  const temporary = `${filename}.tmp-${process.pid}`;
-  await writeFile(temporary, content, { mode: 0o600 });
-  await rename(temporary, filename);
+  const temporary = `${filename}.tmp-${process.pid}-${randomUUID()}`;
+  // Exclusive creation never follows or truncates an existing temporary file.
+  // Keep caller-selected output paths; remote response data is only content.
+  const handle = await open(temporary, 'wx', 0o600);
+  try {
+    await handle.writeFile(content);
+    await handle.close();
+    await rename(temporary, filename);
+  } catch (error) {
+    await handle.close().catch(() => {});
+    await unlink(temporary).catch(() => {});
+    throw error;
+  }
 }
 
 function prometheus(resultValue) {

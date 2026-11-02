@@ -1,15 +1,25 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
-import { lstat, readFile } from 'node:fs/promises';
+import { open } from 'node:fs/promises';
+import { constants } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { requestNode, atomicWrite } from './replica-integrity-monitor.mjs';
 
 const loopback = host => ['127.0.0.1', '::1', '[::1]', 'localhost'].includes(host);
-async function privateFile(filename) {
-  const info = await lstat(filename);
-  assert.ok(info.isFile() && !info.isSymbolicLink(), 'private input must be a regular file');
-  if (process.platform !== 'win32') assert.equal(info.mode & 0o077, 0, 'private input must have mode 0600');
-  return readFile(filename, 'utf8');
+export async function privateFile(filename) {
+  // Open first and inspect that same descriptor; a pathname check followed by
+  // readFile could inspect one file and read its replacement. This monitor is
+  // deployed on POSIX hosts, where NOFOLLOW rejects a final symlink and
+  // NONBLOCK lets fstat reject a FIFO without waiting for a writer.
+  assert.ok(constants.O_NOFOLLOW !== undefined && constants.O_NONBLOCK !== undefined,
+    'private monitor inputs require POSIX no-follow file access');
+  const handle = await open(filename, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  try {
+    const info = await handle.stat();
+    assert.ok(info.isFile(), 'private input must be a regular file');
+    assert.equal(info.mode & 0o077, 0, 'private input must have mode 0600');
+    return await handle.readFile('utf8');
+  } finally { await handle.close(); }
 }
 
 export async function monitor(config, output) {

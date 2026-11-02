@@ -330,6 +330,16 @@ endif()
 # ------------------ TEST EXECUTABLES ------------------
 enable_testing()
 
+add_executable(db_engine_time_format_test test/thread_safe_time_test.cpp)
+target_include_directories(db_engine_time_format_test PRIVATE ${CMAKE_SOURCE_DIR}/include)
+if(MSVC)
+    target_compile_options(db_engine_time_format_test PRIVATE /UNDEBUG)
+else()
+    target_compile_options(db_engine_time_format_test PRIVATE -UNDEBUG)
+    target_link_libraries(db_engine_time_format_test PRIVATE pthread)
+endif()
+add_test(NAME db_engine_time_format_test COMMAND db_engine_time_format_test)
+
 function(add_pacificdb_engine_test target source)
     add_executable(${target} ${source})
     if(${target} STREQUAL "db_engine_lsm_checkpoint_crash_driver" OR
@@ -346,6 +356,9 @@ function(add_pacificdb_engine_test target source)
         target_compile_options(${target} PRIVATE -UNDEBUG)
     endif()
 endfunction()
+
+add_pacificdb_engine_test(db_engine_wal_private_permissions_test test/wal_private_permissions_test.cpp)
+add_test(NAME db_engine_wal_private_permissions_test COMMAND db_engine_wal_private_permissions_test)
 
 add_pacificdb_engine_test(db_engine_vector_correctness_test test/test_vector_correctness.cpp)
 add_pacificdb_engine_test(db_engine_vector_exact_test test/test_vector_exact.cpp)
