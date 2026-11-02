@@ -288,7 +288,8 @@ std::vector<json> DatabaseEngine::queryNativeVectorIndex(const std::string& user
     };
     check();
     const auto requestState = QueryLimiter::capture();
-    requestState->scannedRows.store(0);
+    // The public RPC owns this counter across bounded freshness retries.
+    // Resetting it here would let retries multiply the per-request scan budget.
     if (!nativeVectorReadContextEligible()) throw std::runtime_error("vector_index_read_context_requires_exact");
     if ((query.contains("filter") && !query.at("filter").empty()) ||
         !query.value("modality", std::string()).empty())

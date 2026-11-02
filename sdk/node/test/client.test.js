@@ -653,3 +653,17 @@ test('bounded ANN exploration option retains exact wire spelling', async () => {
  for(const efSearch of [0,-1,1.5,100001,'10'])assert.throws(()=>client.queryVector('vectors',[1,0],{efSearch}),/efSearch/);
  client.close();
 });
+
+test('bounded ANN freshness wait preserves explicit zero and validates the wire option', async () => {
+ const client=new PacificDBClient({database:'app'});const sent=[];
+ client.request=async request=>{sent.push(request);return {status:'ok'};};
+ for(const indexWaitMs of [0,1000,5000]){
+  await client.queryVector('vectors',[1,0],{indexName:'ann',searchMode:'ann',indexWaitMs});
+  assert.equal(sent.at(-1).index_wait_ms,indexWaitMs);
+ }
+ await client.queryVector('vectors',[1,0],{searchMode:'exact'});
+ assert.equal(Object.hasOwn(sent.at(-1),'index_wait_ms'),false);
+ for(const indexWaitMs of [-1,1.5,5001,'10',null])
+  assert.throws(()=>client.queryVector('vectors',[1,0],{indexWaitMs}),/indexWaitMs/);
+ client.close();
+});

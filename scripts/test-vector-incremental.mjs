@@ -90,6 +90,39 @@ try{
   catch(error){assert.match(String(error),/unavailable|freshness_changed|source_changing|visibility_changed/);++explicitLag;}
   await write;
  }
+ // A completed correctness check which accepts every lag error does not prove
+ // query availability. Ordinary strict ANN requests must bridge bounded
+ // incremental lag without silently changing to an exact plan.
+ assert.equal(successes,30,'strict ANN queries failed during incremental writes');
+ assert.equal(explicitLag,0,'freshness lag leaked as immediate query failures');
+ // Match the published failed workload shape: four independent clients each
+ // submit ten writes interleaved with ninety strict ANN reads. Count every
+ // request; no client retries, exact fallback, or accepted freshness errors.
+ let mixedSuccesses=0;
+ const mixedStart=performance.now();
+ await Promise.all(Array.from({length:4},async(_,worker)=>{
+  const client=await server.client('alice','tenant-a');
+  for(let operation=0;operation<100;++operation){
+   if(operation%10===0){
+    await client.updateOne('vectors',{id:String(100+worker*10+operation/10)},
+      {$set:{vector:[40000+worker*100+operation,1]}});
+   }else{
+    const result=await client.queryVector('vectors',[1,0],query);
+    assert.equal(result.search.executed_mode,'ann');assert.equal(result.search.fallback,false);
+    assert.equal(result.data.length,3);assert.equal(new Set(result.data.map(d=>d.id)).size,3);
+    for(const row of result.data)assert.equal(row.score,row.vector[0]);
+    ++mixedSuccesses;
+   }
+  }
+ }));
+ assert.equal(mixedSuccesses,360);
+ const mixedMilliseconds=performance.now()-mixedStart;
+ for(const index_wait_ms of [-1,1.5,5001,'1',null]){
+  await assert.rejects(alice.request({action:'queryVector',collection:'vectors',vector:[1,0],
+    metric:'dot',search_mode:'ann',index_name:'ann',index_wait_ms}),/index_wait_ms/);
+ }
+ await assert.rejects(alice.queryVector('vectors',[1,0],{...query,timeoutMs:0}),/timeout|cancel/);
+ assert.equal((await alice.queryVector('vectors',[1,0],{...query,indexWaitMs:0})).search.executed_mode,'ann');
  await fresh(alice);const before=await alice.vectorIndexStatus('vectors','ann');
  for(let i=0;i<10;++i)await alice.updateOne('vectors',{id:'0'},{$set:{payload:`metadata-${i}`}});
  await fresh(alice);assert.equal((await alice.vectorIndexStatus('vectors','ann')).index.graph.physicalNodes,before.index.graph.physicalNodes);
@@ -99,5 +132,5 @@ try{
  await alice.rebuildVectorIndex('vectors','ann');await fresh(alice);
  await alice.updateOne('vectors',{id:'0'},{$set:{vector:[99999,0]}});assert.equal((await fresh(alice)).data[0].id,'0');
  await stop(server);server=null;
- console.log(JSON.stringify({status:'PASS',scope:'standalone replicated-apply incremental ANN preview',crud:true,batch:true,queries_during_updates:{successes,explicitLag},metadata_no_node_growth:true,restart:true,root}));
+ console.log(JSON.stringify({status:'PASS',scope:'standalone replicated-apply incremental ANN preview',crud:true,batch:true,queries_during_updates:{successes,explicitLag},mixed:{attempts:360,successes:mixedSuccesses,milliseconds:mixedMilliseconds},metadata_no_node_growth:true,restart:true,root}));
 }finally{if(server)await stop(server);console.error(`Incremental API evidence retained: ${root}`);}

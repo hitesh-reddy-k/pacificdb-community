@@ -8,8 +8,15 @@
 #include <algorithm>
 #include <cctype>
 #include <stdexcept>
+#include <thread>
 
 namespace pacificdb::native_vector_rpc {
+static bool transientFreshness(const std::string& reason){
+    return reason=="vector_index_source_changing"||reason=="vector_index_freshness_changed"||
+        reason=="vector_index_candidate_visibility_changed"||
+        reason=="vector_index_unavailable: not READY/fresh"||
+        reason=="vector_index_unavailable: STALE (index not READY/fresh)";
+}
 bool enabled(){const char* value=std::getenv("PACIFICDB_VECTOR_PREVIEW_ENABLED");
     return value&&(std::string(value)=="1"||std::string(value)=="true");}
 bool annEnabled(){
@@ -30,8 +37,9 @@ vector_query::Deadline deadline(const json& query,vector_query::Deadline parent)
     }
     return result;
 }
-std::vector<json> search(const std::string& user,const std::string& database,
-        const std::string& collection,const json& query,json* execution,vector_query::Deadline parent){
+static std::vector<json> searchAttempt(const std::string& user,const std::string& database,
+        const std::string& collection,const json& query,json* execution,vector_query::Deadline parent,
+        bool& mayWait){
     const auto requestDeadline=deadline(query,parent);
     const auto check=[&]{
         if(QueryCancel::isCancelled())throw std::runtime_error("vector_query_cancelled");
@@ -69,16 +77,24 @@ std::vector<json> search(const std::string& user,const std::string& database,
         return results;
     };
     json status;
+    // Definition capture can race a write before the maintenance policy is
+    // available. Only a bounded read-only retry is allowed at this boundary.
+    mayWait=mode!="exact";
     try{status=DatabaseEngine::nativeVectorIndexStatus(user,database,collection,name);}
     catch(const std::runtime_error& error){
         reason=error.what();if(reason.find("vector_index_unavailable")==std::string::npos)throw;
         return scan();
     }
+    mayWait=false;
     state=status.at("state").get<std::string>();
+    const bool flat=status.at("spec").value("algorithm",std::string("hnsw"))=="flat";
+    const bool incremental=!flat&&status.at("spec").value("maintenance",std::string("manual"))=="incremental";
+    const bool recoverable=state=="READY"||state=="STALE";
+    mayWait=mode!="exact"&&incremental&&recoverable&&annEnabled()&&
+        status.value("generation",uint64_t(0))>0&&!status.contains("error");
     if(state!="READY"){
         reason=status.value("error",std::string("index not READY/fresh"));return scan();
     }
-    const bool flat=status.at("spec").value("algorithm",std::string("hnsw"))=="flat";
     if(!flat&&!annEnabled()){reason="ANN disabled by VECTOR_HNSW_ENABLED";return scan();}
     if((mode=="exact"&&!flat)||(mode!="exact"&&flat&&!allowExact)){
         reason="index algorithm does not satisfy requested mode/fallback policy";return scan();
@@ -92,6 +108,7 @@ std::vector<json> search(const std::string& user,const std::string& database,
         return results;
     }catch(const std::exception& error){
         reason=error.what();
+        if(mayWait&&!mayScan&&transientFreshness(reason))throw;
         // Only pre-search eligibility failures permit a fallback. Runtime memory,
         // timeout/cancellation and post-search freshness errors remain explicit;
         // their work must not disappear from this request's resource budget.
@@ -103,6 +120,44 @@ std::vector<json> search(const std::string& user,const std::string& database,
         if (reason.find("vector_index_unavailable") != std::string::npos ||
             reason.find("vector_index_source_changing") != std::string::npos) state="STALE";
         return scan();
+    }
+}
+
+std::vector<json> search(const std::string& user,const std::string& database,
+        const std::string& collection,const json& query,json* execution,vector_query::Deadline parent){
+    const auto start=vector_query::Clock::now();
+    const auto requestDeadline=deadline(query,parent);
+    const auto waitValue=query.value("index_wait_ms",json(1000));
+    if(!waitValue.is_number_integer()||waitValue<0||waitValue>5000)
+        throw std::invalid_argument("index_wait_ms must be an integer between 0 and 5000");
+    const auto waitDeadline=std::min(*requestDeadline,start+std::chrono::milliseconds(waitValue.get<int>()));
+    // One budget across all attempts, not a new budget for each retry. Failed
+    // attempt candidates are destroyed before another attempt is admitted.
+    QueryLimiter::capture()->scannedRows.store(0);
+    size_t retries=0;
+    for(;;){
+        bool mayWait=false;
+        if(QueryCancel::isCancelled())throw std::runtime_error("vector_query_cancelled");
+        if(vector_query::Clock::now()>=*requestDeadline)throw std::runtime_error("vector_query_timeout");
+        try{
+            auto result=searchAttempt(user,database,collection,query,execution,requestDeadline,mayWait);
+            if(execution&&retries){
+                (*execution)["freshness_retries"]=retries;
+                (*execution)["freshness_elapsed_ms"]=std::chrono::duration<double,std::milli>(
+                    vector_query::Clock::now()-start).count();
+            }
+            return result;
+        }catch(const std::runtime_error& error){
+            if(QueryCancel::isCancelled())throw std::runtime_error("vector_query_cancelled");
+            if(vector_query::Clock::now()>=*requestDeadline)throw std::runtime_error("vector_query_timeout");
+            const std::string reason=error.what();
+            if(!mayWait||!transientFreshness(reason)||retries>=128||vector_query::Clock::now()>=waitDeadline)throw;
+            ++retries;
+            // Request-local, bounded backoff; no detached work, global locks or
+            // mutation retries. Cancellation is checked at most 10ms later.
+            const auto delay=std::chrono::milliseconds(std::min<size_t>(10,retries));
+            std::this_thread::sleep_until(std::min(waitDeadline,vector_query::Clock::now()+delay));
+        }
     }
 }
 }

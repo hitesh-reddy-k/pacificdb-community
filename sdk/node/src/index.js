@@ -803,7 +803,7 @@ export class PacificDBClient {
       data: { ...metadata, id, kind: 'vector', vector } });
   }
   queryVector(collection, vector, { k = 10, metric = 'cosine',
-                                    filter = {}, modality, searchMode, allowExactFallback, vectorName, indexName, requireIndex, timeoutMs, efSearch } = {}) {
+                                    filter = {}, modality, searchMode, allowExactFallback, vectorName, indexName, requireIndex, timeoutMs, efSearch, indexWaitMs } = {}) {
     validateVectorValue(vector);
     if (vectorName !== undefined && (typeof vectorName !== 'string' || !vectorName ||
         Buffer.byteLength(vectorName) > 128 || vectorName.includes('\0'))) {
@@ -820,6 +820,7 @@ export class PacificDBClient {
     }
     if (timeoutMs !== undefined && (!Number.isInteger(timeoutMs) || timeoutMs < 0 || timeoutMs > 3600000)) throw new TypeError('timeoutMs must be an integer between 0 and 3600000');
     if (efSearch !== undefined && (!Number.isInteger(efSearch) || efSearch <= 0 || efSearch > 100000)) throw new TypeError('efSearch must be an integer between 1 and 100000');
+    if (indexWaitMs !== undefined && (!Number.isInteger(indexWaitMs) || indexWaitMs < 0 || indexWaitMs > 5000)) throw new TypeError('indexWaitMs must be an integer between 0 and 5000');
     if (requireIndex !== undefined && typeof requireIndex !== 'boolean') throw new TypeError('requireIndex must be a boolean');
     return this.request({ action: 'queryVector', collection, vector, k, metric,
       filter, ...(modality ? { modality } : {}),
@@ -828,6 +829,7 @@ export class PacificDBClient {
       ...(indexName !== undefined ? { index_name: indexName } : {}),
       ...(requireIndex !== undefined ? { require_index: requireIndex } : {}),
       ...(efSearch !== undefined ? { ef_search: efSearch } : {}),
+      ...(indexWaitMs !== undefined ? { index_wait_ms: indexWaitMs } : {}),
       ...(timeoutMs !== undefined ? { timeout_ms: timeoutMs } : {}),
       ...(allowExactFallback !== undefined ? { allow_exact_fallback: allowExactFallback } : {}) });
   }

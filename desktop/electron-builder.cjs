@@ -13,7 +13,9 @@ module.exports = {
   publish: null,
   linux: { target: ['deb', 'tar.gz'], executableName: 'pacificdb-workbench',
     syncDesktopName: true,
-    category: 'Development', icon: path.join(__dirname, 'icon.png'),
+    // A single 1254px PNG was installed into an unregistered hicolor size,
+    // so desktop launchers could not resolve Icon=pacificdb-workbench.
+    category: 'Development', icon: path.join(__dirname, 'icons'),
     synopsis: 'Desktop workspace for PacificDB',
     description: 'Explore documents, vectors, and media in a local PacificDB database. Includes the database engine.',
     desktop: { entry: { Keywords: 'database;documents;vectors;PacificDB;', Terminal: 'false' } },

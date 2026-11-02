@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { once } from 'node:events';
 import { createWriteStream } from 'node:fs';
 import { mkdir, mkdtemp, writeFile, readFile } from 'node:fs/promises';
@@ -68,6 +68,50 @@ const phases=['FP_VECTOR_INCREMENTAL_BEFORE_GRAPH','FP_VECTOR_INCREMENTAL_AFTER_
  'FP_VECTOR_INCREMENTAL_BEFORE_PUBLICATION','FP_VECTOR_INCREMENTAL_AFTER_PUBLICATION'];
 const results=[];let server;
 try{
+ if(process.platform!=='win32'){
+  // Hold a real committed maintenance batch after graph mutation. Freshness
+  // checks must reject it until publication; request waits must stay bounded.
+  const fifo=path.join(root,'maintenance.fifo'),evidence=path.join(root,'maintenance-paused.jsonl');
+  execFileSync('mkfifo',[fifo]);
+  server=await start('bounded-wait',true,{PACIFICDB_TEST_MODE:'vector_index_crash',
+   PACIFICDB_TEST_FAILPOINT_CONFIRM:'I_UNDERSTAND_THIS_PROCESS_WILL_TERMINATE',
+   PACIFICDB_TEST_FAILPOINT:'FP_VECTOR_INCREMENTAL_AFTER_GRAPH',PACIFICDB_TEST_FAILPOINT_INDEX:'1',
+   PACIFICDB_TEST_FAILPOINT_ACTION:'pause',PACIFICDB_TEST_FAILPOINT_BARRIER_FIFO:fifo,
+   PACIFICDB_TEST_FAILPOINT_EVIDENCE:evidence});
+  const alice=await server.client('alice','tenant-a');await alice.createDatabase('app');
+  await alice.createCollection('vectors',{vectorSchema:schema});
+  await alice.insertMany('vectors',[{id:'one',vector:[1,0]},{id:'two',vector:[2,0]}]);
+  await alice.createVectorIndex('vectors',options);await wait(alice,'vectors','ann');
+  await alice.updateOne('vectors',{id:'one'},{$set:{vector:[999,0]}});
+  const deadline=Date.now()+10000;
+  while(!(await readFile(evidence,'utf8').catch(()=>'' )).includes('failpoint_reached')){
+   assert.ok(Date.now()<deadline,'maintenance did not reach the pause barrier');
+   await new Promise(resolve=>setTimeout(resolve,10));
+  }
+  assert.equal((await alice.vectorIndexStatus('vectors','ann')).index.state,'STALE');
+  const failFastStart=performance.now();
+  await assert.rejects(alice.queryVector('vectors',[1,0],{...query,indexWaitMs:0}),/unavailable/);
+  assert.ok(performance.now()-failFastStart<1000,'explicit zero wait was ignored');
+  const boundedStart=performance.now();
+  await assert.rejects(alice.queryVector('vectors',[1,0],{...query,indexWaitMs:25}),/unavailable/);
+  assert.ok(performance.now()-boundedStart<1000,'freshness wait exceeded its bound');
+  const timedOut=alice.queryVector('vectors',[1,0],{...query,indexWaitMs:5000,timeoutMs:50});
+  const timedOutCheck=assert.rejects(timedOut,/timeout|cancel/);
+  const healthy=alice.queryVector('vectors',[1,0],query).then(value=>({value}),error=>({error}));
+  // Ordinary committed reads remain usable while only the ANN worker is held.
+  const exact=await alice.queryVector('vectors',[1,0],{metric:'dot',k:1,searchMode:'exact'});
+  assert.equal(exact.data[0].id,'one');assert.equal(exact.data[0].vector[0],999);
+  await new Promise(resolve=>setTimeout(resolve,120));
+  await writeFile(fifo,'x');
+  await timedOutCheck;
+  const settled=await healthy;assert.ifError(settled.error);const recovered=settled.value;
+  assert.equal(recovered.search.executed_mode,'ann');assert.equal(recovered.search.fallback,false);
+  assert.ok(recovered.search.freshness_retries>0);
+  assert.equal(recovered.data[0].id,'one');assert.equal(recovered.data[0].vector[0],999);
+  await stop(server);server=null;
+  results.push({scenario:'paused maintenance freshness wait',status:'PASS',fail_fast:true,
+   bounded_wait:true,deadline_isolation:true,exact_read_during_pause:true,strict_ann_after_release:true});
+ }
  for(let i=0;i<phases.length;++i){
   const failpoint=phases[i],name=`incremental-crash-${i}`,evidence=path.join(root,`hit-${i}.jsonl`);
   server=await start(name,true,{PACIFICDB_TEST_MODE:'vector_index_crash',

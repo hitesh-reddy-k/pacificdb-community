@@ -38,7 +38,7 @@ On Windows run the NSIS installer, and on macOS mount the DMG and copy
 graphical session and a new, disposable evaluation data directory.
 
 Stable Windows signing and macOS Developer ID/notarization/browser quarantine
-qualification are not asserted. Enterprise endpoint policy may require IT
+qualification are not asserted. Managed-device endpoint policy may require IT
 approval. CI download/install tests do not prove every organization's browser
 download or endpoint-security policy will permit the app.
 

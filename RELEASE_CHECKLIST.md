@@ -28,6 +28,16 @@ RC.2 is a public **prerelease**, not latest/stable or production-ready.
 
 ## Limits and publication dependencies
 
+Unreleased follow-up (2026-11-02): bounded ANN freshness waits passed the local
+78-check checkpoint, broader Community/disk-full/SDK regressions and three
+targeted ThreadSanitizer checks. A separate published-RC.2-to-candidate rolling
+RF3 upgrade and full restart passed; this is a scoped exact-artifact result.
+The small mixed-write case achieved 360/360;
+the published 1M failure above remains unchanged until that workload is rerun.
+The Linux launcher icon packaging correction passed real GTK lookup and
+packaged Workbench checks locally. These changes are not yet in released
+packages, and new Windows/macOS package verification remains Not tested.
+
 PyPI and Maven Central remain Blocked pending [owner setup](PUBLISHING_OWNER_GUIDE.md).
 GitHub SDK packages remain available. Failed attempts and original logs are retained
 in their CI runs/local evidence; a successful retry does not erase the original failure.

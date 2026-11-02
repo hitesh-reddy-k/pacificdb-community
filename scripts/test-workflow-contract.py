@@ -118,7 +118,7 @@ require(
     '--x-install-root="$pwd/build/vcpkg_installed"',
     '-DVCPKG_INSTALLED_DIR="$pwd/build/vcpkg_installed"',
     'test "$version" = "$WORKBENCH_VERSION"',
-    "ref: ${{ env.WORKBENCH_RELEASE_TAG || github.ref }}",
+    "ref: ${{ env.WORKBENCH_RELEASE_TAG || inputs.source_ref || github.ref }}",
     "if ($env:WORKBENCH_RELEASE_TAG -eq 'workbench-v1.1.1')",
     "$env:PACIFICDB_DESKTOP_RELEASE = '0'",
     'if [[ "$WORKBENCH_RELEASE_TAG" == workbench-v1.1.1 ]]',
@@ -131,6 +131,10 @@ require(
     "if: always()",
     'gh release create "$WORKBENCH_RELEASE_TAG"',
 )
+# Every platform must preserve explicit frozen-source qualification, with an
+# existing release tag taking precedence over a manually selected source ref.
+assert (ROOT / ".github/workflows/workbench-desktop.yml").read_text().count(
+    "ref: ${{ env.WORKBENCH_RELEASE_TAG || inputs.source_ref || github.ref }}") == 3
 forbid(
     ".github/workflows/workbench-desktop.yml",
     "-DPACIFICDB_ENGINE_VERSION=1.1.1",

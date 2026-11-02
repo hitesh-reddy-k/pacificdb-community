@@ -66,6 +66,9 @@ this is not a universal mixed-version or downgrade guarantee.
 
 ## Known limitations
 
+- The published Linux Workbench launcher icon can be missing because of a
+  non-standard theme size. An unreleased packaging fix uses the existing
+  standard-size logo assets; local package/GTK lookup checks passed.
 - Native vector/index/hybrid operations are an explicit standalone preview.
 - ANN graphs require rebuilding after restart; strict ANN may be unavailable
   during writes. Large builds and recovery reconstruction can take many minutes.

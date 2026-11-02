@@ -2,6 +2,8 @@
 #include "lsm.hpp"
 #include "owned_test_root.hpp"
 #include "query_limiter.hpp"
+#include "query_cancellation.hpp"
+#include "native_vector_rpc.hpp"
 #include <cassert>
 #include <thread>
 #include <chrono>
@@ -28,6 +30,33 @@ int main(){
   {"max_elements",2000},{"ef_search",300},{"max_source_bytes",1024*1024},{"max_index_bytes",16*1024*1024}};
  DatabaseEngine::buildNativeVectorIndex("alice","app","vectors",options);ready();
  const auto request=json{{"vector",{1.,0.}},{"metric","dot"},{"k",10},{"search_mode","ann"}};
+ // Exercise the public retry boundary with actual storage, not a mock ranker.
+ auto publicRequest=request;publicRequest["index_name"]="ann";publicRequest["require_index"]=true;
+ publicRequest["allow_exact_fallback"]=false;publicRequest["index_wait_ms"]=5000;
+ auto rejects=[&](const auto& function,const std::string& reason){
+  bool rejected=false;try{function();}catch(const std::exception& e){rejected=std::string(e.what()).find(reason)!=std::string::npos;}
+  assert(rejected);
+ };
+ {
+  QueryLimiter::Scope scope;
+  rejects([&]{pacificdb::native_vector_rpc::search("alice","app","vectors",publicRequest,nullptr,
+    std::chrono::steady_clock::now()-std::chrono::milliseconds(1));},"vector_query_timeout");
+  assert(QueryLimiter::capture()->scannedRows.load()==0);
+  auto token=QueryCancel::makeToken();token->cancelled.store(true);QueryCancel::Scope cancelled(token);
+  rejects([&]{pacificdb::native_vector_rpc::search("alice","app","vectors",publicRequest);},"vector_query_cancelled");
+ }
+ {
+  QueryLimiter::Scope scope;QueryLimiter::setMaxScanRows(1);
+  rejects([&]{pacificdb::native_vector_rpc::search("alice","app","vectors",publicRequest);},"vector_scan_limit_exceeded");
+  // A second lower-level attempt must not reset the same request's work budget.
+  rejects([&]{DatabaseEngine::queryNativeVectorIndex("alice","app","vectors","ann",request);},"vector_scan_limit_exceeded");
+  QueryLimiter::setMaxScanRows(10000);
+ }
+ {
+  QueryLimiter::Scope nextRequest;json execution;
+  assert(pacificdb::native_vector_rpc::search("alice","app","vectors",publicRequest,&execution).size()==10);
+  assert(execution.at("executed_mode")=="ann"&&!execution.at("fallback").get<bool>());
+ }
  auto compare=[&]{ready();const auto expected=DatabaseEngine::queryVector("alice","app","vectors",{{"vector",{1.,0.}},{"metric","dot"},{"k",10},{"search_mode","exact"}});
   const auto actual=DatabaseEngine::queryNativeVectorIndex("alice","app","vectors","ann",request);
   assert(actual.size()==expected.size());for(size_t i=0;i<actual.size();++i){assert(actual[i].at("id")==expected[i].at("id"));assert(actual[i].at("score")==expected[i].at("score"));}};
@@ -47,6 +76,10 @@ int main(){
  while(DatabaseEngine::nativeVectorIndexStatus("alice","app","vectors","ann").at("state")!="FAILED"){
   assert(std::chrono::steady_clock::now()<deadline);std::this_thread::sleep_for(std::chrono::milliseconds(2));}
  bool rejected=false;try{DatabaseEngine::queryNativeVectorIndex("alice","app","vectors","ann",request);}catch(...){rejected=true;}assert(rejected);
+ // Permanent coverage failures must stay explicit even with a long wait budget.
+ const auto failureStart=std::chrono::steady_clock::now();
+ rejects([&]{pacificdb::native_vector_rpc::search("alice","app","vectors",publicRequest);},"requires_rebuild");
+ assert(std::chrono::steady_clock::now()-failureStart<std::chrono::seconds(1));
  LSM::del("alice","app","vectors",oversizedId);DatabaseEngine::rebuildNativeVectorIndex("alice","app","vectors","ann");compare();
  LSM::flush("alice","app","vectors");auto snapshot=LSM::exportSnapshotJson(1);
  assert(DatabaseEngine::deleteOne("alice","app","vectors",{{"id","499"}}));compare();
