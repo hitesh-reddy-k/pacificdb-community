@@ -8,6 +8,12 @@ RC tag exists and release qualification passes. Do not create, move or overwrite
 the tag to get past a failed guard. The release manifest records the actual source
 commit and scoped tests. This is a prerelease, not stable/production certification.
 
+Current status: Python `1.2.0rc2` is published on PyPI;
+[publication run](https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/41336261556).
+Independent public installation and TCP/TLS/recovery checks passed. The steps
+below remain the process for future versions or a new publisher. Maven Central
+setup remains incomplete.
+
 ## 1. PyPI: configure ownership and trusted publishing
 
 1. Sign in to [PyPI](https://pypi.org/) with the account that owns `pacificdb` and
@@ -175,6 +181,7 @@ and run URL. **Do not send passwords, Portal tokens, private keys, or secret val
 I can then independently download/install the public bytes and verify examples.
 
 GitHub release, npm and container publication are separate channels. This guide
-covers the owner-only PyPI/Maven setup you offered to handle; it does not claim
-that any destination is already published. Benchmarks use downloaded native/SDK
+covers owner-only setup and future publications. Current channel verification
+is recorded in `RELEASE_CHECKLIST.md`; Python is now published, while Maven
+Central remains incomplete. Benchmarks use downloaded native/SDK
 release artifacts after actual publication and retain their source/binary hashes.

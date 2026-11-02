@@ -22,7 +22,8 @@ npm install @pacificdb/client@1.2.0-rc.2 @pacificdb/cli@1.2.0-rc.2
 ```
 
 SDKs require a running engine. Python wheel and Java JAR/POM are downloadable
-from GitHub; PyPI and Maven Central publication await owner setup.
+from GitHub. Python is also available through `python -m pip install pacificdb==1.2.0rc2`;
+Maven Central publication still awaits owner setup.
 Use [SDK_GUIDE.md](SDK_GUIDE.md) for installation and working examples.
 
 ## First database

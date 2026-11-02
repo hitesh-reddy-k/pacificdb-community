@@ -5,9 +5,12 @@ v1.2). Node and Java packages use `1.2.0-rc.2`; Python uses PEP 440 `1.2.0rc2`.
 RC.2 is public on GitHub with checksummed SDK packages, after correcting RC.1's
 fresh-install short-window Workbench defect. RC.1 packages remain unchanged.
 The RC.2 npm client and CLI are public under `next`; registry-installed consumers
-passed the independent live verification. PyPI/Maven still require owner setup, confirmed
-by the owner. The wheel/JAR/POM installation commands below work independently
-of those registries. The release manifest identifies actual tested bytes.
+passed independent live verification. Python is published on PyPI; install
+`pacificdb==1.2.0rc2`. Its installed wheel passed 134 tests and authenticated
+TCP/TLS/SIGKILL recovery. Maven Central still requires owner setup; the GitHub
+JAR/POM instructions below remain available. Use the checksum supplied by the
+chosen distribution channel: PyPI and GitHub archives contain identical files
+but have different container timestamps and SHA-256 digests.
 
 | Client | Package | Minimum runtime | Runtime dependencies |
 |---|---|---|---|

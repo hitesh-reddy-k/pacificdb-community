@@ -19,7 +19,8 @@ RC.2 is a public **prerelease**, not latest/stable or production-ready.
 | Public RC.2 desktop and SDK installation | Passed | [41324080656, attempt2](https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/41324080656/attempts/2):all four desktop packages, registry Node client/CLI, GitHub wheel/JAR/POM, live TCP/TLS/media/SIGKILL recovery; initial npm propagation failure retained |
 | npm publication/registry installation | Passed | [41322694402](https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/41322694402):client/CLI1.2.0-rc.2 to next, independent public install; published CLI bytes match tested package |
 | Public RC.2 GHCR image | Passed | [41322877469](https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/41322877469):pushed digest pull/runtime smoke, independent anonymous manifest/config identity |
-| PyPI/Maven Central publication | Blocked | Owner confirmed publisher/namespace/signing setup not configured; GitHub wheel/JAR/POM available |
+| PyPI publication and installed client | Passed | [41336261556](https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/41336261556); independently downloaded public 1.2.0rc2 wheel/sdist; all contained files match GitHub packages, archive timestamps/digests differ; installed wheel passed 134 tests and live TCP/TLS/SIGKILL recovery |
+| Maven Central publication | Blocked | Owner namespace/signing setup remains incomplete; GitHub JAR/POM available |
 | RC.2 post-publication benchmark execution | Passed | 10K/100K/1M and supplements completed with zero controller exit codes; [report](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v1.2.0-rc.2/BENCHMARK_REPORT_1.2.0-rc.2.txt) / [evidence](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v1.2.0-rc.2/pacificdb-benchmarks-1.2.0-rc.2-20261101.tar.gz); numerical/availability failures remain disclosed |
 | 1M mixed strict ANN read availability | Failed | PacificDB0/360 successful reads versus PostgreSQL360/360 during concurrent mutation; correctness errors are explicit, availability target not met |
 | Targeted sanitizer checks | Passed | [41327257515](https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/41327257515):separate TSAN and ASan/UBSan jobs over frozen RC.2 durability/request/vector tests; scoped, not all code |
@@ -36,9 +37,12 @@ The small mixed-write case achieved 360/360;
 the published 1M failure above remains unchanged until that workload is rerun.
 The Linux launcher icon packaging correction passed real GTK lookup and
 packaged Workbench checks locally. These changes are not yet in released
-packages, and new Windows/macOS package verification remains Not tested.
+packages. [Fresh 398316c desktop CI](https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/41454844337)
+passed all four targets, and [full Community CI](https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/41455594933)
+passed the frozen source. Those receipts do not qualify a stable release.
 
-PyPI and Maven Central remain Blocked pending [owner setup](PUBLISHING_OWNER_GUIDE.md).
+Python is published on PyPI. Maven Central remains Blocked pending
+[owner setup](PUBLISHING_OWNER_GUIDE.md).
 GitHub SDK packages remain available. Failed attempts and original logs are retained
 in their CI runs/local evidence; a successful retry does not erase the original failure.
 Physical power-loss, independent security, complete mixed-version upgrades and

@@ -4,7 +4,7 @@
 
 Version **1.2.0rc2 — prerelease**. Download the matching package from the
 [Community v1.2.0-rc.2 release](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v1.2.0-rc.2);
-registry publication is pending.
+or install from PyPI with `python -m pip install pacificdb==1.2.0rc2`.
 
 A database-first client for the Community engine. Requires Python 3.10 or later;
 no runtime dependencies. These examples describe the 1.2.0-rc.2 prerelease. The new

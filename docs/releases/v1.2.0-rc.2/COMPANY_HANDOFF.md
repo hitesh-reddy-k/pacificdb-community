@@ -87,9 +87,10 @@ The npm client/CLI are now public and independently installed/tested. You can us
 the local tarballs. Avoid `@latest` for this prerelease. The initial check caught
 a registry propagation delay for the CLI; its successful retry and original
 failure are retained in run41324080656.
-**PyPI and Maven Central are BLOCKED pending owner publisher/namespace/signing
-setup**, as confirmed by the owner. GitHub wheel/JAR/POM installation remains
-available; do not substitute older registry versions. Owner instructions are in
+Python is available from PyPI: `python -m pip install pacificdb==1.2.0rc2`.
+Its installed package passed unit and live recovery checks. **Maven Central
+remains BLOCKED pending owner namespace/signing setup**; use the GitHub JAR/POM.
+GitHub wheel installation remains an alternative. Owner instructions are in
 `PUBLISHING_OWNER_GUIDE.md`.
 
 ## Evaluate vectors deliberately

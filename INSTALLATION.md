@@ -13,7 +13,8 @@ packages. RC.1 assets remain unchanged. **RC.2 Linux native packages target
 Ubuntu24.04 x64.** Do not install them as Debian13 packages: their RE2 runtime
 requirements differ. Use the public container for other Linux hosts with a
 compatible container runtime; other distribution-native packages are unverified.
-PyPI/Maven require [owner setup](PUBLISHING_OWNER_GUIDE.md). npm client/CLI and
+Python is published on PyPI: `python -m pip install pacificdb==1.2.0rc2`.
+Maven Central still requires [owner setup](PUBLISHING_OWNER_GUIDE.md). npm client/CLI and
 the independent fresh public-install matrix have Passed evidence in the release
 checklist. The initial npm registry propagation failure is preserved.
 

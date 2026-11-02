@@ -20,7 +20,7 @@ RC.1 assets/tags/npm packages remain unchanged. RC.2 is public on GitHub at
 `e3d70761f03341acc13130d17b75fed2bc758a29`, with scoped native/SDK/platform and
 complete Community/actual ENOSPC qualification. Public desktop/SDK installations,
 npm publication/consumers and the public GHCR image passed independent checks.
-PyPI/Maven remain owner-blocked. Engine/storage/vector source remains unchanged from RC.1;
+Python is published on PyPI as `pacificdb==1.2.0rc2`; Maven Central remains owner-blocked. Engine/storage/vector source remains unchanged from RC.1;
 component release metadata is advanced consistently. RC.1 benchmark results
 keep their original artifact identity and are not called RC.2 measurements.
 
@@ -78,8 +78,8 @@ this is not a universal mixed-version or downgrade guarantee.
   maintenance at configured bounds.
 - Full production, physical power-loss, independent security and complete
   mixed-version/platform upgrade qualification is incomplete.
-- PyPI/Maven Central publication awaits owner setup. GitHub wheel/JAR/POM
-  distribution is available. Platform signing/notarization limits are documented.
+- Maven Central publication awaits owner setup. Python is available on PyPI,
+  and GitHub wheel/JAR/POM distribution remains available. Platform signing/notarization limits are documented.
 
 ## Testing and benchmarks
 
