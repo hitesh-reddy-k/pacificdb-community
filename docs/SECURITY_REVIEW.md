@@ -15,10 +15,18 @@ python3 scripts/security_review.py bundle \
   --revision "$(git rev-parse HEAD)"
 ```
 
-The bundle contains a Git archive of that revision, SHA-256 digests, dependency
-and workflow inputs, a CycloneDX-compatible SBOM, redacted secret-pattern scan
-results, and copies/digests of files under `dist/`. Secret matches record only
-the file, line, and pattern name; matched values are never written to evidence.
+Use an empty output directory; earlier evidence is never overwritten. The bundle
+contains a Git archive of that revision, SHA-256 digests, dependency and workflow
+inputs read from that archive, a CycloneDX-compatible declared-dependency inventory,
+and redacted secret-pattern scan results. Current checkout changes cannot alter
+the archived revision's dependency evidence. Secret matches record only the file,
+line, and pattern name; matched values are never written to evidence.
+
+This is a source-review bundle. Unrelated or stale files in `dist/` are not copied
+or qualified. Binary/package review needs a separate exact-artifact manifest and
+assessment; this source bundle cannot establish executable production readiness.
+The dependency inventory describes declarations, not a complete resolved native
+runtime dependency audit.
 
 Provide the reviewer with the threat boundaries and invariants in
 `SECURITY.md`, production configuration, compiler settings, test evidence,

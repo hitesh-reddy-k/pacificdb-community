@@ -1,11 +1,83 @@
 import hashlib
 import json
 import re
+import subprocess
+import tarfile
 import tempfile
 import unittest
 from pathlib import Path
 
 from scripts import security_review
+
+
+class SourceBundleTests(unittest.TestCase):
+    def make_repository(self, base):
+        repo = base / "repo"
+        repo.mkdir()
+        subprocess.run(["git", "init", "-q", str(repo)], check=True)
+
+        def git(*args):
+            return subprocess.check_output(["git", "-C", str(repo), *args], text=True).strip()
+
+        git("config", "user.name", "Bundle Test")
+        git("config", "user.email", "bundle-test@example.invalid")
+        workflow = repo / ".github/workflows/fixture.yml"
+        workflow.parent.mkdir(parents=True)
+        for version in ("1.0.0", "2.0.0"):
+            (repo / "package-lock.json").write_text(json.dumps({
+                "packages": {"node_modules/example": {"version": version}}}))
+            workflow.write_text("steps:\n  - uses: example/action@v" + version[0] + "\n")
+            git("add", ".")
+            git("commit", "-qm", "Dependencies " + version)
+            if version == "1.0.0":
+                previous = git("rev-parse", "HEAD")
+        return repo, previous
+
+    def test_historical_bundle_uses_archived_dependencies_and_excludes_unrelated_dist(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repo, previous = self.make_repository(root)
+            (repo / "dist").mkdir()
+            (repo / "dist/stale-engine").write_bytes(b"unrelated executable")
+            # Neither current tracked dependencies nor dirty worktree changes
+            # may become evidence for the requested earlier revision.
+            (repo / "package-lock.json").write_text('{"packages":{}}')
+            manifest = security_review.build_bundle(repo, root / "bundle", previous)
+            self.assertEqual(previous, manifest["revision"])
+            sbom = json.loads((root / "bundle/sbom.cdx.json").read_text())
+            self.assertEqual({("example", "1.0.0"), ("example/action", "v1")},
+                             {(c["name"], c["version"]) for c in sbom["components"]})
+            with tarfile.open(root / "bundle/source.tar") as archive:
+                lock = archive.extractfile("package-lock.json").read()
+            item = next(i for i in manifest["inputs"] if i["path"] == "package-lock.json")
+            self.assertEqual(hashlib.sha256(lock).hexdigest(), item["sha256"])
+            self.assertFalse((root / "bundle/artifacts").exists())
+            self.assertEqual({"source.tar", "sbom.cdx.json"}, {a["path"] for a in manifest["artifacts"]})
+            self.assertIn("executable artifacts are not included", manifest["scope"])
+
+    def test_existing_evidence_is_never_overwritten(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repo, revision = self.make_repository(root)
+            output = root / "bundle"
+            output.mkdir()
+            original = output / "source.tar"
+            original.write_bytes(b"preserved previous evidence")
+            with self.assertRaisesRegex(ValueError, "must be empty"):
+                security_review.build_bundle(repo, output, revision)
+            self.assertEqual(b"preserved previous evidence", original.read_bytes())
+
+    def test_dependency_symlink_is_rejected_without_reading_its_target(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / "unsafe.tar"
+            with tarfile.open(archive, "w") as output:
+                link = tarfile.TarInfo("package-lock.json")
+                link.type = tarfile.SYMTYPE
+                link.linkname = "/outside-review-snapshot"
+                output.addfile(link)
+            with self.assertRaisesRegex(ValueError, "unsafe dependency archive member"):
+                security_review.archived_dependency_inventory(archive)
 
 
 class SecurityReviewValidationTests(unittest.TestCase):
