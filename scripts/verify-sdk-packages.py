@@ -81,7 +81,7 @@ def java_pom(path,version):
     require(len(runtime)==1 and runtime[0].findtext('m:groupId',None,ns)=='com.fasterxml.jackson.core' and runtime[0].findtext('m:artifactId',None,ns)=='jackson-databind','unexpected Java runtime dependency')
     central=root.find("m:profiles/m:profile[m:id='central']/m:build/m:plugins/m:plugin[m:artifactId='central-publishing-maven-plugin']",ns)
     require(central is not None,'missing safe Central profile')
-    require(central.findtext('m:version',None,ns)=='0.11.0','Central plugin version mismatch')
+    require(central.findtext('m:version',None,ns)=='0.12.0','Central plugin version mismatch')
     for key,value in [('autoPublish','false'),('waitUntil','validated'),('checksums','all'),('skipPublishing','${central.skipPublishing}')]:
         require(central.findtext('m:configuration/m:'+key,None,ns)==value,'unsafe/missing Central option: '+key)
 
