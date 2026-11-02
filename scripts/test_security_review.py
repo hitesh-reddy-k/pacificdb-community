@@ -147,6 +147,12 @@ class SecurityWorkflowContractTests(unittest.TestCase):
         for ecosystem in ("npm", "maven", "pip", "github-actions", "docker"):
             self.assertIn(f'package-ecosystem: "{ecosystem}"', config)
 
+    def test_codeql_covers_the_active_release_branch(self):
+        workflow = (self.root / ".github/workflows/codeql.yml").read_text(encoding="utf-8")
+        for event in ("pull_request", "push"):
+            self.assertRegex(workflow, rf"(?m)^  {event}:\n    branches: \[main, v1\.2\]$")
+        self.assertIn("  workflow_dispatch:", workflow)
+
     def test_ci_runs_dependency_review_with_read_only_permissions(self):
         workflow = (self.root / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertIn("dependency-review:", workflow)
