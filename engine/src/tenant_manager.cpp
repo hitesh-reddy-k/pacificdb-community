@@ -1,4 +1,5 @@
 #include "tenant_manager.hpp"
+#include "thread_safe_time.hpp"
 #include <fstream>
 #include "storage_path.hpp"
 #include <sstream>
@@ -1230,7 +1231,10 @@ void TenantManager::logTenantAudit(const std::string& tenantId,
     auto time_t_now = std::chrono::system_clock::to_time_t(now);
 
     std::stringstream ss;
-    ss << std::put_time(std::localtime(&time_t_now), "%Y-%m-%d %H:%M:%S");
+    std::tm local{};
+    if (pacificdb::time_format::local(time_t_now, local))
+        ss << std::put_time(&local, "%Y-%m-%d %H:%M:%S");
+    else ss << "unavailable";
 
     json logEntry = {
         {"timestamp", ss.str()},

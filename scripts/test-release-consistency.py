@@ -71,7 +71,11 @@ def main() -> None:
     require_text("site/index.html", f"releases/download/{release_tag}/SHA256SUMS")
     require_text("site/docs.html", native)
     for workflow in ("pages", "ci", "codeql", "sdk-packages", "workbench-desktop"):
-        require_text(f".github/workflows/{workflow}.yml", "branches: [main]")
+        workflow_text = (ROOT/f".github/workflows/{workflow}.yml").read_text()
+        branch_lists = re.findall(r"(?m)^\s+branches:\s*\[([^\]]+)\]\s*$", workflow_text)
+        if not any("main" in [branch.strip().strip("\"'") for branch in branches.split(",")]
+                   for branches in branch_lists):
+            raise AssertionError(f"{workflow} must preserve main validation")
 
     cli = json.loads((ROOT / "cli/package.json").read_text(encoding="utf-8"))
     node = json.loads(

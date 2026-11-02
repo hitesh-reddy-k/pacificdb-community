@@ -3,6 +3,9 @@
 #include <iostream>
 #include <chrono>
 #include <ctime>
+#include <iomanip>
+#include <sstream>
+#include "thread_safe_time.hpp"
 
 void Logger::write(const std::string& logPath,
                    const std::string& msg) {
@@ -19,7 +22,15 @@ void Logger::write(const std::string& logPath,
         return;
     }
 
-    out << "[" << std::ctime(&now) << "] " << msg << "\n";
+    std::tm local{};
+    std::ostringstream stamp;
+    if (pacificdb::time_format::local(now, local)) {
+        // Preserve ctime's human-readable layout, including space-padded day
+        // and the newline, without borrowing its shared static buffer.
+        stamp << std::put_time(&local, "%a %b ") << std::setw(2) << local.tm_mday
+              << std::put_time(&local, " %H:%M:%S %Y") << '\n';
+    } else stamp << "unavailable";
+    out << "[" << stamp.str() << "] " << msg << "\n";
 
     std::cout << "[LOGGER] Log written" << std::endl;
 }

@@ -19,6 +19,30 @@
     #include <unistd.h>
 #endif
 
+namespace {
+FILE* openPrivateWrite(const std::string& path, bool append) {
+#ifdef _WIN32
+    FILE* file = nullptr;
+    if (fopen_s(&file, path.c_str(), append ? "a" : "w") != 0) return nullptr;
+    return file;
+#else
+    // Preserve append/truncate and fsync behavior; only the initial mode and
+    // final-symlink handling change. Never change the process-wide umask.
+    const int flags = O_WRONLY | O_CREAT | O_CLOEXEC | O_NOFOLLOW |
+        (append ? O_APPEND : O_TRUNC);
+    const int descriptor = ::open(path.c_str(), flags, 0600);
+    if (descriptor < 0) return nullptr;
+    FILE* file = ::fdopen(descriptor, append ? "a" : "w");
+    if (!file) {
+        const int saved = errno;
+        ::close(descriptor);
+        errno = saved;
+    }
+    return file;
+#endif
+}
+}
+
 // CRC32 polynomial
 static const uint32_t CRC32_TABLE[256] = {
     0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419, 0x706af48f, 0xe963a535, 0x9e6495a3,
@@ -252,7 +276,7 @@ bool WALIntegrity::writeRecordWithFsync(const std::string& walPath, const WALRec
         WALRecord mutableRecord = record;
         mutableRecord.computeChecksum();
 
-        FILE* f = fopen(walPath.c_str(), "a");
+        FILE* f = openPrivateWrite(walPath, true);
         if (!f) return false;
 
         std::string jsonStr = mutableRecord.toJson().dump() + "\n";
@@ -371,7 +395,7 @@ std::vector<WALRecord> WALIntegrity::scanAndTruncateWAL(const std::string& walPa
 void WALIntegrity::markCleanShutdown(const std::string& dataRoot) {
     std::string markerPath = dataRoot + "/" + CLEAN_SHUTDOWN_MARKER;
 
-    FILE* f = fopen(markerPath.c_str(), "w");
+    FILE* f = openPrivateWrite(markerPath, false);
     if (!f) throw std::runtime_error("cannot create clean shutdown marker");
     // Version 2 means the caller proved that active LSM memtables were
     // force-flushed before writing this marker. Legacy "clean" markers did
@@ -445,7 +469,7 @@ json WALIntegrity::getWALMetadata(const std::string& dataRoot) {
 void WALIntegrity::updateWALMetadata(const std::string& dataRoot, const json& meta) {
     std::string metaPath = dataRoot + "/" + WAL_METADATA_FILE;
 
-    FILE* f = fopen(metaPath.c_str(), "w");
+    FILE* f = openPrivateWrite(metaPath, false);
     if (f) {
         std::string content = meta.dump(2) + "\n";
         fwrite(content.c_str(), 1, content.length(), f);

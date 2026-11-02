@@ -9,10 +9,10 @@ import hashlib
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 import tarfile
+import tempfile
 import tomllib
 import uuid
 import xml.etree.ElementTree as ET
@@ -162,10 +162,38 @@ def dependency_inputs(repo: Path) -> list[dict]:
     return [file_record(repo, path) for path in candidates if path.is_file()]
 
 
+def archived_dependency_inventory(source_archive: Path) -> tuple[list[dict], list[dict]]:
+    """Read dependency declarations from the archived revision, never HEAD."""
+    names = {"vcpkg.json", "package-lock.json", "sdk/java/pom.xml",
+             "sdk/python/pyproject.toml", "engine/CMakeLists.txt"}
+    with tempfile.TemporaryDirectory(prefix="pacificdb-review-inputs-") as temporary:
+        snapshot = Path(temporary)
+        with tarfile.open(source_archive, "r") as source:
+            for member in source:
+                path = Path(member.name)
+                workflow = (len(path.parts) == 3 and path.parts[:2] == (".github", "workflows")
+                            and path.suffix == ".yml")
+                if member.name not in names and not workflow:
+                    continue
+                if path.is_absolute() or ".." in path.parts or not member.isfile():
+                    raise ValueError("unsafe dependency archive member: " + member.name)
+                if member.size > 16 * 1024 * 1024:
+                    raise ValueError("oversized dependency archive member: " + member.name)
+                target = snapshot / path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                stream = source.extractfile(member)
+                if stream is None:
+                    raise ValueError("missing dependency archive member: " + member.name)
+                target.write_bytes(stream.read())
+        return inventory_components(snapshot), dependency_inputs(snapshot)
+
+
 def build_bundle(repo: Path, output: Path, revision: str) -> dict:
     repo = repo.resolve()
     output = output.resolve()
     output.mkdir(parents=True, exist_ok=True)
+    if any(output.iterdir()):
+        raise ValueError("bundle output must be empty; preserve existing evidence")
     resolved_revision = subprocess.run(
         ["git", "-C", str(repo), "rev-parse", f"{revision}^{{commit}}"],
         check=True,
@@ -189,6 +217,7 @@ def build_bundle(repo: Path, output: Path, revision: str) -> dict:
         shell=False,
     )
 
+    components, inputs = archived_dependency_inventory(source_archive)
     sbom = {
         "bomFormat": "CycloneDX",
         "specVersion": "1.5",
@@ -202,31 +231,22 @@ def build_bundle(repo: Path, output: Path, revision: str) -> dict:
                 "version": resolved_revision,
             },
         },
-        "components": inventory_components(repo),
+        "components": components,
     }
     sbom_path = output / "sbom.cdx.json"
     sbom_path.write_text(json.dumps(sbom, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
     artifacts = [file_record(output, source_archive), file_record(output, sbom_path)]
-    dist = repo / "dist"
-    if dist.is_dir():
-        artifact_root = output / "artifacts"
-        artifact_root.mkdir(exist_ok=True)
-        for source in sorted(path for path in dist.rglob("*") if path.is_file()):
-            relative = source.relative_to(dist)
-            destination = artifact_root / relative
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(source, destination)
-            artifacts.append(file_record(output, destination))
-
     secret_findings = scan_archive_for_secrets(source_archive)
     manifest = {
         "schema_version": 1,
         "revision": resolved_revision,
+        "generator": {"path": "scripts/security_review.py", "sha256": sha256_file(Path(__file__))},
         "created_at": utc_now(),
         "source_archive": file_record(output, source_archive),
         "sbom": file_record(output, sbom_path),
-        "inputs": dependency_inputs(repo),
+        "scope": "source archive and declared dependency inventory only; executable artifacts are not included or qualified",
+        "inputs": inputs,
         "artifacts": artifacts,
         "secret_scan": {
             "status": "PASS" if not secret_findings else "FAIL",

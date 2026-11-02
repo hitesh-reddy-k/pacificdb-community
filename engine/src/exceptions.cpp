@@ -2,12 +2,14 @@
 #include <iostream>
 #include <iomanip>
 #include <ctime>
+#include "thread_safe_time.hpp"
 
 void EngineException::logException() const {
     std::time_t now = std::time(nullptr);
-    std::tm* timeinfo = std::localtime(&now);
-    char buffer[80];
-    std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", timeinfo);
+    std::tm timeinfo{};
+    char buffer[80] = "unavailable";
+    if (pacificdb::time_format::local(now, timeinfo))
+        std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
 
     const char* severityStr[] = {"INFO", "WARNING", "ERROR", "CRITICAL"};
 
