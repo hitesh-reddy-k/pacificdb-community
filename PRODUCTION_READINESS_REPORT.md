@@ -9,6 +9,15 @@ Its scale-test driver is committed separately at `9de39d9`.
 The default branch and the dependency integration PR do not yet promote this
 vector subsystem to a stable release.
 
+The fresh three-database 1M trial completed with exit code 0 on 2026-11-02 UTC.
+[Report and portable raw receipts](benchmarks/results/three-db-1m-20261102/README.md)
+compare the verified development runtime against PostgreSQL 18.6/pgvector0.8.7
+and Qdrant 1.20.0. All three passed the stated correctness, mixed-read and
+process-crash workload. This does not establish performance parity: PacificDB
+ANN, ingestion, filtered search, build and reconstruction remain materially
+slower in this trial. Published RC.2 program assets and its historical report
+are unchanged.
+
 ## Implemented follow-up
 
 - Strict ANN queries against initialized incremental indexes can wait briefly
@@ -36,6 +45,8 @@ PASS below applies only to the stated test scope.
 
 | Scope | Status | Evidence and limits |
 | --- | --- | --- |
+| Fresh 1M three-database workload correctness/lifecycle | PASS | [Complete report](benchmarks/results/three-db-1m-20261102/REPORT.txt): three 1,000-query rounds, exact reference agreement, held-out ANN Recall@10 0.9787/0.9900/0.9868 for PacificDB/PostgreSQL/Qdrant, all 360 mixed reads per engine, 45 changed records/five deletions recovered and controller exit 0. Shared active workstation, 25-dimensional inputs and native protocol differences limit conclusions. |
+| ANN/ingestion/filter/build performance parity | FAIL | PacificDB ANN19.83ms versus2.19/0.91ms p50; load3860 versus32140/25282rows/s;1% filtered exact6644.87 versus63.53/867.01ms. Initial graph2040.66s; reconstruction2441.07s. These are measured workload comparisons, not universal rankings. |
 | Latest exact-source hosted qualification | PASS | [Seven completed workflows](docs/v1.2-evidence/security-hardening-20261102/hosted-workflows.json): `v1.2` at `79fdf775...` and PR #54 at `836bd87...`; source, SDK/artifact, CodeQL, four native installers and four desktop targets. [Fresh checkpoint](docs/v1.2-evidence/security-hardening-20261102/ci-checkpoint.json): 79 checks / 52 CTest cases. |
 | Security PR merge and repository protections | PASS | PR #54 merged normally as `ea771868...` after exact-head checks; fresh PR query found none open. [Effective controls](docs/v1.2-evidence/security-hardening-20261102/repository-controls.json): one approval, stale-review dismissal, named cross-platform checks and both secret protections. This is not independent security signoff. |
 | Rebuilt security candidate checkpoint | PASS | [79 top-level checks / 52 CTest cases](docs/v1.2-evidence/security-hardening-20261102/checkpoint.json), including dedicated crash tests. The retained 266 source fingerprints match the later QA-only source changes. |
@@ -75,7 +86,10 @@ separately and all seven final workflows passed for the recorded heads. The full
 `v1.2` scan cleared ten findings; six remain for contextual and independent
 review. Findings are not dismissed merely to obtain a passing status. PR #54
 has merged; published RC.2 program assets remain unchanged. The source-review
-bundle still requires an independent result.
+bundle still requires an independent result available to this workflow. The
+owner reports a completed review on another system; that report and its exact
+revision-bound result have not been supplied here, so local validation remains
+unverified rather than an invented PASS.
 
 - Physically immutable incremental ANN generations and automatic graph
   compaction are incomplete. The current graph uses per-index synchronization
@@ -90,9 +104,10 @@ bundle still requires an independent result.
   Crash injection and unit tests do not replace those gates.
 - Release signing/notarization and managed-device endpoint acceptance are not
   fully qualified. Current prerelease installation results are scoped evidence.
-- No fresh paired PostgreSQL performance result is claimed for the ANN wait
-  fix. The published RC.2 report retains its latency, ingestion, filtering and
-  availability failures.
+- The new three-database comparison is development-runtime evidence. It does
+  not replace the published RC.2 results or qualify every architecture/release
+  gate. PacificDB's 360/360 mixed-read result passes availability for this
+  workload; the remaining performance gaps are retained in the report.
 
 ## Reproduce the scale qualification
 

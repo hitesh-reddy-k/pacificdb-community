@@ -68,7 +68,7 @@ def render(data,output):
         writer=csv.writer(f);writer.writerow(['Metric',*[NAMES[k] for k in KINDS]])
         for label in labels:writer.writerow([label,*[cell(summaries[k][label]) for k in KINDS]])
     widths=[max(len('Metric'),max(map(len,labels))),*[max(len(NAMES[k]),max(len(cell(summaries[k][label])) for label in labels)) for k in KINDS]]
-    def row(values):return ' | '.join(value.ljust(width) for value,width in zip(values,widths))
+    def row(values):return ' | '.join(value.ljust(width) for value,width in zip(values,widths)).rstrip()
     lines=['PACIFICDB / POSTGRESQL + PGVECTOR / QDRANT — RECORDED BENCHMARK',
       f"Dataset: {data.get('rows','NOT MEASURED')} vectors, cosine, 25 dimensions, K=10.",
       f"Held-out queries per round: {data.get('queries')}; rounds: {data.get('rounds')}.",

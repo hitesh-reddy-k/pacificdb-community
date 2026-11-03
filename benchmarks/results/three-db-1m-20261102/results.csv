@@ -1,0 +1,28 @@
+Metric,PacificDB,PostgreSQL + pgvector,Qdrant
+System qualification status,PASS,PASS,PASS
+Load rows/s (to last durable ACK),3859.9273,32140.1081,25282.0712
+Post-load finalization seconds (separate),0.3565,1.0559,0
+Exact plan build seconds,11.8365,0,0
+Exact p50 ms (median of round medians),37.8610,90.3103,36.3451
+Exact p95 ms (median of round p95),48.8483,114.6516,46.7271
+Exact p99 ms (median of round p99),58.7783,130.4937,53.9171
+ANN source/build seconds,2040.6604,417.4460,279.6916
+Chosen ef_search,200,100,100
+ANN p50 ms (median of round medians),19.8338,2.1876,0.9118
+ANN p95 ms (median of round p95),25.6479,3.0284,1.4778
+ANN p99 ms (median of round p99),30.9160,3.8211,2.3197
+ANN Recall@10 (mean across rounds),0.9787,0.9900,0.9868
+1% filter exact p50 ms (10 queries),6644.8721,63.5257,867.0063
+Four-client static ANN wall QPS,138.8003,773.2654,1017.2152
+Four-client static ANN Recall@10,0.9805,0.9920,0.9880
+Strict mixed ANN reads succeeded,360/360,360/360,360/360
+Mixed successful read p50 ms,37.9015,2.6886,1.6350
+Mixed write ACK p50 ms,40.1650,7.9422,3.6365
+Crash restart to connection seconds,116.4020,0.7178,0.4031
+Recovered acknowledged changed records,45,45,45
+ANN reconstruction seconds,2441.0653,0,NOT MEASURED
+Post-restart index readiness wait seconds,NOT MEASURED,NOT MEASURED,5.5251
+Post-recovery sampled Recall@10 (10 queries),0.9600,0.9900,0.9900
+Peak sampled PSS MiB (whole lifecycle),2340.7480,1310.6973,1478.6123
+Peak sampled RSS MiB (whole lifecycle),2348.1172,4042.2461,1707.3320
+Live data-directory MiB (includes WAL),687.8136,1088.5592,908.9825

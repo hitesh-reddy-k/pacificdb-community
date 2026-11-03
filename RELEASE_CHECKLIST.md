@@ -29,6 +29,13 @@ RC.2 is a public **prerelease**, not latest/stable or production-ready.
 
 ## Limits and publication dependencies
 
+Fresh development three-database comparison: [1M report and evidence](benchmarks/results/three-db-1m-20261102/README.md)
+completed with controller exit 0 and all three workload statuses PASS. Each
+engine passed 360/360 mixed reads. The report retains PacificDB's ANN, ingestion,
+filter/build and recovery performance gaps. It does not certify production or
+publish replacement RC.2 program assets. Owner-reported review on another
+system is not locally validated without the report/result artifacts.
+
 Unreleased security follow-up: [79-check/52-CTest checkpoint, complete Community
 rerun, exact-artifact RF3 rolling upgrade and live mTLS monitor results](docs/v1.2-evidence/security-hardening-20261102/README.md)
 passed for their recorded revisions. [Exact-head hosted qualification](docs/v1.2-evidence/security-hardening-20261102/hosted-workflows.json)
