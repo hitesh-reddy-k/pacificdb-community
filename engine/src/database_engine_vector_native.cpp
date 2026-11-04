@@ -5,6 +5,9 @@
 #include "vector_schema.hpp"
 #include "vector_change_registry.hpp"
 #include "vector_top_k.hpp"
+#include "native_vector_record.hpp"
+#include "native_vector_checkpoint.hpp"
+#include "storage_format_v2.hpp"
 #include "lsm.hpp"
 #include "memory_manager.hpp"
 #include "query_cancellation.hpp"
@@ -58,6 +61,16 @@ struct Definition { json spec; VectorFreshness::Stamp stamp; };
 Definition definition(const std::string& user, const std::string& db,
                       const std::string& collection, const std::string& name) {
     const auto before = certificate(user, db, collection);
+    // A READY generation certifies this process-local catalog copy. A metadata,
+    // root, collection or visibility change forces the authoritative slow path.
+    if(before){
+        const auto current=service();const auto identity=key(user,db,collection,name);
+        const auto manager=current->get(identity);
+        if(manager&&manager->acquire(*before)){
+            const auto cached=current->definition(identity,manager);
+            if(cached&&certificate(user,db,collection)==before)return {*cached,*before};
+        }
+    }
     const auto definitions = VectorIndexCatalog::list(user, db, collection);
     const auto after = certificate(user, db, collection);
     if (!before || before != after) throw std::runtime_error("vector_index_source_changing");
@@ -212,7 +225,8 @@ json DatabaseEngine::rebuildNativeVectorIndex(const std::string& user, const std
                 throw std::runtime_error("vector index source ID invalid");
             const auto id = document.at("id").get<std::string>();
             if (id.empty() || id.size() > 1024) throw std::runtime_error("vector index source ID limit");
-            emit({id, std::move(vector), std::move(text), std::move(precise)});
+            auto packed = !exactOnly && textField.empty() ? pacificdb::packNativeVectorRecord(row.materialize()) : std::string();
+            emit({id, std::move(vector), std::move(text), std::move(precise),std::move(packed)});
             return true;
         },incremental,incremental);
     };
@@ -237,17 +251,20 @@ json DatabaseEngine::rebuildNativeVectorIndex(const std::string& user, const std
                 const auto decoded=pacificdb::vectors::decode(*selected);
                 if(decoded.sparse||decoded.dimensions!=spec.at("dimensions"))
                     throw std::runtime_error("vector incremental source shape mismatch");
-                return pacificdb::VectorIndexGeneration::Record{id,derived(decoded)};
+                return pacificdb::VectorIndexGeneration::Record{id,derived(decoded),{},{},pacificdb::packNativeVectorRecord(document)};
             };
             manager.enableMaintenance(journal,anchor->cursor,maintenanceCertificate,std::move(resolve));
         };
     }
+    auto checkpoints = !lexical && spec.value("algorithm",std::string("hnsw"))!="flat"
+        ? pacificdb::nativeVectorCheckpoints(getDataRoot(),key(user,db,collection,name),spec,config.maxMemoryBytes)
+        : pacificdb::VectorIndexGeneration::Checkpoints{};
     service()->queue(key(user, db, collection, name), spec, config,
         spec.at("max_source_bytes").get<size_t>(), std::move(provider), std::move(source), lexical,
         spec.value("algorithm",std::string("hnsw")) == "flat", [] {
             if (MemoryManager::getPressureState() >= MemoryPressureState::THROTTLED)
                 throw std::runtime_error("vector_index_global_memory_pressure");
-        },std::move(ready));
+        },std::move(ready),std::move(checkpoints));
     return nativeVectorIndexStatus(user, db, collection, name);
 }
 json DatabaseEngine::nativeVectorIndexStatus(const std::string& user, const std::string& db,
@@ -263,6 +280,8 @@ json DatabaseEngine::nativeVectorIndexStatus(const std::string& user, const std:
     auto generation = manager->acquire(loaded.stamp);
     if (status.state == pacificdb::VectorIndexGeneration::State::READY && !generation) result["state"] = "STALE";
     if (generation) {
+        result["checkpoint_restored"]=generation->checkpointRestored;
+        if(!generation->checkpointError.empty())result["checkpoint_error"]=generation->checkpointError;
         if (generation->graph) result["graph"] = generation->graph->getStats();
         if (generation->flat) result["flat"] = generation->flat->stats();
         if (generation->lexical) result["lexical"] = generation->lexical->stats();
@@ -320,28 +339,57 @@ std::vector<json> DatabaseEngine::queryNativeVectorIndex(const std::string& user
        efValue.get<uint64_t>()>loaded.spec.at("ef_search").get<size_t>())
         throw std::invalid_argument("query ef_search must be within configured positive bound");
     const auto efSearch=efValue.get<size_t>();
+    const auto graphStart=std::chrono::steady_clock::now();
     const auto count = std::min(generation->graph->size(),
         std::max(k, std::min(efSearch, k*4)));
-    const auto candidates = generation->graph->search(floatQuery, count, check,efSearch);
+    auto candidates = generation->graph->searchRecords(floatQuery, count, check,efSearch,QueryLimiter::getMaxResultBytes());
+    const auto graphEnd=std::chrono::steady_clock::now();
+    std::chrono::steady_clock::duration resolutionTime{},scoringTime{};
     pacificdb::vector_search::TopK top(k, QueryLimiter::getMaxResultBytes());
-    size_t cacheHits = 0;
-    for (const auto& candidate : candidates) {
-        check();
-        if (requestState->scannedRows.fetch_add(1) >= QueryLimiter::getMaxScanRows())
-            throw std::runtime_error("vector_scan_limit_exceeded");
-        const auto fetched = LSM::findStrongSnapshotBound(user, db, collection, candidate.first, 0);
-        if (!fetched.value("found", false) || !fetched.contains("documents") ||
-            fetched.at("documents").size() != 1)
+    size_t cacheHits=0,generationHits=0,authoritativeFetches=0,materializations=0;
+    struct Scored {double score;size_t candidate;};std::vector<Scored> scored;scored.reserve(candidates.size());
+    const std::vector<std::string> visibilityFields{"id","tenant_id","_deleted","_visibility_state","committed",
+        "_raft_commit_index","_visibility_floor","version","_mvcc_commit_ms"};
+    size_t candidateBytes=0;
+    for(size_t index=0;index<candidates.size();++index){
+        auto& candidate=candidates[index];check();
+        if(requestState->scannedRows.fetch_add(1)>=QueryLimiter::getMaxScanRows())throw std::runtime_error("vector_scan_limit_exceeded");
+        const auto fetchStart=std::chrono::steady_clock::now();
+        if(candidate.record.empty()){
+            ++authoritativeFetches;
+            const auto fetched=LSM::findStrongSnapshotBound(user,db,collection,candidate.id,0);
+            if(!fetched.value("found",false)||!fetched.contains("documents")||fetched.at("documents").size()!=1)
+                throw std::runtime_error("vector_index_candidate_visibility_changed");
+            if(fetched.value("visibility_source",std::string())=="CACHE")++cacheHits;
+            candidate.record=pacificdb::packNativeVectorRecord(fetched.at("documents").front());
+        }else {++cacheHits;++generationHits;}
+        if(candidate.record.size()>QueryLimiter::getMaxResultBytes()||candidateBytes>QueryLimiter::getMaxResultBytes()-candidate.record.size())
+            throw std::runtime_error("vector_candidate_bytes_exceeded");
+        candidateBytes+=candidate.record.size();
+        const auto raw=pacificdb::unpackNativeVectorRecord(candidate.record);
+        const auto fetchEnd=std::chrono::steady_clock::now();resolutionTime+=fetchEnd-fetchStart;
+        const pacificdb::storage_v2::MsgpackRowView row(reinterpret_cast<const uint8_t*>(raw.data()),raw.size(),true);
+        const auto visibility=row.project(visibilityFields);
+        if(visibility.value("id",std::string())!=candidate.id||!nativeVectorRowVisible(user,visibility))
             throw std::runtime_error("vector_index_candidate_visibility_changed");
-        if (fetched.value("visibility_source", std::string()) == "CACHE") ++cacheHits;
-        const auto& document = fetched.at("documents").front();
-        if (!nativeVectorRowVisible(user, document))
-            throw std::runtime_error("vector_index_candidate_visibility_changed");
-        const auto selected = selectedVector(document, loaded.spec);
-        if (!selected) throw std::runtime_error("vector_index_candidate_visibility_changed");
-        const auto score = pacificdb::vectors::score(value, pacificdb::vectors::decode(*selected), metric);
-        top.consider(score, candidate.first, [&] { return document; });
+        std::optional<double> score;
+        if(loaded.spec.at("vector_name").get<std::string>().empty())score=row.densePreciseScore("vector",value.values,metric);
+        if(!score){const auto fields=row.project({"vector","vectors"});const auto selected=selectedVector(fields,loaded.spec);
+            if(!selected)throw std::runtime_error("vector_index_candidate_visibility_changed");
+            score=pacificdb::vectors::score(value,pacificdb::vectors::decode(*selected),metric);
+        }
+        if(!std::isfinite(*score))throw std::runtime_error("vector_index_candidate_score_invalid");
+        scored.push_back({*score,index});scoringTime+=std::chrono::steady_clock::now()-fetchEnd;
     }
+    std::sort(scored.begin(),scored.end(),[&](const auto& a,const auto& b){return a.score>b.score||(a.score==b.score&&candidates[a.candidate].id<candidates[b.candidate].id);});
+    for(size_t i=0;i<std::min(k,scored.size());++i){check();const auto& candidate=candidates[scored[i].candidate];
+        top.consider(scored[i].score,candidate.id,[&]{++materializations;
+            const auto raw=pacificdb::unpackNativeVectorRecord(candidate.record);
+            const auto document=json::from_msgpack(raw.begin(),raw.end());
+            if(!nativeVectorRowVisible(user,document))throw std::runtime_error("vector_index_candidate_visibility_changed");
+            return document;});
+    }
+    const auto validationStart=std::chrono::steady_clock::now();
     const auto finalStamp = certificate(user, db, collection);
     if (!finalStamp || *finalStamp != loaded.stamp)
         throw std::runtime_error("vector_index_freshness_changed");
@@ -353,7 +401,15 @@ std::vector<json> DatabaseEngine::queryNativeVectorIndex(const std::string& user
     if (execution) *execution = {{"executed_mode", "ann"}, {"ef_search",efSearch}, {"index_state", "READY"},
         {"index_name", name}, {"generation", generation->number}, {"fallback", false},
         {"payload_fetches", candidates.size()}, {"payload_cache_hits", cacheHits},
+        {"authoritative_fetches",authoritativeFetches},{"document_materializations",materializations},{"generation_record_hits",generationHits},
         {"source_revision", loaded.stamp.collection}, {"commit_index", loaded.stamp.visibility}};
+    if(execution){
+        const auto end=std::chrono::steady_clock::now();
+        const auto ms=[](auto value){return std::chrono::duration<double,std::milli>(value).count();};
+        (*execution)["timings_ms"]={{"definition",ms(graphStart-start)},{"graph",ms(graphEnd-graphStart)},
+            {"record_resolution",ms(resolutionTime)},{"scoring",ms(scoringTime)},
+            {"final_validation",ms(end-validationStart)},{"total",ms(end-start)}};
+    }
     return results;
 }
 

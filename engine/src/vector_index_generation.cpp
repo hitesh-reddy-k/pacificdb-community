@@ -32,7 +32,7 @@ void VectorIndexGeneration::close() {
     wake_.notify_all();
 }
 bool VectorIndexGeneration::enqueue(HNSWConfig config, Certificate certificate, Source source,
-                                    std::optional<LexicalConfig> lexical, bool exactOnly, Admission admission, Ready ready) {
+                                    std::optional<LexicalConfig> lexical, bool exactOnly, Admission admission, Ready ready, Checkpoints checkpoints) {
     // Validate synchronously, without changing an existing generation on error.
     HNSWIndex validate(config);
     if (lexical) { LexicalIndex validateLexical(*lexical); }
@@ -40,7 +40,7 @@ bool VectorIndexGeneration::enqueue(HNSWConfig config, Certificate certificate, 
     std::lock_guard<std::mutex> lock(mutex_);
     if (stopped_.load() || !queue_.empty() || building_) return false;
     auto cancelled = std::make_shared<std::atomic<bool>>(false);
-    queue_.push_back({config, std::move(certificate), std::move(source), ++revision_, cancelled, lexical, exactOnly, std::move(admission), {}, std::move(ready)});
+    queue_.push_back({config, std::move(certificate), std::move(source), ++revision_, cancelled, lexical, exactOnly, std::move(admission), {}, std::move(ready), std::move(checkpoints)});
     // New acquisitions already stop while building. Retire our old ownership
     // on the worker so rebuilds do not require two full unserved generations.
     // Existing readers retain their own references and allocation charges.
@@ -132,13 +132,22 @@ void VectorIndexGeneration::run() {
             VectorBudgetResource sourceMemory(sourceByteBudget_, {});
             std::pmr::vector<StoredRecord> records(&sourceMemory);
             std::pmr::unordered_set<std::pmr::string> ids(&sourceMemory);
+            const bool stagedGraph=!job.exactOnly&&!job.lexical;
+            auto graph=job.exactOnly ? std::shared_ptr<HNSWIndex>{}
+                : std::make_shared<HNSWIndex>(job.config,sharedGraphBudget_);
+            size_t emitted=0;
             job.source([&](Record record) {
                 check();
-                if (records.size() >= job.config.maxElements || record.id.empty() || record.id.size() > 1024 ||
+                if (emitted++ >= job.config.maxElements || record.id.empty() || record.id.size() > 1024 ||
                     record.id.size() > sourceByteBudget_ || record.vector.size() > sourceByteBudget_/sizeof(float) ||
                     record.precise.size() > sourceByteBudget_/sizeof(double) ||
-                    (record.text && record.text->size() > sourceByteBudget_))
+                    (record.text && record.text->size() > sourceByteBudget_) || record.packedRecord.size()>sourceByteBudget_)
                     throw std::runtime_error("vector source budget exceeded");
+                if(stagedGraph){
+                    if(!record.precise.empty()||record.text||!graph->stage(record.id,record.vector,record.packedRecord,check))
+                        throw std::runtime_error("invalid/duplicate staged vector build record");
+                    return;
+                }
                 try {
                     if (!ids.insert(std::pmr::string(record.id, &sourceMemory)).second)
                         throw std::runtime_error("duplicate vector source ID");
@@ -163,8 +172,12 @@ void VectorIndexGeneration::run() {
             }, *job.cancelled);
             pacificdb::test::hitFailpoint("FP_VECTOR_BUILD_SOURCE_COMPLETE", job.revision);
             if (job.admission) job.admission();
-            auto graph = job.exactOnly ? std::shared_ptr<HNSWIndex>{}
-                                      : std::make_shared<HNSWIndex>(job.config, sharedGraphBudget_);
+            bool restored=false;std::string checkpointError;
+            if(stagedGraph){
+                if(job.checkpoints.restore){try{restored=job.checkpoints.restore(*graph,check);}catch(const std::exception& e){checkpointError=e.what();check();}}
+                if(!restored)graph->buildStaged(check);
+                if(!restored&&job.checkpoints.save){try{job.checkpoints.save(*graph,check);}catch(const std::exception& e){checkpointError=e.what();check();}}
+            }
             std::shared_ptr<FlatVectorIndex> flat;
             if (job.exactOnly) {
                 FlatVectorConfig config;
@@ -210,7 +223,7 @@ void VectorIndexGeneration::run() {
                     continue;
                 }
                 auto generation = std::make_shared<Generation>(Generation{
-                    nextGeneration_ + 1, *certificate, std::move(graph), std::move(lexical), std::move(flat)});
+                    nextGeneration_ + 1, *certificate, std::move(graph), std::move(lexical), std::move(flat),restored,std::move(checkpointError)});
                 previous.swap(published_);
                 published_ = std::move(generation);
                 pacificdb::test::hitFailpoint("FP_VECTOR_DURING_PUBLICATION", job.revision);

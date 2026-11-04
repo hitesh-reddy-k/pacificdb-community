@@ -81,7 +81,8 @@ bool VectorIndexGeneration::maintain(){
                 throw std::runtime_error("invalid incremental HNSW source record");
             const size_t values=record?record->vector.size():0;
             if(values>sourceByteBudget_/sizeof(float))throw std::runtime_error("vector incremental source memory budget exceeded");
-            const size_t charge=sizeof(Record)+128+change.id.size()+values*sizeof(float);
+            if(record&&record->packedRecord.size()>sourceByteBudget_)throw std::runtime_error("vector incremental source memory budget exceeded");
+            const size_t charge=sizeof(Record)+128+change.id.size()+values*sizeof(float)+(record?record->packedRecord.size():0);
             if(charge>sourceByteBudget_||bytes>sourceByteBudget_-charge)
                 throw std::runtime_error("vector incremental source memory budget exceeded");
             bytes+=charge;resolved.emplace(change.id,std::move(record));
@@ -97,7 +98,7 @@ bool VectorIndexGeneration::maintain(){
         for(const auto& item:resolved){
             check();
             if(item.second){
-                if(!graph->upsert(item.first,item.second->vector,check))
+                if(!graph->upsert(item.first,item.second->vector,check,item.second->packedRecord))
                     throw std::runtime_error("vector_index_incremental_capacity_or_shape_requires_rebuild");
             }else graph->remove(item.first,check);
         }

@@ -67,6 +67,8 @@ int main(){
  const auto physical=DatabaseEngine::nativeVectorIndexStatus("alice","app","vectors","ann").at("graph").at("physicalNodes");
  for(int i=0;i<50;++i)assert(DatabaseEngine::updateOne("alice","app","vectors",{{"id","0"}},{{"$set",{{"metadata",i}}}}));
  compare();assert(DatabaseEngine::nativeVectorIndexStatus("alice","app","vectors","ann").at("graph").at("physicalNodes")==physical);
+ const auto metadataHits=DatabaseEngine::queryNativeVectorIndex("alice","app","vectors","ann",request);
+ assert(metadataHits.front().at("id")=="0"&&metadataHits.front().at("metadata")==49);
  records.clear();for(int i=200;i<500;++i)records.push_back({{"id",std::to_string(i)},{"vector",{i+20000,1}}});
  DatabaseEngine::insertMany("alice","app","vectors",records);compare();
  // IDs beyond the declared ANN limit produce an explicit history gap.

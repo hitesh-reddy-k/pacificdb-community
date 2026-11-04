@@ -1,0 +1,78 @@
+{
+  "status": "PASS",
+  "scope": "Recovered 1M/cosine25/top10, 999995 survivors, 9999 eligible; same ready metadata index and unchanged durability; Linux x64 development diagnostic, not a new cross-database trial",
+  "engine_sha256": {
+    "baseline": "44e5004010c8b16564d54dc9e704572729a5dbe4155fb4913bbae550aa16553a",
+    "candidate": "ea4551c98018be9af62d500e58570fecfd3189842d2a96a6876e6e633643dc85",
+    "baseline-recheck": "44e5004010c8b16564d54dc9e704572729a5dbe4155fb4913bbae550aa16553a"
+  },
+  "variants": {
+    "baseline": {
+      "metadata_cold_first_query_ms": 5746.7385060003835,
+      "indexed_first_payload_cold_ms": 5976.491476999854,
+      "metadata_cache_warmup_ms": 711.4608500000941,
+      "peak_sampled_pss_mib": 228.09375,
+      "phases": {
+        "non_index_eligible_or": 6128.795318750008,
+        "indexed_equality": 115.13057674994798
+      },
+      "validated_queries": 45
+    },
+    "candidate": {
+      "metadata_cold_first_query_ms": 3906.4032739997856,
+      "indexed_first_payload_cold_ms": 4188.929689999895,
+      "metadata_cache_warmup_ms": 699.9406620002446,
+      "peak_sampled_pss_mib": 241.5068359375,
+      "phases": {
+        "non_index_eligible_or": 3859.6127480000177,
+        "indexed_equality": 70.19183725014955
+      },
+      "validated_queries": 45
+    },
+    "baseline-recheck": {
+      "metadata_cold_first_query_ms": 6375.892614999884,
+      "indexed_first_payload_cold_ms": 6518.279742000232,
+      "metadata_cache_warmup_ms": 701.4395830001376,
+      "peak_sampled_pss_mib": 228.25,
+      "phases": {
+        "non_index_eligible_or": 6153.777080250052,
+        "indexed_equality": 121.56903124980545
+      },
+      "validated_queries": 45
+    }
+  },
+  "comparison": {
+    "non_index_eligible_or": {
+      "baseline_median_of_four_round_medians_ms": 6144.081008000057,
+      "candidate_ms": 3859.6127480000177,
+      "speedup": 1.5918905364751452,
+      "latency_reduction_percent": 37.18161035027842
+    },
+    "indexed_equality": {
+      "baseline_median_of_four_round_medians_ms": 118.81728124990332,
+      "candidate_ms": 70.19183725014955,
+      "speedup": 1.692750694449876,
+      "latency_reduction_percent": 40.92455532413837
+    },
+    "metadata_cold_first_query_ms": {
+      "baseline_median_ms": 6061.315560500134,
+      "baseline_samples_ms": [
+        5746.7385060003835,
+        6375.892614999884
+      ],
+      "candidate_ms": 3906.4032739997856,
+      "speedup": 1.551635900175233,
+      "limitation": "One application-cold observation per process; OS cache uncontrolled; no tail or population conclusions"
+    },
+    "indexed_first_payload_cold_ms": {
+      "baseline_median_ms": 6247.385609500043,
+      "baseline_samples_ms": [
+        5976.491476999854,
+        6518.279742000232
+      ],
+      "candidate_ms": 4188.929689999895,
+      "speedup": 1.4914037885176818,
+      "limitation": "One application-cold observation per process; OS cache uncontrolled; no tail or population conclusions"
+    }
+  }
+}

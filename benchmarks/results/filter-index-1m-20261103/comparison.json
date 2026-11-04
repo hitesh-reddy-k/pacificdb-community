@@ -1,0 +1,32 @@
+{
+  "status": "PASS",
+  "scope": "Matched indexed baseline/candidate filtered exact diagnostic on the same recovered 1M fixture; both engines have the same complete metadata index; 20 measured calls over 10 unique queries; not a fresh three-database trial",
+  "baseline_control_median_ms": 6127.380643999913,
+  "candidate_median_ms": 120.49899474959602,
+  "warm_speedup_ratio": 50.850056108210445,
+  "warm_latency_reduction_percent": 98.03343383167174,
+  "candidate_first_payload_cold_query_ms": 5966.568026999084,
+  "candidate_second_warmup_ms": 111.76855499979865,
+  "variant_medians_ms": {
+    "baseline": 6032.200476000071,
+    "candidate": 120.49899474959602,
+    "baseline-recheck": 6127.380643999913
+  },
+  "engine_sha256": {
+    "baseline": "3fbe2f226b5d262aed4ce20faafafcb763b5ef52fc6ef295fb103fc87b77008e",
+    "candidate": "44e5004010c8b16564d54dc9e704572729a5dbe4155fb4913bbae550aa16553a",
+    "baseline-recheck": "3fbe2f226b5d262aed4ce20faafafcb763b5ef52fc6ef295fb103fc87b77008e"
+  },
+  "measured_calls": {
+    "baseline": 20,
+    "candidate": 20,
+    "baseline-recheck": 20
+  },
+  "eligible_rows": 9999,
+  "candidate_scanned_rows_per_query": 9999,
+  "minimum_strict_recall": 1.0,
+  "minimum_tie_aware_recall": 1.0,
+  "metadata_index_disk_bytes": 19789284,
+  "metadata_index_preparation_status": "FAIL: write_outcome_unknown, subsequently verified complete; not retried",
+  "production_status": "INCOMPLETE"
+}

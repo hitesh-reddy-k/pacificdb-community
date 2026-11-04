@@ -1,3 +1,4 @@
+#include "durable_file_ops.hpp"
 #include "lsm.hpp"
 #include "vector_schema.hpp"
 #include "vector_change_registry.hpp"
@@ -8,6 +9,7 @@
 #include "metrics_exporter.hpp"
 #include "connection_pool.hpp"
 #include "test_failpoint.hpp"
+#include "query_limiter.hpp"
 #include "data_durability.hpp"
 #include "lsm_manifest.hpp"
 #include "storage_format_v2.hpp"
@@ -390,6 +392,8 @@ static constexpr size_t ID_INDEX_STRIPES = 64;
 struct IdIndexEntry {
     json document;
     std::optional<pacificdb::VectorFreshness::Stamp> verifiedSource;
+    std::optional<pacificdb::VectorFreshness::Stamp> mergedSource;
+    std::optional<uint64_t> mergedGeneration;
 };
 struct IdIndexStripe {
     std::shared_mutex mu;
@@ -485,10 +489,16 @@ static size_t idIndexMaxPerStripePerCollection() {
 }
 
 static void upsertIdIndex(const std::string& key, const std::string& id, const json& doc,
-                         const std::optional<pacificdb::VectorFreshness::Stamp>& proof = {}) {
+                         const std::optional<pacificdb::VectorFreshness::Stamp>& proof = {},
+                         bool requireCurrentProof = false, std::optional<uint64_t> mergedGeneration = {}) {
     if (id.empty()) return;
     auto& stripe = idIndexStripeFor(key, id);
     auto lk = pacificdb::timing::makeTimedUniqueLock(stripe.mu, "pacificdb_lock_in_memory_id_index");
+    // A merged-iterator callback may already hold the collection read lock.
+    // Validate under the writer's cache-stripe lock without reacquiring it.
+    // A subsequent mutation invalidates this proof before publishing new data.
+    if (requireCurrentProof && (!proof || g_vectorFreshness.capture(key,proof->visibility) != proof)) return;
+    if (mergedGeneration && compactionPublishGeneration(key).load(std::memory_order_acquire) != *mergedGeneration) return;
     auto& m = stripe.map[key];
     const size_t stripeLimit = idIndexMaxPerStripePerCollection();
     if (m.find(id) == m.end()) {
@@ -499,7 +509,22 @@ static void upsertIdIndex(const std::string& key, const std::string& id, const j
             m.erase(m.begin());
         }
     }
-    m[id] = IdIndexEntry{doc, proof};
+    // The APIs certify different winner contracts. Revalidating an identical
+    // payload may preserve the other API's independent proof; a write or a
+    // different payload must clear it. Never make ingestion compare full rows.
+    std::optional<pacificdb::VectorFreshness::Stamp> pointSource, mergedSource;
+    std::optional<uint64_t> retainedGeneration;
+    const auto previous = m.find(id);
+    if (proof && previous != m.end() && previous->second.document == doc) {
+        pointSource = previous->second.verifiedSource;
+        mergedSource = previous->second.mergedSource;
+        retainedGeneration = previous->second.mergedGeneration;
+    }
+    if (mergedGeneration) {
+        mergedSource = proof;
+        retainedGeneration = mergedGeneration;
+    } else pointSource = proof;
+    m[id] = IdIndexEntry{doc, pointSource, mergedSource, retainedGeneration};
 }
 
 static void publishPointReadCache(const std::string& key, const std::string& id,
@@ -539,7 +564,8 @@ static void removeIdIndex(const std::string& key, const std::string& id) {
 }
 
 static std::optional<json> lookupIdIndex(const std::string& key, const std::string& id,
-                                       const std::optional<pacificdb::VectorFreshness::Stamp>& required = {}) {
+                                       const std::optional<pacificdb::VectorFreshness::Stamp>& required = {},
+                                       std::optional<uint64_t> requiredMergedGeneration = {}) {
     if (id.empty()) return std::nullopt;
     auto& stripe = idIndexStripeFor(key, id);
     auto lk = pacificdb::timing::makeTimedSharedLock(stripe.mu, "pacificdb_lock_in_memory_id_index");
@@ -547,7 +573,10 @@ static std::optional<json> lookupIdIndex(const std::string& key, const std::stri
     if (it == stripe.map.end()) return std::nullopt;
     auto dit = it->second.find(id);
     if (dit == it->second.end()) return std::nullopt;
-    if (required && dit->second.verifiedSource != required) return std::nullopt;
+    if (requiredMergedGeneration) {
+        if (!required || dit->second.mergedSource != required ||
+            dit->second.mergedGeneration != requiredMergedGeneration) return std::nullopt;
+    } else if (required && dit->second.verifiedSource != required) return std::nullopt;
     return dit->second.document;
 }
 
@@ -1743,6 +1772,11 @@ void LSM::put(const std::string& userId,
     const uint64_t logicalBytes = json::to_msgpack(storedDoc).size();
     bool shouldFlush = false;
     WalAppendResult walAppend;
+    // Keep derived-index certificates ineligible until this write has either
+    // registered pending column-index work or completed synchronous indexing.
+    // Releasing this guard with the memtable lock exposed a new data version
+    // alongside an old, apparently complete secondary index.
+    auto vectorMutation = g_vectorFreshness.collectionMutation(key);
     {
         // Production: per-collection lock for parallel writes to different collections.
         // Never call flush while holding this lock; flush may need the same lock.
@@ -1769,7 +1803,6 @@ void LSM::put(const std::string& userId,
             walAppend = WAL::log(walFile, walEntry);
         }
 
-        auto vectorMutation = g_vectorFreshness.collectionMutation(key);
         // memtable insert
         auto memtableStart = std::chrono::steady_clock::now();
         memtables[key][id] = storedDoc;
@@ -2073,11 +2106,11 @@ void LSM::flush(const std::string& userId, const std::string& dbName, const std:
         const fs::path finalBloom = sstPath.string() + ".bloom";
         const fs::path writingSparse = writingPath.string() + ".sidx";
         const fs::path finalSparse = sstPath.string() + ".sidx";
-        if (fs::exists(writingBloom)) fs::rename(writingBloom, finalBloom, renameError);
+        if (fs::exists(writingBloom)) pacificdb::durable_file::rename(writingBloom, finalBloom, renameError);
         if (!renameError && fs::exists(writingSparse)) {
-            fs::rename(writingSparse, finalSparse, renameError);
+            pacificdb::durable_file::rename(writingSparse, finalSparse, renameError);
         }
-        if (!renameError) fs::rename(writingPath, sstPath, renameError);
+        if (!renameError) pacificdb::durable_file::rename(writingPath, sstPath, renameError);
         if (renameError) {
             fs::remove(writingPath);
             fs::remove(writingBloom);
@@ -2332,7 +2365,7 @@ void LSM::compact(const std::string& userId, const std::string& dbName, const st
         const fs::path tmpBloom = tmpPath.string() + ".bloom";
         const fs::path outBloom = outPath.string() + ".bloom";
         if (fs::exists(tmpBloom)) {
-            fs::rename(tmpBloom, outBloom, ec);
+            pacificdb::durable_file::rename(tmpBloom, outBloom, ec);
             if (ec) {
                 std::cerr << "[LSM][COMPACT] Failed to finalize bloom sidecar: "
                           << ec.message() << std::endl;
@@ -2342,7 +2375,7 @@ void LSM::compact(const std::string& userId, const std::string& dbName, const st
         const fs::path tmpSparse = tmpPath.string() + ".sidx";
         const fs::path outSparse = outPath.string() + ".sidx";
         if (fs::exists(tmpSparse)) {
-            fs::rename(tmpSparse, outSparse, ec);
+            pacificdb::durable_file::rename(tmpSparse, outSparse, ec);
             if (ec) {
                 fs::remove(outBloom, ec);
                 std::cerr << "[LSM][COMPACT] Failed to finalize sparse sidecar: "
@@ -2352,7 +2385,7 @@ void LSM::compact(const std::string& userId, const std::string& dbName, const st
         }
 
         ec.clear();
-        fs::rename(tmpPath, outPath, ec);
+        pacificdb::durable_file::rename(tmpPath, outPath, ec);
         if (ec) {
             fs::remove(outBloom, ec);
             fs::remove(outSparse, ec);
@@ -2552,13 +2585,17 @@ static void buildSparseIndexForSST(const std::string& sstPath) {
 static std::optional<json> seekDocInSSTById(const std::string& sstPath, const std::string& id) {
     if (pacificdb::storage_v2::isBinarySst(sstPath)) {
         if (!LSM::mayExistInSST(sstPath, id)) return std::nullopt;
-        std::string error;
-        auto found = pacificdb::storage_v2::findInSst(sstPath, id, &error);
-        if (!error.empty()) throw std::runtime_error("cannot read binary SST: " + error);
-        if (!found) return std::nullopt;
         uint64_t committedIndex = 0;
         try { committedIndex = RaftCore::instance().getCommitIndex(); } catch (...) {}
-        return docVisibleByCommitIndex(*found, committedIndex) ? found : std::nullopt;
+        std::string error;
+        auto found = pacificdb::storage_v2::findInSst(sstPath, id, &error,
+            [&](const auto& row) {
+                return docVisibleByCommitIndex(row.project({"_visibility_state", "visibility_state", "committed",
+                    "_raft_commit_index", "commit_index", "_visibility_floor"}), committedIndex);
+            });
+        if (!error.empty()) throw std::runtime_error("cannot read binary SST: " + error);
+        if (!found) return std::nullopt;
+        return found;
     }
     try {
         if (!LSM::mayExistInSST(sstPath, id)) return std::nullopt;
@@ -2633,6 +2670,8 @@ static bool shouldIndexColumnField(const std::string& field, const json& value) 
 
 static std::string columnIndexValue(const json& value);
 
+namespace { bool fsyncPath(const fs::path& path, bool directory); }
+
 static fs::path indexCatalogPath(const fs::path& idxDir) {
     return idxDir / "_catalog.json";
 }
@@ -2661,14 +2700,11 @@ static void writeIndexCatalog(const fs::path& idxDir, const json& catalog) {
         out.flush();
         if (!out.good()) throw std::runtime_error("cannot flush index catalog");
     }
-    std::error_code ec;
-    fs::rename(temporary, target, ec);
-    if (ec) {
-        fs::remove(target, ec);
-        ec.clear();
-        fs::rename(temporary, target, ec);
-        if (ec) throw std::runtime_error("cannot replace index catalog");
-    }
+    if (!fsyncPath(temporary, false)) throw std::runtime_error("cannot sync index catalog");
+    // Preserve the old catalog on publication failure. Native replacement
+    // handles Windows existing-file semantics without a delete/rename gap.
+    pacificdb::durable_file::rename(temporary, target);
+    if (!fsyncPath(idxDir, true)) throw std::runtime_error("cannot sync index catalog directory");
 }
 
 static std::optional<json> readyIndexForField(const fs::path& idxDir, const std::string& field) {
@@ -3029,32 +3065,115 @@ static std::vector<json> readAllCollectionRows(const std::string& userId, const 
 static json rebuildOneCatalogIndex(const std::string& userId, const std::string& dbName,
                                    const std::string& collection, const std::string& name) {
     const std::string key = colKey(userId, dbName, collection);
-    fs::path idxDir = LSM::collectionArtifactPath(userId, dbName, collection, ".idx");
-    // Mutation/drop take collection before column-index locks. Use that order
-    // here too, and retain the collection snapshot through publication so a
-    // concurrent delete cannot be omitted/reintroduced by the completed rebuild.
+    const fs::path idxDir = LSM::collectionArtifactPath(userId, dbName, collection, ".idx");
+    // Preserve the existing source-locked rebuild contract and lock order.
     auto collectionLock = stableCollectionReadLock(key);
-    std::unique_lock<std::shared_mutex> lk(getColIdxMutex(key));
-    auto docs = readAllCollectionRows(userId, dbName, collection, true);
+    std::unique_lock<std::shared_mutex> indexLock(getColIdxMutex(key));
     json catalog = loadIndexCatalog(idxDir);
     json* definition = nullptr;
-    for (auto& def : catalog["indexes"]) if (def.value("name", std::string()) == name) { definition = &def; break; }
+    for (auto& def : catalog["indexes"])
+        if (def.value("name", std::string()) == name) { definition = &def; break; }
     if (!definition) return {{"status", "error"}, {"error", "index_not_found"}, {"name", name}};
     const std::string field = definition->value("field", std::string());
     validateStorageIdentifier(field, "indexFieldName");
     (*definition)["status"] = "building";
     (*definition)["complete"] = false;
     writeIndexCatalog(idxDir, catalog);
-    json index = buildFieldIndexUnbounded(docs, field);
-    replaceBinaryColumnIndex(idxDir, field, index);
-    catalog = loadIndexCatalog(idxDir);
-    for (auto& def : catalog["indexes"]) {
-        if (def.value("name", std::string()) != name) continue;
-        def["status"] = "ready"; def["complete"] = true; def["documents"] = docs.size();
-        def["updatedAtMs"] = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+    const auto suffix = std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+    const fs::path directory = indexFieldSegmentDirectory(idxDir, field);
+    const fs::path stage = LSM::requireContained(fs::path(directory.string() + ".build-" + suffix));
+    const fs::path backup = LSM::requireContained(fs::path(directory.string() + ".previous-" + suffix));
+    bool stageOwned = false, oldMoved = false, published = false;
+    const size_t batchBytes = std::clamp<size_t>(envSizeT("COLUMN_INDEX_BUILD_BATCH_BYTES", 1048576), 4096, 16777216);
+    size_t documents = 0, entries = 0, chunkBytes = 0, peakBytes = 0, segments = 0;
+    std::vector<pacificdb::storage_v2::IndexMutation> chunk;
+    try {
+        stageOwned = fs::create_directory(stage);
+        if (!stageOwned) throw std::runtime_error("index staging directory already exists");
+        const auto flushChunk = [&] {
+            if (chunk.empty() && segments != 0) return;
+            // The existing segment format canonicalizes by value/ID/op. Verify
+            // against the same canonical source order, not iterator ID order.
+            std::sort(chunk.begin(), chunk.end(), [](const auto& left, const auto& right) {
+                if (left.value != right.value) return left.value < right.value;
+                if (left.id != right.id) return left.id < right.id;
+                return static_cast<unsigned>(left.op) < static_cast<unsigned>(right.op);
+            });
+            fs::path written; std::string error;
+            if (!pacificdb::storage_v2::writeIndexSegment(stage, chunk, segments == 0, &written, &error))
+                throw std::runtime_error("cannot write staged secondary index: " + error);
+            pacificdb::storage_v2::IndexSegment verified;
+            if (!pacificdb::storage_v2::readIndexSegment(written, verified, &error) ||
+                verified.snapshot != (segments == 0) || verified.mutations.size() != chunk.size())
+                throw std::runtime_error("cannot verify staged secondary index: " + error);
+            for (size_t i = 0; i < chunk.size(); ++i)
+                if (verified.mutations[i].op != chunk[i].op || verified.mutations[i].id != chunk[i].id ||
+                    verified.mutations[i].value != chunk[i].value)
+                    throw std::runtime_error("staged secondary index differs from source");
+            std::error_code ec;
+            const auto writtenBytes = fs::file_size(written, ec);
+            if (ec) throw std::runtime_error("cannot inspect staged secondary index: " + ec.message());
+            g_binaryColIdxBytesWritten.fetch_add(writtenBytes, std::memory_order_relaxed);
+            g_binaryColIdxSegmentsWritten.fetch_add(1, std::memory_order_relaxed);
+            ++segments; peakBytes = std::max(peakBytes, chunkBytes);
+            chunk.clear(); chunkBytes = 0;
+            yieldBackgroundIoToWal();
+        };
+        LSM::visitLatest(userId, dbName, collection, [&](const LSM::LatestRowView& row) {
+            ++documents;
+            const auto idValue = row.field("id"), value = row.field(field);
+            if (!idValue || !value || !shouldIndexColumnField(field, *value)) return true;
+            const std::string id = idValue->is_string() ? idValue->get<std::string>() : idValue->dump();
+            if (id.empty()) return true;
+            const std::string encoded = columnIndexValue(*value);
+            const size_t charge = 16 + id.size() + encoded.size();
+            if (!chunk.empty() && (charge > batchBytes || chunkBytes > batchBytes - charge)) flushChunk();
+            chunk.push_back({pacificdb::storage_v2::IndexMutation::Op::Put, encoded, id});
+            chunkBytes += charge; ++entries;
+            // One legacy large scalar may exceed the target; never combine it
+            // with another entry or silently truncate an existing supported value.
+            if (chunkBytes >= batchBytes) flushChunk();
+            return true;
+        }, false, false, {}, {}, /*collectionLockHeld=*/true, /*visibleBeforeMerge=*/true);
+        flushChunk();
+        pacificdb::test::hitFailpoint("FP_IDX_REBUILD_BEFORE_PUBLISH", 1);
+        if (fs::exists(directory)) { pacificdb::durable_file::rename(directory, backup); oldMoved = true; }
+        pacificdb::durable_file::rename(stage, directory); stageOwned = false; published = true;
+        if (!fsyncPath(idxDir, true)) throw std::runtime_error("cannot sync secondary index publication");
+        auto state = binaryColumnIndexState(directory);
+        {
+            std::lock_guard<std::mutex> stateLock(state->mutex);
+            state->loaded = false; state->valueById.clear(); state->idsByValue.clear();
+        }
+        (*definition)["status"] = "ready"; (*definition)["complete"] = true;
+        (*definition)["documents"] = documents;
+        (*definition)["updatedAtMs"] = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
+        (*definition)["build_strategy"] = "streaming";
+        (*definition)["build_peak_batch_bytes"] = peakBytes;
+        (*definition)["build_segments"] = segments; (*definition)["build_entries"] = entries;
+        definition->erase("error");
+        writeIndexCatalog(idxDir, catalog);
+        std::error_code cleanupError;
+        fs::remove(indexFieldArtifactPath(idxDir, field), cleanupError);
+        if (oldMoved) fs::remove_all(backup, cleanupError);
+        return {{"status", "ok"}, {"name", name}, {"field", field}, {"documents", documents},
+                {"complete", true}, {"build_strategy", "streaming"}, {"build_peak_batch_bytes", peakBytes},
+                {"build_segments", segments}, {"build_entries", entries}};
+    } catch (const std::exception& error) {
+        std::error_code cleanupError;
+        if (stageOwned) fs::remove_all(stage, cleanupError);
+        // Once a complete generation is published, retain it even if the ready
+        // catalog sync fails: rolling it back could pair a ready catalog with
+        // obsolete data. Before publication, restore the old derived directory.
+        if (!published && oldMoved) pacificdb::durable_file::rename(backup, directory, cleanupError);
+        try {
+            (*definition)["status"] = "failed"; (*definition)["complete"] = false;
+            (*definition)["error"] = error.what(); writeIndexCatalog(idxDir, catalog);
+        } catch (...) {}
+        throw;
     }
-    writeIndexCatalog(idxDir, catalog);
-    return {{"status", "ok"}, {"name", name}, {"field", field}, {"documents", docs.size()}, {"complete", true}};
 }
 
 nlohmann::json LSM::createSecondaryIndex(const std::string& userId, const std::string& dbName,
@@ -3075,15 +3194,21 @@ nlohmann::json LSM::createSecondaryIndex(const std::string& userId, const std::s
         {
             std::unique_lock<std::shared_mutex> lk(getColIdxMutex(key));
             json catalog = loadIndexCatalog(idxDir);
+            bool existing = false;
             for (const auto& def : catalog["indexes"]) {
                 if (def.value("name", std::string()) == name || def.value("field", std::string()) == field) {
-                    if (def.value("name", std::string()) == name && def.value("field", std::string()) == field) return def;
+                    if (def.value("name", std::string()) == name && def.value("field", std::string()) == field) {
+                        if (def.value("status", std::string()) == "ready" && def.value("complete", false)) return def;
+                        existing = true; break; // Reconstruct interrupted/failed committed definitions.
+                    }
                     return {{"status", "error"}, {"error", "index_conflict"}};
                 }
             }
+            if (!existing) {
             const auto now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
             catalog["indexes"].push_back({{"name", name}, {"type", "btree"}, {"field", field}, {"fields", json::array({{{"field", field}, {"order", definition.value("order", 1) < 0 ? -1 : 1}}})}, {"unique", false}, {"sparse", definition.value("sparse", false)}, {"status", "building"}, {"complete", false}, {"createdAtMs", now}, {"updatedAtMs", now}});
             writeIndexCatalog(idxDir, catalog);
+            }
         }
         return rebuildOneCatalogIndex(userId, dbName, collection, name);
     } catch (const std::exception& e) { return {{"status", "error"}, {"error", e.what()}}; }
@@ -4227,16 +4352,8 @@ std::string catalogChecksumOf(const nlohmann::json& catalog) {
 
 // fsync a file or directory path; returns false on failure.
 bool fsyncPath(const fs::path& p, bool directory) {
-#ifndef _WIN32
-    const int fd = ::open(p.c_str(), directory ? (O_RDONLY | O_DIRECTORY) : O_RDONLY);
-    if (fd < 0) return false;
-    const bool ok = ::fsync(fd) == 0;
-    ::close(fd);
-    return ok;
-#else
-    (void)p; (void)directory;
-    return true;
-#endif
+    return directory ? pacificdb::durable_file::syncDirectory(p)
+                     : pacificdb::durable_file::syncFile(p);
 }
 
 }  // namespace
@@ -4290,8 +4407,9 @@ nlohmann::json LSM::indexRecoveryStatus() {
     };
 }
 
-// Stream the latest physical row for each id into bounded, verified index segments.
-// Recovery runs before normal visibility, so commit-index-filtered readers are invalid here.
+// Rebuild from committed-state winners. Recovery may run before the Raft
+// commit-index fence is installed, so do not filter by that temporary fence;
+// explicitly pending/hidden versions still must not displace visible history.
 bool LSM::runPendingIndexRebuild() {
     std::vector<DeclaredIndex> declared;
     {
@@ -4306,6 +4424,16 @@ bool LSM::runPendingIndexRebuild() {
     }
     setIndexRecoveryState(IndexRecoveryState::INDEX_REBUILDING);
 
+    const bool raftEnabled = RaftCore::instance().isEnabled();
+    const auto recoveryEligible = [raftEnabled](const pacificdb::storage_v2::MsgpackRowView& row) {
+        if (!raftEnabled) {
+            // Match legacy standalone visibility exactly, including its handling
+            // of absent/non-string metadata. Do not add new commit-fence rules.
+            const auto state = row.field("_visibility_state");
+            return !state || !state->is_string() || state->get<std::string>() != "PENDING";
+        }
+        return hasVisibleCommitState(row.project({"_visibility_state", "visibility_state", "committed"}));
+    };
     const std::string rebuildId = std::to_string(nowMs());
     for (const auto& d : declared) {
         try {
@@ -4341,7 +4469,7 @@ bool LSM::runPendingIndexRebuild() {
                             const auto value = row.field(field);
                             if (id && value && shouldIndexColumnField(field, *value)) ++fieldEntries;
                             return true;
-                        }, &indexError)) {
+                        }, &indexError, true, false, {}, recoveryEligible)) {
                     throw std::runtime_error("cannot scan base SSTs for " + field + ": " + indexError);
                 }
                 documentsScanned = std::max(documentsScanned, fieldDocuments);
@@ -4410,7 +4538,7 @@ bool LSM::runPendingIndexRebuild() {
                             if (fieldWritten == q75) pacificdb::test::hitFailpoint("FP_IDX_REBUILD_AFTER_75_PERCENT", 1);
                             if (fieldWritten == fieldEntries) pacificdb::test::hitFailpoint("FP_IDX_REBUILD_AFTER_FINAL_ENTRY", 1);
                             return true;
-                        }, &indexError)) {
+                        }, &indexError, true, false, {}, recoveryEligible)) {
                     throw std::runtime_error("cannot build staged index " + field + ": " + indexError);
                 }
                 if (!chunk.empty() || snapshot) flushChunk();
@@ -4458,15 +4586,15 @@ bool LSM::runPendingIndexRebuild() {
             const bool hadPrevious = fs::exists(idxDir);
             if (hadPrevious) {
                 ec.clear();
-                fs::rename(idxDir, backup, ec);
+                pacificdb::durable_file::rename(idxDir, backup, ec);
                 if (ec) throw std::runtime_error("cannot preserve previous index generation: " + ec.message());
             }
             ec.clear();
-            fs::rename(stageIdx, idxDir, ec);
+            pacificdb::durable_file::rename(stageIdx, idxDir, ec);
             if (ec || !fsyncPath(idxDir.parent_path(), true)) {
                 std::error_code rollbackError;
-                if (!ec) fs::rename(idxDir, stageIdx, rollbackError);
-                if (hadPrevious) fs::rename(backup, idxDir, rollbackError);
+                if (!ec) pacificdb::durable_file::rename(idxDir, stageIdx, rollbackError);
+                if (hadPrevious) pacificdb::durable_file::rename(backup, idxDir, rollbackError);
                 throw std::runtime_error("cannot publish index generation: " + ec.message());
             }
             fs::remove_all(backup, ec);
@@ -4967,7 +5095,7 @@ bool LSM::applySnapshot(const nlohmann::json& payload,
             validateContainedStoragePath(rootPath, src);
             validateContainedStoragePath(rootPath, dest);
             try {
-                fs::rename(src, dest);
+                pacificdb::durable_file::rename(src, dest);
             } catch (...) {
                 fs::copy(src, dest, fs::copy_options::recursive);
                 fs::remove_all(src);
@@ -4983,7 +5111,7 @@ bool LSM::applySnapshot(const nlohmann::json& payload,
             validateContainedStoragePath(rootPath, src);
             validateContainedStoragePath(rootPath, dest);
             try {
-                fs::rename(src, dest);
+                pacificdb::durable_file::rename(src, dest);
             } catch (...) {
                 fs::copy(src, dest, fs::copy_options::recursive);
                 fs::remove_all(src);
@@ -5472,7 +5600,11 @@ json LSM::LatestRowView::project(const std::vector<std::string>& names) const {
 bool LSM::visitLatest(const std::string& userId,
                       const std::string& dbName,
                       const std::string& collection,
-                      const std::function<bool(const LatestRowView&)>& visitor, bool includeUncommitted, bool includeDeleted) {
+                      const std::function<bool(const LatestRowView&)>& visitor, bool includeUncommitted, bool includeDeleted,
+                      const std::function<bool(const LatestRowView&)>& prefilter,
+                      const std::function<void()>& check,
+                      bool collectionLockHeld, bool visibleBeforeMerge) {
+    if (check) check();
     struct Candidate {
         json materialized;
         bool hasVersion{false};
@@ -5516,6 +5648,7 @@ bool LSM::visitLatest(const std::string& userId,
     std::vector<Candidate> noId;
     uint64_t order = 0;
     auto considerMemory = [&](const LatestRowView& row) {
+        if (check) check();
         ++order;
         if (!visible(row)) return;
         const auto idValue = row.field("id");
@@ -5548,12 +5681,13 @@ bool LSM::visitLatest(const std::string& userId,
     std::vector<std::shared_ptr<Memtable>> immutable;
     std::vector<json> active;
     {
-        auto lock = stableCollectionReadLock(key);
+        auto lock = collectionLockHeld ? nullptr : stableCollectionReadLock(key);
         immutable = immutableSnapshotForKey(key);
         auto table = memtables.find(key);
         if (table != memtables.end()) {
+            if (check) check();
             active.reserve(table->second.size());
-            for (const auto& [id, doc] : table->second) { (void)id; active.push_back(doc); }
+            for (const auto& [id, doc] : table->second) { (void)id; if (check) check(); active.push_back(doc); }
         }
     }
 
@@ -5567,14 +5701,16 @@ bool LSM::visitLatest(const std::string& userId,
     for (const auto& doc : active) considerMemory(LatestRowView(doc));
 
     auto visitCandidate = [&](const Candidate& candidate) {
+        if (check) check();
         const LatestRowView row(candidate.materialized);
         const auto deleted = row.field("_deleted");
-        return !includeDeleted && deleted && deleted->is_boolean() && deleted->get<bool>()
-            ? true : visitor(row);
+        if (!includeDeleted && deleted && deleted->is_boolean() && deleted->get<bool>()) return true;
+        return prefilter && !prefilter(row) ? true : visitor(row);
     };
     std::vector<std::string> memoryIds;
     memoryIds.reserve(latest.size());
     for (const auto& [id, candidate] : latest) {
+        if (check) check();
         (void)candidate;
         memoryIds.push_back(id);
     }
@@ -5585,7 +5721,7 @@ bool LSM::visitLatest(const std::string& userId,
     bool keepVisiting = true;
     const fs::path dir = LSM::collectionArtifactPath(userId, dbName, collection, ".lsm");
     if (fs::exists(dir)) {
-        auto fileSetLock = stableCollectionReadLock(key);
+        auto fileSetLock = collectionLockHeld ? nullptr : stableCollectionReadLock(key);
         const auto files = publishedSstsForCollection(dir);
         hadSst = !files.empty();
         g_sstScansPerReadTotal.fetch_add(files.size(), std::memory_order_relaxed);
@@ -5594,6 +5730,7 @@ bool LSM::visitLatest(const std::string& userId,
         std::string error;
         if (!pacificdb::storage_v2::visitLatestSstRows(
                 files, [&](const pacificdb::storage_v2::MsgpackRowView& encoded) {
+                    if (check) check();
                     const LatestRowView row(encoded);
                     const auto idValue = row.field("id");
                     const std::string id = idValue
@@ -5619,12 +5756,18 @@ bool LSM::visitLatest(const std::string& userId,
                             return keepVisiting;
                         }
                     }
-                    if (!visible(row)) return true;
                     const auto deleted = row.field("_deleted");
                     if (!includeDeleted && deleted && deleted->is_boolean() && deleted->get<bool>()) return true;
+                    // Resolve SST/memory versions and tombstones first. Rejecting
+                    // an individual version earlier could resurrect an older hit.
+                    if (prefilter && !prefilter(row)) return true;
+                    if (!visible(row)) return true;
                     keepVisiting = visitor(row);
                     return keepVisiting;
-                }, &error, true, true)) {
+                }, &error, true, true, check, visibleBeforeMerge
+                    ? std::function<bool(const pacificdb::storage_v2::MsgpackRowView&)>(
+                        [&](const auto& encoded) { return visible(LatestRowView(encoded)); })
+                    : std::function<bool(const pacificdb::storage_v2::MsgpackRowView&)>{})) {
             throw std::runtime_error("cannot stream published SSTs: " + error);
         }
     }
@@ -5635,7 +5778,77 @@ bool LSM::visitLatest(const std::string& userId,
         if (!visitCandidate(latest.at(memoryIds[memoryPosition++]))) return true;
     }
     for (const auto& candidate : noId) if (!visitCandidate(candidate)) return true;
+    if (check) check();
     return true;
+}
+
+LSM::VectorCandidateVisitStats LSM::visitVectorCandidates(
+        const std::string& userId,const std::string& dbName,const std::string& collection,
+        const std::vector<std::string>& ids,
+        const std::function<bool(const LatestRowView&)>& visitor,
+        const std::function<void()>& check) {
+    if (check) check();
+    if (ids.size()>QueryLimiter::getMaxScanRows()) throw std::runtime_error("vector_scan_limit_exceeded");
+    // Charge both ID views before reserving either vector.
+    const size_t budget=QueryLimiter::getMaxResultBytes();
+    size_t bytes=0;
+    for (const auto& id:ids) {
+        if(check)check();
+        const size_t overhead=2*sizeof(std::string_view)+64;
+        if(id.size()>budget || overhead>budget-id.size())
+            throw std::runtime_error("vector_candidate_bytes_exceeded");
+        const size_t charge=id.size()+overhead;
+        if(bytes>budget-charge)
+            throw std::runtime_error("vector_candidate_bytes_exceeded");
+        bytes+=charge;
+    }
+    std::vector<std::string_view> ordered; ordered.reserve(ids.size());
+    for(const auto& id:ids){if(check)check();ordered.push_back(id);}
+    std::sort(ordered.begin(),ordered.end());ordered.erase(std::unique(ordered.begin(),ordered.end()),ordered.end());
+    if(check)check();
+    const auto key=colKey(userId,dbName,collection);
+    const auto generation=compactionPublishGeneration(key).load(std::memory_order_acquire);
+    uint64_t committedIndex=0;try{committedIndex=RaftCore::instance().getCommitIndex();}catch(...){}
+    const auto finish=[&](){
+        if(check)check();
+        if(compactionPublishGeneration(key).load(std::memory_order_acquire)!=generation ||
+           RaftCore::instance().getCommitIndex()!=committedIndex)
+            throw std::runtime_error("vector_index_freshness_changed");
+    };
+    const auto proof=g_vectorFreshness.capture(key,committedIndex);
+    VectorCandidateVisitStats stats;
+    std::vector<std::string_view> missing;missing.reserve(ordered.size());
+    for(const auto id:ordered){
+        if(check)check();
+        const auto cached=proof?lookupIdIndex(key,std::string(id),proof,generation):std::optional<json>{};
+        if(cached&&docVisibleByCommitIndex(*cached,committedIndex)){
+            if(isDeletedDoc(*cached))continue;
+            ++stats.cacheHits;
+            if(!visitor(LatestRowView(*cached))){finish();return stats;}
+        }else missing.push_back(id);
+    }
+    if(missing.empty()){finish();return stats;}
+    visitLatest(userId,dbName,collection,[&](const LatestRowView& row){
+        if(check)check();++stats.storageRows;
+        const auto full=row.materialize();const auto& value=full.at("id");
+        const auto id=value.is_string()?value.get<std::string>():value.dump();
+        // Point reads skip invisible versions before choosing a winner; merged
+        // exact reads suppress an invisible resolved SST winner. Only reuse
+        // entries explicitly certified by this same merged-read contract.
+        upsertIdIndex(key,id,full,proof,true,generation);
+        return visitor(row);
+    },false,false,[&](const LatestRowView& row){
+        if(check)check();
+        // The existing indexed scan budget counts selected candidates, not
+        // internal SST versions/blocks touched by record lookup. Poll deadlines
+        // throughout the merge and expose this extra storage work separately.
+        ++stats.storageScannedRows;
+        const auto value=row.field("id");
+        if(!value)return false;const auto id=value->is_string()?value->get<std::string>():value->dump();
+        return std::binary_search(missing.begin(),missing.end(),std::string_view(id));
+    },check);
+    finish();
+    return stats;
 }
 
 // ════════════════════════════════════════════════════════════════════════════════════════
@@ -5720,6 +5933,11 @@ nlohmann::json LSM::findStrongSnapshotBound(const std::string& userId,
                         uint64_t snapshotId = 0) {
         if (!docVisibleByCommitIndex(candidate, raftCommit)) return;
         if (newest.has_value() && !isCandidateNewer(candidate, *newest)) return;
+        const auto layer = [](const std::string& value) {
+            return value == "MEMTABLE" ? 2 : value == "IMMUTABLE_MEMTABLE" ? 1 : 0;
+        };
+        if (newest.has_value() && isCandidateNewer(*newest, candidate) &&
+            layer(source) < layer(newestSource)) return;
         newest = candidate;
         newestSource = source;
         newestSstFile = sstFile;
@@ -5784,6 +6002,63 @@ nlohmann::json LSM::findStrongSnapshotBound(const std::string& userId,
 }
 
 // ⚡ FAST FIELD LOOKUP - Uses index files for 40x+ speedup
+std::optional<LSM::VectorEqualityCandidates> LSM::vectorEqualityCandidates(
+        const std::string& userId, const std::string& dbName,
+        const std::string& collection, const std::string& field, const json& value,
+        size_t maximumIds, size_t maximumBytes, const std::function<void()>& check) {
+    if (check) check();
+    if (field.empty() || field == "id" || field.front() == '_' ||
+        field.find('.') != std::string::npos || !shouldIndexColumnField(field,value) ||
+        (value.is_number_float() && !std::isfinite(value.get<double>()))) return {};
+    const auto before = vectorCertificate(userId,dbName,collection);
+    if (!before) return {};
+    const auto key = colKey(userId,dbName,collection);
+    auto collectionLock = stableCollectionReadLock(key);
+    std::shared_lock<std::shared_mutex> indexLock(getColIdxMutex(key),std::try_to_lock);
+    if (!indexLock.owns_lock()) return {};
+    const auto directory = collectionArtifactPath(userId,dbName,collection,".idx");
+    if (!readyIndexForField(directory,field) || hasPendingIndexUpdates(key)) return {};
+    const auto segments = indexFieldSegmentDirectory(directory,field);
+    if (pacificdb::storage_v2::listIndexSegments(segments).empty()) return {};
+    auto state = binaryColumnIndexState(segments);
+    std::unique_lock<std::mutex> stateLock(state->mutex,std::try_to_lock);
+    if (!stateLock.owns_lock()) return {};
+    // The legacy cold loader has no request cancellation/memory contract. Do
+    // not run it inside vector queries. Existing document/index operations may
+    // populate this cache; cold vector requests keep the complete storage scan.
+    if (!state->loaded) return {};
+    VectorEqualityCandidates result; result.certificate = *before;
+    size_t bytes = 0;
+    const auto append = [&](const auto& ids) {
+        for (const auto& id : ids) {
+            if (check) check();
+            if (result.ids.size() >= maximumIds) throw std::runtime_error("vector_scan_limit_exceeded");
+            // Account retained strings plus vector growth/allocator overhead.
+            const size_t charge = id.size() + 2*sizeof(std::string) + 64;
+            if (charge > maximumBytes || bytes > maximumBytes-charge)
+                throw std::runtime_error("vector_candidate_bytes_exceeded");
+            bytes += charge; result.ids.push_back(id);
+        }
+    };
+    if (value.is_number()) {
+        // Legacy keys use dump() for numbers, so 1, 1.0 and 1e0 can occupy
+        // different buckets while the query evaluator considers them equal.
+        // String collisions are conservative extra candidates, filtered later.
+        for (const auto& item : state->idsByValue) {
+            if (check) check();
+            const auto decoded = json::parse(item.first,nullptr,false);
+            if (decoded.is_number() && decoded == value) append(item.second);
+        }
+    } else {
+        const auto found = state->idsByValue.find(columnIndexValue(value));
+        if (found != state->idsByValue.end()) append(found->second);
+    }
+    if (check) check();
+    if (hasPendingIndexUpdates(key) || vectorCertificate(userId,dbName,collection) != before)
+        throw std::runtime_error("vector_index_source_changing");
+    return result;
+}
+
 std::vector<json> LSM::findByField(const std::string& userId, const std::string& dbName, const std::string& collection, const std::string& field, const std::string& value, size_t maxCandidates) {
     std::vector<json> results;
     std::string colKey_str = colKey(userId, dbName, collection);

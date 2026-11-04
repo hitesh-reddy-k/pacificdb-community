@@ -5,6 +5,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <thread>
+#include <fstream>
 
 void require(bool value, const char* message) { if (!value) throw std::runtime_error(message); }
 void ready(const std::string& name) {
@@ -62,9 +63,29 @@ int main() {
         correct(DatabaseEngine::queryNativeVectorIndex("alice", "app", "vectors", "ann", query, &execution));
         correct(DatabaseEngine::queryNativeVectorIndex("alice", "app", "vectors", "ann", query, &execution));
         std::cout << "ANN_CACHE_EXECUTION " << execution.dump() << '\n';
+        require(execution.contains("timings_ms"), "native ANN stage timings are missing");
+        for (const char* stage : {"definition", "graph", "record_resolution", "scoring", "final_validation", "total"})
+            require(execution.at("timings_ms").at(stage).get<double>() >= 0., "invalid native ANN stage timing");
         require(execution.at("payload_fetches").get<size_t>() >= 10 &&
                 execution.at("payload_cache_hits") == execution.at("payload_fetches"),
             "native ANN warm query did not reuse verified candidate payloads");
+        require(execution.at("authoritative_fetches")==0,"ANN generation cache unexpectedly read storage candidates");
+        require(execution.at("document_materializations")==10,"ANN materialized documents beyond top K");
+        DatabaseEngine::stopNativeVectorIndexes();
+        DatabaseEngine::rebuildNativeVectorIndex("alice","app","vectors","ann");ready("ann");
+        require(DatabaseEngine::nativeVectorIndexStatus("alice","app","vectors","ann").value("checkpoint_restored",false),"valid graph checkpoint was not reused");
+        correct(DatabaseEngine::queryNativeVectorIndex("alice","app","vectors","ann",query));
+        DatabaseEngine::stopNativeVectorIndexes();
+        const auto cache=std::filesystem::path(root.dataRoot().string()+".vector-derived-v1");
+        bool corrupted=false;
+        for(const auto& entry:std::filesystem::directory_iterator(cache))if(entry.path().extension()==".graph"){
+            std::fstream file(entry.path(),std::ios::binary|std::ios::in|std::ios::out);file.seekp(105);file.put('X');corrupted=true;
+        }
+        require(corrupted,"graph checkpoint was not written");
+        DatabaseEngine::rebuildNativeVectorIndex("alice","app","vectors","ann");ready("ann");
+        const auto rebuilt=DatabaseEngine::nativeVectorIndexStatus("alice","app","vectors","ann");
+        require(!rebuilt.value("checkpoint_restored",true)&&rebuilt.contains("checkpoint_error"),"corrupt checkpoint did not rebuild with diagnostics");
+        correct(DatabaseEngine::queryNativeVectorIndex("alice","app","vectors","ann",query));
         require(DatabaseEngine::updateOne("alice", "app", "vectors", {{"id", "199"}},
             {{"$set", {{"vector", {-1., 0.}}}}}), "update failed");
         for (const auto& name : {"flat", "ann"}) {

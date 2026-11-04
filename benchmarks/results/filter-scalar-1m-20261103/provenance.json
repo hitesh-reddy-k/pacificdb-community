@@ -1,0 +1,36 @@
+{
+  "base_commit": "aaf12a913087cf50e46504ac31a90319eb7241ce",
+  "candidate_source_patch_sha256": "6583f3f3774b8e62ace2594dd9e5a276c7badd927834ba1fe916f0f60539c4a3",
+  "runtime_sha256": {
+    "baseline": "8c293646b8a9ddb54c286268f5e021b660c95e0c2255bb8da1251539b7b1338f",
+    "candidate": "3fbe2f226b5d262aed4ce20faafafcb763b5ef52fc6ef295fb103fc87b77008e",
+    "baseline-recheck": "8c293646b8a9ddb54c286268f5e021b660c95e0c2255bb8da1251539b7b1338f"
+  },
+  "candidate_build_info": {
+    "product": "PacificDB Engine",
+    "engineVersion": "1.2.0",
+    "releaseVersion": "1.2.0-rc.2",
+    "releaseChannel": "prerelease",
+    "releaseName": "Pre-release v1.2",
+    "releaseTag": "v1.2.0-rc.2",
+    "gitCommit": "aaf12a913087cf50e46504ac31a90319eb7241ce",
+    "storageFormatVersion": "2",
+    "raftProtocolVersion": "2",
+    "buildTimestamp": "2026-11-03T08:07:24+05:30",
+    "compiler": "GNU-14.2.0"
+  },
+  "baseline_build_info": {
+    "product": "PacificDB Engine",
+    "engineVersion": "1.2.0",
+    "releaseVersion": "1.2.0-rc.2",
+    "releaseChannel": "prerelease",
+    "releaseName": "Pre-release v1.2",
+    "releaseTag": "v1.2.0-rc.2",
+    "gitCommit": "aaf12a913087cf50e46504ac31a90319eb7241ce",
+    "storageFormatVersion": "2",
+    "raftProtocolVersion": "2",
+    "buildTimestamp": "2026-11-03T08:07:24+05:30",
+    "compiler": "GNU-14.2.0"
+  },
+  "note": "Both are unreleased development executables. Published RC.2 packages and the earlier three-database evidence are unchanged."
+}

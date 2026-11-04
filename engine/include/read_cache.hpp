@@ -7,6 +7,9 @@
 #include <memory_resource>
 #include <limits>
 #include <functional>
+#include <istream>
+#include <ostream>
+#include <string_view>
 #include "vector_memory_budget.hpp"
 #include <unordered_map>
 #include <chrono>
@@ -219,10 +222,11 @@ enum class DistanceMetric {
 
 struct HNSWNode {
     explicit HNSWNode(std::pmr::memory_resource* resource = std::pmr::get_default_resource())
-        : id(resource), vector(resource), neighbors(resource) {}
+        : id(resource), vector(resource), neighbors(resource), record(resource) {}
     std::pmr::string id;
     std::pmr::vector<float> vector;
-    std::pmr::vector<std::pmr::vector<size_t>> neighbors;
+    std::pmr::vector<std::pmr::vector<uint32_t>> neighbors;
+    std::pmr::string record; // Derived packed payload, charged to the graph budget.
     bool deleted{false};
 };
 
@@ -245,12 +249,21 @@ public:
 
     // Insert a vector with an ID
     bool insert(const std::string& id, const std::vector<float>& vec);
-    bool insert(const std::string& id, const std::vector<float>& vec, const Check& check);
+    bool insert(const std::string& id, const std::vector<float>& vec, const Check& check, const std::string& record = {});
+    // Private-generation staging performs no graph traversal while storage rows are pinned.
+    bool stage(const std::string& id,const std::vector<float>& vec,const std::string& record,const Check& check);
+    void buildStaged(const Check& check);
+    struct Hit {std::string id; float distance; std::string record;};
+    std::vector<Hit> searchRecords(const std::vector<float>& query,size_t k,const Check& check,size_t efSearch,size_t maximumRecordBytes = 64ULL*1024*1024) const;
+    using Visit = std::function<void(std::string_view,const float*,size_t,std::string_view)>;
+    void visitLive(const Visit& visit,const Check& check) const;
+    void writeLinks(std::ostream& output,const Check& check) const;
+    void readLinks(std::istream& input,const Check& check);
 
     // Incremental replacement appends a new navigable node and tombstones the
     // previous physical node. maxElements bounds physical history; rebuild is
     // required at capacity. Removed nodes remain traversal bridges, never hits.
-    bool upsert(const std::string& id,const std::vector<float>& vec,const Check& check = {});
+    bool upsert(const std::string& id,const std::vector<float>& vec,const Check& check = {},const std::string& record = {});
     bool remove(const std::string& id,const Check& check = {});
 
     // Search for k nearest neighbors
@@ -301,11 +314,21 @@ private:
     }
     float distanceRaw(const float* a, const float* b, size_t count) const;
     int randomLevel() const;
+    std::vector<float> prepare(const std::vector<float>& vector) const;
+    std::pmr::vector<size_t> selectNeighbors(const std::pmr::vector<std::pair<size_t,float>>& candidates, size_t maximum) const;
 
+    struct VisitedScratch {
+        explicit VisitedScratch(std::pmr::memory_resource* memory):bits(memory),words(memory){}
+        std::pmr::vector<uint64_t> bits;
+        std::pmr::vector<uint32_t> words;
+    };
     // Search from entry point at a specific level
     std::pmr::vector<std::pair<size_t, float>> searchLayer(
-        const std::vector<float>& query, size_t entryIdx, size_t ef, int level, const Check& check, bool liveOnly = false) const;
-    bool insertLocked(const std::string& id,const std::vector<float>& vec,const Check& check,bool replace);
+        const std::vector<float>& query, size_t entryIdx, size_t ef, int level, const Check& check, bool liveOnly = false,VisitedScratch* scratch = nullptr) const;
+    bool insertLocked(const std::string& id,const std::vector<float>& vec,const Check& check,bool replace,const std::string& record);
+    bool appendLocked(const std::string& id,const std::vector<float>& vec,const std::string& record);
+    void connectLocked(size_t idx,const Check& check,VisitedScratch* scratch = nullptr);
+    std::vector<Hit> searchRecordsLocked(const std::vector<float>& query,size_t k,const Check& check,size_t efSearch,size_t maximumRecordBytes,bool withRecords) const;
 
     HNSWConfig config_;
     mutable VectorBudgetResource memory_;
@@ -315,6 +338,7 @@ private:
     size_t entryPoint_;
     std::pmr::unordered_map<std::pmr::string, size_t> idToIndex_;
     bool failed_{false};
+    bool staged_{false};
 };
 
 } // namespace pacificdb

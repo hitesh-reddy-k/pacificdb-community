@@ -1,4 +1,5 @@
 #include "read_cache.hpp"
+#include <sstream>
 #include <algorithm>
 #include <atomic>
 #include <cassert>
@@ -109,7 +110,31 @@ void concurrency() {
     assert(index.size() == 501);
 }
 
+void stagedCheckpoint(){
+    HNSWConfig c;c.dimensions=3;c.maxElements=500;c.efSearch=300;
+    HNSWIndex original(c);
+    for(int i=0;i<200;++i)assert(original.stage(std::to_string(i),{float(i),1.f,3.f},"payload-"+std::to_string(i),{}));
+    bool gated=false;try{original.search({1.f,2.f,3.f},10);}catch(const std::runtime_error&){gated=true;}assert(gated);
+    original.buildStaged({});assert(original.upsert("199",{199.f,1.f,3.f},{},"metadata-only-new"));
+    const auto hits=original.searchRecords({199.f,1.f,3.f},10,{},200);
+    const auto found=std::find_if(hits.begin(),hits.end(),[](const auto& h){return h.id=="199";});
+    assert(found!=hits.end()&&found->record=="metadata-only-new");
+    assert(original.upsert("0",{-3.f,2.f,1.f},{},"updated"));assert(original.remove("2"));
+    std::stringstream checkpoint;original.writeLinks(checkpoint,{});
+    HNSWIndex restored(c);
+    for(int i=199;i>=0;--i){if(i==2)continue;
+        assert(restored.stage(std::to_string(i),i==0?std::vector<float>{-3.f,2.f,1.f}:std::vector<float>{float(i),1.f,3.f},"current",{}));}
+    restored.readLinks(checkpoint,{});
+    const auto a=original.search({3.f,2.f,1.f},10),b=restored.search({3.f,2.f,1.f},10);assert(a==b);
+    assert(restored.getStats().at("physicalNodes")==original.getStats().at("physicalNodes"));
+    bool bounded=false;try{restored.searchRecords({3.f,2.f,1.f},10,{},200,1);}catch(const std::runtime_error&){bounded=true;}assert(bounded);
+    HNSWIndex damaged(c);assert(damaged.stage("only",{1.f,2.f,3.f},"payload",{}));
+    std::stringstream truncated("malformed");bool rejected=false;
+    try{damaged.readLinks(truncated,{});}catch(const std::runtime_error&){rejected=true;}
+    assert(rejected);damaged.buildStaged({});assert(damaged.search({1.f,2.f,3.f},1).front().first=="only");
+}
 int main() {
+    stagedCheckpoint();
     validation(); concurrency();
     for (auto metric : {DistanceMetric::COSINE, DistanceMetric::EUCLIDEAN,
                         DistanceMetric::DOT_PRODUCT}) recall(metric, 12);

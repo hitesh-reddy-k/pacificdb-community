@@ -26,6 +26,13 @@ class Report(unittest.TestCase):
             text=(Path(d)/'REPORT.txt').read_text()
             self.assertIn('FAIL',text);self.assertIn('0/360',text);self.assertIn('NOT MEASURED',text)
             self.assertFalse(result['all_systems_pass'])
+    def test_derived_disk_cannot_be_hidden_or_inferred(self):
+        self.assertIsNone(self.r.metrics({})['Derived graph checkpoint MiB'])
+        result=self.r.metrics({'storage':{'bytes':2*1024**2},'derived_checkpoint_storage':{'bytes':1024**2},'total_storage_bytes':3*1024**2,
+          'lifecycle':{'recovery':{'index_status':{'checkpoint_restored':False}}}})
+        self.assertEqual(result['Derived graph checkpoint MiB'],1.)
+        self.assertEqual(result['Total live + derived disk MiB'],3.)
+        self.assertFalse(result['Recovery reused graph checkpoint'])
     def test_qdrant_recovery_never_silently_claims_zero_reconstruction(self):
         metrics=self.r.metrics({'lifecycle':{'recovery':{'ann_reconstruction_seconds':None,'ann_readiness_wait_seconds':1.5}}})
         self.assertIsNone(metrics['ANN reconstruction seconds'])

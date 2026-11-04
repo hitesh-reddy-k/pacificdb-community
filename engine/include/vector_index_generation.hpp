@@ -18,13 +18,19 @@ namespace pacificdb {
 class VectorIndexGeneration {
 public:
     enum class State { ABSENT, QUEUED, BUILDING, READY, STALE, FAILED };
-    struct Record { std::string id; std::vector<float> vector; std::optional<std::string> text; std::vector<double> precise; };
+    struct Record { std::string id; std::vector<float> vector; std::optional<std::string> text; std::vector<double> precise; std::string packedRecord; };
+    struct Checkpoints {
+        std::function<bool(HNSWIndex&,const HNSWIndex::Check&)> restore;
+        std::function<void(const HNSWIndex&,const HNSWIndex::Check&)> save;
+    };
     struct Generation {
         uint64_t number;
         VectorFreshness::Stamp certificate;
         std::shared_ptr<const HNSWIndex> graph;
         std::shared_ptr<const LexicalIndex> lexical;
         std::shared_ptr<const FlatVectorIndex> flat;
+        bool checkpointRestored{false};
+        std::string checkpointError;
     };
     struct Status { State state; uint64_t generation; std::string error; };
     using Certificate = std::function<std::optional<VectorFreshness::Stamp>()>;
@@ -43,7 +49,7 @@ public:
     VectorIndexGeneration(const VectorIndexGeneration&) = delete;
     VectorIndexGeneration& operator=(const VectorIndexGeneration&) = delete;
     bool enqueue(HNSWConfig config, Certificate certificate, Source source,
-                 std::optional<LexicalConfig> lexical = {}, bool exactOnly = false, Admission admission = {}, Ready ready = {});
+                 std::optional<LexicalConfig> lexical = {}, bool exactOnly = false, Admission admission = {}, Ready ready = {}, Checkpoints checkpoints = {});
     // Trusted opt-in maintenance primitive. The caller must anchor the journal
     // before the full-build certificate and record every committed source edit.
     // Storage integration is separately gated until that coverage is qualified.
@@ -72,6 +78,7 @@ private:
         Admission admission;
         std::shared_ptr<const Generation> retired;
         Ready ready;
+        Checkpoints checkpoints;
     };
     struct Maintenance {
         std::shared_ptr<VectorChangeJournal> journal;

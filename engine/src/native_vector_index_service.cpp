@@ -12,7 +12,7 @@ NativeVectorIndexService::~NativeVectorIndexService() { shutdown(); }
 std::shared_ptr<VectorIndexGeneration> NativeVectorIndexService::queue(
     const std::string& key, const json& definition, HNSWConfig config, size_t sourceBytes,
     VectorIndexGeneration::Certificate certificate, VectorIndexGeneration::Source source,
-    std::optional<LexicalConfig> lexical, bool exactOnly, VectorIndexGeneration::Admission admission, VectorIndexGeneration::Ready ready) {
+    std::optional<LexicalConfig> lexical, bool exactOnly, VectorIndexGeneration::Admission admission, VectorIndexGeneration::Ready ready, VectorIndexGeneration::Checkpoints checkpoints) {
     reap();
     if (key.empty() || key.size() > 4096 || !definition.is_object() || definition.dump().size() > 16384)
         throw std::invalid_argument("invalid native vector index identity/definition");
@@ -63,7 +63,7 @@ std::shared_ptr<VectorIndexGeneration> NativeVectorIndexService::queue(
     }
     // Queue admission and every callback occur outside the registry mutex.
     // A concurrent unload cancels a task through the manager revision contract.
-    manager->enqueue(config, std::move(certificate), std::move(source), lexical, exactOnly, std::move(admission), std::move(ready));
+    manager->enqueue(config, std::move(certificate), std::move(source), lexical, exactOnly, std::move(admission), std::move(ready), std::move(checkpoints));
     {
         std::lock_guard<std::mutex> lock(mutex_);
         const auto found = entries_.find(key);
@@ -76,6 +76,11 @@ std::shared_ptr<VectorIndexGeneration> NativeVectorIndexService::get(const std::
     std::lock_guard<std::mutex> lock(mutex_);
     const auto found = entries_.find(key);
     return found == entries_.end() ? nullptr : found->second.manager;
+}
+std::optional<json> NativeVectorIndexService::definition(const std::string& key,const std::shared_ptr<VectorIndexGeneration>& expected) const {
+    std::lock_guard<std::mutex> lock(mutex_);const auto found=entries_.find(key);
+    if(stopped_||found==entries_.end()||found->second.manager!=expected)return {};
+    return std::optional<json>(std::in_place,found->second.definition);
 }
 bool NativeVectorIndexService::unload(const std::string& key) {
     std::shared_ptr<VectorIndexGeneration> manager;

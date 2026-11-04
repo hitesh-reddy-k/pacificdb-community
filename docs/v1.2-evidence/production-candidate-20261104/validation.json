@@ -1,0 +1,60 @@
+{
+  "status": "PASS",
+  "productionReady": false,
+  "branch": "v1.2-production-readiness-20261104",
+  "scope": "Linux x64 development candidate built before commit with dirty-tree metadata; not a qualified release artifact; builds and all listed checks exercised; no platform/security/power certification",
+  "engine_sha256": "6afee7a239ce239b736a030e5e830420b631620bbb3ced346a736946baf54a3b",
+  "source_base_revision": "aaf12a913087cf50e46504ac31a90319eb7241ce",
+  "checkpoint_checks": 86,
+  "ctest_cases": 59,
+  "complete_community": "PASS",
+  "cross_sdk": "PASS",
+  "scoped_sanitizers": "LSM, query, storage format, durable file ops and selected test translation units instrumented; linked dependencies not a fully sanitized engine",
+  "sanitizer_status": "PASS",
+  "rf3_upgrade": "PASS",
+  "operations_contract": "PASS",
+  "npm_advisories": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "total": 0
+  },
+  "remaining_release_gates": {
+    "exact_candidate_native_matrix": "INCOMPLETE",
+    "independent_security_review": "BLOCKED: exact-candidate signed report/artifact evidence not supplied",
+    "physical_power": "BLOCKED: external dedicated-host evidence not supplied",
+    "signing_and_package_qualification": "INCOMPLETE",
+    "media_efficiency_benchmarks": "INCOMPLETE: dependent on production acceptance",
+    "filtered_scan_performance": "INCOMPLETE: 4.60s to7.18s small-sample regression; correctnesspassed"
+  },
+  "failed_attempts": [
+    {
+      "attempt": 1,
+      "result": "FAIL",
+      "reason": "Metadata strict-index fixture raced an intentionally ineligible busy index; deterministic busy-index fallback coverage added, production limits unchanged."
+    },
+    {
+      "attempt": 2,
+      "result": "BLOCKED",
+      "reason": "Fresh CMake identity test lacked extracted OpenSSL headers; rerun with required dependency toolchain, OpenSSL remained mandatory."
+    },
+    {
+      "attempt": 3,
+      "result": "PASS local qualification; FAIL benchmark setup",
+      "reason": "Storage ownership guard refused cloned source canonical-root identity. Attempt4 provisions engine-created owned destination and restores offline data excluding root-local identity/lock."
+    }
+  ],
+  "source_review": "PASS scoped independent code review: no blocking regression found; not independent security certification",
+  "source_review_exclusions": [
+    "Final runtime evidence",
+    "Native platforms",
+    "Physical power",
+    "Independent security",
+    "Signing/packages",
+    "1M ACK threshold until measured",
+    "Exhaustive race/crash-state proof",
+    "Deferred distributed/PQ capabilities"
+  ]
+}

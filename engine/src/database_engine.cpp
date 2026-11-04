@@ -3034,13 +3034,18 @@ std::vector<json> DatabaseEngine::queryVector(const std::string& userId,
         const std::string vectorField = vectorName.empty() ? "vector" : "vectors";
         if (!filterBeforeVector && !rawDense) vectorFields.emplace_back(vectorField);
         if (!modality.empty()) vectorFields.emplace_back("modality");
-        LSM::visitLatest(userId, dbName, collection, [&](const LSM::LatestRowView& row) {
+        bool scanCountedByPrefilter=false;
+        const auto countScan = [&] {
             checkVectorDeadline();
             if (++scanned > maxScan) {
                 // A prefix top-K is not an exact answer. Do not return one.
                 throw std::runtime_error("vector_scan_limit_exceeded");
             }
             requestState->scannedRows.store(scanned, std::memory_order_relaxed);
+        };
+        const auto scoreRow = [&](const LSM::LatestRowView& row) {
+            checkVectorDeadline();
+            if(!scanCountedByPrefilter)countScan();
             json projected = row.project(vectorFields);
             if (!isTenantDocumentVisible(userId, projected) ||
                 !documentVisibleForCurrentRead(projected)) return true;
@@ -3089,7 +3094,57 @@ std::vector<json> DatabaseEngine::queryVector(const std::string& userId,
             top.consider(score, id != projected.end() ? (id->is_string() ? id->get<std::string>() : id->dump()) : "",
                          [&] { return row.materialize(); });
             return true;
-        });
+        };
+        std::optional<LSM::VectorEqualityCandidates> indexedCandidates;
+        std::string indexedField;
+        if (nativeVectorReadContextEligible()) {
+            // Only mandatory AND equalities narrow the candidate set. An OR,
+            // NOT, dotted path or non-scalar operand retains the complete scan.
+            std::function<void(const QueryNode&)> choose = [&](const QueryNode& node) {
+                if (indexedCandidates) return;
+                if (node.type == QueryNode::Type::AND) {
+                    for (const auto& child : node.children) choose(child);
+                } else if (node.type == QueryNode::Type::EQ) {
+                    indexedCandidates = LSM::vectorEqualityCandidates(userId,dbName,collection,
+                        node.field,node.value,maxScan,QueryLimiter::getMaxResultBytes(),checkVectorDeadline);
+                    if (indexedCandidates) indexedField = node.field;
+                }
+            };
+            choose(filterQuery);
+        }
+        if (indexedCandidates) {
+            pacificdb::test::hitFailpoint("FP_VECTOR_METADATA_AFTER_CANDIDATES",1);
+            const auto visits=LSM::visitVectorCandidates(userId,dbName,collection,indexedCandidates->ids,scoreRow,checkVectorDeadline);
+            if(execution){(*execution)["candidate_record_cache_hits"]=visits.cacheHits;(*execution)["candidate_storage_rows"]=visits.storageRows;(*execution)["candidate_storage_scanned_rows"]=visits.storageScannedRows;}
+            if (LSM::vectorCertificate(userId,dbName,collection) != indexedCandidates->certificate)
+                throw std::runtime_error("vector_index_freshness_changed");
+        } else if (filterBeforeVector) {
+            // Evaluate only tenant/filter fields on version-resolved rows before
+            // storage/read visibility projection. Never filter individual SST
+            // versions, and recheck visibility plus the full predicate below.
+            std::vector<std::string> fields(filterFields.begin(),filterFields.end());
+            if(std::find(fields.begin(),fields.end(),"tenant_id")==fields.end())fields.emplace_back("tenant_id");
+            if(!modality.empty()&&std::find(fields.begin(),fields.end(),"modality")==fields.end())fields.emplace_back("modality");
+            scanCountedByPrefilter=true;
+            LSM::visitLatest(userId,dbName,collection,scoreRow,false,false,[&](const LSM::LatestRowView& row){
+                countScan();const auto projected=row.project(fields);
+                if(!isTenantDocumentVisible(userId,projected))return false;
+                if(!modality.empty()){
+                    const auto found=projected.find("modality");
+                    if(found==projected.end()||!found->is_string()||found->get<std::string>()!=modality)return false;
+                }
+                return evalQuery(filterQuery,projected);
+            },checkVectorDeadline);
+            if(execution)(*execution)["resolved_filter_prefilter"]=true;
+        } else LSM::visitLatest(userId,dbName,collection,scoreRow);
+        if (execution) {
+            (*execution)["candidate_source"] = indexedCandidates ? "metadata_index" : "merged_scan";
+            (*execution)["scanned_rows"] = scanned;
+            if (indexedCandidates) {
+                (*execution)["metadata_index_field"] = indexedField;
+                (*execution)["metadata_index_candidates"] = indexedCandidates->ids.size();
+            }
+        }
         for (auto& doc : top.finish()) {
             const double score = doc.at("score").get<double>();
             scored.push_back({score, std::move(doc)});

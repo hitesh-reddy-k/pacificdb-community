@@ -8,6 +8,12 @@ from scripts import release_qualification as qualification
 
 
 class ReleaseQualificationTests(unittest.TestCase):
+    def test_default_operations_gate_executes_real_contract_validator(self):
+        repo = Path(__file__).resolve().parents[1]
+        gate = next(g for g in qualification.default_gates() if g["name"] == "operations")
+        result = qualification.run_command(repo, gate)
+        self.assertEqual("PASS", result["status"], result)
+
     def make_repository(self):
         temp = tempfile.TemporaryDirectory()
         repo = Path(temp.name)

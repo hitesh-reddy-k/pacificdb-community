@@ -48,6 +48,9 @@ def metrics(system):
       'Post-recovery sampled Recall@10 (10 queries)':recovery.get('sampled_recall_at_10'),
       'Peak sampled PSS MiB (whole lifecycle)':system.get('peak_sampled_pss_bytes',0)/1024**2 if 'peak_sampled_pss_bytes' in system else None,
       'Peak sampled RSS MiB (whole lifecycle)':system.get('peak_sampled_rss_bytes',0)/1024**2 if 'peak_sampled_rss_bytes' in system else None,
+      'Derived graph checkpoint MiB':system['derived_checkpoint_storage']['bytes']/1024**2 if 'derived_checkpoint_storage' in system else None,
+      'Total live + derived disk MiB':system['total_storage_bytes']/1024**2 if 'total_storage_bytes' in system else None,
+      'Recovery reused graph checkpoint':recovery['index_status'].get('checkpoint_restored') if 'index_status' in recovery else None,
       'Live data-directory MiB (includes WAL)':system['storage']['bytes']/1024**2 if system.get('storage') else None,
     }
     return result
@@ -80,9 +83,13 @@ def render(data,output):
       '- Exact and ANN are separate workloads. ANN tuning uses disjoint100queries; target held-out Recall@10 >=0.95.',
       '- p50/p95/p99 cells are medians of the recorded per-round statistics, not pooled independent samples or best runs.',
       '- Three query rounds reuse the same held-out queries/index. There is one full ingest/build per system, fixed sequential order.',
+      '- Exact queries use PacificDB\'s explicitly built packed flat index, PostgreSQL sequential/parallel scan, and Qdrant exact=true; flat preparation and memory are separate costs. This is not a latency claim for every exact API path.',
+      '- ANN selects the first grid point meeting the common tuning recall floor. Held-out recall is reported and differs between systems; these are not identical-recall operating points.',
+      '- The 1% metadata-filter workload uses exact retrieval without dedicated metadata indexes; ten samples do not establish filtered ANN performance.',
       '- Ingestion throughput ends at the last acknowledged batch for every database. Final flush/checkpoint/analyze is separate.',
       '- Same float32 inputs; PacificDB preserves legacy float64 numeric storage. Qdrant cosine returns normalized vectors.',
       '- Full vector and common metadata are requested. Native TCP/SQL/HTTP protocol and client parsing costs differ.',
+      '- This local loopback trial uses disabled/trusted authentication and no TLS; security-enabled deployment latency is not measured.',
       '- Four server CPUs/two client CPUs and a sampled6GiB PSS guard; no hard-cgroup equivalence claim.',
       '- Shared active workstation; background load, caches, build ordering and library differences can affect results.',
       '- PostgreSQL/PacificDB fsync+commit enabled. Qdrant1.20wait=true explicitly flushes WAL before applying updates.',
@@ -91,7 +98,8 @@ def render(data,output):
       '- Qdrant collection counts are approximate; readiness/healthyoptimizer are checked, but exact=false permits planner choice without a per-query graph trace.',
       '- Qdrant reconstruction NOT MEASURED means not independently isolated; use measured readiness wait, not an invented zero.',
       '- PostgreSQL summed RSS can count shared pages multiple times; use PSS for cross-process memory comparison.',
-      '- Disk totals are live data directories incl preallocated WAL. They exclude forensic copies; PacificDB ANN graph remains in memory.',
+      '- Data-directory disk includes preallocated WAL and excludes forensic copies. Separately measured derived checkpoints and total disk are reported when present; missing measurements remain explicit.',
+      '- A matching PacificDB checkpoint requires scanning and fingerprinting current committed records; changed or corrupt caches require graph construction. Reuse is reported separately, never assumed.',
       '- Filter/recovery samples are small (10); do not infer tail latency or broad recall confidence from them.',
       '- A25Dworkload does not establish768/1536Dbehavior, RF3/distributed performance, complete feature parity or production readiness.',
       '- All failed smoke attempts and validation controls are retained separately. These are not substituted for completed1Mresults.'])

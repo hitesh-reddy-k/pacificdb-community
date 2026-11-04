@@ -19,6 +19,77 @@ static void require(bool condition, const std::string& message) {
     if (!condition) throw std::runtime_error(message);
 }
 
+static void testScalarFieldDecoding() {
+    // Independent reference: the existing complete MessagePack decoder, including
+    // noncanonical widths that the writer would not normally produce.
+    const auto same = [](const json& actual, const json& expected) {
+        require(actual.type() == expected.type(), "scalar JSON numeric/type contract changed");
+        if (expected.is_number_float()) {
+            const double a = actual.get<double>(), b = expected.get<double>();
+            require((std::isnan(a) && std::isnan(b)) ||
+                    (a == b && std::signbit(a) == std::signbit(b)),
+                    "scalar float value/sign changed");
+        } else require(actual == expected, "scalar value differs from reference decoder");
+    };
+    const auto check = [&](const std::vector<uint8_t>& encoded) {
+        const auto expected = json::from_msgpack(encoded);
+        std::vector<uint8_t> row{0x81, 0xa1, 'v'};
+        row.insert(row.end(), encoded.begin(), encoded.end());
+        for (bool indexed : {false, true}) {
+            const MsgpackRowView view(row.data(), row.size(), indexed);
+            const auto value = view.field("v");
+            require(value.has_value(), "valid scalar field became missing");
+            same(*value, expected);
+            same(view.project({"v", "absent", "v"}).at("v"), expected);
+            require(!view.field("absent"), "scalar lookup returned a missing field");
+        }
+        std::vector<size_t> truncated;
+        for (size_t n = 0; n < std::min<size_t>(encoded.size(), 12); ++n) truncated.push_back(n);
+        if (encoded.size() > 12) truncated.push_back(encoded.size()-1);
+        for (size_t n : truncated) {
+            auto partial = row; partial.resize(3+n);
+            const MsgpackRowView view(partial.data(), partial.size(), true);
+            require(!view.field("v"), "truncated scalar field was accepted");
+            bool rejected = false;
+            try { (void)view.project({"v"}); } catch (const std::exception&) { rejected = true; }
+            require(rejected, "truncated scalar projection was accepted");
+        }
+    };
+    for (unsigned value = 0; value <= 0xff; ++value)
+        if (value <= 0x7f || value >= 0xe0) check({static_cast<uint8_t>(value)});
+    for (const auto tag : {0xc0, 0xc2, 0xc3}) check({static_cast<uint8_t>(tag)});
+    const auto encoded = [](uint8_t tag, uint64_t bits, size_t width) {
+        std::vector<uint8_t> bytes{tag};
+        for (size_t i = width; i > 0; --i) bytes.push_back(static_cast<uint8_t>(bits >> ((i-1)*8)));
+        return bytes;
+    };
+    for (unsigned tag = 0xcc; tag <= 0xd3; ++tag) {
+        const size_t width = size_t{1} << ((tag >= 0xd0) ? tag-0xd0 : tag-0xcc);
+        const uint64_t high = uint64_t{1} << (width*8-1);
+        for (uint64_t value : {uint64_t{0},uint64_t{1},high-1,high,high+1,
+                              std::numeric_limits<uint64_t>::max()})
+            check(encoded(tag,value,width));
+    }
+    for (uint64_t bits : {uint64_t{0},uint64_t{0x80000000},uint64_t{1},
+         uint64_t{0x3f800000},uint64_t{0x7f7fffff},uint64_t{0x7f800000},
+         uint64_t{0xff800000},uint64_t{0x7fc00001}}) check(encoded(0xca,bits,4));
+    for (uint64_t bits : {uint64_t{0},uint64_t{0x8000000000000000},uint64_t{1},
+         uint64_t{0x3ff0000000000000},uint64_t{0x7fefffffffffffff},
+         uint64_t{0x7ff0000000000000},uint64_t{0xfff0000000000000},
+         uint64_t{0x7ff8000000000001}}) check(encoded(0xcb,bits,8));
+    for (const auto width : {size_t{1},size_t{2},size_t{4}}) {
+        for (size_t size : {size_t{0},size_t{1},size_t{31},size_t{32},size_t{255},size_t{256},size_t{65536}}) {
+            if ((width == 1 && size > 255) || (width == 2 && size > 65535)) continue;
+            auto bytes=encoded(width == 1 ? 0xd9 : width == 2 ? 0xda : 0xdb,size,width);
+            for (size_t i = 0; i < size; ++i) bytes.push_back(i%7 ? 'a' : '\0');
+            check(bytes);
+        }
+    }
+    for (const json& value : std::vector<json>{"", "utf8 \xe6\xb5\xb7", json::array({1,true,nullptr}),
+            json{{"nested", json::array({-1,2.5})}}, json::binary({0,1,255})})
+        check(json::to_msgpack(value));
+}
+
 static void testRawDenseScoring() {
     std::mt19937 random(1923);
     std::uniform_real_distribution<double> value(-10, 10);
@@ -110,6 +181,7 @@ int main() {
             std::chrono::steady_clock::now().time_since_epoch().count()));
     fs::create_directories(root);
     try {
+        testScalarFieldDecoding();
         testIndexedRows();
         testRawDenseScoring();
         std::string error;

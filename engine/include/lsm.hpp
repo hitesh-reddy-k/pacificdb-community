@@ -102,7 +102,19 @@ public:
                             const std::string& dbName,
                             const std::string& collection,
                             const std::function<bool(const LatestRowView&)>& visitor,
-                            bool includeUncommitted = false, bool includeDeleted = false);
+                            bool includeUncommitted = false, bool includeDeleted = false,
+                            const std::function<bool(const LatestRowView&)>& prefilter = {},
+                            const std::function<void()>& check = {},
+                            bool collectionLockHeld = false, bool visibleBeforeMerge = true);
+
+    struct VectorCandidateVisitStats { size_t cacheHits{0}, storageRows{0}, storageScannedRows{0}; };
+    // Reuse certified payloads; resolve all misses in one authoritative merge.
+    // The caller must retain its source certificate and perform final fencing.
+    static VectorCandidateVisitStats visitVectorCandidates(
+        const std::string& userId, const std::string& dbName,
+        const std::string& collection, const std::vector<std::string>& ids,
+        const std::function<bool(const LatestRowView&)>& visitor,
+        const std::function<void()>& check);
 
     // ⚡ NEW: Fast field-based lookup using indexes
     static std::vector<json> findByField(const std::string& userId,
@@ -111,6 +123,17 @@ public:
                                          const std::string& field,
                                          const std::string& value,
                                          size_t maxCandidates = 0);
+
+    struct VectorEqualityCandidates {
+        pacificdb::VectorFreshness::Stamp certificate;
+        std::vector<std::string> ids;
+    };
+    // A complete scalar-equality superset, never a truncated prefix. An absent,
+    // pending, legacy or ineligible index requests the ordinary merged scan.
+    static std::optional<VectorEqualityCandidates> vectorEqualityCandidates(
+        const std::string& userId, const std::string& dbName,
+        const std::string& collection, const std::string& field, const json& value,
+        size_t maximumIds, size_t maximumBytes, const std::function<void()>& check);
 
     // VISIBILITY CLOSURE: Snapshot-bound strong read with memtable-first precedence.
     // Guarantees returned_version >= floor_version by:

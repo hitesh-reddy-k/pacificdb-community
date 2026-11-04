@@ -123,6 +123,7 @@ set(ENGINE_CORE
     src/database_engine.cpp
     src/storage.cpp
     src/storage_format_v2.cpp
+    src/durable_file_ops.cpp
     src/lsm_manifest.cpp
     src/wal.cpp
     src/raft_core.cpp
@@ -190,7 +191,7 @@ set(COMMUNITY_FEATURES
     src/index.cpp
     src/tenant_manager.cpp
     src/ttl_engine.cpp
-    src/hnsw_index.cpp
+    src/hnsw_index.cpp src/native_vector_checkpoint.cpp
     src/vector_change_registry.cpp
     src/vector_index_catalog.cpp
     src/vector_schema.cpp
@@ -343,7 +344,9 @@ add_test(NAME db_engine_time_format_test COMMAND db_engine_time_format_test)
 function(add_pacificdb_engine_test target source)
     add_executable(${target} ${source})
     if(${target} STREQUAL "db_engine_lsm_checkpoint_crash_driver" OR
-       ${target} STREQUAL "db_engine_native_vector_crash_test")
+       ${target} STREQUAL "db_engine_native_vector_crash_test" OR
+       ${target} STREQUAL "db_engine_native_vector_checkpoint_test" OR
+       ${target} STREQUAL "db_engine_vector_metadata_filter_test")
         target_link_libraries(${target} PRIVATE
             pacificdb_engine_core pacificdb_test_failpoints_enabled)
     else()
@@ -763,3 +766,24 @@ add_test(NAME db_engine_vector_incremental_generation_test COMMAND db_engine_vec
 
 add_pacificdb_engine_test(db_engine_native_incremental_storage_test test/native_incremental_storage_test.cpp)
 add_test(NAME db_engine_native_incremental_storage_test COMMAND db_engine_native_incremental_storage_test)
+
+add_pacificdb_engine_test(db_engine_native_vector_checkpoint_test test/native_vector_checkpoint_test.cpp)
+add_test(NAME db_engine_native_vector_checkpoint_test COMMAND db_engine_native_vector_checkpoint_test)
+
+add_pacificdb_engine_test(db_engine_vector_metadata_filter_test test/vector_metadata_filter_test.cpp)
+add_test(NAME db_engine_vector_metadata_filter_test COMMAND db_engine_vector_metadata_filter_test)
+
+add_pacificdb_engine_test(db_engine_vector_cold_filter_test test/vector_cold_filter_test.cpp)
+add_test(NAME db_engine_vector_cold_filter_test COMMAND db_engine_vector_cold_filter_test)
+
+add_pacificdb_engine_test(db_engine_secondary_index_build_test test/secondary_index_build_test.cpp)
+add_test(NAME db_engine_secondary_index_build_test COMMAND db_engine_secondary_index_build_test)
+
+add_pacificdb_engine_test(db_engine_index_visibility_recovery_test test/index_visibility_recovery_test.cpp)
+add_test(NAME db_engine_index_visibility_recovery_test COMMAND db_engine_index_visibility_recovery_test)
+
+add_pacificdb_engine_test(db_engine_durable_file_ops_test test/durable_file_ops_test.cpp)
+add_test(NAME db_engine_durable_file_ops_test COMMAND db_engine_durable_file_ops_test)
+
+add_pacificdb_engine_test(db_engine_sst_version_resolution_test test/sst_version_resolution_test.cpp)
+add_test(NAME db_engine_sst_version_resolution_test COMMAND db_engine_sst_version_resolution_test)

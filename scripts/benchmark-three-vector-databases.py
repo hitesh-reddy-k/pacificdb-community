@@ -334,6 +334,7 @@ def lifecycle(server,base,queries,ef):
         state=server.connection.request({'action':'vectorIndexStatus','collection':'vectors','name':'ann'})['index'];assert state['state']=='ABSENT',state
         begin=time.perf_counter();server.connection.request({'action':'rebuildVectorIndex','collection':'vectors','name':'ann'});server.wait('ann')
         result['recovery']['ann_reconstruction_seconds']=time.perf_counter()-begin
+        result['recovery']['index_status']=server.connection.request({'action':'vectorIndexStatus','collection':'vectors','name':'ann'})['index']
     elif server.kind=='qdrant':
         result['recovery']['initial_index_info']=server.connection.call('GET','/collections/vectors')['result']
         begin=time.perf_counter();result['recovery']['ready_index_info']=server.wait_graph(len(base)-5)
@@ -433,6 +434,9 @@ def run_system(kind,args,base,queries,truth,result):
         record['peak_sampled_pss_bytes']=max((x['pss'] for x in server.memory),default=0)
         record['peak_sampled_rss_bytes']=max((x['rss'] for x in server.memory),default=0)
         record['storage']=b.disk(server.root/'data') if (server.root/'data').exists() else None
+        derived=server.root/'data.vector-derived-v1'
+        record['derived_checkpoint_storage']=b.disk(derived) if derived.exists() else {'bytes':0,'files':0,'wal_bytes':0}
+        record['total_storage_bytes']=(record['storage']['bytes'] if record['storage'] else 0)+record['derived_checkpoint_storage']['bytes']
         record['private_scratch_root']=str(server.root)
         b.save(args.output/'summary.json',result)
 

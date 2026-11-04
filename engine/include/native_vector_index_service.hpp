@@ -15,8 +15,10 @@ public:
         const std::string& key, const json& canonicalDefinition, HNSWConfig config,
         size_t sourceByteLimit, VectorIndexGeneration::Certificate certificate,
         VectorIndexGeneration::Source source, std::optional<LexicalConfig> lexical = {}, bool exactOnly = false,
-        VectorIndexGeneration::Admission admission = {}, VectorIndexGeneration::Ready ready = {});
+        VectorIndexGeneration::Admission admission = {}, VectorIndexGeneration::Ready ready = {},
+        VectorIndexGeneration::Checkpoints checkpoints = {});
     std::shared_ptr<VectorIndexGeneration> get(const std::string& key) const;
+    std::optional<json> definition(const std::string& key,const std::shared_ptr<VectorIndexGeneration>& expected) const;
     bool unload(const std::string& key);
     // Nonblocking cancellation for committed namespace drops. Callbacks only
     // inspect the bounded registry key; they must not access storage.

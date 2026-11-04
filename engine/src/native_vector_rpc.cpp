@@ -76,6 +76,7 @@ static std::vector<json> searchAttempt(const std::string& user,const std::string
             (*execution)["index_state"]=state;(*execution)["fallback"]=true;(*execution)["fallback_reason"]=reason;}
         return results;
     };
+    const auto preflightStart=vector_query::Clock::now();
     json status;
     // Definition capture can race a write before the maintenance policy is
     // available. Only a bounded read-only retry is allowed at this boundary.
@@ -99,11 +100,13 @@ static std::vector<json> searchAttempt(const std::string& user,const std::string
     if((mode=="exact"&&!flat)||(mode!="exact"&&flat&&!allowExact)){
         reason="index algorithm does not satisfy requested mode/fallback policy";return scan();
     }
+    const auto preflightEnd=vector_query::Clock::now();
     try{
         auto results=flat
             ? DatabaseEngine::queryNativeExactIndex(user,database,collection,name,query,execution,requestDeadline)
             : DatabaseEngine::queryNativeVectorIndex(user,database,collection,name,query,execution,requestDeadline);
-        if(execution){(*execution)["requested_mode"]=mode;(*execution)["fallback"]=flat&&mode!="exact";
+        if(execution){(*execution)["rpc_preflight_ms"]=std::chrono::duration<double,std::milli>(preflightEnd-preflightStart).count();
+            (*execution)["requested_mode"]=mode;(*execution)["fallback"]=flat&&mode!="exact";
             if(flat&&mode!="exact")(*execution)["fallback_reason"]="requested ANN/auto used eligible exact flat index";}
         return results;
     }catch(const std::exception& error){
@@ -141,6 +144,7 @@ std::vector<json> search(const std::string& user,const std::string& database,
         if(vector_query::Clock::now()>=*requestDeadline)throw std::runtime_error("vector_query_timeout");
         try{
             auto result=searchAttempt(user,database,collection,query,execution,requestDeadline,mayWait);
+            if(execution)(*execution)["rpc_total_ms"]=std::chrono::duration<double,std::milli>(vector_query::Clock::now()-start).count();
             if(execution&&retries){
                 (*execution)["freshness_retries"]=retries;
                 (*execution)["freshness_elapsed_ms"]=std::chrono::duration<double,std::milli>(
