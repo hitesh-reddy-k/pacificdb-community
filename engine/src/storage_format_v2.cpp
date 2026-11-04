@@ -1339,7 +1339,7 @@ bool visitLatestSstRows(const std::vector<fs::path>& oldestToNewest,
     struct LaterId {
         bool operator()(const Item& left, const Item& right) const {
             if (left.id != right.id) return left.id > right.id;
-            return left.index > right.index;
+            return left.index < right.index;
         }
     };
     std::vector<SstCursor> cursors;
@@ -1354,6 +1354,7 @@ bool visitLatestSstRows(const std::vector<fs::path>& oldestToNewest,
             heap.push({std::string(cursors.back().id()), cursors.size() - 1});
         }
     }
+    std::vector<std::uint8_t> newestBytes;
     while (!heap.empty()) {
         if (check) check();
         const std::string id = heap.top().id;
@@ -1365,7 +1366,6 @@ bool visitLatestSstRows(const std::vector<fs::path>& oldestToNewest,
         bool found = false;
         std::optional<long long> newestVersion;
         std::size_t newestFile = 0;
-        std::vector<std::uint8_t> newestBytes;
         // Consume the entire equal-ID run in every SST, including runs spanning
         // compressed blocks. Retain only one winning encoded row, never a
         // collection-sized document map or references into advanced cursors.
@@ -1373,16 +1373,18 @@ bool visitLatestSstRows(const std::vector<fs::path>& oldestToNewest,
             while (cursors[file].valid() && cursors[file].id() == id) {
                 if (check) check();
                 const auto& row = cursors[file].row();
-                if (!eligible || eligible(row)) {
-                    const auto version = rowVersion(row);
-                    const bool replace = !found ||
-                        (version && newestVersion && *version > *newestVersion) ||
-                        (version.has_value() != newestVersion.has_value() && version) ||
-                        (version == newestVersion && file >= newestFile);
-                    if (replace) {
-                        newestBytes.assign(row.data(), row.data() + row.size());
-                        newestVersion = version; newestFile = file; found = true;
-                    }
+                const auto version = rowVersion(row);
+                const bool replace = !found ||
+                    (version && newestVersion && *version > *newestVersion) ||
+                    (version.has_value() != newestVersion.has_value() && version) ||
+                    (version == newestVersion && file >= newestFile);
+                // Newer files are considered first for equal IDs. Once an
+                // eligible winner exists, an inferior version cannot win even
+                // if visible; avoid decoding its visibility metadata. Higher
+                // versions in older files still pass full eligibility checks.
+                if (replace && (!eligible || eligible(row))) {
+                    newestBytes.assign(row.data(), row.data() + row.size());
+                    newestVersion = version; newestFile = file; found = true;
                 }
                 if (!cursors[file].next(error)) return false;
             }

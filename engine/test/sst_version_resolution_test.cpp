@@ -40,6 +40,14 @@ int main(int argc,char**argv){
   std::vector<json> newer{{{"id","span"},{"_mvcc_version",42},{"value",43}}};refs.clear();refs.push_back(newer.front());
   const auto later=root.dataRoot()/"later.sst";require(writeSst(later,refs,4096,nullptr,&error),error.c_str());
   count=0;require(visitLatestSstRows({across,later},[&](const auto& row){++count;require(row.field("value")==43,"later SST did not win equal-version tie");return true;},&error,true)&&count==1,"cross-file tie duplicated result");
+  // File recency never outranks a higher committed record version. A pending
+  // higher version must still leave the eligible committed winner visible.
+  std::vector<json> overlay{{{"id","span"},{"_mvcc_version",41},{"value",41}}};refs.clear();refs.push_back(overlay.front());
+  const auto lower=root.dataRoot()/"lower.sst";require(writeSst(lower,refs,4096,nullptr,&error),error.c_str());
+  count=0;require(visitLatestSstRows({across,lower},[&](const auto& row){++count;require(row.field("value")==42,"file recency displaced a higher record version");return true;},&error,true)&&count==1,"higher-version cross-file result");
+  overlay.front()={{"id","span"},{"_mvcc_version",99},{"value",99},{"_visibility_state","PENDING"}};refs.clear();refs.push_back(overlay.front());
+  const auto pending=root.dataRoot()/"pending.sst";require(writeSst(pending,refs,4096,nullptr,&error),error.c_str());
+  count=0;require(visitLatestSstRows({across,pending},[&](const auto& row){++count;require(row.field("value")==42,"newer pending file hid eligible record");return true;},&error,true,false,{},[](const auto& row){const auto state=row.field("_visibility_state");return !state||*state!="PENDING";})&&count==1,"pending overlay result");
   size_t polls=0;bool cancelled=false;
   try{visitLatestSstRows({across},[](const auto&){return true;},&error,true,false,[&]{if(++polls==10)throw std::runtime_error("cancel_duplicate_run");});}
   catch(const std::runtime_error& e){cancelled=std::string(e.what())=="cancel_duplicate_run";}

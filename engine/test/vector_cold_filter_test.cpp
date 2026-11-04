@@ -3,6 +3,7 @@
 #include "owned_test_root.hpp"
 #include "wal.hpp"
 #include "query_limiter.hpp"
+#include "raft_core.hpp"
 #include <iostream>
 #include <stdexcept>
 #include <vector>
@@ -75,6 +76,50 @@ int main(){
   const auto savedBytes=QueryLimiter::getMaxResultBytes();QueryLimiter::setMaxResultBytes(1);bool bounded=false;
   try{capture(selected);}catch(const std::runtime_error& e){bounded=std::string(e.what())=="vector_candidate_bytes_exceeded";}
   QueryLimiter::setMaxResultBytes(savedBytes);require(bounded,"candidate IDs exceeded byte budget silently");
+  // Independent visibility matrix: exercise selective encoded and in-memory
+  // accessors under legacy standalone policy and real enabled-Raft fencing.
+  DatabaseEngine::createCollection("alice","app","visibility_sst");
+  DatabaseEngine::createCollection("alice","app","visibility_memory");
+  std::vector<json> visibilityRows{
+   {{"id","good"},{"_visibility_state","COMMITTED_VISIBLE"},{"_raft_commit_index",0}},
+   {{"id","pending"},{"_visibility_state","PENDING"},{"_raft_commit_index",0}},
+   {{"id","alias_good"},{"_visibility_state",42},{"visibility_state","COMMITTED_VISIBLE"},{"commit_index",0}},
+   {{"id","alias_pending"},{"_visibility_state",nullptr},{"visibility_state","PENDING"},{"_raft_commit_index",0}},
+   {{"id","false_commit"},{"_visibility_state",nullptr},{"committed",false},{"_raft_commit_index",0}},
+   {{"id","true_commit"},{"_visibility_state",nullptr},{"committed",true},{"_raft_commit_index",0}},
+   {{"id","future"},{"_visibility_state","COMMITTED_VISIBLE"},{"_raft_commit_index",1}},
+   {{"id","future_floor"},{"_visibility_state","COMMITTED_VISIBLE"},{"_raft_commit_index",0},{"_visibility_floor",1}},
+   {{"id","missing_index"},{"_visibility_state",nullptr},{"committed",true}},
+   {{"id","fallback_index"},{"_visibility_state",nullptr},{"committed",true},{"_raft_commit_index","bad"},{"commit_index",0}},
+   {{"id","nonnumeric_floor"},{"_visibility_state",nullptr},{"committed",true},{"commit_index",0},{"_visibility_floor","bad"}},
+   {{"id","negative_index"},{"_visibility_state",nullptr},{"committed",true},{"_raft_commit_index",-1}},
+   {{"id","null_state"},{"_visibility_state",nullptr},{"_raft_commit_index",0}},
+   {{"id","unknown_state"},{"_visibility_state","OTHER"},{"_raft_commit_index",0}},
+   {{"id","primary_precedence"},{"_visibility_state","PENDING"},{"visibility_state","COMMITTED_VISIBLE"},{"committed",true},{"_raft_commit_index",0}},
+   {{"id","alias_precedence"},{"_visibility_state",nullptr},{"visibility_state","PENDING"},{"committed",true},{"_raft_commit_index",0}},
+   {{"id","state_precedence"},{"_visibility_state","COMMITTED_VISIBLE"},{"committed",false},{"_raft_commit_index",0}},
+   {{"id","visible_tombstone"},{"_visibility_state","TOMBSTONED"},{"_deleted",true},{"_raft_commit_index",0}}
+  };
+  std::set<std::string> legacyExpected;
+  for(const auto& row:visibilityRows){LSM::put("alice","app","visibility_sst",row);LSM::put("alice","app","visibility_memory",row);const auto id=row.at("id").get<std::string>();if(id!="pending"&&id!="primary_precedence")legacyExpected.insert(id);}
+  LSM::flush("alice","app","visibility_sst");
+  const auto visibleIds=[](const char* collection){std::set<std::string> ids;LSM::visitLatest("alice","app",collection,[&](const auto& row){ids.insert(row.field("id")->template get<std::string>());return true;},false,true);return ids;};
+  require(visibleIds("visibility_sst")==legacyExpected&&visibleIds("visibility_memory")==legacyExpected,"legacy visibility field precedence/type semantics changed");
+#ifdef _WIN32
+  _putenv_s("RAFT_STANDALONE_BYPASS","0");
+  _putenv_s("DATA_ROOT",root.dataRoot().string().c_str());
+  _putenv_s("DATA_DIR",root.dataRoot().string().c_str());
+#else
+  setenv("RAFT_STANDALONE_BYPASS","0",1);
+  setenv("DATA_ROOT",root.dataRoot().string().c_str(),1);
+  setenv("DATA_DIR",root.dataRoot().string().c_str(),1);
+#endif
+  std::filesystem::create_directories(root.dataRoot()/"raft");
+  auto& raft=RaftCore::instance();raft.init({},"cold-visibility",0,true);
+  require(raft.getCommitIndex()==0,"visibility matrix requires empty Raft log");
+  const std::set<std::string> raftExpected{"good","alias_good","true_commit","fallback_index","nonnumeric_floor","null_state","state_precedence","visible_tombstone"};
+  require(visibleIds("visibility_sst")==raftExpected&&visibleIds("visibility_memory")==raftExpected,"Raft visibility state/commit/floor semantics changed");
+  raft.stop();
   std::cout<<"VECTOR_COLD_FILTER_PASS\n";
  }catch(const std::exception& e){std::cerr<<"VECTOR_COLD_FILTER_FAIL: "<<e.what()<<'\n';return 1;}
 }

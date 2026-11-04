@@ -1,0 +1,7 @@
+{
+  "status": "PASS",
+  "completed": 5000,
+  "connections": 5000,
+  "ms": 1197.1522639999998,
+  "scope": "Linux real loopback;5000final-response retire/reconnects;500msrequest timeout unchanged; not native Mac evidence"
+}

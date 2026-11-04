@@ -1,0 +1,30 @@
+[ENGINE] Data root initialized: /tmp/pacificdb-test-vector-cold-filter-315789-11242154081545-0-0/data
+[DLOG][CREATE_DB][PATH] user=system db=system base=/tmp/pacificdb-test-vector-cold-filter-315789-11242154081545-0-0/data/system/system
+[ENGINE][CREATE DB] Database already exists; preserving metadata
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-vector-cold-filter-315789-11242154081545-0-0/data/system/system/data/users.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1793811406,"id":"6aeb63ce0e70b1852f55d86f","name":"users"}
+[LSM] Initialized at: /tmp/pacificdb-test-vector-cold-filter-315789-11242154081545-0-0/data/
+[LSM][RESTORE] Replayed 0 WAL files
+[ENGINE] No bootstrap admin seeded; set PACIFICDB_BOOTSTRAP_ADMIN_USERNAME and PACIFICDB_BOOTSTRAP_ADMIN_PASSWORD_HASH to create one
+[DLOG][CREATE_DB][PATH] user=alice db=app base=/tmp/pacificdb-test-vector-cold-filter-315789-11242154081545-0-0/data/alice/app
+[LOGGER] Writing log entry
+[LOGGER] Log written
+[ENGINE][CREATE DB] Database created with type: vector
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-vector-cold-filter-315789-11242154081545-0-0/data/alice/app/data/records.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1793811406,"id":"6aeb63ce0e70b1852f55d871","name":"records"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-vector-cold-filter-315789-11242154081545-0-0/data/alice/app/data/pending.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1793811406,"id":"6aeb63ce0e70b1852f55d872","name":"pending"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-vector-cold-filter-315789-11242154081545-0-0/data/alice/app/data/flush_parity.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1793811406,"id":"6aeb63ce0e70b1852f55d873","name":"flush_parity"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-vector-cold-filter-315789-11242154081545-0-0/data/alice/app/data/tie_parity.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1793811406,"id":"6aeb63ce0e70b1852f55d874","name":"tie_parity"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-vector-cold-filter-315789-11242154081545-0-0/data/alice/app/data/tombs.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1793811406,"id":"6aeb63ce0e70b1852f55d875","name":"tombs"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-vector-cold-filter-315789-11242154081545-0-0/data/alice/app/data/memory_tombs.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1793811406,"id":"6aeb63ce0e70b1852f55d876","name":"memory_tombs"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-vector-cold-filter-315789-11242154081545-0-0/data/alice/app/data/visibility_sst.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1793811406,"id":"6aeb63ce0e70b1852f55d877","name":"visibility_sst"}
+[ENGINE][CREATE COLLECTION] Created /tmp/pacificdb-test-vector-cold-filter-315789-11242154081545-0-0/data/alice/app/data/visibility_memory.bin
+[ENGINE][CREATE COLLECTION] Updated db.meta with collection metadata: {"created":1793811406,"id":"6aeb63ce0e70b1852f55d878","name":"visibility_memory"}
+VECTOR_COLD_FILTER_FAIL: DATA_ROOT is required; refusing cwd-relative Raft storage
+[LSM] Background maintenance stopping

@@ -1284,34 +1284,49 @@ static void repairMissingSstReadSidecars() {
     }
 }
 
-static bool hasVisibleCommitState(const json& doc) {
-    if (!doc.is_object()) return false;
-    if (doc.contains("_visibility_state") && doc["_visibility_state"].is_string()) {
-        const std::string state = doc["_visibility_state"].get<std::string>();
-        return state == "COMMITTED_VISIBLE" || state == "TOMBSTONED";
-    }
-    if (doc.contains("visibility_state") && doc["visibility_state"].is_string()) {
-        const std::string state = doc["visibility_state"].get<std::string>();
-        return state == "COMMITTED_VISIBLE" || state == "TOMBSTONED";
-    }
-    if (doc.contains("committed") && doc["committed"].is_boolean()) {
-        return doc["committed"].get<bool>();
-    }
-    return true;
+// The same visibility rules operate on JSON documents and selective encoded
+// row lookups. JSON callers retain references; encoded scans decode only fields
+// needed by the selected rule, without allocating a projected metadata object.
+static const json* documentField(const json& doc, const char* name) {
+    const auto found = doc.find(name);
+    return found == doc.end() ? nullptr : &*found;
 }
 
-static bool extractRowCommitIndex(const json& doc, uint64_t& rowCommit) {
-    try {
-        if (doc.contains("_raft_commit_index") && (doc["_raft_commit_index"].is_number_integer() || doc["_raft_commit_index"].is_number_unsigned())) {
-            rowCommit = doc["_raft_commit_index"].get<uint64_t>();
-            return true;
+template<class Lookup>
+static bool fieldsHaveVisibleCommitState(const Lookup& lookup) {
+    for (const char* name : {"_visibility_state", "visibility_state"}) {
+        const auto value = lookup(name);
+        if (value && value->is_string()) {
+            const auto state = value->template get<std::string>();
+            return state == "COMMITTED_VISIBLE" || state == "TOMBSTONED";
         }
-        if (doc.contains("commit_index") && (doc["commit_index"].is_number_integer() || doc["commit_index"].is_number_unsigned())) {
-            rowCommit = doc["commit_index"].get<uint64_t>();
-            return true;
+    }
+    const auto value = lookup("committed");
+    return !value || !value->is_boolean() || value->template get<bool>();
+}
+
+static bool hasVisibleCommitState(const json& doc) {
+    return doc.is_object() && fieldsHaveVisibleCommitState(
+        [&](const char* name) { return documentField(doc, name); });
+}
+
+template<class Lookup>
+static bool fieldsRowCommitIndex(const Lookup& lookup, uint64_t& rowCommit) {
+    try {
+        for (const char* name : {"_raft_commit_index", "commit_index"}) {
+            const auto value = lookup(name);
+            if (value && (value->is_number_integer() || value->is_number_unsigned())) {
+                rowCommit = value->template get<uint64_t>();
+                return true;
+            }
         }
     } catch (...) {}
     return false;
+}
+
+static bool extractRowCommitIndex(const json& doc, uint64_t& rowCommit) {
+    return fieldsRowCommitIndex(
+        [&](const char* name) { return documentField(doc, name); }, rowCommit);
 }
 
 static bool standaloneRaftVisibilityBypass() {
@@ -1372,35 +1387,30 @@ static void stampVisibilityMetadata(json& doc, uint64_t committedIndex) {
         : "PENDING";
 }
 
-static bool docVisibleByCommitIndex(const json& doc, uint64_t committedIndex) {
-    if (!doc.is_object()) return false;
-
+template<class Lookup>
+static bool fieldsVisibleByCommitIndex(const Lookup& lookup, uint64_t committedIndex) {
+    // Do not cache leadership/bypass state across rows: these checks preserve
+    // the existing policy during concurrent Raft state changes.
     if (!RaftCore::instance().isEnabled()) {
-        if (doc.contains("_visibility_state") && doc["_visibility_state"].is_string()) {
-            const std::string state = doc["_visibility_state"].get<std::string>();
-            return state != "PENDING";
-        }
-        return true;
+        const auto value = lookup("_visibility_state");
+        return !value || !value->is_string() || value->template get<std::string>() != "PENDING";
     }
-
-    if (!hasVisibleCommitState(doc)) return false;
+    if (!fieldsHaveVisibleCommitState(lookup)) return false;
     if (standaloneRaftVisibilityBypass()) return true;
-
     try {
         uint64_t rowCommit = 0;
-        if (!extractRowCommitIndex(doc, rowCommit)) return false;
-        if (rowCommit > committedIndex) return false;
-
-        uint64_t floor = rowCommit;
-        if (doc.contains("_visibility_floor") && (doc["_visibility_floor"].is_number_integer() || doc["_visibility_floor"].is_number_unsigned())) {
-            floor = doc["_visibility_floor"].get<uint64_t>();
-        }
+        if (!fieldsRowCommitIndex(lookup, rowCommit) || rowCommit > committedIndex) return false;
+        const auto value = lookup("_visibility_floor");
+        const uint64_t floor = value && (value->is_number_integer() || value->is_number_unsigned())
+            ? value->template get<uint64_t>() : rowCommit;
         if (floor > committedIndex) return false;
-    } catch (...) {
-        return false;
-    }
-
+    } catch (...) { return false; }
     return true;
+}
+
+static bool docVisibleByCommitIndex(const json& doc, uint64_t committedIndex) {
+    return doc.is_object() && fieldsVisibleByCommitIndex(
+        [&](const char* name) { return documentField(doc, name); }, committedIndex);
 }
 
 // V11.4-PATH-001. LSM_ROOT is a plain std::string that defaults to empty, and 44 of its 47
@@ -5636,12 +5646,8 @@ bool LSM::visitLatest(const std::string& userId,
     };
     auto visible = [&](const LatestRowView& row) {
         if(includeUncommitted)return true;
-        json metadata = json::object();
-        for (const char* field : {"_visibility_state", "visibility_state", "committed",
-                                  "_raft_commit_index", "commit_index", "_visibility_floor"}) {
-            if (auto value = row.field(field)) metadata[field] = std::move(*value);
-        }
-        return docVisibleByCommitIndex(metadata, committedIndex);
+        return fieldsVisibleByCommitIndex(
+            [&](const char* name) { return row.field(name); }, committedIndex);
     };
 
     std::unordered_map<std::string, Candidate> latest;

@@ -1,0 +1,65 @@
+{
+  "status": "PASS",
+  "productionReady": false,
+  "branch": "v1.2-production-readiness-20261104",
+  "scope": "Linux x64 development candidate built before commit with dirty-tree metadata; not a qualified release artifact; builds and all listed checks exercised; no platform/security/power certification",
+  "engine_sha256": "3eb806899aa6182b663f969a680bf13efe79cc4968d241d3e241b98c04228ca2",
+  "source_base_revision": "6bd5a71779bb9952217cfbc560d28a296596b0d7",
+  "checkpoint_checks": 86,
+  "ctest_cases": 59,
+  "complete_community": "PASS",
+  "cross_sdk": "PASS",
+  "scoped_sanitizers": "LSM, query, storage format, durable file ops and selected test translation units instrumented; linked dependencies not a fully sanitized engine",
+  "sanitizer_status": "PASS",
+  "rf3_upgrade": "PASS",
+  "operations_contract": "PASS",
+  "npm_advisories": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "total": 0
+  },
+  "remaining_release_gates": {
+    "exact_candidate_native_matrix": "INCOMPLETE",
+    "independent_security_review": "BLOCKED: exact-candidate signed report/artifact evidence not supplied",
+    "physical_power": "BLOCKED: external dedicated-host evidence not supplied",
+    "signing_and_package_qualification": "INCOMPLETE",
+    "media_efficiency_benchmarks": "INCOMPLETE: dependent on production acceptance"
+  },
+  "failed_attempts": [
+    {
+      "attempt": 1,
+      "result": "FAIL",
+      "reason": "Metadata strict-index fixture raced an intentionally ineligible busy index; deterministic busy-index fallback coverage added, production limits unchanged."
+    },
+    {
+      "attempt": 2,
+      "result": "BLOCKED",
+      "reason": "Fresh CMake identity test lacked extracted OpenSSL headers; rerun with required dependency toolchain, OpenSSL remained mandatory."
+    },
+    {
+      "attempt": 3,
+      "result": "PASS local qualification; FAIL benchmark setup",
+      "reason": "Storage ownership guard refused cloned source canonical-root identity. Attempt4 provisions engine-created owned destination and restores offline data excluding root-local identity/lock."
+    },
+    {
+      "attempt": 4,
+      "result": "PASS functional/build qualification; FAIL filtered-scan latency diagnostic",
+      "reason": "Hardening median7180.76ms versus4602.73ms control. Retained original results; subsequent performance refactor is measured separately."
+    }
+  ],
+  "source_review": "INCOMPLETE: prior model-assisted source review covered committed6bd5a71; this subsequent four-file performance refactor is qualified by tests but has no new independent review",
+  "source_review_exclusions": [
+    "Final runtime evidence",
+    "Native platforms",
+    "Physical power",
+    "Independent security",
+    "Signing/packages",
+    "1M ACK threshold until measured",
+    "Exhaustive race/crash-state proof",
+    "Deferred distributed/PQ capabilities"
+  ],
+  "performance_status": "INCOMPLETE: latest5-query baseline4433.06ms/candidate4482.40ms; insufficient observations for statistically qualified parity or tail claims. Prior7180.76ms regression reduced, not evidence of a latency win."
+}
