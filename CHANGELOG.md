@@ -1,5 +1,9 @@
 # Unreleased v1.2 follow-up
 
+- Retire observably closed idle Python connections before dispatch, including
+  queued idle-error frames over TLS. Java probes long-idle connections outside
+  the pool lock. Preserve healthy keepalive reuse and never replay sent writes;
+  add TCP/TLS closure and single-dispatch regressions.
 - Validate operator accounts files through the opened descriptor/Windows handle
   with native ownership and access checks and a 1 MiB limit. Reject broad access
   and links; join the memory monitor on startup refusal. Keep account roles,

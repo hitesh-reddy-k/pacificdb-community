@@ -21,6 +21,7 @@ final class ConnectionPool implements AutoCloseable {
     private final SocketFactory factory;
     private final ArrayDeque<Socket> idle = new ArrayDeque<>();
     private final Set<Socket> sockets = new HashSet<>();
+    private final IdentityHashMap<Socket, Long> idleSince = new IdentityHashMap<>();
     private final ScheduledThreadPoolExecutor timer;
     private int leased;
     private boolean closed;
@@ -68,8 +69,9 @@ final class ConnectionPool implements AutoCloseable {
 
     private synchronized void release(Socket socket, boolean reusable) {
         leased--;
-        if (!closed && reusable && !socket.isClosed()) idle.addLast(socket);
-        else { sockets.remove(socket); closeSocket(socket); }
+        if (!closed && reusable && !socket.isClosed()) {
+            idle.addLast(socket); idleSince.put(socket, System.nanoTime());
+        } else { idleSince.remove(socket); sockets.remove(socket); closeSocket(socket); }
         notifyAll();
     }
 
@@ -83,6 +85,30 @@ final class ConnectionPool implements AutoCloseable {
         boolean[] pending = {true};
         try {
             socket = acquire(deadline);
+            Long releasedAt;
+            synchronized (this) { releasedAt = idleSince.remove(socket); }
+            if (releasedAt != null && System.nanoTime() - releasedAt >= TimeUnit.SECONDS.toNanos(1)) {
+                boolean healthy;
+                try {
+                    // No unsolicited frames belong to an idle synchronous
+                    // connection. Probe only long-idle leases, outside the pool
+                    // lock, before sending anything. A timeout means it remains
+                    // healthy; EOF, queued bytes or a TLS error retire it.
+                    socket.setSoTimeout(Math.min(1, remaining(deadline)));
+                    socket.getInputStream().read(); healthy = false;
+                } catch (SocketTimeoutException expected) { healthy = true; }
+                catch (IOException expired) { healthy = false; }
+                if (!healthy) {
+                    synchronized (this) { sockets.remove(socket); }
+                    closeSocket(socket);
+                    Socket replacement = factory.createSocket();
+                    synchronized (this) {
+                        if (closed) { closeSocket(replacement); throw new PacificDBException("client_closed"); }
+                        sockets.add(replacement);
+                    }
+                    socket = replacement;
+                }
+            }
             Socket leasedSocket = socket;
             expiry = timer.schedule(() -> {
                 synchronized (deadlineLock) { if (pending[0]) closeSocket(leasedSocket); }
@@ -159,7 +185,7 @@ final class ConnectionPool implements AutoCloseable {
     @Override public synchronized void close() {
         if (closed) return;
         closed = true;
-        sockets.forEach(ConnectionPool::closeSocket); sockets.clear(); idle.clear();
+        sockets.forEach(ConnectionPool::closeSocket); sockets.clear(); idle.clear(); idleSince.clear();
         timer.shutdownNow(); notifyAll();
     }
 }

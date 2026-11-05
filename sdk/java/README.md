@@ -81,6 +81,12 @@ write send can have an unknown outcome: **no automatic write retry**. Deadlines
 cover pool wait/connect/TLS/read and stalled writes; the OS DNS resolver can
 exceed them. `close()` is idempotent, closes active sockets and wakes waiters.
 
+For leases idle at least one second, the pool checks for EOF or unsolicited
+input with a short bounded read before dispatch, outside the pool lock. It
+replaces an expired socket before sending a command; a healthy idle socket is
+reused. A close racing a send still produces an explicit unknown-outcome error.
+This does not retry a sent write.
+
 
 ## Media and backups
 

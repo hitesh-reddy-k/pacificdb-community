@@ -73,6 +73,11 @@ outcome: **writes are never silently retried**. The deadline covers pool waiting
 and socket I/O; OS DNS resolution can exceed it. `close()` is idempotent and
 wakes queued calls; always use a context manager or close explicitly.
 
+Before reusing an idle connection, the pool retires sockets with buffered input
+or an observable close. This happens before dispatch, without replaying a sent
+command. A close racing the dispatch still returns an explicit unknown-outcome
+error. Healthy TCP/TLS connections remain reusable.
+
 
 ## Media and backups
 

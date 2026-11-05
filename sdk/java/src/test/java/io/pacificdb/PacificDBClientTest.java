@@ -2,6 +2,9 @@ package io.pacificdb;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.Arguments;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -30,6 +33,60 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 class PacificDBClientTest {
+    static java.util.stream.Stream<Arguments> idleModes() {
+        return java.util.stream.Stream.of(Arguments.of(false,false),Arguments.of(false,true),
+            Arguments.of(true,false),Arguments.of(true,true));
+    }
+
+    @ParameterizedTest @MethodSource("idleModes")
+    void replacesLongIdleConnectionBeforeDispatchWithoutWriteReplay(boolean encrypted, boolean queuedError) throws Exception {
+        SSLContext[] contexts = encrypted ? testTlsContexts() : null;
+        try (ServerSocket server = encrypted ? contexts[0].getServerSocketFactory().createServerSocket(0) : new ServerSocket(0)) {
+            var expire = new java.util.concurrent.CountDownLatch(1);
+            var closed = new java.util.concurrent.CountDownLatch(1);
+            var frames = new java.util.concurrent.CopyOnWriteArrayList<String>();
+            var connections = new java.util.concurrent.atomic.AtomicInteger();
+            var executor = Executors.newSingleThreadExecutor();
+            var future = executor.submit(() -> {
+                try (Socket first = server.accept()) {
+                    connections.incrementAndGet();
+                    var reader = new BufferedReader(new InputStreamReader(first.getInputStream(), StandardCharsets.UTF_8));
+                    for (int i=0;i<2;i++) {
+                        frames.add(reader.readLine());
+                        first.getOutputStream().write("{\"ok\":true,\"_pacificdb_connection_keepalive\":true}\n".getBytes(StandardCharsets.UTF_8));
+                        first.getOutputStream().flush();
+                    }
+                    if (!expire.await(3, TimeUnit.SECONDS)) throw new IOException("test expiry not released");
+                    if (queuedError) {
+                        first.getOutputStream().write("{\"error\":\"request_incomplete\"}\n".getBytes(StandardCharsets.UTF_8));
+                        first.getOutputStream().flush();
+                    }
+                }
+                closed.countDown();
+                try (Socket second = server.accept()) {
+                    connections.incrementAndGet();
+                    frames.add(new BufferedReader(new InputStreamReader(second.getInputStream(), StandardCharsets.UTF_8)).readLine());
+                    second.getOutputStream().write("{\"ok\":true}\n".getBytes(StandardCharsets.UTF_8));second.getOutputStream().flush();
+                }
+                return null;
+            });
+            var options=ConnectionOptions.fromUrl((encrypted?"pacificdbs":"pacificdb")+"://localhost:"+server.getLocalPort()+"/app");
+            try (var pool=new ConnectionPool(options,encrypted?contexts[1].getSocketFactory():null)) {
+                assertEquals(Map.of("ok",true),pool.request("{\"action\":\"ping\"}\n".getBytes(StandardCharsets.UTF_8),System.nanoTime()+TimeUnit.SECONDS.toNanos(5)));
+                Thread.sleep(1100);
+                assertEquals(Map.of("ok",true),pool.request("{\"action\":\"seed\"}\n".getBytes(StandardCharsets.UTF_8),System.nanoTime()+TimeUnit.SECONDS.toNanos(5)));
+                assertEquals(1,connections.get(),"healthy long-idle TLS/TCP connection must remain reusable");
+                expire.countDown();org.junit.jupiter.api.Assertions.assertTrue(closed.await(2,TimeUnit.SECONDS));Thread.sleep(1100);
+                assertEquals(Map.of("ok",true),pool.request("{\"action\":\"insert\",\"id\":\"one-write\"}\n".getBytes(StandardCharsets.UTF_8),System.nanoTime()+TimeUnit.SECONDS.toNanos(5)));
+                future.get(2,TimeUnit.SECONDS);
+                assertEquals(2,connections.get());assertEquals(3,frames.size());
+                assertEquals(1,frames.stream().filter(frame->frame.contains("one-write")).count());
+            } finally {
+                expire.countDown();server.close();executor.shutdownNow();
+                org.junit.jupiter.api.Assertions.assertTrue(executor.awaitTermination(3,TimeUnit.SECONDS));
+            }
+        }
+    }
     private SSLContext[] testTlsContexts() throws Exception { return testTlsContexts(null); }
     private SSLContext[] testTlsContexts(Path caFile) throws Exception {
         // Generate a fresh test-only certificate so no private key is checked in.
