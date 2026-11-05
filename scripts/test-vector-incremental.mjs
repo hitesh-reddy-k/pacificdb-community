@@ -23,7 +23,7 @@ async function start(name,enabled,extra={}) {
     {username:'reader',password,role:'READ_ONLY'}]),{mode:0o600});
   const port=await freePort();let raftPort=await freePort();while(raftPort===port)raftPort=await freePort();
   const log=createWriteStream(path.join(home,`engine-${Date.now()}.log`));
-  const processHandle=spawn(path.join(build,'db_engine'),[],{env:{...process.env,
+  const env={...process.env,
     PACIFICDB_ENVIRONMENT:'development',PACIFICDB_HOME:home,DATA_ROOT:path.join(home,'data'),
     BACKUP_ROOT:path.join(home,'backup'),RESTORE_DIR:path.join(home,'restore'),
     ENGINE_BIND_HOST:'127.0.0.1',ENGINE_PORT:String(port),ENGINE_AUTH_REQUIRED:'1',
@@ -32,25 +32,43 @@ async function start(name,enabled,extra={}) {
     MIN_QUORUM_SIZE:'1',ENGINE_CPU_CORES:'2',CONN_MIN_THREADS:'12',CONN_MAX_THREADS:'12',
     ADAPTIVE_ADMISSION:'0',MAX_SCAN_ROWS:'10000',MAX_RESULT_DOCS:'20',MAX_QUERY_TIMEOUT_SEC:'30',
     PACIFICDB_ENGINE_ACCOUNTS_FILE:accounts,PACIFICDB_VECTOR_PREVIEW_ENABLED:enabled?'1':'0',
-    WAL_ENABLED:'true',WAL_FSYNC_ENABLED:'true',WAL_FLUSH_ON_COMMIT:'true',...extra},stdio:['ignore','pipe','pipe']});
+    WAL_ENABLED:'true',WAL_FSYNC_ENABLED:'true',WAL_FLUSH_ON_COMMIT:'true',...extra};
+  const processHandle=spawn(path.join(build,process.platform==='win32'?'db_engine.exe':'db_engine'),[],{env,stdio:['ignore','pipe','pipe']});
+  let diagnostic='';
+  for(const stream of [processHandle.stdout,processHandle.stderr])stream.on('data',chunk=>{diagnostic=(diagnostic+chunk.toString()).slice(-8192);});
   processHandle.stdout.pipe(log,{end:false});processHandle.stderr.pipe(log,{end:false});
   const clients=[];
   const probe=new PacificDBClient({port,timeoutMs:300});clients.push(probe);
   let ready=false;
-  for(let i=0;i<150;++i){if(processHandle.exitCode!==null)throw Error(`startup exited ${processHandle.exitCode}`);
+  for(let i=0;i<150;++i){if(processHandle.exitCode!==null)throw Error(`startup exited ${processHandle.exitCode}: ${diagnostic.replaceAll(password,'[fixture-secret]')}`);
     try{ready=(await probe.request({action:'ping'})).status==='pong';}catch{}
     if(ready)break;await new Promise(resolve=>setTimeout(resolve,100));}
   assert.ok(ready);probe.close();
-  return {port,clients,processHandle,log,async client(username,userId,database='app'){
+  return {port,clients,processHandle,log,env,async client(username,userId,database='app'){
     const c=new PacificDBClient({port,userId,database,poolSize:4,timeoutMs:30000});clients.push(c);
     await c.authenticate(username,password);return c;}};
 }
 async function stop(server){
   for(const c of server.clients)c.close();
-  if(server.processHandle.exitCode===null){server.processHandle.kill('SIGINT');
-    const timer=setTimeout(()=>server.processHandle.kill('SIGKILL'),15000);
-    await once(server.processHandle,'exit');clearTimeout(timer);}
-  server.log.end();await once(server.log,'finish');assert.equal(server.processHandle.exitCode,0);
+  let failure;
+  if(server.processHandle.exitCode===null&&server.processHandle.signalCode===null){
+    const exited=once(server.processHandle,'exit');
+    const timer=setTimeout(()=>server.processHandle.kill('SIGKILL'),process.platform==='win32'?40000:15000);
+    try{
+    if(process.platform==='win32'){
+      // Use the engine's private owner-identity shutdown event. Node's Windows
+      // kill emulation cannot exercise the graceful signal path used on POSIX.
+      const stopper=spawn(path.join(build,'pacificdb.exe'),['--port',String(server.port),'stop'],{env:server.env,stdio:'ignore'});
+      const cliTimer=setTimeout(()=>stopper.kill('SIGKILL'),35000);
+      const [code]=await once(stopper,'exit');clearTimeout(cliTimer);assert.equal(code,0,'owned Windows engine stop failed');
+    }else server.processHandle.kill('SIGINT');
+    await exited;
+    }catch(error){failure=error;
+      if(server.processHandle.exitCode===null&&server.processHandle.signalCode===null)server.processHandle.kill('SIGKILL');
+      await exited;
+    }finally{clearTimeout(timer);}
+  }
+  server.log.end();await once(server.log,'finish');if(failure)throw failure;assert.equal(server.processHandle.exitCode,0);
 }
 async function wait(client,collection,name){
   const deadline=Date.now()+30000;

@@ -1,5 +1,10 @@
 # Unreleased v1.2 follow-up
 
+- Keep complete incremental ANN construction eligible during unrelated writes;
+  fence real source edits and withhold eligibility until journal coverage is
+  installed. Report lifecycle status during paused apply without bypassing the
+  public query fence. Add controlled build/apply regressions and Windows fixture
+  startup diagnostics; platform qualification remains pending.
 - Keep a complete, covered incremental ANN generation eligible across unrelated
   Raft commits. Preserve applied-index, source/configuration, journal and deadline
   fences; add controlled scheduling-stall regressions and native/sanitizer CI

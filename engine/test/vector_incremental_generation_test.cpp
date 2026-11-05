@@ -67,7 +67,41 @@ void completeVisibility(){
  assert(!manager->acquire(stamp()));manager->closeAndWait();
  std::cout<<"COMPLETE_VISIBILITY_STALLED_WORKER_PENDING_FLOOR_UNVERSIONED_GUARDS_PASS\n";
 }
+void completeConstruction(){
+ for(const std::string change:{"visibility","collection","root","configuration","rollback"}){
+  std::atomic<uint64_t> root{1},collection{1},visibility{7},configuration{0};
+  const auto certificate=[&]()->std::optional<VectorFreshness::Stamp>{
+   VectorFreshness::Stamp stamp{root.load(),collection.load(),visibility.load()};
+   stamp.configuration=configuration.load();return stamp;
+  };
+  HNSWConfig config;config.dimensions=2;config.maxElements=100;config.maxMemoryBytes=1024*1024;
+  auto journal=std::make_shared<VectorChangeJournal>(100,65536);const auto anchor=journal->capture();
+  auto manager=std::make_shared<VectorIndexGeneration>(65536);
+  const auto source=[&](const VectorIndexGeneration::Emit& emit,const std::atomic<bool>&){
+   emit({"one",{1,0}});emit({"two",{0,1}});
+   if(change=="visibility")++visibility;
+   else if(change=="collection")++collection;
+   else if(change=="root")++root;
+   else if(change=="configuration")++configuration;
+   else --visibility;
+  };
+  const auto ready=[&](VectorIndexGeneration& m){
+   m.enableMaintenance(journal,anchor,certificate,[](const std::string&)->std::optional<VectorIndexGeneration::Record>{return {};},128,1000,true);
+  };
+  assert(manager->enqueue(config,certificate,source,{},false,{},ready,{},true));
+  wait(manager,change=="visibility"?State::READY:State::STALE);
+  if(change=="visibility"){
+   const auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds(5);
+   std::shared_ptr<const VectorIndexGeneration::Generation> generation;
+   while(!(generation=manager->acquire(*certificate()))){assert(std::chrono::steady_clock::now()<deadline);std::this_thread::yield();}
+   assert(generation->visibilityComplete&&generation->certificate.visibility==8&&generation->graph->size()==2);
+  }else assert(!manager->acquire(*certificate()));
+  manager->closeAndWait();
+ }
+ std::cout<<"COMPLETE_BACKGROUND_CONSTRUCTION_MONOTONIC_VISIBILITY_AND_SOURCE_FENCES_PASS\n";
+}
 int main(){
+ completeConstruction();
  completeVisibility();
  std::mutex sourceMutex;std::map<std::string,std::vector<float>> records;
  uint64_t revision=1,visibility=0,root=1;bool throwCertificate=false;

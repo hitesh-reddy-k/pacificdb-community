@@ -12,17 +12,19 @@ NativeVectorIndexService::~NativeVectorIndexService() { shutdown(); }
 std::shared_ptr<VectorIndexGeneration> NativeVectorIndexService::queue(
     const std::string& key, const json& definition, HNSWConfig config, size_t sourceBytes,
     VectorIndexGeneration::Certificate certificate, VectorIndexGeneration::Source source,
-    std::optional<LexicalConfig> lexical, bool exactOnly, VectorIndexGeneration::Admission admission, VectorIndexGeneration::Ready ready, VectorIndexGeneration::Checkpoints checkpoints) {
+    std::optional<LexicalConfig> lexical, bool exactOnly, VectorIndexGeneration::Admission admission, VectorIndexGeneration::Ready ready, VectorIndexGeneration::Checkpoints checkpoints, bool sourceVisibilityComplete) {
     reap();
     if (key.empty() || key.size() > 4096 || !definition.is_object() || definition.dump().size() > 16384)
         throw std::invalid_argument("invalid native vector index identity/definition");
     HNSWIndex validate(config);
     if (!sourceBytes || !certificate || !source) throw std::invalid_argument("invalid vector source");
+    if(sourceVisibilityComplete && (exactOnly||lexical||!ready))
+        throw std::invalid_argument("complete visibility build requires HNSW and a coverage publication callback");
     json configuration{{"M", config.M}, {"ef_construction", config.efConstruction},
         {"ef_search", config.efSearch}, {"metric", static_cast<int>(config.metric)},
         {"dimensions", config.dimensions}, {"max_elements", config.maxElements},
         {"max_index_bytes", config.maxMemoryBytes}, {"max_build_ms", config.maxBuildMilliseconds},
-        {"max_source_bytes", sourceBytes}, {"exact_only", exactOnly}};
+        {"max_source_bytes", sourceBytes}, {"exact_only", exactOnly}, {"source_visibility_complete",sourceVisibilityComplete}};
     if (lexical) {
         LexicalIndex validateLexical(*lexical);
         configuration["lexical"] = {{"memory", lexical->maxMemoryBytes}, {"records", lexical->maxRecords},
@@ -63,7 +65,7 @@ std::shared_ptr<VectorIndexGeneration> NativeVectorIndexService::queue(
     }
     // Queue admission and every callback occur outside the registry mutex.
     // A concurrent unload cancels a task through the manager revision contract.
-    manager->enqueue(config, std::move(certificate), std::move(source), lexical, exactOnly, std::move(admission), std::move(ready), std::move(checkpoints));
+    manager->enqueue(config, std::move(certificate), std::move(source), lexical, exactOnly, std::move(admission), std::move(ready), std::move(checkpoints),sourceVisibilityComplete);
     {
         std::lock_guard<std::mutex> lock(mutex_);
         const auto found = entries_.find(key);

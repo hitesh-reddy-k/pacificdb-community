@@ -50,23 +50,34 @@ std::string key(const std::string& user, const std::string& db, const std::strin
     return json::array({DatabaseEngine::getDataRoot(), user, db, collection, name}).dump();
 }
 std::optional<VectorFreshness::Stamp> certificate(const std::string& user, const std::string& db,
-                                                 const std::string& collection) {
-    auto before = LSM::vectorCertificate(user, db, collection);
-    const auto spec = LSM::vectorCertificate(user, "pacificdb_meta", "vector_index_specs_v1");
-    const auto after = LSM::vectorCertificate(user, db, collection);
-    if (!before || !spec || before != after || before->root != spec->root ||
-        before->visibility != spec->visibility) return {};
-    // A committed vector entry can precede its LSM apply. An unchanged source
-    // revision alone cannot prove that entry irrelevant; wait for apply first.
-    const auto& raft=RaftCore::instance();
-    if(raft.isEnabled() && RaftCore::instance().getLastApplied()<before->visibility) return {};
-    before->configuration = spec->collection;
-    return before;
+                                                 const std::string& collection,bool requireApplied=true) {
+    // Background work may inspect a stable physical source during unrelated
+    // apply traffic. Only query/status certificates may authorize a response,
+    // and those still require the exact committed/applied read boundary.
+    for(size_t attempt=0;attempt<(requireApplied?1:32);++attempt){
+        const auto before=LSM::vectorCertificate(user,db,collection);
+        const auto spec=LSM::vectorCertificate(user,"pacificdb_meta","vector_index_specs_v1");
+        auto after=LSM::vectorCertificate(user,db,collection);
+        if(!before||!spec||!after||before->root!=spec->root)continue;
+        const bool stable=requireApplied
+            ? before==after && before->visibility==spec->visibility
+            : after->sameSourceAtOrAfter(*before) && before->visibility<=spec->visibility && spec->visibility<=after->visibility;
+        if(!stable)continue;
+        // A committed vector entry can precede its LSM apply. It cannot be
+        // declared irrelevant merely because the physical revision is stable.
+        const auto& raft=RaftCore::instance();
+        if(requireApplied && raft.isEnabled() && RaftCore::instance().getLastApplied()<after->visibility)return {};
+        after->configuration=spec->collection;return after;
+    }
+    return {};
 }
 struct Definition { json spec; VectorFreshness::Stamp stamp; };
 Definition definition(const std::string& user, const std::string& db,
-                      const std::string& collection, const std::string& name) {
-    const auto before = certificate(user, db, collection);
+                      const std::string& collection, const std::string& name,bool requireApplied=true) {
+    const auto before = certificate(user, db, collection,requireApplied);
+    const auto matches=[&](const std::optional<VectorFreshness::Stamp>& after){
+        return before && after && (*after==*before || (!requireApplied && after->sameSourceAtOrAfter(*before)));
+    };
     // A READY generation certifies this process-local catalog copy. A metadata,
     // root, collection or visibility change forces the authoritative slow path.
     if(before){
@@ -74,12 +85,13 @@ Definition definition(const std::string& user, const std::string& db,
         const auto manager=current->get(identity);
         if(manager&&manager->acquire(*before)){
             const auto cached=current->definition(identity,manager);
-            if(cached&&certificate(user,db,collection)==before)return {*cached,*before};
+            const auto after=certificate(user,db,collection,requireApplied);
+            if(cached&&matches(after))return {*cached,*after};
         }
     }
     const auto definitions = VectorIndexCatalog::list(user, db, collection);
-    const auto after = certificate(user, db, collection);
-    if (!before || before != after) throw std::runtime_error("vector_index_source_changing");
+    const auto after = certificate(user, db, collection,requireApplied);
+    if (!matches(after)) throw std::runtime_error("vector_index_source_changing");
     for (const auto& spec : definitions) if (spec.at("name") == name) return {spec, *after};
     throw std::runtime_error("vector_index_unavailable: ABSENT");
 }
@@ -145,7 +157,7 @@ json DatabaseEngine::buildNativeVectorIndex(const std::string& user, const std::
 }
 json DatabaseEngine::rebuildNativeVectorIndex(const std::string& user, const std::string& db,
                                              const std::string& collection, const std::string& name) {
-    const auto loaded = definition(user, db, collection, name);
+    const auto loaded = definition(user, db, collection, name,false);
     const auto spec = loaded.spec;
     admit(spec);
     if (spec.at("field") != "vector") throw std::invalid_argument("native HNSW field must be vector");
@@ -169,7 +181,7 @@ json DatabaseEngine::rebuildNativeVectorIndex(const std::string& user, const std
     }
     const auto stamp = loaded.stamp;
     auto provider = [user, db, collection, stamp]() -> std::optional<pacificdb::VectorFreshness::Stamp> {
-        auto current = certificate(user, db, collection);
+        auto current = certificate(user, db, collection,false);
         if (!current || current->root != stamp.root || current->configuration != stamp.configuration) return {};
         return current;
     };
@@ -273,12 +285,12 @@ json DatabaseEngine::rebuildNativeVectorIndex(const std::string& user, const std
         spec.value("algorithm",std::string("hnsw")) == "flat", [] {
             if (MemoryManager::getPressureState() >= MemoryPressureState::THROTTLED)
                 throw std::runtime_error("vector_index_global_memory_pressure");
-        },std::move(ready),std::move(checkpoints));
+        },std::move(ready),std::move(checkpoints),incremental);
     return nativeVectorIndexStatus(user, db, collection, name);
 }
 json DatabaseEngine::nativeVectorIndexStatus(const std::string& user, const std::string& db,
                                             const std::string& collection, const std::string& name) {
-    const auto loaded = definition(user, db, collection, name);
+    const auto loaded = definition(user, db, collection, name,false);
     const auto manager = service()->get(key(user, db, collection, name));
     json result{{"name", name}, {"spec", loaded.spec}, {"state", "ABSENT"}, {"generation", 0},
                 {"resources", service()->metrics()}};
@@ -286,7 +298,10 @@ json DatabaseEngine::nativeVectorIndexStatus(const std::string& user, const std:
     const auto status = manager->status();
     result["state"] = stateName(status.state); result["generation"] = status.generation;
     if (!status.error.empty()) result["error"] = status.error;
-    auto generation = manager->acquire(loaded.stamp);
+    // Metadata remains observable during unrelated apply traffic, but READY
+    // still requires the same applied/source/journal fence as public queries.
+    const auto eligible=certificate(user,db,collection);
+    auto generation = eligible ? manager->acquire(*eligible) : nullptr;
     if (status.state == pacificdb::VectorIndexGeneration::State::READY && !generation) result["state"] = "STALE";
     if (generation) {
         result["checkpoint_restored"]=generation->checkpointRestored;

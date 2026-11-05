@@ -16,7 +16,7 @@ public:
         size_t sourceByteLimit, VectorIndexGeneration::Certificate certificate,
         VectorIndexGeneration::Source source, std::optional<LexicalConfig> lexical = {}, bool exactOnly = false,
         VectorIndexGeneration::Admission admission = {}, VectorIndexGeneration::Ready ready = {},
-        VectorIndexGeneration::Checkpoints checkpoints = {});
+        VectorIndexGeneration::Checkpoints checkpoints = {}, bool sourceVisibilityComplete = false);
     std::shared_ptr<VectorIndexGeneration> get(const std::string& key) const;
     std::optional<json> definition(const std::string& key,const std::shared_ptr<VectorIndexGeneration>& expected) const;
     bool unload(const std::string& key);

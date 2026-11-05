@@ -69,6 +69,77 @@ const phases=['FP_VECTOR_INCREMENTAL_BEFORE_GRAPH','FP_VECTOR_INCREMENTAL_AFTER_
 const results=[];let server;
 try{
  if(process.platform!=='win32'){
+  {
+   const fifo=path.join(root,'status-apply.fifo'),evidence=path.join(root,'status-apply.jsonl');
+   execFileSync('mkfifo',[fifo]);
+   server=await start('status-apply',true,{PACIFICDB_TEST_MODE:'vector_index_crash',
+    PACIFICDB_TEST_FAILPOINT_CONFIRM:'I_UNDERSTAND_THIS_PROCESS_WILL_TERMINATE',
+    PACIFICDB_TEST_FAILPOINT:'FP_APPLY_AFTER_RANGE_CLAIM',PACIFICDB_TEST_FAILPOINT_INDEX:'50',
+    PACIFICDB_TEST_FAILPOINT_ACTION:'pause',PACIFICDB_TEST_FAILPOINT_BARRIER_FIFO:fifo,
+    PACIFICDB_TEST_FAILPOINT_EVIDENCE:evidence});
+   const client=await server.client('alice','tenant-a');await client.createDatabase('app');
+   await client.createCollection('vectors',{vectorSchema:schema});await client.createCollection('documents');
+   await client.insertMany('vectors',[{id:'one',vector:[1,0]},{id:'two',vector:[2,0]}]);
+   await client.createVectorIndex('vectors',options);await wait(client,'vectors','ann');
+   // All setup/filler writes are acknowledged and applied on this single-node
+   // leader, so the committed frontier is also the next append's predecessor.
+   const writer=await server.client('alice','tenant-a');let tail=(await client.request({action:'ping'})).commit_index;
+   while(tail<49){await writer.insert('documents',{id:`filler-${tail}`});tail=(await client.request({action:'ping'})).commit_index;}
+   assert.equal(tail,49,'unexpected write sequence before apply pause');
+   const write=writer.insert('documents',{id:'held-unrelated'}).then(value=>({value}),error=>({error}));
+   const reachedDeadline=Date.now()+10000;
+   while(!(await readFile(evidence,'utf8').catch(()=>'' )).includes('failpoint_reached')){
+    assert.ok(Date.now()<reachedDeadline,'unrelated apply did not pause');await new Promise(resolve=>setTimeout(resolve,10));
+   }
+   let failure;
+   try{
+    const status=await client.vectorIndexStatus('vectors','ann');assert.equal(status.index.state,'STALE');
+    await assert.rejects(client.queryVector('vectors',[1,0],{...query,indexWaitMs:5000,timeoutMs:50}),/timeout|cancel/);
+   }catch(error){failure=error;}
+   await writeFile(fifo,'x');const settled=await write;if(failure)throw failure;assert.ifError(settled.error);
+   await wait(client,'vectors','ann');assert.equal((await client.queryVector('vectors',[1,0],query)).data[0].id,'two');
+   await stop(server);server=null;results.push({scenario:'status during unrelated unapplied commit',status:'PASS',
+    reports_stale_without_snapshot_error:true,query_applied_fence_preserved:true});
+  }
+  for(const mutation of ['document','vector']){
+   const fifo=path.join(root,`build-${mutation}.fifo`),evidence=path.join(root,`build-${mutation}.jsonl`);
+   execFileSync('mkfifo',[fifo]);
+   server=await start(`build-${mutation}`,true,{PACIFICDB_TEST_MODE:'vector_index_crash',
+    PACIFICDB_TEST_FAILPOINT_CONFIRM:'I_UNDERSTAND_THIS_PROCESS_WILL_TERMINATE',
+    PACIFICDB_TEST_FAILPOINT:'FP_VECTOR_BUILD_GRAPH_COMPLETE',PACIFICDB_TEST_FAILPOINT_INDEX:'1',
+    PACIFICDB_TEST_FAILPOINT_ACTION:'pause',PACIFICDB_TEST_FAILPOINT_BARRIER_FIFO:fifo,
+    PACIFICDB_TEST_FAILPOINT_EVIDENCE:evidence});
+   const client=await server.client('alice','tenant-a');await client.createDatabase('app');
+   await client.createCollection('vectors',{vectorSchema:schema});await client.createCollection('documents');
+   await client.insertMany('vectors',[{id:'one',vector:[1,0]},{id:'two',vector:[2,0]}]);
+   const writer=await server.client('alice','tenant-a');await client.createVectorIndex('vectors',options);
+   const reachedDeadline=Date.now()+10000;
+   while(!(await readFile(evidence,'utf8').catch(()=>'' )).includes('failpoint_reached')){
+    assert.ok(Date.now()<reachedDeadline,'build did not reach publication pause');
+    await new Promise(resolve=>setTimeout(resolve,10));
+   }
+   if(mutation==='document')await writer.insert('documents',{id:'unrelated',payload:'document'});
+   else await writer.updateOne('vectors',{id:'one'},{$set:{vector:[999,0]}});
+   await writeFile(fifo,'x');
+   if(mutation==='document'){
+    const deadline=Date.now()+2000;let status;
+    do{status=(await client.vectorIndexStatus('vectors','ann')).index;if(status.state==='READY')break;
+     await new Promise(resolve=>setTimeout(resolve,10));}while(Date.now()<deadline);
+    assert.equal(status.state,'READY','unrelated commit invalidated a complete background vector build');
+   }else{
+    const deadline=Date.now()+2000;let status;
+    do{status=(await client.vectorIndexStatus('vectors','ann')).index;if(status.state==='STALE')break;
+     await new Promise(resolve=>setTimeout(resolve,10));}while(Date.now()<deadline);
+    assert.equal(status.state,'STALE','background build published a source changed during construction');
+    await assert.rejects(client.queryVector('vectors',[1,0],{...query,indexWaitMs:0}),/unavailable/);
+    await client.rebuildVectorIndex('vectors','ann');await wait(client,'vectors','ann');
+   }
+   const current=await client.queryVector('vectors',[1,0],query);
+   assert.equal(current.data[0].id,mutation==='document'?'two':'one');
+   await stop(server);server=null;
+   results.push({scenario:`background construction with ${mutation} commit`,status:'PASS',
+    unrelated_source_preserved:mutation==='document',actual_source_change_fenced:mutation==='vector'});
+  }
   // Reproduce a scheduler stall longer than the default freshness retry budget,
   // without consuming host RAM. Unrelated commits remain eligible; real vector
   // changes must still reject the already-materialized old candidates.

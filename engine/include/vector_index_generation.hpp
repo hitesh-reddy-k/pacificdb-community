@@ -57,7 +57,8 @@ public:
     VectorIndexGeneration(const VectorIndexGeneration&) = delete;
     VectorIndexGeneration& operator=(const VectorIndexGeneration&) = delete;
     bool enqueue(HNSWConfig config, Certificate certificate, Source source,
-                 std::optional<LexicalConfig> lexical = {}, bool exactOnly = false, Admission admission = {}, Ready ready = {}, Checkpoints checkpoints = {});
+                 std::optional<LexicalConfig> lexical = {}, bool exactOnly = false, Admission admission = {}, Ready ready = {}, Checkpoints checkpoints = {},
+                 bool sourceVisibilityComplete = false);
     // Trusted opt-in maintenance primitive. The caller must anchor the journal
     // before the full-build certificate and record every committed source edit.
     // Storage integration is separately gated until that coverage is qualified.
@@ -88,6 +89,7 @@ private:
         std::shared_ptr<const Generation> retired;
         Ready ready;
         Checkpoints checkpoints;
+        bool sourceVisibilityComplete;
     };
     struct Maintenance {
         std::shared_ptr<VectorChangeJournal> journal;

@@ -32,15 +32,17 @@ void VectorIndexGeneration::close() {
     wake_.notify_all();
 }
 bool VectorIndexGeneration::enqueue(HNSWConfig config, Certificate certificate, Source source,
-                                    std::optional<LexicalConfig> lexical, bool exactOnly, Admission admission, Ready ready, Checkpoints checkpoints) {
+                                    std::optional<LexicalConfig> lexical, bool exactOnly, Admission admission, Ready ready, Checkpoints checkpoints, bool sourceVisibilityComplete) {
     // Validate synchronously, without changing an existing generation on error.
     HNSWIndex validate(config);
     if (lexical) { LexicalIndex validateLexical(*lexical); }
     if (!certificate || !source) throw std::invalid_argument("missing vector source/certificate");
+    if(sourceVisibilityComplete && (exactOnly||lexical||!ready))
+        throw std::invalid_argument("complete visibility build requires HNSW and a coverage publication callback");
     std::lock_guard<std::mutex> lock(mutex_);
     if (stopped_.load() || !queue_.empty() || building_) return false;
     auto cancelled = std::make_shared<std::atomic<bool>>(false);
-    queue_.push_back({config, std::move(certificate), std::move(source), ++revision_, cancelled, lexical, exactOnly, std::move(admission), {}, std::move(ready), std::move(checkpoints)});
+    queue_.push_back({config, std::move(certificate), std::move(source), ++revision_, cancelled, lexical, exactOnly, std::move(admission), {}, std::move(ready), std::move(checkpoints),sourceVisibilityComplete});
     // New acquisitions already stop while building. Retire our old ownership
     // on the worker so rebuilds do not require two full unserved generations.
     // Existing readers retain their own references and allocation charges.
@@ -110,10 +112,13 @@ void VectorIndexGeneration::run() {
                 std::chrono::milliseconds(job.config.maxBuildMilliseconds);
             size_t admissionChecks = 0;
             std::optional<VectorFreshness::Stamp> pinned;
+            const auto compatible=[&](const std::optional<VectorFreshness::Stamp>& current,const VectorFreshness::Stamp& before){
+                return current && (*current==before || (job.sourceVisibilityComplete && current->sameSourceAtOrAfter(before)));
+            };
             const auto check = [&] {
                 if (admissionChecks++ % 1024 == 0) {
                     if (job.admission) job.admission();
-                    if (pinned && job.certificate() != pinned) {
+                    if (pinned && !compatible(job.certificate(),*pinned)) {
                         sourceChanged = true;
                         throw std::runtime_error("vector source changed during construction");
                     }
@@ -218,7 +223,8 @@ void VectorIndexGeneration::run() {
             }
             if (flat) flat->freeze();
             pacificdb::test::hitFailpoint("FP_VECTOR_BUILD_GRAPH_COMPLETE", job.revision);
-            const bool unchanged = job.certificate() == certificate;
+            const auto completedCertificate=job.certificate();
+            const bool unchanged = compatible(completedCertificate,*certificate);
             pacificdb::test::hitFailpoint("FP_VECTOR_BEFORE_PUBLICATION", job.revision);
             // Releasing the final old graph reference can be O(graph size).
             // Keep that destruction outside the publication mutex.
@@ -231,7 +237,10 @@ void VectorIndexGeneration::run() {
                     continue;
                 }
                 auto generation = std::make_shared<Generation>(Generation{
-                    nextGeneration_ + 1, *certificate, std::move(graph), std::move(lexical), std::move(flat),restored,std::move(checkpointError)});
+                    nextGeneration_ + 1, *completedCertificate, std::move(graph), std::move(lexical), std::move(flat),restored,std::move(checkpointError)});
+                // Public eligibility waits for Ready to install the covered
+                // journal cursor, even if another thread observes READY here.
+                generation->visibilityComplete=job.sourceVisibilityComplete;
                 previous.swap(published_);
                 published_ = std::move(generation);
                 pacificdb::test::hitFailpoint("FP_VECTOR_DURING_PUBLICATION", job.revision);
