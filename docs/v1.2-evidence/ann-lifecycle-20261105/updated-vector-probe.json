@@ -1,0 +1,372 @@
+{
+  "status": "PASS",
+  "scope": "Targeted ANN membership and payload checks for the60acknowledged geometry updates after crash/rebuild; not a general recall guarantee",
+  "candidate": "337b9ef43300ff27a5c3c663f45b672b8ac3a6b1",
+  "cases": [
+    {
+      "id": "0",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "60",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "120",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "180",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "240",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "300",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "360",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "420",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "480",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "540",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "600",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "660",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "720",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "780",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "840",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "900",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "960",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "1020",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "1080",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "1140",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "1200",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "1260",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "1320",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "1380",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "1440",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "1500",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "1560",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "1620",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "1680",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "1740",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "1800",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "1860",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "1920",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "1980",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "2040",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "2100",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "2160",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "2220",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "2280",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "2340",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "2400",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "2460",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "2520",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "2580",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "2640",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "2700",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "2760",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "2820",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "2880",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "2940",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "3000",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "3060",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "3120",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "3180",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "3240",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "3300",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "3360",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "3420",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "3480",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    },
+    {
+      "id": "3540",
+      "authoritative_payload_verified": true,
+      "ANN_target_present": true,
+      "tie_ambiguous": false
+    }
+  ],
+  "eligible_queries": 60,
+  "target_membership_rate": 1.0,
+  "required_rate": 0.95,
+  "all_authoritative_payloads_verified": true,
+  "finished_utc": "2026-11-05T17:54:53Z"
+}

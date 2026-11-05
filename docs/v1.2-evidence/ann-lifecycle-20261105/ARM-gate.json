@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "source": "337b9ef43300ff27a5c3c663f45b672b8ac3a6b1",
+  "run_id": 42062266484,
+  "job_id": 127367129035,
+  "complete_repetitions": 10,
+  "mixed_attempts": 3600,
+  "mixed_successes": 3600,
+  "unrelated_commits_without_wait_successes": 300,
+  "exact_fallback": false,
+  "default_freshness_wait_ms": 1000,
+  "scope": "Repeated standalone native API regression on macOS ARM64; not a general production or1M qualification",
+  "verified_utc": "2026-11-05T16:23:35Z"
+}

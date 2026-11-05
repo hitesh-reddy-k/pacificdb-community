@@ -1,0 +1,6 @@
+{
+  "sdk/python/pacificdb/transport.py": "7dd34d27bb280c9e7ae2f2b6d2e44ff411878e9eb3d309207e58d845bd7ac108",
+  "sdk/python/tests/test_transport.py": "694c1ff76ecf017e79dc5d9abf461b79a1939429717a1ddab486dd2246efd302",
+  "sdk/java/src/main/java/io/pacificdb/ConnectionPool.java": "aba621a83c0ae533a41099edbad379b8e45610f0d81758d6f231732989ebe9b1",
+  "sdk/java/src/test/java/io/pacificdb/PacificDBClientTest.java": "0d8cecfa18875cdf3ae618a8517dc532d551f48f7791185ae7df21e3fbff9819"
+}

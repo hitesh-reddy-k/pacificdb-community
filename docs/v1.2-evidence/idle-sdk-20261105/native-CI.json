@@ -1,0 +1,32 @@
+{
+  "status": "PASS",
+  "source": "704becd1ff8194c5ccd6b6392088f65a3b885ece",
+  "run_id": 42073790655,
+  "jobs": [
+    {
+      "id": 127408454393,
+      "name": "macos (macos-15-intel, x64)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 127408454991,
+      "name": "macos (macos-15, arm64)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 127408455183,
+      "name": "windows",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 127408455524,
+      "name": "linux",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "scope": "PR native/Workbench installer qualification; exact frozen337source receipts separately retained. Not stable signing/notarization."
+}

@@ -1,5 +1,11 @@
 # Unreleased v1.2 follow-up
 
+- Verify incremental ANN lifecycle fixes with 87 checkpoint / 60 CTest checks,
+  selected sanitizers, repeated ARM64 strict reads, four platform installer jobs,
+  and corrected 1M 30-minute mixed load plus crash recovery. Add a parameterized
+  Linux qualification runner and scoped evidence; production certification and
+  public artifact promotion remain incomplete.
+
 - Retire observably closed idle Python connections before dispatch, including
   queued idle-error frames over TLS. Java probes long-idle connections outside
   the pool lock. Preserve healthy keepalive reuse and never replay sent writes;

@@ -1,0 +1,122 @@
+{
+  "status": "PASS",
+  "run_id": 42073790984,
+  "source": "704becd1ff8194c5ccd6b6392088f65a3b885ece",
+  "jobs": [
+    {
+      "id": 127408456347,
+      "name": "dependency-review",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 127408456935,
+      "name": "packages / sdk / node-runtimes (18)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 127408457054,
+      "name": "packages / sdk / supported-runtimes (ubuntu-22.04, 3.12, 21)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 127408457102,
+      "name": "packages / sdk / node-runtimes (24)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 127408457104,
+      "name": "packages / sdk / node-runtimes (22)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 127408457110,
+      "name": "source-linux",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 127408457200,
+      "name": "packages / sdk / supported-runtimes (ubuntu-22.04, 3.12, 11)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 127408457206,
+      "name": "packages / sdk / supported-runtimes (windows-latest, 3.12, 11)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 127408457209,
+      "name": "packages / sdk / supported-runtimes (ubuntu-22.04, 3.10, 17)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 127408457250,
+      "name": "packages / sdk / supported-runtimes (windows-latest, 3.10, 11)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 127408457304,
+      "name": "packages / sdk / supported-runtimes (ubuntu-22.04, 3.10, 21)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 127408457333,
+      "name": "packages / sdk / supported-runtimes (ubuntu-22.04, 3.10, 11)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 127408457334,
+      "name": "packages / sdk / supported-runtimes (windows-latest, 3.10, 17)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 127408457371,
+      "name": "packages / sdk / supported-runtimes (windows-latest, 3.12, 17)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 127408457398,
+      "name": "packages / sdk / supported-runtimes (windows-latest, 3.12, 21)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 127408457500,
+      "name": "packages / linux",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 127408457505,
+      "name": "packages / sdk / supported-runtimes (ubuntu-22.04, 3.12, 17)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 127408457677,
+      "name": "packages / sdk / supported-runtimes (windows-latest, 3.10, 21)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 127410157924,
+      "name": "packages / sdk / inspected-artifacts",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "scope": "Required branch workflows; not full production qualification"
+}

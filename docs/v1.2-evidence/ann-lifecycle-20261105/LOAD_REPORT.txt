@@ -1,0 +1,35 @@
+PacificDB exact-candidate short qualification: PASS
+Source: 337b9ef43300ff27a5c3c663f45b672b8ac3a6b1
+Binary SHA-256: 27dfc47f43f656dcca4017f9bf635e59cad0d537fc430cf09849e99ed922cdb1
+Production readiness: INCOMPLETE
+
+MIXED_SOAK: PASS; seconds=1800.018
+  session_connect: 12 success, 0 failed; p50=962.658ms, p95=unreported (insufficient samples), p99=unreported (insufficient samples)
+  ann_query: 14386 success, 0 failed; p50=11.716ms, p95=119.44ms, p99=192.877ms
+  document_insert: 1694 success, 0 failed; p50=83.054ms, p95=143.132ms, p99=191.217ms
+  document_read: 25172 success, 0 failed; p50=2.215ms, p95=7.429ms, p99=10.814ms
+  vector_update: 60 success, 0 failed; p50=39.132ms, p95=unreported (insufficient samples), p99=unreported (insufficient samples)
+  vector_read: 60 success, 0 failed; p50=1.943ms, p95=unreported (insufficient samples), p99=unreported (insufficient samples)
+  document_delete: 1484 success, 0 failed; p50=96.364ms, p95=146.909ms, p99=191.427ms
+  document_read_deleted: 1484 success, 0 failed; p50=2.414ms, p95=10.576ms, p99=14.465ms
+  document_seed_read: 1008 success, 0 failed; p50=2.665ms, p95=9.051ms, p99=12.861ms
+  vector_delete: 15 success, 0 failed; p50=19.084ms, p95=unreported (insufficient samples), p99=unreported (insufficient samples)
+  vector_read_deleted: 15 success, 0 failed; p50=1.71ms, p95=unreported (insufficient samples), p99=unreported (insufficient samples)
+  media_upload: 120 success, 0 failed; p50=683.174ms, p95=1099.314ms, p99=unreported (insufficient samples)
+  media_download: 120 success, 0 failed; p50=47.06ms, p95=73.837ms, p99=unreported (insufficient samples)
+  media_delete: 120 success, 0 failed; p50=303.053ms, p95=402.413ms, p99=unreported (insufficient samples)
+  document_update: 23478 success, 0 failed; p50=81.625ms, p95=140.745ms, p99=185.484ms
+  vector_reinsert: 15 success, 0 failed; p50=19.13ms, p95=unreported (insufficient samples), p99=unreported (insufficient samples)
+recall-after-restart: {'status': 'PASS', 'queries': 100, 'strict_recall_at_10': 1.0, 'tie_aware_recall_at_10': 1.0, 'reference': 'independent float64 exhaustive cosine over all1M committed vectors with verified overrides', 'all_untouched_seed_vector_payloads_read': False, 'verified_legacy_document_payloads': 100990, 'verified_mutated_vectors': 60, 'retained_media_verified': 3, 'recent_deleted_media_verified': 100}
+recall-before-soak: {'status': 'PASS', 'queries': 100, 'strict_recall_at_10': 1.0, 'tie_aware_recall_at_10': 1.0, 'reference': 'independent float64 exhaustive cosine over all1M committed vectors with verified overrides', 'all_untouched_seed_vector_payloads_read': False, 'verified_legacy_document_payloads': 0, 'verified_mutated_vectors': 60, 'retained_media_verified': 0, 'recent_deleted_media_verified': 1}
+recall-after-soak: {'status': 'PASS', 'queries': 100, 'strict_recall_at_10': 1.0, 'tie_aware_recall_at_10': 1.0, 'reference': 'independent float64 exhaustive cosine over all1M committed vectors with verified overrides', 'all_untouched_seed_vector_payloads_read': False, 'verified_legacy_document_payloads': 0, 'verified_mutated_vectors': 60, 'retained_media_verified': 0, 'recent_deleted_media_verified': 100}
+
+Limits:
+One dense1M GloVe25 cosine space; Linux single-node Raft quorum1, no standalone bypass. Not RF3 at1M or distributed search qualification.
+Authenticated TLS/private test CA; WAL/fsync/flush/checksum enabled; engineCPU0-3, clients4-5; admission on,4GiB engine memory budget.
+Timed phase:12clients,4vector/7document/1media; doc/vector cycles paced500ms,media15s. Not maximum throughput.
+Reuse of backed-up owned committed corpus. No new ingestion comparison. Initial index readiness may reuse derived cache and warm pages; no fresh graph construction time claim.
+100quiescent independent float64 exhaustive reference queries per checkpoint. Not all untouched1M vector payloads exhaustively fetched.
+Five-second resource samples can miss short peaks. CPU frequency/page-cache state not controlled; active developer host.
+No PostgreSQL/Qdrant comparison performed in this run. Prior comparison numbers retain their original runtime/configuration scope.
+Thirty-minute workload does not satisfy eight-hour stability/Workbench, independent security, physical-power or stable signing/notarization gates. Earlier failed runs are retained.

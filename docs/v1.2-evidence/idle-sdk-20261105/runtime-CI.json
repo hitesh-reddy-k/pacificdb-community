@@ -1,0 +1,104 @@
+{
+  "status": "PASS",
+  "source": "704becd1ff8194c5ccd6b6392088f65a3b885ece",
+  "run_id": 42073790415,
+  "jobs": [
+    {
+      "name": "node-runtimes (18)",
+      "id": 127408452663,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "node-runtimes (22)",
+      "id": 127408453252,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "node-runtimes (24)",
+      "id": 127408453367,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "supported-runtimes (windows-latest, 3.10, 21)",
+      "id": 127408453369,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "supported-runtimes (windows-latest, 3.10, 17)",
+      "id": 127408453502,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "supported-runtimes (windows-latest, 3.12, 21)",
+      "id": 127408453504,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "supported-runtimes (ubuntu-22.04, 3.12, 21)",
+      "id": 127408453564,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "supported-runtimes (windows-latest, 3.12, 11)",
+      "id": 127408453613,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "supported-runtimes (ubuntu-22.04, 3.10, 11)",
+      "id": 127408453624,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "supported-runtimes (ubuntu-22.04, 3.12, 17)",
+      "id": 127408453631,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "supported-runtimes (ubuntu-22.04, 3.10, 17)",
+      "id": 127408453688,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "supported-runtimes (windows-latest, 3.10, 11)",
+      "id": 127408453798,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "supported-runtimes (windows-latest, 3.12, 17)",
+      "id": 127408453963,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "supported-runtimes (ubuntu-22.04, 3.10, 21)",
+      "id": 127408454111,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "supported-runtimes (ubuntu-22.04, 3.12, 11)",
+      "id": 127408454214,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "inspected-artifacts",
+      "id": 127410457820,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "scope": "Runtime matrix and inspected staged SDK artifacts; not registry publication"
+}

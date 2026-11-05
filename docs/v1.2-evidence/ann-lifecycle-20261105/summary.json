@@ -1,0 +1,122 @@
+{
+  "status": "PASS",
+  "candidate": "337b9ef43300ff27a5c3c663f45b672b8ac3a6b1",
+  "scope": "Scoped software, native platform and short mixed-load qualification only; production readiness remains INCOMPLETE",
+  "release_eligible": false,
+  "production_readiness": "INCOMPLETE",
+  "local_checkpoint": {
+    "status": "PASS",
+    "top_level_checks": 87,
+    "ctest_cases": 60
+  },
+  "local_complete_community": {
+    "status": "PASS",
+    "python_tests": 134,
+    "SDK_dispatch_bindings": 141,
+    "authenticated_transports": [
+      "TCP",
+      "TLS"
+    ],
+    "cross_SDK_recovery": "SIGKILL",
+    "mixed_version_RF3": "distinct published RC.2 to candidate",
+    "genuine_disk_full_tests": true
+  },
+  "selected_sanitizers": {
+    "ASAN_UBSAN": "PASS 6/6 vector/generation/journal modules and linked libraries",
+    "TSAN": "PASS same6/6; no suppressions",
+    "private_credentials": "PASS separately instrumented opened-file reader and native access/size tests; unchanged implementation from146a88c"
+  },
+  "native_ARM_repetitions": {
+    "status": "PASS",
+    "source": "337b9ef43300ff27a5c3c663f45b672b8ac3a6b1",
+    "run_id": 42062266484,
+    "job_id": 127367129035,
+    "complete_repetitions": 10,
+    "mixed_attempts": 3600,
+    "mixed_successes": 3600,
+    "unrelated_commits_without_wait_successes": 300,
+    "exact_fallback": false,
+    "default_freshness_wait_ms": 1000,
+    "scope": "Repeated standalone native API regression on macOS ARM64; not a general production or1M qualification",
+    "verified_utc": "2026-11-05T16:23:35Z"
+  },
+  "past_failures_retained": [
+    "f8967f2 Windows startup: POSIX mode check on Windows; live monitor obscured refusal with fatal70",
+    "146a88c Windows unit fixture: unnecessary repeated WRITE_OWNER request after read-only ACL",
+    "0996d5b Windows fixture: PowerShell Set-Acl module discovery; fixed using direct .NET ACL method",
+    "0996d5b ARM strict query: STALE at unchanged freshness deadline",
+    "e3252e8 ARM strict query: repetition5 failed after4passes; immediate diagnosticREADY; prefix-progress fix alone insufficient",
+    "controlled pre-fix prefix starvation regression; initial new test expected similarity instead of private negative-dot distance, corrected after observing actual distances without removing assertions",
+    "Mac Intel invalid dependency-audit response shape: check failed closed; superseded attempts retained"
+  ],
+  "unchanged_guarantees": [
+    "Authoritative WAL/LSM storage formats and mutation acknowledgement settings",
+    "Raft protocol/RF3 lifecycle; no new consensus",
+    "Public query source/root/configuration and applied-index fences",
+    "Default1000ms freshness wait, bounded retries, cancellation/deadline/scan limits",
+    "No silent exact fallback; no stale successful prefix",
+    "Document/media API schemas, account roles, tenant boundaries"
+  ],
+  "pending": [
+    "Independent assessment of exact candidate/artifacts",
+    "Physical-power qualification",
+    "Stable signing/notarization and eight-hour stability/Workbench gates",
+    "Broader dimensions/metrics/sparse/hybrid/distributed sustained-load qualification"
+  ],
+  "earlier_1m_scope": "f8967f2 separately passed14,386ANNreads/0errors,p50 8.808ms, four100queryRecall1.0 rounds,all9fresh ramps andSIGKILL/rebuild; this is not evidence of latest337behavior or a new3DBcomparison.",
+  "native_platforms": {
+    "status": "PASS",
+    "source": "337b9ef43300ff27a5c3c663f45b672b8ac3a6b1",
+    "run_id": 42063957429,
+    "platforms": [
+      "Linuxx64",
+      "Windowsx64",
+      "macOSx64",
+      "macOSARM64"
+    ],
+    "scope": "native engine,CLI,Workbench packages and installation/removal testing; not stable signing/notarization"
+  },
+  "CodeQL": {
+    "status": "PASS",
+    "run_id": 42062248507
+  },
+  "required_production_checks": {
+    "status": "PASS",
+    "run_id": 42062250954,
+    "scope": "workflow checks; not full production certification"
+  },
+  "full_community_CI": {
+    "status": "PASS",
+    "run_id": 42062278914
+  },
+  "latest_1m": {
+    "status": "PASS",
+    "source": "337b9ef43300ff27a5c3c663f45b672b8ac3a6b1",
+    "binary_sha256": "27dfc47f43f656dcca4017f9bf635e59cad0d537fc430cf09849e99ed922cdb1",
+    "mixed_seconds": 1800.017654864998,
+    "ANN": {
+      "success": 14386,
+      "failed": 0,
+      "latency": {
+        "samples": 14386,
+        "p50_ms": 11.716314496879932,
+        "p95_ms": 119.44006850171718,
+        "p99_ms": 192.87663114373566,
+        "max_ms": 1301.7543590030982
+      }
+    },
+    "quiescent_reference_queries": 100,
+    "reference_checkpoints": 3,
+    "strict_and_tie_recall_at_10": 1.0,
+    "legacy_document_payloads_verified": 100990,
+    "mutated_vectors_verified": 60,
+    "updated_vector_ANN_target_membership": "60/60, separate read-only probe",
+    "retained_media_sha_verified": 6,
+    "recent_deleted_media_verified": 100,
+    "all_untouched_1m_vector_payloads_read": false,
+    "recovery": "SIGKILL, explicit derived index reconstruction, complete integrity checks"
+  },
+  "first_latest_attempt": "Overall FAIL: timed phase passed, but adapted harness reused idle administrative session at post-load validation. Corrected attempt closes/reopens control session, preserves failed authority/logs and repeats complete scenario.",
+  "auxiliary_observer_attempt": "First observer BLOCKED before database access due absent startup status file. Original error retained; bounded startup wait added, unchanged assertions passed after recovery.",
+  "public_runner": "Parameterized fresh-profile transcription; CLI/compilation checks passed. Separate portable10Ksmoke pending; 1M receipt uses separately fingerprinted recorded harness."
+}
