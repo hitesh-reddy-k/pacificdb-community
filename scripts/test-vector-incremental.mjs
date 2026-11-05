@@ -25,11 +25,11 @@ async function start(name,enabled,extra={},accountContents=null) {
     // POSIX mode bits do not set Windows ACLs. Grant the current test owner
     // access explicitly without changing account roles or disabling auth.
     execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',
-      '$identity=[System.Security.Principal.WindowsIdentity]::GetCurrent().User; '+
+      '$ErrorActionPreference="Stop"; $identity=[System.Security.Principal.WindowsIdentity]::GetCurrent().User; '+
       '$acl=New-Object System.Security.AccessControl.FileSecurity; '+
       '$acl.SetOwner($identity); $acl.SetAccessRuleProtection($true,$false); '+
       '$acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule($identity,"FullControl","Allow"))); '+
-      'Set-Acl -LiteralPath $env:PACIFICDB_TEST_ACCOUNT_PATH -AclObject $acl'],
+      '[System.IO.File]::SetAccessControl($env:PACIFICDB_TEST_ACCOUNT_PATH,$acl)'],
       {env:{...process.env,PACIFICDB_TEST_ACCOUNT_PATH:accounts},stdio:'pipe'});
   }
   const port=await freePort();let raftPort=await freePort();while(raftPort===port)raftPort=await freePort();
