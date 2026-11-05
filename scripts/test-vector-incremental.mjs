@@ -57,7 +57,7 @@ async function start(name,enabled,extra={},accountContents=null) {
     try{ready=(await probe.request({action:'ping'})).status==='pong';}catch{}
     if(ready)break;await new Promise(resolve=>setTimeout(resolve,100));}
   assert.ok(ready);probe.close();
-  return {port,clients,processHandle,log,env,async client(username,userId,database='app'){
+  return {port,clients,processHandle,log,env,diagnostic:()=>diagnostic.replaceAll(password,'[fixture-secret]'),async client(username,userId,database='app'){
     const c=new PacificDBClient({port,userId,database,poolSize:4,timeoutMs:30000});clients.push(c);
     await c.authenticate(username,password);return c;}};
   }catch(error){
@@ -194,4 +194,16 @@ try{
  await alice.updateOne('vectors',{id:'0'},{$set:{vector:[99999,0]}});assert.equal((await fresh(alice)).data[0].id,'0');
  await stop(server);server=null;
  console.log(JSON.stringify({status:'PASS',scope:'standalone replicated-apply incremental ANN preview',crud:true,batch:true,unrelated_commits_without_wait:{attempts:30,successes:unrelatedSuccesses},queries_during_updates:{successes,explicitLag},mixed:{attempts:360,successes:mixedSuccesses,milliseconds:mixedMilliseconds},metadata_no_node_growth:true,restart:true,root}));
+}catch(error){
+ if(server){
+  const diagnostic={scope:'owned incremental API fixture failure',engine_tail:server.diagnostic()};
+  try{
+   const observer=await server.client('alice','tenant-a');
+   diagnostic.index=(await observer.vectorIndexStatus('vectors','ann')).index;
+   const ping=await observer.request({action:'ping'});
+   diagnostic.raft={commit_index:ping.commit_index,last_applied:ping.last_applied};
+  }catch(failure){diagnostic.observer_error=String(failure).replaceAll(password,'[fixture-secret]');}
+  console.error(JSON.stringify(diagnostic));
+ }
+ throw error;
 }finally{if(server)await stop(server);console.error(`Incremental API evidence retained: ${root}`);}
