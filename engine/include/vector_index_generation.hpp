@@ -68,6 +68,9 @@ public:
         size_t maximumBatch = 128,size_t maximumMilliseconds = 1000,
         bool sourceVisibilityComplete = false);
     void invalidate();
+    // Coalesced hint only: wake existing maintenance, never create/rebuild an
+    // index or retain caller state. Eligibility and resource budgets are unchanged.
+    void requestMaintenance();
     void close(); // permanent nonblocking cancellation; destructor joins the worker
     void closeAndWait();
     bool finished() const noexcept { return finished_.load(); }
@@ -77,6 +80,7 @@ public:
     std::shared_ptr<const Generation> acquire(VectorFreshness::Stamp certificate) const;
 
 private:
+    bool maintenanceRequested_{false}; // protected by mutex_
     struct Job {
         HNSWConfig config;
         Certificate certificate;

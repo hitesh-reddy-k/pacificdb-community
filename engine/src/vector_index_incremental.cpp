@@ -4,6 +4,14 @@
 #include <map>
 #include <stdexcept>
 namespace pacificdb {
+void VectorIndexGeneration::requestMaintenance(){
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if(stopped_.load()||!maintenance_||status_.state==State::FAILED)return;
+        maintenanceRequested_=true;
+    }
+    wake_.notify_one();
+}
 void VectorIndexGeneration::enableMaintenance(std::shared_ptr<VectorChangeJournal> journal,
         VectorChangeJournal::Cursor anchor,Certificate certificate,Resolve resolve,
         size_t maximumBatch,size_t maximumMilliseconds,bool sourceVisibilityComplete){
@@ -23,7 +31,7 @@ void VectorIndexGeneration::enableMaintenance(std::shared_ptr<VectorChangeJourna
         complete->visibilityComplete=true;
         published_=std::move(complete);
     }
-    maintenance_=std::move(config);wake_.notify_one();
+    maintenance_=std::move(config);maintenanceRequested_=true;wake_.notify_one();
 }
 bool VectorIndexGeneration::maintain(){
     std::shared_ptr<Maintenance> maintenance;

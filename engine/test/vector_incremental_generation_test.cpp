@@ -145,6 +145,7 @@ void completeMaintenanceProgress(){
  deadline=std::chrono::steady_clock::now()+std::chrono::seconds(3);
  std::shared_ptr<const VectorIndexGeneration::Generation> current;
  while(!(current=manager->acquire(*certificate()))){
+  manager->requestMaintenance();
   assert(manager->status().state!=State::FAILED);
   assert(std::chrono::steady_clock::now()<deadline&&"incremental resolved prefix made no progress");
   std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -197,6 +198,7 @@ int main(){
  // History loss is a failed generation, never a successful approximate prefix.
  journal->gap();{std::lock_guard<std::mutex> lock(sourceMutex);++revision;}
  wait(manager,State::FAILED);assert(manager->status().error.find("history_gap")!=std::string::npos);assert(!manager->acquire(*certificate()));
+ manager->requestMaintenance();assert(manager->status().state==State::FAILED);
  // A full rebuild remains usable and requires a new explicit anchor.
  anchor=journal->capture();assert(manager->enqueue(config,certificate,source));wait(manager,State::READY);
  manager->enableMaintenance(journal,anchor,certificate,resolve);
@@ -207,5 +209,6 @@ int main(){
  {std::lock_guard<std::mutex> lock(sourceMutex);throwCertificate=true;}
  wait(manager,State::FAILED);assert(manager->status().error=="certificate unavailable");
  manager->closeAndWait();assert(manager->finished());
+ manager->requestMaintenance();assert(manager->finished());
  std::cout<<"INCREMENTAL_GENERATION_WORKER_COVERAGE_VISIBILITY_GAPS_FAILURE_REBUILD_PASS\n";
 }

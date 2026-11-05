@@ -303,6 +303,7 @@ json DatabaseEngine::nativeVectorIndexStatus(const std::string& user, const std:
     const auto eligible=certificate(user,db,collection);
     auto generation = eligible ? manager->acquire(*eligible) : nullptr;
     if (status.state == pacificdb::VectorIndexGeneration::State::READY && !generation) result["state"] = "STALE";
+    if (result.at("state") == "STALE") manager->requestMaintenance();
     if (generation) {
         result["checkpoint_restored"]=generation->checkpointRestored;
         if(!generation->checkpointError.empty())result["checkpoint_error"]=generation->checkpointError;
@@ -356,7 +357,10 @@ std::vector<json> DatabaseEngine::queryNativeVectorIndex(const std::string& user
     const auto k = kValue.get<size_t>();
     const auto manager = service()->get(key(user, db, collection, name));
     const auto generation = manager ? manager->acquire(loaded.stamp) : nullptr;
-    if (!generation) throw std::runtime_error("vector_index_unavailable: not READY/fresh");
+    if (!generation) {
+        if(manager)manager->requestMaintenance();
+        throw std::runtime_error("vector_index_unavailable: not READY/fresh");
+    }
     if (!generation->graph) throw std::runtime_error("vector_index_unavailable: requested ANN on exact-only index");
     const auto efValue=query.value("ef_search",loaded.spec.at("ef_search"));
     if(!efValue.is_number_integer()||(!efValue.is_number_unsigned()&&efValue.get<int64_t>()<=0)||

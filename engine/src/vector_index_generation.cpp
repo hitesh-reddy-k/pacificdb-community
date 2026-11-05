@@ -85,8 +85,9 @@ void VectorIndexGeneration::run() {
         {
             std::unique_lock<std::mutex> lock(mutex_);
             wake_.wait_for(lock,std::chrono::milliseconds(100),[this] {
-                return stopped_.load() || !queue_.empty();
+                return stopped_.load() || !queue_.empty() || maintenanceRequested_;
             });
+            maintenanceRequested_=false;
             if (stopped_.load()) {
                 // Cancellation from committed collection drop must not join or
                 // destroy a full graph on the Raft acknowledgement thread.
