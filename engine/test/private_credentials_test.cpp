@@ -13,7 +13,7 @@
 #endif
 
 #ifdef _WIN32
-static void setAcl(const std::filesystem::path& file, bool publicAccess, bool nullAcl=false) {
+static void setAcl(const std::filesystem::path& file, bool publicAccess, bool nullAcl=false, bool claimOwner=false) {
     HANDLE token = nullptr; assert(OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token));
     DWORD bytes = 0; GetTokenInformation(token, TokenUser, nullptr, 0, &bytes);
     std::vector<unsigned char> storage(bytes);
@@ -25,9 +25,17 @@ static void setAcl(const std::filesystem::path& file, bool publicAccess, bool nu
     entry.grfAccessMode=SET_ACCESS;entry.Trustee.TrusteeForm=TRUSTEE_IS_SID;
     entry.Trustee.ptstrName=static_cast<LPWSTR>(publicAccess?static_cast<void*>(world):user);
     PACL acl=nullptr;assert(SetEntriesInAclW(1,&entry,nullptr,&acl)==ERROR_SUCCESS);
-    assert(SetNamedSecurityInfoW(const_cast<LPWSTR>(file.c_str()),SE_FILE_OBJECT,
-        OWNER_SECURITY_INFORMATION|DACL_SECURITY_INFORMATION|PROTECTED_DACL_SECURITY_INFORMATION,
-        user,nullptr,nullAcl?nullptr:acl,nullptr)==ERROR_SUCCESS);
+    // Claim ownership once while the fresh fixture grants WRITE_OWNER.
+    // Its later deliberately read-only ACL still lets the owner restore the
+    // DACL, but cannot authorize an unnecessary WRITE_OWNER request.
+    const auto result=SetNamedSecurityInfoW(const_cast<LPWSTR>(file.c_str()),SE_FILE_OBJECT,
+        (claimOwner?OWNER_SECURITY_INFORMATION:0)|DACL_SECURITY_INFORMATION|PROTECTED_DACL_SECURITY_INFORMATION,
+        claimOwner?user:nullptr,nullptr,nullAcl?nullptr:acl,nullptr);
+    if(result!=ERROR_SUCCESS){
+        std::cerr<<"FIXTURE_ACL_ERROR code="<<result<<" claim_owner="<<claimOwner
+                 <<" public_access="<<publicAccess<<" null_acl="<<nullAcl<<std::endl;
+    }
+    assert(result==ERROR_SUCCESS);
     LocalFree(acl);CloseHandle(token);
 }
 #endif
@@ -35,7 +43,7 @@ int main() {
     OwnedTestRoot root("private-credentials");const auto file=root.dataRoot()/"accounts.json";
     {std::ofstream output(file);output<<"[{\"username\":\"fixture\"}]";}
 #ifdef _WIN32
-    setAcl(file,false);
+    setAcl(file,false,false,true);
 #else
     assert(::chmod(file.c_str(),0600)==0);
 #endif
