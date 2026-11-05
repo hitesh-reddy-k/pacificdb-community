@@ -1,0 +1,7 @@
+{
+  "baseline-api-failure": "96f2570ee0d178f26889d0eb0355039f4e2ebe126f7336312b317ddfe3c6c40d",
+  "first-tsan-fixture-failure": "a865eae34ee538ca53fd63d4f5a9051c192f5353ae7ada40c75917997d177d34",
+  "first-community-dependency-failure": "1d70dd63b5be02392867186d493a8e743529b785417ea67c2196d336f9060057",
+  "checkpoint": "5e46de5605b02ddf9c844e620a7951597e0356c483f8e4a00f7c279d4c049c1c",
+  "full-community-pass": "8667f3e41d01a0ff89422dc668b77a0475f6716622567684c254f4a45685accd"
+}

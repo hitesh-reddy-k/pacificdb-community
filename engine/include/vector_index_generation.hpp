@@ -31,6 +31,14 @@ public:
         std::shared_ptr<const FlatVectorIndex> flat;
         bool checkpointRestored{false};
         std::string checkpointError;
+        // Trusted opt-in: no source record can become eligible merely because
+        // the global commit index advances. Source changes still require exact
+        // root/collection/configuration agreement and complete journal coverage.
+        bool visibilityComplete{false};
+        bool accepts(const VectorFreshness::Stamp& current) const noexcept {
+            return certificate == current ||
+                (visibilityComplete && current.sameSourceAtOrAfter(certificate));
+        }
     };
     struct Status { State state; uint64_t generation; std::string error; };
     using Certificate = std::function<std::optional<VectorFreshness::Stamp>()>;
@@ -56,7 +64,8 @@ public:
     using Resolve = std::function<std::optional<Record>(const std::string&)>;
     void enableMaintenance(std::shared_ptr<VectorChangeJournal> journal,
         VectorChangeJournal::Cursor anchor,Certificate certificate,Resolve resolve,
-        size_t maximumBatch = 128,size_t maximumMilliseconds = 1000);
+        size_t maximumBatch = 128,size_t maximumMilliseconds = 1000,
+        bool sourceVisibilityComplete = false);
     void invalidate();
     void close(); // permanent nonblocking cancellation; destructor joins the worker
     void closeAndWait();
@@ -86,6 +95,7 @@ private:
         Certificate certificate;
         Resolve resolve;
         size_t maximumBatch,maximumMilliseconds;
+        bool sourceVisibilityComplete;
     };
     bool maintain();
     void run();

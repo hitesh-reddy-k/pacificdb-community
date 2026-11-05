@@ -6,16 +6,23 @@
 namespace pacificdb {
 void VectorIndexGeneration::enableMaintenance(std::shared_ptr<VectorChangeJournal> journal,
         VectorChangeJournal::Cursor anchor,Certificate certificate,Resolve resolve,
-        size_t maximumBatch,size_t maximumMilliseconds){
+        size_t maximumBatch,size_t maximumMilliseconds,bool sourceVisibilityComplete){
     if(!journal||!anchor.epoch||!certificate||!resolve||!maximumBatch||maximumBatch>1024||
        !maximumMilliseconds||maximumMilliseconds>60000)
         throw std::invalid_argument("invalid incremental vector maintenance configuration");
     auto config=std::make_shared<Maintenance>(Maintenance{std::move(journal),anchor,
-        std::move(certificate),std::move(resolve),maximumBatch,maximumMilliseconds});
+        std::move(certificate),std::move(resolve),maximumBatch,maximumMilliseconds,sourceVisibilityComplete});
     std::lock_guard<std::mutex> lock(mutex_);
     if(stopped_.load()||building_||!queue_.empty()||status_.state!=State::READY||!published_||
        !published_->graph||published_->lexical||published_->flat||maintenance_)
         throw std::runtime_error("vector incremental maintenance requires an idle READY HNSW-only generation");
+    // Publish policy with the retained generation; never mutate a metadata
+    // object already held by a reader. Graph and payload ownership are shared.
+    if(sourceVisibilityComplete){
+        auto complete=std::make_shared<Generation>(*published_);
+        complete->visibilityComplete=true;
+        published_=std::move(complete);
+    }
     maintenance_=std::move(config);wake_.notify_one();
 }
 bool VectorIndexGeneration::maintain(){
@@ -42,7 +49,7 @@ bool VectorIndexGeneration::maintain(){
         return false;
     }
     if(!target)return false;
-    if(*target==previous->certificate){
+    if(previous->accepts(*target)){
         const auto head=maintenance->journal->capture();
         if(head.epoch==maintenance->cursor.epoch&&head.sequence==maintenance->cursor.sequence)return false;
     }
@@ -69,7 +76,8 @@ bool VectorIndexGeneration::maintain(){
         check();const auto batch=maintenance->journal->after(maintenance->cursor,target->visibility,maintenance->maximumBatch);
         if(batch.state==VectorChangeJournal::State::Gap)
             throw std::runtime_error("vector_index_incremental_history_gap_requires_rebuild");
-        if(!batch.changes.empty()&&*target==previous->certificate)
+        if(!batch.changes.empty()&&(*target==previous->certificate ||
+           (previous->visibilityComplete && target->sameSourceAtOrAfter(previous->certificate))))
             throw std::runtime_error("vector_index_incremental_unversioned_changes_require_rebuild");
         // Resolve repeated IDs once per batch against the same authoritative
         // certificate. Stage complete records within the existing source bound.
@@ -87,7 +95,12 @@ bool VectorIndexGeneration::maintain(){
                 throw std::runtime_error("vector incremental source memory budget exceeded");
             bytes+=charge;resolved.emplace(change.id,std::move(record));
         }
-        if(maintenance->certificate()!=target){
+        const auto stillCurrent=maintenance->certificate();
+        const auto compatible=[&](const std::optional<VectorFreshness::Stamp>& current){
+            return current && (*current==*target || (maintenance->sourceVisibilityComplete &&
+                current->sameSourceAtOrAfter(*target)));
+        };
+        if(!compatible(stillCurrent)){
             std::lock_guard<std::mutex> lock(mutex_);building_=false;return false;
         }
         // The original graph was constructed mutable. Search/insert/delete are
@@ -111,10 +124,11 @@ bool VectorIndexGeneration::maintain(){
             std::lock_guard<std::mutex> lock(mutex_);building_=false;
             if(stopped_.load()||revision_!=revision||maintenance_!=maintenance)return false;
             maintenance->cursor=batch.next;
-            const bool covered=batch.state==VectorChangeJournal::State::Covered&&final==target&&
+            const bool covered=batch.state==VectorChangeJournal::State::Covered&&compatible(final)&&
                 head.epoch==batch.next.epoch&&head.sequence==batch.next.sequence;
             if(covered){
                 auto next=std::make_shared<Generation>(Generation{nextGeneration_+1,*target,graph,{},{}});
+                next->visibilityComplete=maintenance->sourceVisibilityComplete;
                 retired.swap(published_);published_=std::move(next);++nextGeneration_;
                 status_={State::READY,nextGeneration_,{}};
             }else status_.state=State::STALE;

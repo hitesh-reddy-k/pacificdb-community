@@ -31,6 +31,12 @@ public:
                    visibility == other.visibility && configuration == other.configuration;
         }
         bool operator!=(const Stamp& other) const noexcept { return !(*this == other); }
+        // Only a source with separately proven complete visibility may use this.
+        // Ordinary certificates retain strict equality, including visibility.
+        bool sameSourceAtOrAfter(const Stamp& previous) const noexcept {
+            return root == previous.root && collection == previous.collection &&
+                   configuration == previous.configuration && visibility >= previous.visibility;
+        }
     };
     class Mutation {
     public:

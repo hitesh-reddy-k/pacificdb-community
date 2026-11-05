@@ -65,7 +65,15 @@ std::shared_ptr<const VectorIndexGeneration::Generation>
 VectorIndexGeneration::acquire(VectorFreshness::Stamp certificate) const {
     std::lock_guard<std::mutex> lock(mutex_);
     if (status_.state != State::READY || !published_ ||
-        published_->certificate != certificate) return {};
+        !published_->accepts(certificate)) return {};
+    if(published_->visibilityComplete){
+        // A commit-only advance is eligible only while the trusted mutation
+        // journal is still fully covered. This also fences a reset/gap before
+        // the background worker has had a chance to report it.
+        if(!maintenance_)return {};
+        const auto head=maintenance_->journal->capture();
+        if(head.epoch!=maintenance_->cursor.epoch||head.sequence!=maintenance_->cursor.sequence)return {};
+    }
     return published_;
 }
 void VectorIndexGeneration::run() {

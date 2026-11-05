@@ -75,8 +75,24 @@ const fresh=async client=>{
 try{
  server=await start('incremental',true,{RAFT_STANDALONE_BYPASS:'0'});let alice=await server.client('alice','tenant-a');
  await alice.createDatabase('app');await alice.createCollection('vectors',{vectorSchema:schema});
+ await alice.createCollection('documents');
  await alice.insertMany('vectors',Array.from({length:200},(_,i)=>({id:String(i),vector:[i,1],payload:'document'})));
  await alice.createVectorIndex('vectors',options);await fresh(alice);
+ // Unrelated committed documents cannot activate an omitted vector in this
+ // complete incremental source. They must not require graph maintenance or a
+ // longer freshness wait. Keep exact fallback disabled and count every read.
+ const beforeUnrelated=await alice.queryVector('vectors',[1,0],query);
+ let unrelatedSuccesses=0;
+ for(let i=0;i<30;++i){
+  await alice.insert('documents',{id:`unrelated-${i}`,value:i});
+  const response=await alice.queryVector('vectors',[1,0],{...query,indexWaitMs:0});
+  assert.equal(response.search.executed_mode,'ann');assert.equal(response.search.fallback,false);
+  assert.equal(response.search.generation,beforeUnrelated.search.generation,
+   'unrelated document commit unnecessarily republished the vector graph');
+  assert.equal(response.search.source_revision,beforeUnrelated.search.source_revision);
+  assert.deepEqual(response.data.map(row=>row.id),beforeUnrelated.data.map(row=>row.id));
+  ++unrelatedSuccesses;
+ }
  const tuned=await alice.queryVector('vectors',[1,0],{...query,efSearch:40});assert.equal(tuned.search.ef_search,40);
  await assert.rejects(alice.queryVector('vectors',[1,0],{...query,efSearch:301}),/ef_search/);
  await alice.updateOne('vectors',{id:'0'},{$set:{vector:[9999,0]}});assert.equal((await fresh(alice)).data[0].id,'0');
@@ -132,5 +148,5 @@ try{
  await alice.rebuildVectorIndex('vectors','ann');await fresh(alice);
  await alice.updateOne('vectors',{id:'0'},{$set:{vector:[99999,0]}});assert.equal((await fresh(alice)).data[0].id,'0');
  await stop(server);server=null;
- console.log(JSON.stringify({status:'PASS',scope:'standalone replicated-apply incremental ANN preview',crud:true,batch:true,queries_during_updates:{successes,explicitLag},mixed:{attempts:360,successes:mixedSuccesses,milliseconds:mixedMilliseconds},metadata_no_node_growth:true,restart:true,root}));
+ console.log(JSON.stringify({status:'PASS',scope:'standalone replicated-apply incremental ANN preview',crud:true,batch:true,unrelated_commits_without_wait:{attempts:30,successes:unrelatedSuccesses},queries_during_updates:{successes,explicitLag},mixed:{attempts:360,successes:mixedSuccesses,milliseconds:mixedMilliseconds},metadata_no_node_growth:true,restart:true,root}));
 }finally{if(server)await stop(server);console.error(`Incremental API evidence retained: ${root}`);}

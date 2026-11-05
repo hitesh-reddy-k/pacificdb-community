@@ -1,5 +1,9 @@
 # Unreleased v1.2 follow-up
 
+- Keep a complete, covered incremental ANN generation eligible across unrelated
+  Raft commits. Preserve applied-index, source/configuration, journal and deadline
+  fences; add controlled scheduling-stall regressions and native/sanitizer CI
+  coverage. See [validation and scope](docs/V1.2_ANN_COMMIT_VISIBILITY.md).
 - Bound strict incremental ANN freshness waits to each request's original
   deadline, cancellation and cumulative scan budget; explicit fail-fast remains
   available. The separate 10K/100K/1M lifecycle qualification passed all 360

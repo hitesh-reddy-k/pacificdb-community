@@ -13,6 +13,8 @@
 #include "query_cancellation.hpp"
 #include "query_limiter.hpp"
 #include "query.hpp"
+#include "raft_core.hpp"
+#include "test_failpoint.hpp"
 #include <chrono>
 #include <mutex>
 
@@ -54,6 +56,10 @@ std::optional<VectorFreshness::Stamp> certificate(const std::string& user, const
     const auto after = LSM::vectorCertificate(user, db, collection);
     if (!before || !spec || before != after || before->root != spec->root ||
         before->visibility != spec->visibility) return {};
+    // A committed vector entry can precede its LSM apply. An unchanged source
+    // revision alone cannot prove that entry irrelevant; wait for apply first.
+    const auto& raft=RaftCore::instance();
+    if(raft.isEnabled() && RaftCore::instance().getLastApplied()<before->visibility) return {};
     before->configuration = spec->collection;
     return before;
 }
@@ -253,7 +259,10 @@ json DatabaseEngine::rebuildNativeVectorIndex(const std::string& user, const std
                     throw std::runtime_error("vector incremental source shape mismatch");
                 return pacificdb::VectorIndexGeneration::Record{id,derived(decoded),{},{},pacificdb::packNativeVectorRecord(document)};
             };
-            manager.enableMaintenance(journal,anchor->cursor,maintenanceCertificate,std::move(resolve));
+            // The incremental full-source pass rejects every pending/invisible
+            // row, and the journal blocks changes until their visibility floor.
+            // A later unrelated Raft commit therefore cannot add an omitted row.
+            manager.enableMaintenance(journal,anchor->cursor,maintenanceCertificate,std::move(resolve),128,1000,true);
         };
     }
     auto checkpoints = !lexical && spec.value("algorithm",std::string("hnsw"))!="flat"
@@ -390,8 +399,10 @@ std::vector<json> DatabaseEngine::queryNativeVectorIndex(const std::string& user
             return document;});
     }
     const auto validationStart=std::chrono::steady_clock::now();
+    pacificdb::test::hitFailpoint("FP_VECTOR_QUERY_BEFORE_FINAL_VALIDATION",1);
     const auto finalStamp = certificate(user, db, collection);
-    if (!finalStamp || *finalStamp != loaded.stamp)
+    if (!finalStamp || !generation->accepts(*finalStamp) || finalStamp->visibility < loaded.stamp.visibility ||
+        (generation->visibilityComplete && !manager->acquire(*finalStamp)))
         throw std::runtime_error("vector_index_freshness_changed");
     check();
     auto results = top.finish();

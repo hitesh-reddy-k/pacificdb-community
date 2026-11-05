@@ -12,6 +12,7 @@ on:
       - 'scripts/test-workbench-linux-icons.py'
       - 'scripts/test-desktop-engine.mjs'
       - 'scripts/test-index-low-cardinality.mjs'
+      - 'scripts/test-vector-incremental.mjs'
       - 'scripts/prepare-workbench-desktop.mjs'
       - 'release.json'
       - 'scripts/release_identity.py'
@@ -31,6 +32,7 @@ on:
       - 'scripts/test-workbench-linux-icons.py'
       - 'scripts/test-desktop-engine.mjs'
       - 'scripts/test-index-low-cardinality.mjs'
+      - 'scripts/test-vector-incremental.mjs'
       - 'scripts/prepare-workbench-desktop.mjs'
       - 'release.json'
       - 'scripts/release_identity.py'
@@ -204,8 +206,9 @@ jobs:
         run: |
           cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release \
             -DPACIFICDB_ENGINE_VERSION="$PACIFICDB_COMPONENT_VERSION"
-          cmake --build build --target db_engine pacificdb db_engine_durable_file_ops_test db_engine_secondary_index_build_test db_engine_index_visibility_recovery_test db_engine_sst_version_resolution_test -j2
-          ctest --test-dir build --output-on-failure -R 'db_engine_(durable_file_ops|secondary_index_build|index_visibility_recovery|sst_version_resolution)_test'
+          cmake --build build --target db_engine pacificdb db_engine_durable_file_ops_test db_engine_secondary_index_build_test db_engine_index_visibility_recovery_test db_engine_sst_version_resolution_test db_engine_vector_incremental_generation_test db_engine_vector_freshness_test -j2
+          ctest --test-dir build --output-on-failure -R 'db_engine_(durable_file_ops|secondary_index_build|index_visibility_recovery|sst_version_resolution|vector_incremental_generation|vector_freshness)_test'
+          node scripts/test-vector-incremental.mjs build
       - run: node scripts/test-workbench-e2e.mjs build
       - run: node scripts/test-desktop-engine.mjs build
       - run: node scripts/test-workbench-desktop-vector-preview.mjs build
@@ -326,9 +329,11 @@ jobs:
             -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded `
             -DPACIFICDB_ENGINE_VERSION="$env:PACIFICDB_COMPONENT_VERSION"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cmake --build build --config Release --target db_engine pacificdb db_engine_durable_file_ops_test db_engine_secondary_index_build_test db_engine_index_visibility_recovery_test db_engine_sst_version_resolution_test
+          cmake --build build --config Release --target db_engine pacificdb db_engine_durable_file_ops_test db_engine_secondary_index_build_test db_engine_index_visibility_recovery_test db_engine_sst_version_resolution_test db_engine_vector_incremental_generation_test db_engine_vector_freshness_test
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          ctest --test-dir build -C Release --output-on-failure -R 'db_engine_(durable_file_ops|secondary_index_build|index_visibility_recovery|sst_version_resolution)_test'
+          ctest --test-dir build -C Release --output-on-failure -R 'db_engine_(durable_file_ops|secondary_index_build|index_visibility_recovery|sst_version_resolution|vector_incremental_generation|vector_freshness)_test'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/test-vector-incremental.mjs build/Release
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require signing credentials for release tags
         if: env.WORKBENCH_RELEASE_TAG != '' && env.WORKBENCH_RELEASE_TAG != 'workbench-v1.1.1'
@@ -508,8 +513,9 @@ jobs:
             -DVCPKG_TARGET_TRIPLET="$triplet" \
             -DVCPKG_INSTALLED_DIR="$PWD/build/vcpkg_installed" \
             -DPACIFICDB_ENGINE_VERSION="$PACIFICDB_COMPONENT_VERSION"
-          cmake --build build --target db_engine pacificdb db_engine_durable_file_ops_test db_engine_secondary_index_build_test db_engine_index_visibility_recovery_test db_engine_sst_version_resolution_test -j2
-          ctest --test-dir build --output-on-failure -R 'db_engine_(durable_file_ops|secondary_index_build|index_visibility_recovery|sst_version_resolution)_test'
+          cmake --build build --target db_engine pacificdb db_engine_durable_file_ops_test db_engine_secondary_index_build_test db_engine_index_visibility_recovery_test db_engine_sst_version_resolution_test db_engine_vector_incremental_generation_test db_engine_vector_freshness_test -j2
+          ctest --test-dir build --output-on-failure -R 'db_engine_(durable_file_ops|secondary_index_build|index_visibility_recovery|sst_version_resolution|vector_incremental_generation|vector_freshness)_test'
+          node scripts/test-vector-incremental.mjs build
           if otool -L build/db_engine build/pacificdb | grep -E '/(opt/homebrew|usr/local)/(opt|Cellar)/'; then
             echo 'Native binaries must not depend on Homebrew libraries at runtime.' >&2
             exit 1

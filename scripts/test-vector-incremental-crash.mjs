@@ -69,6 +69,45 @@ const phases=['FP_VECTOR_INCREMENTAL_BEFORE_GRAPH','FP_VECTOR_INCREMENTAL_AFTER_
 const results=[];let server;
 try{
  if(process.platform!=='win32'){
+  // Reproduce a scheduler stall longer than the default freshness retry budget,
+  // without consuming host RAM. Unrelated commits remain eligible; real vector
+  // changes must still reject the already-materialized old candidates.
+  for(const mutation of ['document','vector']){
+   const fifo=path.join(root,`query-${mutation}.fifo`),evidence=path.join(root,`query-${mutation}.jsonl`);
+   execFileSync('mkfifo',[fifo]);
+   server=await start(`query-${mutation}`,true,{PACIFICDB_TEST_MODE:'vector_index_crash',
+    PACIFICDB_TEST_FAILPOINT_CONFIRM:'I_UNDERSTAND_THIS_PROCESS_WILL_TERMINATE',
+    PACIFICDB_TEST_FAILPOINT:'FP_VECTOR_QUERY_BEFORE_FINAL_VALIDATION',PACIFICDB_TEST_FAILPOINT_INDEX:'1',
+    PACIFICDB_TEST_FAILPOINT_ACTION:'pause',PACIFICDB_TEST_FAILPOINT_BARRIER_FIFO:fifo,
+    PACIFICDB_TEST_FAILPOINT_EVIDENCE:evidence});
+   const client=await server.client('alice','tenant-a');await client.createDatabase('app');
+   await client.createCollection('vectors',{vectorSchema:schema});await client.createCollection('documents');
+   await client.insertMany('vectors',[{id:'one',vector:[1,0]},{id:'two',vector:[2,0]}]);
+   await client.createVectorIndex('vectors',options);await wait(client,'vectors','ann');
+   const writer=await server.client('alice','tenant-a');
+   const held=client.queryVector('vectors',[1,0],query).then(value=>({value}),error=>({error}));
+   const reachedDeadline=Date.now()+10000;
+   while(!(await readFile(evidence,'utf8').catch(()=>'' )).includes('failpoint_reached')){
+    assert.ok(Date.now()<reachedDeadline,'query did not reach final-validation pause');
+    await new Promise(resolve=>setTimeout(resolve,10));
+   }
+   if(mutation==='document')await writer.insert('documents',{id:'unrelated',payload:'document'});
+   else await writer.updateOne('vectors',{id:'one'},{$set:{vector:[999,0]}});
+   await new Promise(resolve=>setTimeout(resolve,1100));await writeFile(fifo,'x');
+   const settled=await held;
+   if(mutation==='document'){
+    assert.ifError(settled.error);assert.equal(settled.value.search.executed_mode,'ann');
+    assert.equal(settled.value.search.fallback,false);assert.equal(settled.value.data[0].id,'two');
+   }else{
+    assert.ok(settled.error,'stalled query returned candidates invalidated by a vector write');
+    assert.match(String(settled.error),/freshness_changed|visibility_changed|source_changing|unavailable/);
+    await wait(client,'vectors','ann');const current=await client.queryVector('vectors',[1,0],query);
+    assert.equal(current.data[0].id,'one');assert.equal(current.data[0].vector[0],999);
+   }
+   await stop(server);server=null;
+   results.push({scenario:`stalled final validation with ${mutation} commit`,status:'PASS',
+    scheduler_stall_ms:1100,default_freshness_wait_unchanged:true,exact_fallback:false});
+  }
   // Hold a real committed maintenance batch after graph mutation. Freshness
   // checks must reject it until publication; request waits must stay bounded.
   const fifo=path.join(root,'maintenance.fifo'),evidence=path.join(root,'maintenance-paused.jsonl');
