@@ -1,5 +1,10 @@
 name: Native vector concurrency diagnostics
 on:
+  workflow_call:
+    inputs:
+      source_ref:
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       source_ref:

@@ -57,6 +57,10 @@ on:
         description: Existing source commit to qualify without changing its identity
         required: false
         type: string
+      native_diagnostics:
+        description: Repeat standalone strict ANN concurrency on macOS ARM64; no publication or installer qualification
+        type: boolean
+        default: false
       qualify_candidate:
         description: Run complete Community regressions and real ENOSPC on the frozen source
         type: boolean
@@ -112,6 +116,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  native_vector_diagnostics:
+    if: github.event_name == 'workflow_dispatch' && inputs.native_diagnostics
+    uses: ./.github/workflows/vector-native-diagnostics.yml
+    permissions:
+      contents: read
+    with:
+      source_ref: ${{ inputs.source_ref }}
   candidate_sanitizers:
     if: github.event_name == 'workflow_dispatch' && inputs.verify_sanitizers
     uses: ./.github/workflows/candidate-sanitizers.yml
@@ -175,7 +186,7 @@ jobs:
     with:
       release_tag: ${{ inputs.release_tag }}
   linux:
-    if: inputs.release_tag == '' && !inputs.qualify_candidate
+    if: inputs.release_tag == '' && !inputs.qualify_candidate && !inputs.native_diagnostics
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -291,7 +302,7 @@ jobs:
           path: build/workbench-upload/*
 
   windows:
-    if: inputs.release_tag == '' && !inputs.qualify_candidate
+    if: inputs.release_tag == '' && !inputs.qualify_candidate && !inputs.native_diagnostics
     runs-on: windows-2025
     env:
       CSC_LINK: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
@@ -470,7 +481,7 @@ jobs:
           path: build/workbench-upload/*
 
   macos:
-    if: inputs.release_tag == '' && !inputs.qualify_candidate
+    if: inputs.release_tag == '' && !inputs.qualify_candidate && !inputs.native_diagnostics
     strategy:
       fail-fast: false
       matrix:
