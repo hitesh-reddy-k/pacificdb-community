@@ -27,6 +27,7 @@
 #include "wal.hpp"
 #include "query_limiter.hpp"
 #include "memory_manager.hpp"
+#include "private_credentials.hpp"
 #include "backup_manager.hpp"
 #include "community_catalog.hpp"
 #include "security_manager.hpp"
@@ -558,6 +559,10 @@ static int runEngine(int argc, char** argv) {
     // Initialize Memory Manager for backpressure control
     MemoryManager::init();
     MemoryManager::start();
+    // Startup may refuse credentials/configuration before normal shutdown.
+    // Join the monitor on every return/exception instead of terminating from
+    // destruction of its process-wide joinable thread.
+    struct MemoryMonitorCleanup { ~MemoryMonitorCleanup() { MemoryManager::stop(); } } memoryMonitorCleanup;
 
     // Initialize engine-level security (optional enforcement via ENGINE_AUTH_REQUIRED=1)
     pacificdb::security::SecurityManager::instance().initialize(dataRoot);
@@ -578,22 +583,8 @@ static int runEngine(int argc, char** argv) {
     // This keeps credentials out of unit files, process arguments and logs.
     if (const char* acctPath = std::getenv("PACIFICDB_ENGINE_ACCOUNTS_FILE")) {
         try {
-            std::ifstream acctFile(acctPath);
-            if (!acctFile) {
-                throw std::runtime_error("accounts file is unreadable");
-            }
-            const auto accountPermissions =
-                std::filesystem::status(acctPath).permissions();
-            using Perms = std::filesystem::perms;
-            if ((accountPermissions &
-                 (Perms::group_read | Perms::group_write |
-                  Perms::group_exec | Perms::others_read |
-                  Perms::others_write | Perms::others_exec)) != Perms::none) {
-                throw std::runtime_error(
-                    "accounts file must not be accessible by group or others");
-            }
-            nlohmann::json accounts;
-            acctFile >> accounts;
+            const auto accounts = nlohmann::json::parse(
+                pacificdb::readPrivateCredentials(std::filesystem::u8path(acctPath)));
             if (!accounts.is_array()) {
                 throw std::runtime_error("accounts file must contain a JSON array");
             }

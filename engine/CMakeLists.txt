@@ -242,6 +242,12 @@ target_include_directories(pacificdb_structured_event PUBLIC
     ${CMAKE_SOURCE_DIR}/include
 )
 
+add_library(pacificdb_private_credentials STATIC src/private_credentials.cpp)
+target_include_directories(pacificdb_private_credentials PUBLIC ${CMAKE_SOURCE_DIR}/include)
+if(WIN32)
+    target_link_libraries(pacificdb_private_credentials PUBLIC Advapi32)
+endif()
+
 add_library(pacificdb_media_upload_state STATIC src/media_upload_state.cpp)
 target_include_directories(pacificdb_media_upload_state PUBLIC
     ${CMAKE_SOURCE_DIR}/include
@@ -298,7 +304,7 @@ endif()
 add_executable(db_engine src/main.cpp src/server.cpp)
 target_link_libraries(db_engine PRIVATE
     pacificdb_engine_core pacificdb_socket_runtime pacificdb_local_engine
-    pacificdb_structured_event pacificdb_test_failpoints_disabled)
+    pacificdb_structured_event pacificdb_private_credentials pacificdb_test_failpoints_disabled)
 target_include_directories(db_engine PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/generated
 )
@@ -362,6 +368,10 @@ endfunction()
 
 add_pacificdb_engine_test(db_engine_wal_private_permissions_test test/wal_private_permissions_test.cpp)
 add_test(NAME db_engine_wal_private_permissions_test COMMAND db_engine_wal_private_permissions_test)
+
+add_pacificdb_engine_test(db_engine_private_credentials_test test/private_credentials_test.cpp)
+target_link_libraries(db_engine_private_credentials_test PRIVATE pacificdb_private_credentials)
+add_test(NAME db_engine_private_credentials_test COMMAND db_engine_private_credentials_test)
 
 add_pacificdb_engine_test(db_engine_vector_correctness_test test/test_vector_correctness.cpp)
 add_pacificdb_engine_test(db_engine_vector_exact_test test/test_vector_exact.cpp)

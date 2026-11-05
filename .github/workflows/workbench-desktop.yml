@@ -208,6 +208,8 @@ jobs:
             -DPACIFICDB_ENGINE_VERSION="$PACIFICDB_COMPONENT_VERSION"
           cmake --build build --target db_engine pacificdb db_engine_durable_file_ops_test db_engine_secondary_index_build_test db_engine_index_visibility_recovery_test db_engine_sst_version_resolution_test db_engine_vector_incremental_generation_test db_engine_vector_freshness_test -j2
           ctest --test-dir build --output-on-failure -R 'db_engine_(durable_file_ops|secondary_index_build|index_visibility_recovery|sst_version_resolution|vector_incremental_generation|vector_freshness)_test'
+          cmake --build build --target db_engine_private_credentials_test -j2
+          ctest --test-dir build --output-on-failure -R '^db_engine_private_credentials_test$'
           node scripts/test-vector-incremental.mjs build
       - run: node scripts/test-workbench-e2e.mjs build
       - run: node scripts/test-desktop-engine.mjs build
@@ -332,6 +334,10 @@ jobs:
           cmake --build build --config Release --target db_engine pacificdb db_engine_durable_file_ops_test db_engine_secondary_index_build_test db_engine_index_visibility_recovery_test db_engine_sst_version_resolution_test db_engine_vector_incremental_generation_test db_engine_vector_freshness_test
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           ctest --test-dir build -C Release --output-on-failure -R 'db_engine_(durable_file_ops|secondary_index_build|index_visibility_recovery|sst_version_resolution|vector_incremental_generation|vector_freshness)_test'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build build --config Release --target db_engine_private_credentials_test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ctest --test-dir build -C Release --output-on-failure -R '^db_engine_private_credentials_test$'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node scripts/test-vector-incremental.mjs build/Release
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -515,6 +521,8 @@ jobs:
             -DPACIFICDB_ENGINE_VERSION="$PACIFICDB_COMPONENT_VERSION"
           cmake --build build --target db_engine pacificdb db_engine_durable_file_ops_test db_engine_secondary_index_build_test db_engine_index_visibility_recovery_test db_engine_sst_version_resolution_test db_engine_vector_incremental_generation_test db_engine_vector_freshness_test -j2
           ctest --test-dir build --output-on-failure -R 'db_engine_(durable_file_ops|secondary_index_build|index_visibility_recovery|sst_version_resolution|vector_incremental_generation|vector_freshness)_test'
+          cmake --build build --target db_engine_private_credentials_test -j2
+          ctest --test-dir build --output-on-failure -R '^db_engine_private_credentials_test$'
           node scripts/test-vector-incremental.mjs build
           if otool -L build/db_engine build/pacificdb | grep -E '/(opt/homebrew|usr/local)/(opt|Cellar)/'; then
             echo 'Native binaries must not depend on Homebrew libraries at runtime.' >&2

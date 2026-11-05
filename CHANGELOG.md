@@ -1,5 +1,9 @@
 # Unreleased v1.2 follow-up
 
+- Validate operator accounts files through the opened descriptor/Windows handle
+  with native ownership and access checks and a 1 MiB limit. Reject broad access
+  and links; join the memory monitor on startup refusal. Keep account roles,
+  authentication and storage formats unchanged.
 - Keep complete incremental ANN construction eligible during unrelated writes;
   fence real source edits and withhold eligibility until journal coverage is
   installed. Report lifecycle status during paused apply without bypassing the

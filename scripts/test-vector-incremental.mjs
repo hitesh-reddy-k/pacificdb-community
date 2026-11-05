@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { once } from 'node:events';
 import { createWriteStream } from 'node:fs';
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
@@ -21,6 +21,17 @@ async function start(name,enabled,extra={}) {
   const accounts=path.join(home,'accounts.json');await writeFile(accounts,JSON.stringify([
     {username:'alice',password,role:'ADMIN'},{username:'bob',password,role:'ADMIN'},
     {username:'reader',password,role:'READ_ONLY'}]),{mode:0o600});
+  if(process.platform==='win32'){
+    // POSIX mode bits do not set Windows ACLs. Grant the current test owner
+    // access explicitly without changing account roles or disabling auth.
+    execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',
+      '$identity=[System.Security.Principal.WindowsIdentity]::GetCurrent().User; '+
+      '$acl=New-Object System.Security.AccessControl.FileSecurity; '+
+      '$acl.SetOwner($identity); $acl.SetAccessRuleProtection($true,$false); '+
+      '$acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule($identity,"FullControl","Allow"))); '+
+      'Set-Acl -LiteralPath $env:PACIFICDB_TEST_ACCOUNT_PATH -AclObject $acl'],
+      {env:{...process.env,PACIFICDB_TEST_ACCOUNT_PATH:accounts},stdio:'pipe'});
+  }
   const port=await freePort();let raftPort=await freePort();while(raftPort===port)raftPort=await freePort();
   const log=createWriteStream(path.join(home,`engine-${Date.now()}.log`));
   const env={...process.env,
@@ -34,12 +45,14 @@ async function start(name,enabled,extra={}) {
     PACIFICDB_ENGINE_ACCOUNTS_FILE:accounts,PACIFICDB_VECTOR_PREVIEW_ENABLED:enabled?'1':'0',
     WAL_ENABLED:'true',WAL_FSYNC_ENABLED:'true',WAL_FLUSH_ON_COMMIT:'true',...extra};
   const processHandle=spawn(path.join(build,process.platform==='win32'?'db_engine.exe':'db_engine'),[],{env,stdio:['ignore','pipe','pipe']});
+  const closed=once(processHandle,'close');
   let diagnostic='';
   for(const stream of [processHandle.stdout,processHandle.stderr])stream.on('data',chunk=>{diagnostic=(diagnostic+chunk.toString()).slice(-8192);});
   processHandle.stdout.pipe(log,{end:false});processHandle.stderr.pipe(log,{end:false});
   const clients=[];
   const probe=new PacificDBClient({port,timeoutMs:300});clients.push(probe);
   let ready=false;
+  try{
   for(let i=0;i<150;++i){if(processHandle.exitCode!==null)throw Error(`startup exited ${processHandle.exitCode}: ${diagnostic.replaceAll(password,'[fixture-secret]')}`);
     try{ready=(await probe.request({action:'ping'})).status==='pong';}catch{}
     if(ready)break;await new Promise(resolve=>setTimeout(resolve,100));}
@@ -47,6 +60,11 @@ async function start(name,enabled,extra={}) {
   return {port,clients,processHandle,log,env,async client(username,userId,database='app'){
     const c=new PacificDBClient({port,userId,database,poolSize:4,timeoutMs:30000});clients.push(c);
     await c.authenticate(username,password);return c;}};
+  }catch(error){
+    for(const client of clients)client.close();
+    if(processHandle.exitCode===null&&processHandle.signalCode===null)processHandle.kill('SIGKILL');
+    await closed;log.end();await once(log,'finish');throw error;
+  }
 }
 async function stop(server){
   for(const c of server.clients)c.close();
@@ -91,6 +109,11 @@ const fresh=async client=>{
  assert.deepEqual(ann.data.map(x=>x.id),exact.data.map(x=>x.id));return ann;
 };
 try{
+ // Invalid startup configuration must refuse cleanly, preserving the original
+ // error instead of terminating through the live memory-monitor thread.
+ await assert.rejects(start('refused-accounts',true,
+   {PACIFICDB_ENGINE_ACCOUNTS_FILE:path.join(root,'missing-accounts.json')}),
+   error=>/startup exited 1:/.test(String(error))&&!/engine_fatal/.test(String(error)));
  server=await start('incremental',true,{RAFT_STANDALONE_BYPASS:'0'});let alice=await server.client('alice','tenant-a');
  await alice.createDatabase('app');await alice.createCollection('vectors',{vectorSchema:schema});
  await alice.createCollection('documents');
