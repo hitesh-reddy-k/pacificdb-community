@@ -112,7 +112,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: workbench-${{ github.ref }}-${{ inputs.verify_sanitizers && 'candidate-sanitizers' || inputs.verify_assets && 'public-asset-integrity' || inputs.prepare_benchmark_inputs && 'benchmark-inputs' || inputs.attach_company_guide && 'company-guide' || inputs.assemble_candidate && 'assembly' || inputs.qualify_candidate && 'qualification' || inputs.publish_desktop && 'desktop-publication' || inputs.verify_publication && 'public-consumer' || inputs.source_ref || 'platform' }}
+  group: workbench-${{ github.ref }}-${{ inputs.verify_sanitizers && 'candidate-sanitizers' || inputs.verify_assets && 'public-asset-integrity' || inputs.prepare_benchmark_inputs && 'benchmark-inputs' || inputs.attach_company_guide && 'company-guide' || inputs.assemble_candidate && 'assembly' || inputs.qualify_candidate && 'qualification' || inputs.publish_desktop && 'desktop-publication' || inputs.verify_publication && 'public-consumer' || (inputs.native_diagnostics && format('native-diagnostics-{0}', inputs.source_ref)) || (inputs.source_ref && format('native-platform-{0}', inputs.source_ref)) || 'platform' }}
   cancel-in-progress: false
 
 jobs:
