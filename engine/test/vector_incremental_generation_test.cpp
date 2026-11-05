@@ -100,7 +100,62 @@ void completeConstruction(){
  }
  std::cout<<"COMPLETE_BACKGROUND_CONSTRUCTION_MONOTONIC_VISIBILITY_AND_SOURCE_FENCES_PASS\n";
 }
+void completeMaintenanceProgress(){
+ // A later committed mutation must not repeatedly discard a resolved prefix.
+ // Every resolution of "one" triggers a new edit of "two". Discard/retry of
+ // the same prefix therefore cannot converge, although consuming that prefix
+ // and then the newly journaled ID reaches a fully verified generation.
+ std::mutex mutex;uint64_t revision=1;bool inject=false;
+ std::mutex gate;std::condition_variable wake;bool entered=false,released=false;
+ std::map<std::string,std::vector<float>> records{{"one",{1,0}},{"two",{2,0}}};
+ auto journal=std::make_shared<VectorChangeJournal>(1024,1024*1024);
+ const auto certificate=[&]()->std::optional<VectorFreshness::Stamp>{
+  std::lock_guard<std::mutex> lock(mutex);return VectorFreshness::Stamp{1,revision,0};
+ };
+ const auto source=[&](const VectorIndexGeneration::Emit& emit,const std::atomic<bool>&){
+  std::map<std::string,std::vector<float>> copy;{std::lock_guard<std::mutex> lock(mutex);copy=records;}
+  for(const auto& [id,value]:copy)emit({id,value});
+ };
+ const auto resolve=[&](const std::string& id)->std::optional<VectorIndexGeneration::Record>{
+  std::vector<float> value;bool pause=false;
+  {std::lock_guard<std::mutex> lock(mutex);value=records.at(id);
+   if(inject&&id=="one"){records["two"]={1000,0};++revision;assert(journal->append("two",0));}
+   pause=inject&&id=="two";}
+  if(pause){std::unique_lock<std::mutex> lock(gate);entered=true;wake.notify_all();wake.wait(lock,[&]{return released;});}
+  return VectorIndexGeneration::Record{id,value};
+ };
+ HNSWConfig config;config.dimensions=2;config.metric=DistanceMetric::DOT_PRODUCT;
+ config.maxElements=100;config.maxMemoryBytes=1024*1024;config.efSearch=100;
+ auto manager=std::make_shared<VectorIndexGeneration>(1024*1024);
+ const auto anchor=journal->capture();
+ const auto ready=[&](VectorIndexGeneration& m){m.enableMaintenance(journal,anchor,certificate,resolve,1,1000,true);};
+ assert(manager->enqueue(config,certificate,source,{},false,{},ready,{},true));wait(manager,State::READY);
+ // Wait until the Ready callback has installed complete journal coverage.
+ auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds(5);
+ while(!manager->acquire(*certificate())){assert(std::chrono::steady_clock::now()<deadline);std::this_thread::yield();}
+ const auto retained=manager->acquire(*certificate());assert(retained);
+ {std::lock_guard<std::mutex> lock(mutex);inject=true;records["one"]={900,0};++revision;assert(journal->append("one",0));}
+ {std::unique_lock<std::mutex> lock(gate);assert(wake.wait_for(lock,std::chrono::seconds(3),[&]{return entered;}));}
+ // The graph has consumed one prefix but public acquisition remains fenced
+ // both for the current source and for a previously retained certificate.
+ assert(manager->status().state==State::STALE);
+ assert(!manager->acquire(*certificate())&&!manager->acquire(retained->certificate));
+ const auto partial=retained->graph->search({1,0},1);assert(partial.front().first=="one"&&partial.front().second==-900);
+ {std::lock_guard<std::mutex> lock(gate);released=true;}wake.notify_all();
+ deadline=std::chrono::steady_clock::now()+std::chrono::seconds(3);
+ std::shared_ptr<const VectorIndexGeneration::Generation> current;
+ while(!(current=manager->acquire(*certificate()))){
+  assert(manager->status().state!=State::FAILED);
+  assert(std::chrono::steady_clock::now()<deadline&&"incremental resolved prefix made no progress");
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+ }
+ const auto hits=current->graph->search({1,0},2);
+ assert(hits.size()==2&&hits[0].first=="two"&&hits[0].second==-1000&&hits[1].first=="one"&&hits[1].second==-900);
+ assert(current->certificate==*certificate());manager->closeAndWait();
+ std::cout<<"COMPLETE_INCREMENTAL_PREFIX_PROGRESS_DURING_LATER_MUTATIONS_PASS\n";
+}
 int main(){
+ completeMaintenanceProgress();
  completeConstruction();
  completeVisibility();
  std::mutex sourceMutex;std::map<std::string,std::vector<float>> records;

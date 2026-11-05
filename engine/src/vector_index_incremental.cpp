@@ -100,7 +100,16 @@ bool VectorIndexGeneration::maintain(){
             return current && (*current==*target || (maintenance->sourceVisibilityComplete &&
                 current->sameSourceAtOrAfter(*target)));
         };
-        if(!compatible(stillCurrent)){
+        const auto completeProgress=[&](const std::optional<VectorFreshness::Stamp>& current){
+            return maintenance->sourceVisibilityComplete && current &&
+                current->root==target->root && current->configuration==target->configuration &&
+                current->collection>=target->collection && current->visibility>=target->visibility;
+        };
+        // Complete sources journal every mutation. A newer edit can be consumed
+        // in a later bounded batch; discarding this prefix on each newer edit
+        // can starve maintenance forever. This relaxes work progression only,
+        // never query eligibility or the requirement for complete coverage.
+        if(!compatible(stillCurrent)&&!completeProgress(stillCurrent)){
             std::lock_guard<std::mutex> lock(mutex_);building_=false;return false;
         }
         // The original graph was constructed mutable. Search/insert/delete are
@@ -124,10 +133,15 @@ bool VectorIndexGeneration::maintain(){
             std::lock_guard<std::mutex> lock(mutex_);building_=false;
             if(stopped_.load()||revision_!=revision||maintenance_!=maintenance)return false;
             maintenance->cursor=batch.next;
-            const bool covered=batch.state==VectorChangeJournal::State::Covered&&compatible(final)&&
+            const bool covered=batch.state==VectorChangeJournal::State::Covered&&
+                (compatible(final)||completeProgress(final))&&
                 head.epoch==batch.next.epoch&&head.sequence==batch.next.sequence;
             if(covered){
-                auto next=std::make_shared<Generation>(Generation{nextGeneration_+1,*target,graph,{},{}});
+                // Final source is stable and every entry through its observed
+                // journal head has been resolved. Publish that certificate;
+                // an incomplete prefix remains STALE throughout catch-up.
+                const auto publishedCertificate=maintenance->sourceVisibilityComplete?*final:*target;
+                auto next=std::make_shared<Generation>(Generation{nextGeneration_+1,publishedCertificate,graph,{},{}});
                 next->visibilityComplete=maintenance->sourceVisibilityComplete;
                 retired.swap(published_);published_=std::move(next);++nextGeneration_;
                 status_={State::READY,nextGeneration_,{}};
