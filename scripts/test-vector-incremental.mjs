@@ -16,9 +16,9 @@ async function freePort() {
   const server=net.createServer();await new Promise((resolve,reject)=>server.once('error',reject).listen(0,'127.0.0.1',resolve));
   const port=server.address().port;await new Promise(resolve=>server.close(resolve));return port;
 }
-async function start(name,enabled,extra={}) {
+async function start(name,enabled,extra={},accountContents=null) {
   const home=path.join(root,name);await mkdir(home,{recursive:true});
-  const accounts=path.join(home,'accounts.json');await writeFile(accounts,JSON.stringify([
+  const accounts=path.join(home,'accounts.json');await writeFile(accounts,accountContents??JSON.stringify([
     {username:'alice',password,role:'ADMIN'},{username:'bob',password,role:'ADMIN'},
     {username:'reader',password,role:'READ_ONLY'}]),{mode:0o600});
   if(process.platform==='win32'){
@@ -114,6 +114,10 @@ try{
  await assert.rejects(start('refused-accounts',true,
    {PACIFICDB_ENGINE_ACCOUNTS_FILE:path.join(root,'missing-accounts.json')}),
    error=>/startup exited 1:/.test(String(error))&&!/engine_fatal/.test(String(error)));
+ await assert.rejects(start('malformed-accounts',true,{},
+   '{"password":"fixture-sensitive-never-log", malformed'),
+   error=>/startup exited 1:/.test(String(error))&&/accounts file contains invalid JSON/.test(String(error))&&
+     !/fixture-sensitive-never-log|engine_fatal/.test(String(error)));
  server=await start('incremental',true,{RAFT_STANDALONE_BYPASS:'0'});let alice=await server.client('alice','tenant-a');
  await alice.createDatabase('app');await alice.createCollection('vectors',{vectorSchema:schema});
  await alice.createCollection('documents');

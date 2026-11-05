@@ -19,7 +19,7 @@ static void setAcl(const std::filesystem::path& file, bool publicAccess, bool nu
     std::vector<unsigned char> storage(bytes);
     assert(GetTokenInformation(token, TokenUser, storage.data(), bytes, &bytes));
     const auto user = reinterpret_cast<TOKEN_USER*>(storage.data())->User.Sid;
-    unsigned char world[SECURITY_MAX_SID_SIZE]; DWORD worldSize=sizeof(world);
+    alignas(DWORD) unsigned char world[SECURITY_MAX_SID_SIZE]; DWORD worldSize=sizeof(world);
     assert(CreateWellKnownSid(WinWorldSid,nullptr,world,&worldSize));
     EXPLICIT_ACCESSW entry{};entry.grfAccessPermissions=publicAccess?GENERIC_READ:GENERIC_ALL;
     entry.grfAccessMode=SET_ACCESS;entry.Trustee.TrusteeForm=TRUSTEE_IS_SID;
@@ -52,7 +52,9 @@ int main() {
     const auto link=root.dataRoot()/"link";std::filesystem::create_symlink(file,link);rejects(link);
     const auto fifo=root.dataRoot()/"fifo";assert(::mkfifo(fifo.c_str(),0600)==0);rejects(fifo);
 #endif
-    {std::ofstream output(file);output<<std::string(1024*1024+1,'x');}
+    {std::ofstream output(file);output<<std::string(1024*1024,'x');}
+    assert(pacificdb::readPrivateCredentials(file).size()==1024*1024);
+    {std::ofstream output(file,std::ios::app);output<<'x';}
     rejects(file);
     std::cout<<"PRIVATE_CREDENTIALS_OWNERSHIP_ACCESS_REGULAR_FILE_SIZE_FENCES_PASS\n";
 }

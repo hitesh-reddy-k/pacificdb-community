@@ -584,7 +584,11 @@ static int runEngine(int argc, char** argv) {
     if (const char* acctPath = std::getenv("PACIFICDB_ENGINE_ACCOUNTS_FILE")) {
         try {
             const auto accounts = nlohmann::json::parse(
-                pacificdb::readPrivateCredentials(std::filesystem::u8path(acctPath)));
+                pacificdb::readPrivateCredentials(std::filesystem::u8path(acctPath)), nullptr, false);
+            if (accounts.is_discarded()) {
+                // Parser exceptions can contain fragments of credential input.
+                throw std::runtime_error("accounts file contains invalid JSON");
+            }
             if (!accounts.is_array()) {
                 throw std::runtime_error("accounts file must contain a JSON array");
             }
