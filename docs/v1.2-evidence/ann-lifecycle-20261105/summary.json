@@ -118,5 +118,5 @@
   },
   "first_latest_attempt": "Overall FAIL: timed phase passed, but adapted harness reused idle administrative session at post-load validation. Corrected attempt closes/reopens control session, preserves failed authority/logs and repeats complete scenario.",
   "auxiliary_observer_attempt": "First observer BLOCKED before database access due absent startup status file. Original error retained; bounded startup wait added, unchanged assertions passed after recovery.",
-  "public_runner": "Parameterized fresh-profile transcription; CLI/compilation checks passed. Separate portable10Ksmoke pending; 1M receipt uses separately fingerprinted recorded harness."
+  "public_runner": "PASS: parameterized fresh profile passed end-to-end10K reduced-duration smoke, including fresh ingestion, all9ramps, media checksum tests and SIGKILL/rebuild. No performance claim from2secondmixedphase. Latest1M receipt is separate recorded harness."
 }

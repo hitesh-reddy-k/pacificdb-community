@@ -1,0 +1,128 @@
+{
+  "status": "PASS",
+  "scope": "Portable runner reduced-duration 10K functionality smoke, not performance qualification",
+  "runner_source_commit": "d708052415af50b9c00a84e3964ac473cb3c7af0",
+  "engine_build_info": {
+    "product": "PacificDB Engine",
+    "engineVersion": "1.2.0",
+    "releaseVersion": "1.2.0-rc.2",
+    "releaseChannel": "prerelease",
+    "releaseName": "Pre-release v1.2",
+    "releaseTag": "v1.2.0-rc.2",
+    "gitCommit": "d708052415af50b9c00a84e3964ac473cb3c7af0",
+    "storageFormatVersion": "2",
+    "raftProtocolVersion": "2",
+    "buildTimestamp": "2026-11-05T23:28:50+05:30",
+    "compiler": "GNU-14.2.0"
+  },
+  "engine_sha256": "1217c93f71d9a882f70d428e629af3441efeb8cee083550a015a7074f9970b04",
+  "runner_sha256": "71fdd770438ef5d70fedbcfe3cba3cfbe72ed03fdb85c2ee86f1ca3171439454",
+  "vectors": 10000,
+  "seed_documents": 1000,
+  "ramp_seconds_requested": 0.3,
+  "mixed_seconds_requested": 2,
+  "request_failures": 0,
+  "phases": [
+    {
+      "name": "DOCUMENT_RAMP_1",
+      "status": "PASS",
+      "actual_seconds": 0.32312603899481473
+    },
+    {
+      "name": "DOCUMENT_RAMP_8",
+      "status": "PASS",
+      "actual_seconds": 1.4840260199998738
+    },
+    {
+      "name": "DOCUMENT_RAMP_32",
+      "status": "PASS",
+      "actual_seconds": 5.627148944004148
+    },
+    {
+      "name": "VECTOR_RAMP_1",
+      "status": "PASS",
+      "actual_seconds": 0.30252224700234365
+    },
+    {
+      "name": "VECTOR_RAMP_8",
+      "status": "PASS",
+      "actual_seconds": 1.1768855699992855
+    },
+    {
+      "name": "VECTOR_RAMP_32",
+      "status": "PASS",
+      "actual_seconds": 4.5982091650002985
+    },
+    {
+      "name": "MEDIA_RAMP_1",
+      "status": "PASS",
+      "actual_seconds": 0.7898213939988636
+    },
+    {
+      "name": "MEDIA_RAMP_8",
+      "status": "PASS",
+      "actual_seconds": 12.182040594001592
+    },
+    {
+      "name": "MEDIA_RAMP_32",
+      "status": "PASS",
+      "actual_seconds": 51.693549750001694
+    },
+    {
+      "name": "MIXED_SOAK",
+      "status": "PASS",
+      "actual_seconds": 2.8297545520035783
+    }
+  ],
+  "recall": {
+    "recall-after-restart": {
+      "label": "after-restart",
+      "queries": 20,
+      "strict_recall_at_10": 1.0,
+      "tie_aware_recall_at_10": 1.0,
+      "ef_search": 600,
+      "target": 0.95,
+      "reference": "independent float64 exhaustive cosine on quiescent committed state"
+    },
+    "recall-after-soak": {
+      "label": "after-soak",
+      "queries": 20,
+      "strict_recall_at_10": 1.0,
+      "tie_aware_recall_at_10": 1.0,
+      "ef_search": 600,
+      "target": 0.95,
+      "reference": "independent float64 exhaustive cosine on quiescent committed state"
+    },
+    "recall-initial": {
+      "label": "initial",
+      "queries": 20,
+      "strict_recall_at_10": 1.0,
+      "tie_aware_recall_at_10": 1.0,
+      "ef_search": 600,
+      "target": 0.95,
+      "reference": "independent float64 exhaustive cosine on quiescent committed state"
+    },
+    "recall-after-ramps": {
+      "label": "after-ramps",
+      "queries": 20,
+      "strict_recall_at_10": 1.0,
+      "tie_aware_recall_at_10": 1.0,
+      "ef_search": 600,
+      "target": 0.95,
+      "reference": "independent float64 exhaustive cosine on quiescent committed state"
+    }
+  },
+  "integrity_after_restart": {
+    "status": "PASS",
+    "acknowledged_mutated_documents_verified": 5,
+    "acknowledged_mutated_vectors_verified": 1,
+    "deleted_vectors_verified": 1,
+    "retained_media_verified": 3,
+    "recent_deleted_media_verified": 44,
+    "seed_document_count_verified": 1000,
+    "untouched_seed_document_payloads_verified": 1000,
+    "all_untouched_seed_vector_payloads_read": false
+  },
+  "whole_attempt_elapsed_seconds": 98.67662901400035,
+  "production_readiness": "INCOMPLETE"
+}

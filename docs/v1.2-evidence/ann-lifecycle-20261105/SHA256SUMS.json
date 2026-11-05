@@ -8,10 +8,11 @@
   "failure-chronology.json": "fa0ed7b493d49338787926f720d645397b7928a7db98de43d6e873dd4f52a546",
   "harness-sha256.json": "8a73f211105f6e4166653dbe784ade60ab9361726a8cf38ad9810ffe389907ec",
   "native-platforms.json": "58d0b90b59412d88ebccd860e5c3b01c667d97b0b106a755f75aa90a4240252c",
+  "portable-runner-smoke.json": "5ac2c31e5c56d4fe5e5f66b77dc69252f3030312f15ff884fedd47f85ce8dbe0",
   "retained-failure-digests.json": "06f61396e4b01cc9852c9f1f3bbaeaab12e2f87648fa51bc4b34f9248d6c80a0",
   "retained-media-probe.json": "9aa03bbc8fbeecb6962bda4627df38b152dc1f6406382a77bfa7500642c4b817",
   "source-sha256.json": "7f152e207ce34264bd8644b64e64b1eabb8585d6c7573b157413a19975f3b4e8",
-  "summary.json": "c5b888dc6785bbdf086f8c8afe39d0c355c1ed8fdcfeed2d8d48b52c345f1707",
+  "summary.json": "fe2e5cc918d0718bb006f2b3dbfd5b9694ec109e0c8ff00bc41c7832588513d1",
   "tsan-tests.log": "435fe409a59d02281d49d4ea348a0abe8e2994af00e619766b0a4e0038ab218f",
   "updated-vector-probe.json": "3d263bb0b27f0b1e49bc9f1633e9e0a52e16b0561e3ddeec42ed2ecb446dd33d"
 }
