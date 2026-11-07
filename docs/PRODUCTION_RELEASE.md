@@ -2,7 +2,9 @@
 
 ## Required repository controls
 
-- Pull requests required for `main`, with one approval and stale approvals dismissed.
+- Pull requests required for `main`. The owner-selected sole-maintainer policy
+  requires zero external approvals and resolved review discussions; existing
+  approvals are dismissed when new commits are pushed.
 - Required checks: `source-linux` and the reusable cross-platform `packages` workflow.
 - Force pushes and branch deletion disabled.
 - CodeQL, Dependabot alerts, secret scanning, and push protection enabled.
@@ -15,18 +17,18 @@ scripts/check-repository-controls.sh
 
 The checker discovers the default branch and reads its effective rules, including
 rulesets. An obsolete branch name, the presence of a ruleset alone, or a successful
-API response cannot produce PASS. It requires a stale-dismissed approval,
+API response cannot produce PASS. It reads the explicit review policy from
+`.github/repository-controls.json` (independent approval is the default if the
+file is absent) and verifies that policy alongside
 `source-linux`, all four native package check names, strict status checks,
 CodeQL's high-severity gate, deletion/force-push protection and both secret
 protections. It is read-only and reports `BLOCKED` for missing controls or access.
 
-The initial 2026-11-02 audit found zero required approvals and no named status
-checks. After PR #54 passed and merged, the existing ruleset was strengthened
-to require one approval, stale-review dismissal and all five named checks above.
-Secret scanning and push protection were enabled and independently read back.
-The [effective-rules receipt](v1.2-evidence/security-hardening-20261102/repository-controls.json)
-is PASS. This verifies repository controls; independent security and artifact
-qualification remain separate gates. Re-run the checker for current state.
+The sole-maintainer profile changes the external review count only. Required
+pull requests, strict platform checks, security scanning, discussion resolution,
+linear history and deletion/force-push protections remain enforced. Independent
+security assessment and artifact qualification remain separate release gates.
+Re-run the checker for current effective settings.
 
 ## Candidate qualification
 
