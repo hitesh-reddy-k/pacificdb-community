@@ -196,7 +196,8 @@ print("WORKFLOW_CONTRACT_PASS")
 release_workflow = (ROOT / '.github/workflows/release.yml').read_text()
 require('.github/workflows/release.yml',
         "$env:GITHUB_REF_NAME -in @('v1.0.0', 'v1.1.1', 'v1.2.0')")
-assert release_workflow.count('"$GITHUB_REF_NAME" == v1.2.0') == 2
+assert release_workflow.count('"$GITHUB_REF_NAME" == v1.2.0') == 3
+require('.github/workflows/release.yml', "--title 'v1.2 Release' --draft=true --prerelease=false")
 workbench_workflow = (ROOT / '.github/workflows/workbench-desktop.yml').read_text()
 assert workbench_workflow.count("env.WORKBENCH_RELEASE_TAG != 'workbench-v1.2.0'") == 3
 require('.github/workflows/workbench-desktop.yml',
@@ -204,3 +205,8 @@ require('.github/workflows/workbench-desktop.yml',
 forbid('.github/workflows/release.yml', "'v1.2.*'", '== v1.2.*')
 forbid('.github/workflows/workbench-desktop.yml', '== workbench-v1.2.*')
 print('UNSIGNED_VERSION_EXCEPTION_PASS')
+
+# Stable native Linux artifacts share the announced Ubuntu24 ABI with Workbench.
+require('.github/workflows/release.yml',
+        "  linux:\n    if: ${{ !startsWith(github.ref, 'refs/tags/v') || !contains(github.ref_name, '-') }}\n    runs-on: ubuntu-24.04")
+print('LINUX_PACKAGE_ABI_CONTRACT_PASS')

@@ -1,91 +1,69 @@
 # PacificDB v1.2 SDK guide
 
-Source packages prepare **1.2.0** (Java coordinates `in.pacificdb:pacificdb-client`).
-The published commands below still select RC.2. Do not expect source changes in
-those downloads. Maven Central publication is deferred; use the JAR with its
-matching POM from the chosen release, retaining the `io.pacificdb` Java imports.
+Use matching **1.2.0** client packages with the 1.2.0 engine. Node requires Node18+,
+Python requires Python3.10+, and Java requires Java11+. Clients use the engine's
+native JSON protocol. The Node client works in a Next.js **Node server runtime**;
+keep credentials on the server. Use the Python client from FastAPI or other Python
+services. Neither client is a browser database server or an engine installer.
 
-The engine base version is `1.2.0`; the candidate is `v1.2.0-rc.2` (Pre-release
-v1.2). Node and Java packages use `1.2.0-rc.2`; Python uses PEP 440 `1.2.0rc2`.
-RC.2 is public on GitHub with checksummed SDK packages, after correcting RC.1's
-fresh-install short-window Workbench defect. RC.1 packages remain unchanged.
-The RC.2 npm client and CLI are public under `next`; registry-installed consumers
-passed independent live verification. Python is published on PyPI; install
-`pacificdb==1.2.0rc2`. Its installed wheel passed 134 tests and authenticated
-TCP/TLS/SIGKILL recovery. Maven Central still requires owner setup; the GitHub
-JAR/POM instructions below remain available. Use the checksum supplied by the
-chosen distribution channel: PyPI and GitHub archives contain identical files
-but have different container timestamps and SHA-256 digests.
+Java coordinates are `in.pacificdb:pacificdb-client:1.2.0`; imports remain
+`io.pacificdb.*`. Install the release's JAR and matching POM into a local Maven
+repository as shown below. Maven Central publication is deferred.
 
 | Client | Package | Minimum runtime | Runtime dependencies |
 |---|---|---|---|
-| Node | `@pacificdb/client@1.2.0-rc.2` | Node 18 | None |
-| CLI/browser Workbench | `@pacificdb/cli@1.2.0-rc.2` | Node 18 | Matching Node client |
-| Python | `pacificdb==1.2.0rc2` | Python 3.10 | None |
-| Java | `io.pacificdb:pacificdb-client:1.2.0-rc.2` | Java 11 | Jackson Databind 2.22.3 and its transitive dependencies |
+| Node | `@pacificdb/client@1.2.0` | Node 18 | None |
+| CLI/browser Workbench | `@pacificdb/cli@1.2.0` | Node 18 | Matching Node client |
+| Python | `pacificdb==1.2.0` | Python 3.10 | None |
+| Java | `in.pacificdb:pacificdb-client:1.2.0` | Java 11 | Jackson Databind 2.22.4 and its transitive dependencies |
 
 The npm CLI does not install the engine. Install the matching native package or
 connect to an existing engine. The CLI and native shell both use the command
 `pacificdb`; invoke the project-local npm binary explicitly when testing it.
 
-## Install exact local assets
+## Install release assets
 
-For the published npm packages, install the explicit candidate version:
+For the published npm packages, install the explicit version:
 
 ```sh
-npm install @pacificdb/client@1.2.0-rc.2 @pacificdb/cli@1.2.0-rc.2
+npm install @pacificdb/client@1.2.0 @pacificdb/cli@1.2.0
 ./node_modules/.bin/pacificdb --version
 ```
-
-RC.2's registry-installed consumers passed authenticated TCP/TLS, document/media
-roundtrips and SIGKILL recovery in public-install run41324080656, attempt2.
-The initial attempt's CLI-registry propagation failure is retained separately.
-A native engine is still required.
-`@latest` selects a different release.
 
 After verifying the release checksums, create a clean consumer directory. Install
-both npm archives together so the CLI resolves its exact candidate dependency:
+both npm archives together so the CLI resolves its exact matching dependency:
 
 ```sh
-npm install /absolute/path/pacificdb-client-1.2.0-rc.2.tgz /absolute/path/pacificdb-cli-1.2.0-rc.2.tgz
+npm install /absolute/path/pacificdb-client-1.2.0.tgz /absolute/path/pacificdb-cli-1.2.0.tgz
 ./node_modules/.bin/pacificdb --version
 python3 -m venv .venv
-.venv/bin/python -m pip install /absolute/path/pacificdb-1.2.0rc2-py3-none-any.whl
+.venv/bin/python -m pip install /absolute/path/pacificdb-1.2.0-py3-none-any.whl
 ```
 
-Java's binary, source and Javadoc JARs and dependency-bearing POM are staged
-separately. Install the candidate into a local Maven repository; this does not
+Java's binary, source and Javadoc JARs and dependency-bearing POM are distributed
+separately. Install the matching package into a local Maven repository; this does not
 publish it remotely:
 
 ```sh
 mvn org.apache.maven.plugins:maven-install-plugin:3.1.2:install-file \
-  -Dfile=/absolute/path/pacificdb-client-1.2.0-rc.2.jar \
-  -DpomFile=/absolute/path/pacificdb-client-1.2.0-rc.2.pom
+  -Dfile=/absolute/path/pacificdb-client-1.2.0.jar \
+  -DpomFile=/absolute/path/pacificdb-client-1.2.0.pom
 ```
 
 Then declare this dependency in the consumer's POM:
 
 ```xml
 <dependency>
-  <groupId>io.pacificdb</groupId>
+  <groupId>in.pacificdb</groupId>
   <artifactId>pacificdb-client</artifactId>
-  <version>1.2.0-rc.2</version>
+  <version>1.2.0</version>
 </dependency>
 ```
 
 The POM resolves Jackson from Maven Central. Offline consumers must provision
-those dependencies separately. Central publication and public repository
-availability have not been established. The optional Central validation workflow
-requires namespace ownership, an owner token and GPG identity; its USER_MANAGED
-upload does not publish. Registry workflows are manual and protected by their
-configured environments. npm candidates publish only to `next`.
-
-Current-source Java builds use Maven group **`in.pacificdb`**, matching the
-`pacificdb.in` domain. For those locally staged artifacts, replace the dependency
-group above with `in.pacificdb`; retain the version from the accompanying POM.
-Published RC.2 downloads retain `io.pacificdb` and are unchanged. Java API imports
-remain `io.pacificdb.*`. New Central publication requires a new approved release
-tag and the [owner publishing setup](PUBLISHING_OWNER_GUIDE.md).
+those dependencies separately. PacificDB's own Maven Central publication is
+deferred; the release JAR/POM can be installed locally without an owner GPG key.
+Java API imports remain `io.pacificdb.*`.
 
 ## Equivalent database and document operations
 

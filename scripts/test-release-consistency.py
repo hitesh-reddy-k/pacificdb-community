@@ -55,13 +55,18 @@ def main() -> None:
     # The website advertises an independently published release. A development
     # checkout or older main branch must not rename an existing public package.
     published = json.loads((ROOT / "site/release.json").read_text())
-    published_version = published["candidate"]
+    published_version = published.get("releaseVersion", published.get("candidate"))
     release_tag = published["tag"]
-    if release_tag != f"v{published_version}" or published["channel"] != "prerelease":
-        raise AssertionError("invalid public prerelease identity")
-    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+", published_version):
+    if release_tag != f"v{published_version}" or published["channel"] not in ("stable", "prerelease"):
+        raise AssertionError("invalid public release identity")
+    if published.get("releaseVersion") and "candidate" in published and published["candidate"] != published_version:
+        raise AssertionError("public version aliases disagree")
+    if published["channel"] == "stable":
+        if published_version != published["version"]:
+            raise AssertionError("stable website must identify its base release")
+    elif not re.fullmatch(re.escape(published["version"]) + r"-(?:alpha|beta|rc)\.[0-9]+", published_version):
         raise AssertionError("website must identify the actual release candidate")
-    badge = r'<span class="badge">(v[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+)</span>'
+    badge = r'<span class="badge">(v[0-9]+\.[0-9]+\.[0-9]+(?:-(?:alpha|beta|rc)\.[0-9]+)?)</span>'
     if match_version("site/index.html", badge) != release_tag:
         raise AssertionError("landing version does not match public release metadata")
     docs_badge = badge.replace('class="badge"', 'class="version-badge"')
@@ -69,7 +74,11 @@ def main() -> None:
         raise AssertionError("documentation version does not match public release metadata")
     require_text("site/index.html", f'href="release-{published["version"]}.html"')
     require_text(f"site/release-{published['version']}.html", published_version)
-    native = f"pacificdb-community-{published_version}-linux-x64.deb"
+    native_options = [f"pacificdb-community-{published_version}-linux-{arch}.deb" for arch in ("x64", "amd64")]
+    native_matches = [name for name in native_options if name in published["assets"]]
+    if len(native_matches) != 1:
+        raise AssertionError("website must identify one actual native Linux package")
+    native = native_matches[0]
     if native not in published["assets"] or "SHA256SUMS" not in published["assets"]:
         raise AssertionError("website inventory is missing published native assets")
     require_text("site/index.html", f"releases/download/{release_tag}/{native}")

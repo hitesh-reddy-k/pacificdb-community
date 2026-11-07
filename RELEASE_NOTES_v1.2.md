@@ -1,8 +1,8 @@
-# Pre-release v1.2
+# v1.2 Release
 
-Base engine: **1.2.0**. Published candidate: **1.2.0-rc.2**.
-This release is intended for external evaluation. Follow-up source changes are
-listed separately below and do not replace the published RC.2 packages.
+Version **1.2.0**. PacificDB combines document, vector and media storage using
+shared durable WAL/LSM infrastructure. Use matching engine, CLI, Workbench and SDK
+packages, and verify checksums before installation.
 
 ## Added
 
@@ -11,7 +11,7 @@ listed separately below and do not replace the published RC.2 packages.
 - Bounded exact top-K and explicit exact/ANN/automatic search policies.
 - Opt-in standalone HNSW lifecycle and bounded incremental dense maintenance.
 - Lexical/vector hybrid retrieval with reciprocal rank fusion.
-- Consistent engine, Workbench, CLI and SDK prerelease identity.
+- Consistent engine, Workbench, CLI and SDK version reporting.
 
 ## Improved
 
@@ -21,16 +21,14 @@ listed separately below and do not replace the published RC.2 packages.
 - Workbench document/vector/media navigation and vector query options.
 - SDK operation coverage and installation verification.
 
-## Fixed in published RC.2
+## Fixed
 
 - Short-window Workbench navigation keeps the database tree accessible.
 - Linux desktop packaging retains application-scoped installer integration.
-- RC.1 packages and tags remain unchanged.
+- Historical release packages and tags remain unchanged.
 
-## Follow-up source improvements
+## Further improvements
 
-These changes are merged into the source tree and are staged for **1.2.0**;
-they do not change the existing RC.2 downloads:
 
 - Incremental ANN maintains complete coverage during concurrent and unrelated
   commits, preserving source and applied-commit visibility checks.
@@ -58,13 +56,13 @@ Use [INSTALLATION.md](INSTALLATION.md) for the engine/Workbench,
 [SDK_GUIDE.md](SDK_GUIDE.md) for clients and
 [COMPANY_TESTING_GUIDE.md](COMPANY_TESTING_GUIDE.md) for evaluation scenarios.
 
-| Component | Published candidate identifier |
+| Component | Release identifier |
 |---|---|
-| Native engine / CLI / Workbench | `1.2.0-rc.2` (engine base `1.2.0`) |
-| Node.js SDK | `@pacificdb/client@1.2.0-rc.2` |
-| npm CLI | `@pacificdb/cli@1.2.0-rc.2` |
-| Python SDK | `pacificdb==1.2.0rc2` |
-| Java SDK | `io.pacificdb:pacificdb-client:1.2.0-rc.2` JAR/POM from GitHub |
+| Native engine / CLI / Workbench | `1.2.0` (engine base `1.2.0`) |
+| Node.js SDK | `@pacificdb/client@1.2.0` |
+| npm CLI | `@pacificdb/cli@1.2.0` |
+| Python SDK | `pacificdb==1.2.0` |
+| Java SDK | `in.pacificdb:pacificdb-client:1.2.0` JAR/POM from GitHub |
 
 Maven Central publication is separate from the downloadable GitHub JAR/POM.
 Check artifact checksums and `db_engine --build-info` to identify the exact build.

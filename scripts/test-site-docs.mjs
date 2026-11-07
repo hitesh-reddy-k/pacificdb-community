@@ -7,11 +7,18 @@ const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 const siteRoot = path.join(repositoryRoot, 'site');
 // Website release metadata is independent of stable/default npm dist-tags.
 const published = JSON.parse(await readFile(path.join(siteRoot, 'release.json'), 'utf8'));
-const version = published.candidate;
+const version = published.releaseVersion || published.candidate;
 const tag = published.tag;
-assert.equal(published.channel, 'prerelease');
+assert.ok(['stable', 'prerelease'].includes(published.channel), 'invalid public release channel');
 assert.equal(tag, `v${version}`);
-assert.match(version, /^1\.2\.0-rc\.\d+$/);
+if (published.releaseVersion && published.candidate) assert.equal(published.releaseVersion, published.candidate);
+if (published.channel === 'stable') assert.equal(version, published.version);
+else assert.match(version, new RegExp(`^${published.version.replaceAll('.', '\\.')}-(?:alpha|beta|rc)\\.\\d+$`));
+assert.match(published.version, /^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/);
+const nativeDebs = published.assets.filter(name => name === `pacificdb-community-${version}-linux-x64.deb`
+  || name === `pacificdb-community-${version}-linux-amd64.deb`);
+assert.equal(nativeDebs.length, 1, 'exactly one published native Linux package required');
+const nativeDeb = nativeDebs[0];
 const releaseFilename = `release-${published.version}.html`;
 
 async function readSiteFile(filename) {
@@ -79,16 +86,17 @@ for (const section of ['top', 'why', 'how', 'features', 'downloads', 'start', 's
 const publishedAssets = new Set(published.assets);
 for (const html of [index, docs, releaseNotes]) {
   assert.doesNotMatch(html, /current stable|not certified production-ready[^<]*guaranteed/i);
-  assert.doesNotMatch(html, /1\.1\.[12]/, 'current guides must use the RC2 release');
-  assert.match(html, /prerelease|pre-release/i, 'current pages must retain the prerelease boundary');
+  assert.doesNotMatch(html, /1\.1\.[12]/, 'current guides must use the published release');
+  if (published.channel === 'prerelease') assert.match(html, /prerelease|pre-release/i, 'current pages must retain the prerelease boundary');
+  else assert.doesNotMatch(html, /company-testing prerelease|PRE-RELEASE V1.2|PRE-RELEASE FOR COMPANY TESTING/i, 'stable pages must use stable release branding');
   for (const match of html.matchAll(/href=["']https:\/\/github\.com\/hitesh-reddy-k\/pacificdb-community\/releases\/download\/([^"'<>\s&]+)/g)) {
     const [downloadTag, name] = match[1].split('/');
     assert.equal(downloadTag, tag, 'download tags must match the published prerelease');
     assert.ok(publishedAssets.has(name), `unpublished release download: ${name}`);
   }
 }
-assert.ok(index.includes(`<span class="badge">v${version}</span>`), 'visible candidate version must match release metadata');
-assert.ok(index.includes(releaseBase + `pacificdb-community-${version}-linux-x64.deb`));
+assert.ok(index.includes(`<span class="badge">v${version}</span>`), 'visible version must match release metadata');
+assert.ok(index.includes(releaseBase + nativeDeb));
 for (const platform of ['Windows', 'macOS']) {
   const card = index.match(new RegExp(`<article class="download-card">(?:(?!</article>)[\\s\\S])*?<h3>${platform}</h3>[\\s\\S]*?</article>`))?.[0];
   assert.ok(card, 'missing native platform card');
