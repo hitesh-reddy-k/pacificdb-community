@@ -1,5 +1,10 @@
 # SDK package publication
 
+For current-source publication, follow
+[PUBLISHING_OWNER_GUIDE.md](../PUBLISHING_OWNER_GUIDE.md). The source Java
+namespace is now `in.pacificdb`; the historical package exercise below retains
+its original coordinates and versions.
+
 The current source and published GitHub download assets are version **1.1.2**:
 `pacificdb==1.1.2` and `io.pacificdb:pacificdb-client:1.1.2`.
 The [Community prerelease](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/1.1.2)

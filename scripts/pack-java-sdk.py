@@ -44,7 +44,7 @@ def bundle(target,version,output,fingerprint,manifest=None,sign=False):
                 for algorithm in ('md5','sha1','sha256','sha512'):staged[artifact.name+'.'+algorithm]=hashlib.new(algorithm,data).hexdigest().encode()
         output.parent.mkdir(parents=True,exist_ok=True)
         with zipfile.ZipFile(output,'w',compression=zipfile.ZIP_DEFLATED) as archive:
-            prefix='io/pacificdb/pacificdb-client/'+version+'/'
+            prefix=inspect_sdk.java_repository_prefix(version)
             for name,data in sorted(staged.items()):archive.writestr(prefix+name,data)
     print('PASS: local signed Java bundle; no upload performed')
 
