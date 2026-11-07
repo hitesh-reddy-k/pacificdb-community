@@ -42,11 +42,15 @@ version=$(python3 scripts/release_identity.py --field version)
 release_version=$(python3 scripts/release_identity.py --field releaseVersion)
 release_name=$(python3 scripts/release_identity.py --field name)
 export PACIFICDB_EXPECTED_ENGINE_VERSION="$version"
-expected="PacificDB $version ($release_name; $release_version)"
+expected="PacificDB $version"
+if test "$(python3 scripts/release_identity.py --field channel)" != stable; then
+  expected="PacificDB $version ($release_name; $release_version)"
+fi
 test "$("$BUILD_DIR/pacificdb" --version)" = "$expected"
 test "$("$BUILD_DIR/pacificdb" -V)" = "$expected"
 node intelligence/test.js
 python3 scripts/test-release-consistency.py
+python3 scripts/test_release_identity.py
 python3 scripts/test-build-identity.py
 python3 scripts/test-workflow-contract.py
 python3 scripts/test-repository-controls.py
