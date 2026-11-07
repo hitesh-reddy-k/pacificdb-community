@@ -70,11 +70,19 @@ undrafting the GitHub release.
 
 ## Native signing prerequisites
 
-Release tags after `v1.0.0` are fail-closed unless all platform signing evidence
-is `PASS` and is bound to the release version and commit. The explicitly
-authorized `v1.0.0` release may publish unsigned Windows and macOS installers;
-its evidence records `NOT_APPLICABLE`, and its release notes and checksums must
-make that exception visible. Non-tag package validation also remains unsigned.
+Platform signing is required by default. The release owner explicitly permits
+unsigned native installers for `v1.0.0`, `v1.1.1` and `v1.2.0`, and unsigned
+Workbench installers for `workbench-v1.1.1` and `workbench-v1.2.0`.
+These are exact-tag exceptions; later tags still require signing credentials.
+Unsigned evidence records `NOT_APPLICABLE`, never a successful signature check.
+Checksums, install/runtime tests and all other release qualification requirements
+remain enforced. Non-tag package validation also remains unsigned.
+
+Windows may show an unknown-publisher/SmartScreen warning. macOS packages are
+not Apple-notarized and may be blocked by Gatekeeper. State this on the download
+page and release notes, and provide checksum verification instructions. Never
+instruct users to disable OS protection globally. Maven Central publication is
+separate and deferred; downloadable Java JAR/POM packages remain supported.
 
 Windows requires these GitHub Actions secrets:
 

@@ -22,7 +22,7 @@ class Candidate(unittest.TestCase):
             self.assertNotIn('  push:',text)
             self.assertIn('environment:',text)
         npm=(ROOT/'.github/workflows/npm-publish.yml').read_text()
-        self.assertIn('next',npm);self.assertNotIn('--tag latest',npm)
+        self.assertIn('npm_publication_policy.py',npm);self.assertIn('--tag "$dist_tag"',npm);self.assertNotIn('--tag latest',npm)
     def test_staged_consumers_do_not_build_source_artifacts(self):
         java=(ROOT/'scripts/test-java-installed-client.sh').read_text()
         self.assertIn('install-file',java);self.assertNotIn('"$REPOSITORY/sdk/java/pom.xml"',java)

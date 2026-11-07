@@ -21,9 +21,11 @@ PACIFICDB_CONNECTION_FIXTURES="$TEST_ROOT/sdk/contracts/connection-urls.json" no
 ./node_modules/.bin/pacificdb --version
 export PACIFICDB_TEST_CLI_ENTRY="$TEST_ROOT/node_modules/@pacificdb/cli/bin/pacificdb.js"
 export PACIFICDB_TEST_NODE_MODULE="file://$TEST_ROOT/node_modules/@pacificdb/client/src/index.js"
+export PACIFICDB_EXPECTED_NPM_VERSION
+PACIFICDB_EXPECTED_NPM_VERSION=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["npmVersion"])' "$REPOSITORY/release.json")
 node --input-type=module - <<'JS'
 const sdk=await import(process.env.PACIFICDB_TEST_NODE_MODULE);
-if(sdk.releaseInfo.releaseVersion!=='1.2.0-rc.2')throw Error('installed identity mismatch');
+if(sdk.releaseInfo.releaseVersion!==process.env.PACIFICDB_EXPECTED_NPM_VERSION)throw Error('installed identity mismatch');
 console.log('PASS: installed npm candidate identity');
 JS
 if test -n "${PACIFICDB_TEST_ENGINE_BUILD:-}"; then

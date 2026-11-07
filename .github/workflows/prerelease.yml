@@ -19,11 +19,25 @@ concurrency:
   group: prerelease-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  identity:
+    runs-on: ubuntu-24.04
+    outputs:
+      channel: ${{ steps.release.outputs.channel }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
+      - id: release
+        run: echo "channel=$(python3 scripts/release_identity.py --field channel)" >> "$GITHUB_OUTPUT"
   sdk:
+    needs: identity
+    if: needs.identity.outputs.channel == 'prerelease'
     uses: ./.github/workflows/sdk-packages.yml
     with:
       ref: ${{ inputs.release_tag || github.ref }}
   linux:
+    needs: identity
+    if: needs.identity.outputs.channel == 'prerelease'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7

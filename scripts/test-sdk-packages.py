@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Negative artifact checks; never downloads or publishes a package."""
 import importlib.util
+import json
 import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+
+SOURCE_VERSION=json.loads((Path(__file__).resolve().parents[1]/'release.json').read_text())['javaVersion']
 
 spec=importlib.util.spec_from_file_location('verify',Path(__file__).with_name('verify-sdk-packages.py'))
 verify=importlib.util.module_from_spec(spec);spec.loader.exec_module(verify)
@@ -74,11 +77,11 @@ class JavaArtifacts(unittest.TestCase):
             pom=ET.parse(source)
             pom.getroot().find('m:groupId',ns).text='in.pacificdb'
             pom.write(file)
-            verify.java_pom(file,'1.2.0-rc.2')
+            verify.java_pom(file,SOURCE_VERSION)
             pom.getroot().find('m:groupId',ns).text='io.pacificdb'
             pom.write(file)
             with self.assertRaisesRegex(ValueError,'coordinates mismatch'):
-                verify.java_pom(file,'1.2.0-rc.2')
+                verify.java_pom(file,SOURCE_VERSION)
 
     def test_central_repository_prefix_uses_maven_group_not_java_packages(self):
         self.assertEqual(verify.java_repository_prefix('1.2.0-rc.2'),
@@ -101,13 +104,13 @@ class JavaArtifacts(unittest.TestCase):
     def test_pom_metadata_floor_runtime_dependency_and_no_publish_defaults(self):
         import xml.etree.ElementTree as ET
         root=Path(__file__).resolve().parents[1]
-        verify.java_pom(root/'sdk/java/pom.xml','1.2.0-rc.2')
+        verify.java_pom(root/'sdk/java/pom.xml',SOURCE_VERSION)
         tree=ET.parse(root/'sdk/java/pom.xml');ns={'m':'http://maven.apache.org/POM/4.0.0'}
         for field in ['description','url','developers','scm']:
             good=ET.fromstring(ET.tostring(tree.getroot()));good.remove(good.find('m:'+field,ns))
             with tempfile.TemporaryDirectory() as d:
                 file=Path(d)/'pom.xml';ET.ElementTree(good).write(file)
-                with self.assertRaises(ValueError):verify.java_pom(file,'1.2.0-rc.2')
+                with self.assertRaises(ValueError):verify.java_pom(file,SOURCE_VERSION)
     def test_java_bytecode_docs_sources_and_signatures_required(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d)
@@ -135,7 +138,7 @@ class ExactBytes(unittest.TestCase):
     def test_bundle_pom_must_equal_inspected_pom(self):
         import hashlib
         with tempfile.TemporaryDirectory() as d:
-            root=Path(d);version='1.2.0-rc.2';base='pacificdb-client-'+version
+            root=Path(d);version=SOURCE_VERSION;base='pacificdb-client-'+version
             (root/'central-publishing').mkdir()
             (root/(base+'.pom')).write_bytes((Path(__file__).resolve().parents[1]/'sdk/java/pom.xml').read_bytes())
             for suffix,extension in [('.jar','.class'),('-sources.jar','.java'),('-javadoc.jar','.html')]:

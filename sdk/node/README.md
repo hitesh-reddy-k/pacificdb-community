@@ -4,13 +4,14 @@
 
 # PacificDB Node.js client
 
-Version **1.2.0-rc.2 — prerelease**. Download the matching package from the
-[Community v1.2.0-rc.2 release](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v1.2.0-rc.2);
-the matching prerelease package is also available through npm.
+This source package is **1.2.0**. Public RC.2 downloads retain version
+`1.2.0-rc.2` and do not contain all current source changes. Install the exact
+version from your selected release; 1.2.0 registry availability must be verified
+before using its installation command.
 
 Apache-2.0 client for the Community engine JSON protocol.
 
-Unreleased follow-up: `queryVector` accepts `indexWaitMs` (integer 0–5000;
+In 1.2.0, `queryVector` accepts `indexWaitMs` (integer 0–5000;
 default 1000 on the matching engine) for strict incremental ANN freshness waits.
 Zero preserves immediate unavailability errors. The request deadline and scan
 budget remain shared across attempts. This option does not make absent or failed

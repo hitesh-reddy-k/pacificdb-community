@@ -4,10 +4,11 @@ import java.util.Map;
 /** Compiles and runs against the installed Maven coordinate, never SDK class directories. */
 public final class InstalledClient {
     public static void main(String[] args)throws Exception {
-        if(!ReleaseInfo.VERSION.equals("1.2.0-rc.2")||!ReleaseInfo.BASE_VERSION.equals("1.2.0"))throw new AssertionError("SDK release identity mismatch");
+        if(args.length!=2)throw new AssertionError("Expected release and base versions are required");
+        if(!ReleaseInfo.VERSION.equals(args[0])||!ReleaseInfo.BASE_VERSION.equals(args[1]))throw new AssertionError("SDK release identity mismatch");
         try(var db=PacificDB.fromUrl("pacificdb://localhost:9000/app")) {
             if(!db.getDatabase().equals("app")||db.media()==null||db.backups()==null||db.indexes()==null||db.security()==null)throw new AssertionError();
-            if(!PacificDBClient.class.getProtectionDomain().getCodeSource().getLocation().toString().endsWith("pacificdb-client-1.2.0-rc.2.jar"))throw new AssertionError("Source classes used instead of installed JAR");
+            if(!PacificDBClient.class.getProtectionDomain().getCodeSource().getLocation().toString().endsWith("pacificdb-client-"+args[0]+".jar"))throw new AssertionError("Source classes used instead of installed JAR");
         }
         if(System.getenv("PACIFICDB_URL")!=null)try(var db=PacificDB.connect(System.getenv("PACIFICDB_URL"))) {
             db.createDatabase();db.createCollection("users");db.insert("users",Map.of("id","1","name","Ada"));

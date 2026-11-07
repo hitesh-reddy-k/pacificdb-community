@@ -3,6 +3,7 @@ set -euo pipefail
 REPOSITORY=$(cd "$(dirname "$0")/.." && pwd)
 ARTIFACTS=$(realpath "${1:?usage: test-java-installed-client.sh staged-java-directory}")
 VERSION=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["javaVersion"])' "$REPOSITORY/release.json")
+BASE_VERSION=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$REPOSITORY/release.json")
 TEST_ROOT=$(mktemp -d)
 trap 'result=$?; if test "$result" = 0; then rm -rf "$TEST_ROOT"; else echo "preserved failed consumer: $TEST_ROOT" >&2; fi' EXIT
 cp -R "$REPOSITORY/sdk/contracts/installed-java" "$TEST_ROOT/consumer"
@@ -12,7 +13,7 @@ mvn -B -q -Dmaven.repo.local="$MAVEN_REPOSITORY" org.apache.maven.plugins:maven-
 cd "$TEST_ROOT/consumer"
 mvn -B -q -Dmaven.repo.local="$MAVEN_REPOSITORY" package dependency:build-classpath -Dmdep.outputFile="$TEST_ROOT/classpath.txt"
 CLASSPATH="$(pwd)/target/classes:$(cat "$TEST_ROOT/classpath.txt")"
-java -cp "$CLASSPATH" io.pacificdb.consumer.InstalledClient
+java -cp "$CLASSPATH" io.pacificdb.consumer.InstalledClient "$VERSION" "$BASE_VERSION"
 if test -n "${PACIFICDB_TEST_ENGINE_BUILD:-}"; then
   : "${PACIFICDB_TEST_NODE_MODULE:?installed Node module required for engine qualification}"
   mkdir "$TEST_ROOT/harness"

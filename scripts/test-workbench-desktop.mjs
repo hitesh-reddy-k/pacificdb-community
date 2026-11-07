@@ -34,6 +34,12 @@ if (executablePath) {
   assert.equal(identity.status, 0, identity.stderr);
   const buildInfo = JSON.parse(identity.stdout);
   const release = JSON.parse(await readFile('release.json', 'utf8'));
+  const cliPath = path.join(native, process.platform === 'win32' ? 'pacificdb.exe' : 'pacificdb');
+  const cliVersion = spawnSync(cliPath, ['--version'], { encoding: 'utf8', timeout: 10000,
+    env: { ...process.env, PACIFICDB_URL: 'invalid://version-must-not-connect' } });
+  assert.equal(cliVersion.status, 0, cliVersion.stderr);
+  assert.equal(cliVersion.stdout.trim(), `PacificDB ${release.version}${release.channel === 'prerelease' ? ` (${release.name}; ${release.releaseVersion})` : ''}`);
+
   const rootPackage = JSON.parse(await readFile('package.json', 'utf8'));
   const cliPackage = JSON.parse(await readFile('cli/package.json', 'utf8'));
   validateDesktopIdentity(release, buildInfo, rootPackage.version, cliPackage.version);

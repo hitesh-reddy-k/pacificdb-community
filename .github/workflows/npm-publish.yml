@@ -1,9 +1,9 @@
-name: Publish tested npm candidate
+name: Publish tested npm release
 on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Exact existing prerelease tag
+        description: Exact existing published release tag
         required: true
 permissions:
   contents: read
@@ -19,6 +19,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.workflow_sha }}
+      - name: Preserve publication policy from this workflow revision
+        run: |
+          mkdir -p "$RUNNER_TEMP/npm-publication-tools"
+          cp scripts/npm_publication_policy.py scripts/release_identity.py "$RUNNER_TEMP/npm-publication-tools/"
+      - uses: actions/checkout@v7
+        with:
           ref: ${{ inputs.release_tag }}
           fetch-depth: 0
       - uses: actions/setup-node@v4
@@ -32,15 +39,17 @@ jobs:
         with:
           name: tested-sdk-packages
           path: release-sdk/
-      - name: Verify exact tested candidate and publish to next
+      - name: Verify exact tested release and publish to its registry channel
         env:
+          GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.release_tag }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -euo pipefail
           python scripts/check-sdk-release-tag.py "$RELEASE_TAG" --require-tag --manifest release-sdk/inspection.json
-          test "$(python scripts/release_identity.py --field channel)" = prerelease
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > "$RUNNER_TEMP/github-release.json"
+          dist_tag=$(python "$RUNNER_TEMP/npm-publication-tools/npm_publication_policy.py" --root . --github-release "$RUNNER_TEMP/github-release.json")
           python scripts/verify-sdk-packages.py --npm-dist release-sdk/npm --hash-manifest release-sdk/inspection.json --output release-sdk/npm-inspected.json
           version=$(python scripts/release_identity.py --field npmVersion)
-          npm publish "release-sdk/npm/pacificdb-client-$version.tgz" --ignore-scripts --tag next --access public
-          npm publish "release-sdk/npm/pacificdb-cli-$version.tgz" --ignore-scripts --tag next --access public
+          npm publish "release-sdk/npm/pacificdb-client-$version.tgz" --ignore-scripts --tag "$dist_tag" --access public
+          npm publish "release-sdk/npm/pacificdb-cli-$version.tgz" --ignore-scripts --tag "$dist_tag" --access public

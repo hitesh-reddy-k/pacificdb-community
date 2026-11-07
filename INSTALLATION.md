@@ -5,6 +5,22 @@ Check [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) before downloading: Not teste
 or Blocked is not verified support, and an intended URL is not proof of publication.
 Use an isolated data directory and copies of test data. Keep production unchanged.
 
+## Upcoming 1.2.0 packages
+
+This source tree prepares **1.2.0**. The published installation commands below
+continue to select RC.2 until a new release is available; they do not install the
+new source changes. Do not substitute an unpublished version into registry commands.
+
+The owner has chosen unsigned Windows/macOS installers for 1.2.0. Verify the
+release's `SHA256SUMS` before installation (`Get-FileHash -Algorithm SHA256` on
+Windows, `shasum -a 256` on macOS). Windows can show an unknown-publisher warning;
+macOS installers are not notarized and may require approval through System
+Settings → Privacy & Security after an attempted open. Follow your organization's
+software policy; do not disable OS protections globally. Checksums detect altered
+downloads when compared with a trusted release page; they are not a publisher
+signature. Java JAR/POM downloads do not require an owner GPG key; Maven Central
+publication is deferred.
+
 ## Native Linux x64 staging
 
 The [public RC.2 prerelease](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v1.2.0-rc.2)
@@ -82,6 +98,37 @@ Windows/macOS installers are included only when a platform build and actual
 installation/runtime test supply Passed evidence. Installer names or configured
 build targets alone do not qualify them. Follow platform-specific artifact
 instructions/checklist; do not use a Linux binary on another OS.
+
+## Use the terminal command bundled with Workbench
+
+Windows installers register their bundled native CLI in your user PATH. Close
+all existing terminal windows (including Windows Terminal) and open a fresh CMD:
+
+```bat
+where pacificdb
+pacificdb --version
+```
+
+On macOS and Linux, open Workbench and choose **File → Install pacificdb terminal
+command…**, then open a new terminal:
+
+```sh
+command -v pacificdb
+pacificdb --version
+```
+
+This creates `~/.local/bin/pacificdb` pointing to Workbench's bundled CLI and adds
+that directory to your bash/zsh startup files. Existing commands at that path and
+symlinked profile files are preserved; setup reports a conflict instead of
+replacing them. For another shell, add Workbench's bundled engine directory to
+its PATH using your shell's configuration. The setup action is also available on
+Windows to repair PATH registration. Version reporting works offline.
+
+The standalone native CLI has its own default database directory. To operate on
+the currently open Workbench database, use **File → Copy CLI connection command**.
+If you later remove Workbench on macOS/Linux, remove its owned `~/.local/bin/pacificdb`
+link; the profile PATH entry is harmless and can be removed as well. Previously
+published RC.2 installers do not contain this terminal setup action.
 
 ## npm, Python and Java
 

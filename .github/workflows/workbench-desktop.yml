@@ -210,6 +210,7 @@ jobs:
           sudo apt-get install -y cmake g++ liblz4-dev libre2-dev libssl-dev xvfb \
             xauth libgtk-3-0t64 libnss3 libasound2t64 libgbm1 libxss1 python3-gi gir1.2-gtk-3.0
       - run: npm ci --no-audit --no-fund
+      - run: node --test scripts/test-workbench-terminal-command.mjs
       - run: npm run test:npm
       - run: npm run test:build-tools
       - run: node --test scripts/test-workbench-preview-evidence.mjs
@@ -326,6 +327,7 @@ jobs:
         shell: bash
         run: test "$GITHUB_REF_NAME" = "$(node -p 'require("./release.json").tag')"
       - run: npm ci --no-audit --no-fund
+      - run: node --test scripts/test-workbench-terminal-command.mjs
       - run: npm run test:npm
       - run: npm run test:build-tools
       - run: node --test scripts/test-workbench-preview-evidence.mjs
@@ -353,7 +355,7 @@ jobs:
           node scripts/test-vector-incremental.mjs build/Release
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require signing credentials for release tags
-        if: env.WORKBENCH_RELEASE_TAG != '' && env.WORKBENCH_RELEASE_TAG != 'workbench-v1.1.1'
+        if: env.WORKBENCH_RELEASE_TAG != '' && env.WORKBENCH_RELEASE_TAG != 'workbench-v1.1.1' && env.WORKBENCH_RELEASE_TAG != 'workbench-v1.2.0'
         shell: pwsh
         run: |
           if (-not $env:CSC_LINK -or -not $env:CSC_KEY_PASSWORD) {
@@ -367,7 +369,7 @@ jobs:
           node scripts/test-workbench-desktop-vector-preview.mjs build/Release
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Sign bundled native executables for release tags
-        if: env.WORKBENCH_RELEASE_TAG != '' && env.WORKBENCH_RELEASE_TAG != 'workbench-v1.1.1'
+        if: env.WORKBENCH_RELEASE_TAG != '' && env.WORKBENCH_RELEASE_TAG != 'workbench-v1.1.1' && env.WORKBENCH_RELEASE_TAG != 'workbench-v1.2.0'
         shell: pwsh
         run: |
           $certificate = "$env:RUNNER_TEMP\workbench-signing.pfx"
@@ -388,7 +390,7 @@ jobs:
         run: |
           $env:PACIFICDB_WORKBENCH_ENGINE = "$pwd\build\Release\db_engine.exe"
           $env:ELECTRON_BUILDER_COMPRESSION_LEVEL = '1'
-          if ($env:WORKBENCH_RELEASE_TAG -eq 'workbench-v1.1.1') {
+          if ($env:WORKBENCH_RELEASE_TAG -in @('workbench-v1.1.1', 'workbench-v1.2.0')) {
             $env:PACIFICDB_DESKTOP_RELEASE = '0'
           }
           if ($env:PACIFICDB_DESKTOP_RELEASE -ne '1') {
@@ -431,6 +433,17 @@ jobs:
             throw 'Candidate Workbench NSIS installation timed out after 120 seconds.'
           }
           if ($process.ExitCode -ne 0) { exit $process.ExitCode }
+          $beforePath = $env:Path
+          try {
+            $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
+            $resolved = (Get-Command pacificdb.exe -CommandType Application -ErrorAction Stop).Source
+            if ($resolved -ne "$installed\resources\engine\pacificdb.exe") { throw "Workbench CLI PATH registration did not resolve its bundled CLI: $resolved" }
+            $identity = Get-Content release.json -Raw | ConvertFrom-Json
+            $expected = 'PacificDB ' + $identity.version
+            if ($identity.channel -eq 'prerelease') { $expected += " ($($identity.name); $($identity.releaseVersion))" }
+            $output = & "$env:SystemRoot\System32\cmd.exe" /d /c 'pacificdb --version'
+            if ($LASTEXITCODE -ne 0 -or $output -ne $expected) { throw "CMD version reporting failed: $output" }
+          } finally { $env:Path = $beforePath }
           Write-Host '[workbench-desktop] candidate NSIS installation complete; starting installed upgrade test'
           New-Item -ItemType Directory -Force -Path $data | Out-Null
           $env:PACIFICDB_TEST_DESKTOP_PREVIOUS = "$env:RUNNER_TEMP\workbench-previous-fixture\PacificDB Workbench.exe"
@@ -515,6 +528,7 @@ jobs:
         shell: bash
         run: test "$GITHUB_REF_NAME" = "$(node -p 'require("./release.json").tag')"
       - run: npm ci --no-audit --no-fund
+      - run: node --test scripts/test-workbench-terminal-command.mjs
       - run: npm run test:npm
       - run: npm run test:build-tools
       - run: node --test scripts/test-workbench-preview-evidence.mjs
@@ -540,7 +554,7 @@ jobs:
             exit 1
           fi
       - name: Require signing and notarization for release tags
-        if: env.WORKBENCH_RELEASE_TAG != '' && env.WORKBENCH_RELEASE_TAG != 'workbench-v1.1.1'
+        if: env.WORKBENCH_RELEASE_TAG != '' && env.WORKBENCH_RELEASE_TAG != 'workbench-v1.1.1' && env.WORKBENCH_RELEASE_TAG != 'workbench-v1.2.0'
         run: |
           for name in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
             if [[ -z "${!name}" ]]; then echo "Missing $name" >&2; exit 1; fi
@@ -551,7 +565,7 @@ jobs:
         env:
           ELECTRON_BUILDER_COMPRESSION_LEVEL: '1'
         run: |
-          if [[ "$WORKBENCH_RELEASE_TAG" == workbench-v1.1.1 ]]; then
+          if [[ "$WORKBENCH_RELEASE_TAG" == workbench-v1.1.1 || "$WORKBENCH_RELEASE_TAG" == workbench-v1.2.0 ]]; then
             export PACIFICDB_DESKTOP_RELEASE=0
           fi
           if [[ "$PACIFICDB_DESKTOP_RELEASE" != 1 ]]; then
@@ -595,7 +609,7 @@ jobs:
             PACIFICDB_TEST_DESKTOP_DATA="$RUNNER_TEMP/workbench-data-macos" \
             npm run test:workbench:desktop
           PACIFICDB_TEST_DESKTOP="$executable" npm run test:workbench:desktop
-          if [[ "$PACIFICDB_DESKTOP_RELEASE" == 1 && "$WORKBENCH_RELEASE_TAG" != workbench-v1.1.1 ]]; then
+          if [[ "$PACIFICDB_DESKTOP_RELEASE" == 1 && "$WORKBENCH_RELEASE_TAG" != workbench-v1.1.1 && "$WORKBENCH_RELEASE_TAG" != workbench-v1.2.0 ]]; then
             contents="$installed/Contents"
             codesign --verify --deep --strict --verbose=2 "$installed"
             codesign --verify --strict "$contents/Resources/engine/db_engine"
@@ -761,11 +775,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          notes="Desktop Workbench with bundled engine and CLI for Linux, Windows, and macOS."
+          if [[ "$WORKBENCH_RELEASE_TAG" == workbench-v1.2.0 ]]; then
+            notes="$notes Windows/macOS installers are unsigned and macOS is not notarized; OS trust warnings may appear. Verify SHA256SUMS before installing. See INSTALLATION.md for requirements and per-application approval instructions."
+          fi
           gh release create "$WORKBENCH_RELEASE_TAG" dist/desktop/PacificDB-Workbench-*.deb \
             dist/desktop/PacificDB-Workbench-*.exe \
             dist/desktop/PacificDB-Workbench-*.dmg dist/desktop/SHA256SUMS \
             --latest=false --title "PacificDB Workbench ${WORKBENCH_RELEASE_TAG#workbench-v}" \
-            --notes "Desktop Workbench with bundled engine and CLI for Linux, Windows, and macOS."
+            --notes "$notes"
 
   prerelease_desktop_packages:
     if: github.event_name == 'workflow_dispatch' && inputs.publish_desktop

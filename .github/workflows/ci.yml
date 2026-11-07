@@ -14,6 +14,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  identity:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      channel: ${{ steps.release.outputs.channel }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: release
+        run: |
+          echo "version=$(python3 scripts/release_identity.py --field releaseVersion)" >> "$GITHUB_OUTPUT"
+          echo "channel=$(python3 scripts/release_identity.py --field channel)" >> "$GITHUB_OUTPUT"
+
   dependency-review:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-22.04
@@ -67,17 +81,21 @@ jobs:
       - run: npm run test:build-tools
       - run: python3 scripts/test-release-consistency.py
       - run: python3 scripts/test-workflow-contract.py
+      - run: python3 scripts/test-npm-publication-policy.py
       - run: python3 scripts/test-macos-dependencies.py
-      - run: node --test scripts/test-workbench-desktop-lifecycle.mjs
+      - run: node --test scripts/test-workbench-desktop-lifecycle.mjs scripts/test-workbench-terminal-command.mjs
       - run: python3 -m unittest scripts/test_security_review.py -v
       - run: scripts/test-helm-deployment.sh
       - run: scripts/test-community.sh build
       - run: node scripts/test-audit-alert-e2e.mjs build
 
   packages:
+    needs: identity
     uses: ./.github/workflows/release.yml
     with:
-      version: 1.2.0-rc.2
+      version: ${{ needs.identity.outputs.version }}
 
   prerelease:
+    needs: identity
+    if: needs.identity.outputs.channel == 'prerelease'
     uses: ./.github/workflows/prerelease.yml

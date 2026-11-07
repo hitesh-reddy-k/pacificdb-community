@@ -6,14 +6,21 @@
 
 The Apache-2.0 Community CLI talks directly to a PacificDB engine.
 
+This source package is **1.2.0**. Install the matching client and CLI tarballs
+from the same release together, or use the explicit registry version after its
+publication is confirmed:
+
 ```sh
-npm install --global https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v1.2.0-rc.2/pacificdb-client-1.2.0-rc.2.tgz \
-  https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v1.2.0-rc.2/pacificdb-cli-1.2.0-rc.2.tgz
+npm install --global @pacificdb/client@1.2.0 @pacificdb/cli@1.2.0
+pacificdb --version
 pacificdb
 ```
 
-This package is PacificDB CLI `1.2.0-rc.2` (prerelease). Install both download
-assets together; the registry `latest` tag has not been promoted to this patch.
+Public RC.2 packages remain `1.2.0-rc.2`; those downloads do not contain all
+current source changes. Registry `latest` is independent of the source version.
+Workbench desktop also bundles a native CLI: its File menu can install the
+terminal command, and its Windows installer registers PATH automatically. Open
+a fresh terminal after setup.
 
 Plain `pacificdb` opens the shell. For a loopback connection, it starts
 `db_engine` automatically when the executable is available on `PATH`.

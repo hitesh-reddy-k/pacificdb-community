@@ -2,21 +2,16 @@
 
 # PacificDB Java client
 
-Version **1.2.0-rc.2 — prerelease**. Download the matching package from the
-[Community v1.2.0-rc.2 release](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v1.2.0-rc.2);
-registry publication is pending.
-
-Current source builds prepare Maven Central coordinates
-**`in.pacificdb:pacificdb-client`**, based on the `pacificdb.in` domain. Published
-RC.2 assets keep their original `io.pacificdb` Maven metadata. Use the group ID
-from the POM accompanying your artifact. Java API imports remain `io.pacificdb.*`.
-Namespace verification and owner publication steps are in
-[PUBLISHING_OWNER_GUIDE.md](../../PUBLISHING_OWNER_GUIDE.md).
+This source package is **1.2.0**, with Maven coordinates
+**`in.pacificdb:pacificdb-client:1.2.0`** based on the `pacificdb.in` domain.
+Java API imports remain `io.pacificdb.*`. Use the JAR and matching POM from your
+selected release; Maven Central publication is deferred. Published RC.2 assets
+retain their original `io.pacificdb` coordinates and `1.2.0-rc.2` version, and do
+not include all current source changes.
 
 A database-first client for the Community engine. Requires Java 11 or later;
-Jackson is the only runtime dependency. These examples describe the 1.2.0-rc.2
-prerelease and require its published JAR or tagged-source build, not an older
-registry release.
+Jackson is the only runtime dependency. See the [SDK guide](../../SDK_GUIDE.md)
+for installed-JAR/Maven-local setup and examples.
 
 Start a PacificDB server, then connect to a database directly:
 

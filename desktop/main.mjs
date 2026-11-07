@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { createWorkbenchServer } from '../cli/src/workbench.js';
 import { PacificDBClient } from '@pacificdb/client';
 import { startDesktopEngine } from './engine.mjs';
+import { installTerminalCommand } from './terminal-command.mjs';
 
 const release = JSON.parse(await readFile(new URL('../release.json', import.meta.url), 'utf8'));
 const releaseLabel = `${release.version}${release.channel === 'prerelease' ? ` (${release.name}; ${release.releaseVersion})` : ''}`;
@@ -83,6 +84,14 @@ if (!app.requestSingleInstanceLock()) {
     const menu = [
       ...(process.platform === 'darwin' ? [{ role: 'appMenu' }] : []),
       { label: 'File', submenu: [{ label: 'Open data folder', click: () => shell.openPath(dataDirectory) },
+        { id: 'install-cli', label: 'Install pacificdb terminal command…', click: async () => {
+          try {
+            const result = await installTerminalCommand({ executable: cliExecutable });
+            await dialog.showMessageBox(window, { type: 'info', title: 'Terminal command installed',
+              message: 'Open a new terminal and run: pacificdb --version',
+              detail: `Command: ${result.command}\nThe native CLI uses its own local data directory. Use Copy CLI connection command to connect to this Workbench database.` });
+          } catch (error) { dialog.showErrorBox('Could not install terminal command', error.message); }
+        } },
         { id: 'copy-cli', label: 'Copy CLI connection command', click: async () => {
           if (!engine || closing) return;
           const quoted = process.platform === 'win32' ? `& '${cliExecutable.replaceAll("'", "''")}'` :
