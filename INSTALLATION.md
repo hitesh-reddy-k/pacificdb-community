@@ -99,6 +99,37 @@ installation/runtime test supply Passed evidence. Installer names or configured
 build targets alone do not qualify them. Follow platform-specific artifact
 instructions/checklist; do not use a Linux binary on another OS.
 
+## Use the terminal command bundled with Workbench
+
+Windows installers register their bundled native CLI in your user PATH. Close
+all existing terminal windows (including Windows Terminal) and open a fresh CMD:
+
+```bat
+where pacificdb
+pacificdb --version
+```
+
+On macOS and Linux, open Workbench and choose **File → Install pacificdb terminal
+command…**, then open a new terminal:
+
+```sh
+command -v pacificdb
+pacificdb --version
+```
+
+This creates `~/.local/bin/pacificdb` pointing to Workbench's bundled CLI and adds
+that directory to your bash/zsh startup files. Existing commands at that path and
+symlinked profile files are preserved; setup reports a conflict instead of
+replacing them. For another shell, add Workbench's bundled engine directory to
+its PATH using your shell's configuration. The setup action is also available on
+Windows to repair PATH registration. Version reporting works offline.
+
+The standalone native CLI has its own default database directory. To operate on
+the currently open Workbench database, use **File → Copy CLI connection command**.
+If you later remove Workbench on macOS/Linux, remove its owned `~/.local/bin/pacificdb`
+link; the profile PATH entry is harmless and can be removed as well. Previously
+published RC.2 installers do not contain this terminal setup action.
+
 ## npm, Python and Java
 
 The packages are transport clients and need a running engine, or an installed

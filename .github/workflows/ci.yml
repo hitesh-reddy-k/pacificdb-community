@@ -83,7 +83,7 @@ jobs:
       - run: python3 scripts/test-workflow-contract.py
       - run: python3 scripts/test-npm-publication-policy.py
       - run: python3 scripts/test-macos-dependencies.py
-      - run: node --test scripts/test-workbench-desktop-lifecycle.mjs
+      - run: node --test scripts/test-workbench-desktop-lifecycle.mjs scripts/test-workbench-terminal-command.mjs
       - run: python3 -m unittest scripts/test_security_review.py -v
       - run: scripts/test-helm-deployment.sh
       - run: scripts/test-community.sh build

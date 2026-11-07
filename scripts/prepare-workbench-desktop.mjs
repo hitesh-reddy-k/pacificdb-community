@@ -34,7 +34,7 @@ await rm(resources, { recursive: true, force: true });
 await mkdir(path.join(stage, 'desktop'), { recursive: true });
 await mkdir(path.join(stage, 'cli/src'), { recursive: true });
 await mkdir(path.join(resources, 'engine'), { recursive: true });
-for (const name of ['main.mjs', 'engine.mjs', 'icon.png', 'logo.png', 'loading.html', 'loading.css', 'release-identity.mjs']) {
+for (const name of ['main.mjs', 'engine.mjs', 'icon.png', 'logo.png', 'loading.html', 'loading.css', 'release-identity.mjs', 'terminal-command.mjs']) {
   await cp(path.join(root, 'desktop', name), path.join(stage, 'desktop', name));
 }
 for (const name of ['workbench.js', 'release.js']) {

@@ -7,7 +7,8 @@ module.exports = {
   directories: { app: path.join(__dirname, 'stage'),
     output: path.join(root, 'dist', 'desktop'), buildResources: __dirname },
   files: ['desktop/**', 'cli/**', 'package.json', 'release.json', 'LICENSE', 'LICENSES/**', 'THIRD_PARTY_NOTICES.md'],
-  extraResources: [{ from: path.join(__dirname, 'resources', 'engine'), to: 'engine' }],
+  extraResources: [{ from: path.join(__dirname, 'resources', 'engine'), to: 'engine' },
+    { from: path.join(root, 'packaging', 'pacificdb-path.ps1'), to: 'engine/pacificdb-path.ps1' }],
   asar: true,
   npmRebuild: false,
   publish: null,
@@ -31,7 +32,7 @@ module.exports = {
   // previous custom script omitted this and broke sandboxed launches there.
   win: { target: ['nsis'], icon: path.join(__dirname, 'icon.png'),
     ...(process.env.PACIFICDB_DESKTOP_RELEASE === '1' ? { forceCodeSigning: true } : {}) },
-  nsis: { oneClick: false, perMachine: false, allowToChangeInstallationDirectory: true,
+  nsis: { include: path.join(__dirname, 'installer.nsh'), oneClick: false, perMachine: false, allowToChangeInstallationDirectory: true,
     createDesktopShortcut: true, createStartMenuShortcut: true },
   mac: { target: ['dmg'], category: 'public.app-category.developer-tools',
     icon: path.join(__dirname, 'icon.png'),

@@ -39,6 +39,8 @@ they do not change the existing RC.2 downloads:
   command, without replaying commands already sent.
 - Cross-platform private credential-file validation and startup cleanup.
 - Standard-size Linux launcher icons and installer integration.
+- Workbench terminal command registration, with Windows installer PATH setup
+  and a File-menu setup action for bash/zsh, so `pacificdb --version` is accessible.
 - Lower storage-iterator overhead for visibility-correct vector scans.
 - Prepare Maven Central coordinates `in.pacificdb:pacificdb-client` for the
   `pacificdb.in` domain; Java API packages and published RC.2 assets are retained.
