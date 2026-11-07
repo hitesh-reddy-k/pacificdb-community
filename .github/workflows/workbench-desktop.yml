@@ -435,11 +435,14 @@ jobs:
           if ($process.ExitCode -ne 0) { exit $process.ExitCode }
           $beforePath = $env:Path
           try {
-            $env:Path = [Environment]::GetEnvironmentVariable('Path', 'User') + ';' + $beforePath
+            $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
             $resolved = (Get-Command pacificdb.exe -CommandType Application -ErrorAction Stop).Source
             if ($resolved -ne "$installed\resources\engine\pacificdb.exe") { throw "Workbench CLI PATH registration did not resolve its bundled CLI: $resolved" }
+            $identity = Get-Content release.json -Raw | ConvertFrom-Json
+            $expected = 'PacificDB ' + $identity.version
+            if ($identity.channel -eq 'prerelease') { $expected += " ($($identity.name); $($identity.releaseVersion))" }
             $output = & "$env:SystemRoot\System32\cmd.exe" /d /c 'pacificdb --version'
-            if ($LASTEXITCODE -ne 0 -or $output -notmatch '^PacificDB 1\.2\.0') { throw "CMD version reporting failed: $output" }
+            if ($LASTEXITCODE -ne 0 -or $output -ne $expected) { throw "CMD version reporting failed: $output" }
           } finally { $env:Path = $beforePath }
           Write-Host '[workbench-desktop] candidate NSIS installation complete; starting installed upgrade test'
           New-Item -ItemType Directory -Force -Path $data | Out-Null
