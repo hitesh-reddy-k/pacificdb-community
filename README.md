@@ -1,19 +1,22 @@
 <p align="center"><img src="site/assets/pacificdb-logo-symbol.png" width="96" alt="PacificDB logo"></p>
 
-# PacificDB Community v1.2.0 — Pre-release v1.2
+# PacificDB Community v1.2.0
 
-A self-hosted C++17 database for documents, vectors and media.
-Current company-testing candidate: **1.2.0-rc.2**, base engine **1.2.0**.
-This is a prerelease; full production qualification remains incomplete.
+A self-hosted C++17 database for documents, vectors and media, using shared
+WAL/LSM storage and the existing replication infrastructure.
 
-[Download RC.2](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v1.2.0-rc.2) · [Installation](INSTALLATION.md) · [Documentation](docs/README.md) · [Changes](RELEASE_NOTES_v1.2.md)
+Published v1.2 packages: **Pre-release v1.2 (`1.2.0-rc.2`)**. This branch also
+contains follow-up improvements; published packages retain their original
+source and version identity.
+
+[Downloads](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v1.2.0-rc.2) · [Installation](INSTALLATION.md) · [SDK guide](SDK_GUIDE.md) · [Documentation](docs/README.md) · [v1.2 changes](RELEASE_NOTES_v1.2.md)
 
 ## Install
 
-Download the matching checksummed package from the release. Desktop packages include
-Workbench, engine and native CLI. Verified targets are Ubuntu 24.04 x64, Windows
-x64, and macOS 15 Intel/Apple Silicon. Other OS versions and architectures are
-unverified. See [installation](INSTALLATION.md) for dependencies and signing limits.
+Download the package and checksums for your platform from the release page.
+Workbench packages include the desktop application, engine and native CLI.
+Targets are Ubuntu 24.04 x64, Windows x64, macOS Intel and macOS Apple Silicon.
+Read [INSTALLATION.md](INSTALLATION.md) for dependencies and platform instructions.
 
 Node.js client and CLI:
 
@@ -21,62 +24,104 @@ Node.js client and CLI:
 npm install @pacificdb/client@1.2.0-rc.2 @pacificdb/cli@1.2.0-rc.2
 ```
 
-SDKs require a running engine. Python wheel and Java JAR/POM are downloadable
-from GitHub. Python is also available through `python -m pip install pacificdb==1.2.0rc2`;
-Maven Central publication still awaits owner setup.
-Use [SDK_GUIDE.md](SDK_GUIDE.md) for installation and working examples.
+Python client:
 
-## First database
+```sh
+python -m pip install pacificdb==1.2.0rc2
+```
 
-Start the installed native `pacificdb` shell, then:
+SDKs connect to a running engine; installing an SDK does not install the engine.
+Java JAR/POM and SDK archives are available from the release page. Follow
+[SDK_GUIDE.md](SDK_GUIDE.md) for examples and local artifact installation.
+Maven Central distribution is separate from the downloadable GitHub artifacts.
+
+## Run a local database
+
+Use a separate evaluation directory, then start the installed native shell:
+
+```sh
+export PACIFICDB_HOME="$PWD/pacificdb-evaluation"
+pacificdb
+```
+
+In the shell:
 
 ```text
 create database app
 create collection users
 insert users {"id":"1","name":"Ada"}
 find users {"id":"1"}
+quit
 ```
 
-The local CLI starts a loopback engine. Set an absolute `PACIFICDB_HOME` before
-startup to use a separate evaluation directory. Configure authentication and TLS
-before network access. Desktop owns a separate local engine/data directory.
+Creating a database selects it automatically. The CLI starts its own loopback
+engine; `quit` exits the shell, and `pacificdb stop` stops that owned engine.
+Desktop Workbench uses a separate local engine/data directory. Configure
+TLS, authentication and access controls before providing network access.
 
-## What changed in v1.2
+The npm CLI also provides a browser Workbench:
 
-- Dense, sparse and named vectors with creation-time collection schemas.
-- Bounded exact top-K, explicit search modes, request-owned limits and cancellation.
-- Opt-in standalone HNSW lifecycle, bounded dense incremental maintenance and BM25/RRF hybrid retrieval.
-- Storage/recovery, authorization and credential-log handling corrections.
-- Consistent prerelease packages and installed-package verification.
-- RC.2 repairs short-window Workbench navigation and Linux installer integration.
+```sh
+npx @pacificdb/cli@1.2.0-rc.2 workbench
+```
 
-Documents, media and vectors use the shared WAL/LSM storage infrastructure.
-See [release notes](RELEASE_NOTES_v1.2.md) for scope and compatibility.
+This needs an installed native engine for managed startup, or connection settings
+for an existing engine. See the installation guide for those options.
 
-## Vector evaluation
+## Features
 
-Native vector features require explicit preview configuration. Follow
-[the vector guide](docs/VECTORS.md) for dense/sparse/named records, schemas,
-exact/ANN queries, index lifecycle and hybrid retrieval.
-ANN can be unavailable during writes and requires graph reconstruction after
-restart. Distributed vector completeness and full production qualification remain
-incomplete. Do not use the prerelease as a production-readiness guarantee.
+- Document CRUD, filters, secondary indexes and aggregation.
+- Dense, sparse and named vector records with collection schemas.
+- Exact cosine, L2 and dot-product similarity search.
+- Opt-in standalone HNSW, bounded dense incremental maintenance and hybrid retrieval.
+- Resumable, checksummed image, audio, video and file storage.
+- WAL/LSM persistence, snapshots, backup/restore and existing RF3 replication.
+- Authentication, API keys, roles, TLS and tenant access controls.
+- Desktop Workbench, native/npm CLIs, and Node.js, Python and Java clients.
 
-## Testing and feedback
+Follow [the vector guide](docs/VECTORS.md) for configuration, query policies,
+metadata filtering, index lifecycle and hybrid examples. Native vector
+administration is an explicit standalone opt-in. Strict ANN can report index
+unavailability during maintenance; distributed sharded vector search is outside
+its supported scope. Index history has configured bounds and manual maintenance.
 
-Company testers should start with [COMPANY_TESTING_GUIDE.md](COMPANY_TESTING_GUIDE.md).
-[Release status](RELEASE_CHECKLIST.md) records actual scoped verification.
-[Benchmark reproduction](docs/releases/v1.2.0-rc.2/BENCHMARK_REPRODUCTION.md) identifies
-inputs, settings and limitations. The complete project-run RC.2 10K/100K/1M study is published, including failed
-request availability and recovery costs. [Report](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v1.2.0-rc.2/BENCHMARK_REPORT_1.2.0-rc.2.txt) and
-[evidence archive](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v1.2.0-rc.2/pacificdb-benchmarks-1.2.0-rc.2-20261101.tar.gz). Timings vary across machines;
-completed study execution is not production certification.
+## Improvements on this branch
 
-Report bugs through the [issue tracker](https://github.com/hitesh-reddy-k/pacificdb-community/issues)
-with version, sanitized reproduction and expected/actual behavior. Send suspected
-vulnerabilities through [private security reporting](SECURITY.md).
-Never attach credentials or customer data.
+- More reliable incremental ANN visibility during concurrent writes.
+- Lower exact-search overhead while preserving visibility and query limits.
+- Idle SDK connection handling before command dispatch.
+- Cross-platform credential-file validation and launcher integration.
+- Compatible document/media APIs and shared durable mutation paths.
 
-Developers: [architecture](ARCHITECTURE.md), [tests](TESTING.md),
-[contributing](CONTRIBUTING.md), [license](LICENSE),
-[third-party notices](THIRD_PARTY_NOTICES.md).
+Read [the release notes](RELEASE_NOTES_v1.2.md) to distinguish published RC.2
+changes from subsequent source improvements.
+
+## Build and test
+
+Install dependencies from [INSTALLATION.md](INSTALLATION.md), then:
+
+```sh
+cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.2.0
+cmake --build build -j2
+ctest --test-dir build --output-on-failure
+./build/db_engine --build-info
+./build/pacificdb
+```
+
+`--build-info` identifies the exact source commit and release channel. See
+[TESTING.md](TESTING.md) for isolated test commands and
+[the company guide](COMPANY_TESTING_GUIDE.md) for evaluation scenarios.
+
+[Benchmark reproduction](benchmarks/THREE_DATABASE_REPRODUCTION.md) describes
+matched datasets and settings. Performance depends on hardware, workload,
+durability, recall and index configuration.
+
+## Support and licensing
+
+Report bugs through [GitHub issues](https://github.com/hitesh-reddy-k/pacificdb-community/issues)
+with version, sanitized reproduction and expected/actual behavior. Follow
+[SECURITY.md](SECURITY.md) for private vulnerability reporting. Never include
+credentials or customer data.
+
+[License](LICENSE) · [Third-party notices](THIRD_PARTY_NOTICES.md) ·
+[Contributing](CONTRIBUTING.md) · [Architecture](ARCHITECTURE.md)

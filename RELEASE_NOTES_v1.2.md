@@ -1,119 +1,93 @@
 # Pre-release v1.2
 
-**Base version 1.2.0 · candidate/tag v1.2.0-rc.2 · branch v1.2 · GitHub type: Pre-release.**
-Intended for external company testers and developers. Production qualification
-remains INCOMPLETE. Publication and platform status are recorded in
-[RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md); a candidate name alone does not prove
-an artifact is published, installed or tested.
+Base engine: **1.2.0**. Published candidate: **1.2.0-rc.2**.
+This release is intended for external evaluation. Follow-up source changes are
+listed separately below and do not replace the published RC.2 packages.
 
-Unreleased follow-up: the request-bounded ANN freshness fix passed a separate
-10K/100K/1M lifecycle study, including every mixed read and crash reconstruction.
-It does not change the historical RC.2 comparison below. Launcher packaging,
-dependency and security hardening are also on `v1.2`; see the
-[current readiness report](PRODUCTION_READINESS_REPORT.md) for exact revisions
-and remaining gates. These fixes are not yet in published RC.2 packages.
+## Added
 
-## Changes in this candidate
+- Persistent dense, sparse and named vectors within the existing WAL/LSM storage.
+- Creation-time vector schemas and dimension/metric validation.
+- Bounded exact top-K and explicit exact/ANN/automatic search policies.
+- Opt-in standalone HNSW lifecycle and bounded incremental dense maintenance.
+- Lexical/vector hybrid retrieval with reciprocal rank fusion.
+- Consistent engine, Workbench, CLI and SDK prerelease identity.
 
-RC.2 corrects two installer/Workbench findings from RC.1: short desktop windows
-could collapse the database tree behind the sidebar actions, and the custom
-Linux installer omitted electron-builder's application-scoped AppArmor setup.
-Navigation now scrolls while preserving an accessible database-tree area, and
-Linux packaging retains the upstream installer script. A short-window regression
-reproduces the original click failure and passes at650/653/900px heights after
-the change. Fresh installed-desktop tests are separate from upgrade tests.
+## Improved
 
-RC.1 assets/tags/npm packages remain unchanged. RC.2 is public on GitHub at
-`e3d70761f03341acc13130d17b75fed2bc758a29`, with scoped native/SDK/platform and
-complete Community/actual ENOSPC qualification. Public desktop/SDK installations,
-npm publication/consumers and the public GHCR image passed independent checks.
-Python is published on PyPI as `pacificdb==1.2.0rc2`; Maven Central remains owner-blocked. Engine/storage/vector source remains unchanged from RC.1;
-component release metadata is advanced consistently. RC.1 benchmark results
-keep their original artifact identity and are not called RC.2 measurements.
+- Bounded candidate retention and less unnecessary document materialization.
+- Request-owned query limits, cancellation and read visibility.
+- Point reads around flushes, caches and committed changes.
+- Workbench document/vector/media navigation and vector query options.
+- SDK operation coverage and installation verification.
 
-The existing unified C++ engine now includes durable dense, sparse and named
-vectors; creation-time schemas; bounded exact top-K; explicit search modes and
-resource errors; derived HNSW lifecycle with opt-in bounded dense incremental
-maintenance; packed exact plans; and BM25/RRF hybrid retrieval. Authoritative
-records retain shared WAL/LSM/Raft infrastructure and legacy numeric compatibility.
-Unsafe legacy all-pairs ANN routing was removed. Query limits, cancellation and
-read context are request-owned; point reads were corrected around flush, cache
-publication and advancing commit visibility. Verified source proofs permit safe
-row-cache reuse without a result cache or weakened acknowledgements.
+## Fixed in published RC.2
 
-Release engineering aligns native, npm, Python, Java and Workbench candidate
-identity, staged-artifact verification and prerelease-only publishing. The engine
-reports base 1.2.0 plus explicit release metadata. npm/Java identify 1.2.0-rc.2;
-Python's equivalent is 1.2.0rc2. Storage-format and Raft protocol versions remain2.
-New tenant authentication/logging fixes have targeted tests; final execution
-status belongs to the release checklist, not this narrative.
+- Short-window Workbench navigation keeps the database tree accessible.
+- Linux desktop packaging retains application-scoped installer integration.
+- RC.1 packages and tags remain unchanged.
 
-Workbench retains its document/vector/media explorer and isolated local-engine
-lifecycle. It displays prerelease identity and supports advanced vector query
-options. Vector schema/index administration and hybrid commands remain documented
-SDK/raw-CLI operations; do not assume every SDK feature has a graphical control.
-The native and npm CLIs retain command/help/JSON workflows. Node/Python/Java SDKs
-provide native preview operations over the existing protocol; see tested examples
-and exact package identities in [SDK_GUIDE.md](SDK_GUIDE.md).
+## Follow-up source improvements
 
-## Installation and compatibility
+These changes are on the readiness development branch and require a new package
+version before distribution as an updated release:
 
-Follow [INSTALLATION.md](INSTALLATION.md) and [COMPANY_TESTING_GUIDE.md](COMPANY_TESTING_GUIDE.md).
-Use only the artifacts whose installed/runtime evidence is Passed for the actual
-platform. Configured Linux, Windows and macOS build targets do not by themselves
-constitute verified support. Engine and Workbench can use different data roots;
-back up existing data before evaluation and test in a separate directory.
-No automatic major-data migration or native graph persistence is promised.
+- Incremental ANN maintains complete coverage during concurrent and unrelated
+  commits, preserving source and applied-commit visibility checks.
+- Existing maintenance is signalled for freshness-bound queries.
+- Python and Java replace observably expired idle sockets before sending a new
+  command, without replaying commands already sent.
+- Cross-platform private credential-file validation and startup cleanup.
+- Standard-size Linux launcher icons and installer integration.
+- Lower storage-iterator overhead for visibility-correct vector scans.
 
-Vector preview stays default-off. Standalone operators explicitly enable
-`PACIFICDB_VECTOR_PREVIEW_ENABLED=1`. Desktop's separate opt-in is
-`PACIFICDB_WORKBENCH_VECTOR_PREVIEW=1`. Unsupported clustered vector operations
-remain gated. Existing document/media APIs are preserved in exercised regressions;
-this is not a universal mixed-version or downgrade guarantee.
+## Installation and packages
 
-## Known limitations
+Use [INSTALLATION.md](INSTALLATION.md) for the engine/Workbench,
+[SDK_GUIDE.md](SDK_GUIDE.md) for clients and
+[COMPANY_TESTING_GUIDE.md](COMPANY_TESTING_GUIDE.md) for evaluation scenarios.
 
-- The published Linux Workbench launcher icon can be missing because of a
-  non-standard theme size. An unreleased packaging fix uses the existing
-  standard-size logo assets; local package/GTK lookup checks passed.
-- Native vector/index/hybrid operations are an explicit standalone preview.
-- ANN graphs require rebuilding after restart; strict ANN may be unavailable
-  during writes. Large builds and recovery reconstruction can take many minutes.
-- Sparse/flat/lexical incremental maintenance, online schema evolution,
-  automatic graph compaction, advanced compression/disk ANN and complete
-  distributed vector search remain incomplete. Physical history needs manual
-  maintenance at configured bounds.
-- Full production, physical power-loss, independent security and complete
-  mixed-version/platform upgrade qualification is incomplete.
-- Maven Central publication awaits owner setup. Python is available on PyPI,
-  and GitHub wheel/JAR/POM distribution remains available. Platform signing/notarization limits are documented.
+| Component | Published candidate identifier |
+|---|---|
+| Native engine / CLI / Workbench | `1.2.0-rc.2` (engine base `1.2.0`) |
+| Node.js SDK | `@pacificdb/client@1.2.0-rc.2` |
+| npm CLI | `@pacificdb/cli@1.2.0-rc.2` |
+| Python SDK | `pacificdb==1.2.0rc2` |
+| Java SDK | `io.pacificdb:pacificdb-client:1.2.0-rc.2` JAR/POM from GitHub |
 
-## Testing and benchmarks
+Maven Central publication is separate from the downloadable GitHub JAR/POM.
+Check artifact checksums and `db_engine --build-info` to identify the exact build.
 
-Frozen RC.2 passed 78 checkpoint checks/50 CTest cases, 16 SDK jobs, complete
-Community/21 real disk-full categories, and scoped installed-desktop/public SDK
-checks. Separate targeted TSAN and ASan/UBSan jobs passed. Exact scopes and CI
-receipts are in [the release checklist](RELEASE_CHECKLIST.md).
+## Compatibility and operation
 
-The post-publication RC.2 study completed at 10K/100K/1M plus smaller metric,
-dimension, sparse/named/hybrid diagnostics. At 1M GloVe25 cosine, median round p50
-was 50.641ms versus PostgreSQL94.017ms for packed exact, and21.139ms versus1.521ms
-for ANN, with Recall@10 0.9782 versus0.9899. Initial ANN builds took2045.841s
-versus350.554s. **Mixed strict ANN reads succeeded0/360 versus360/360**; this is a
-failed availability result, not hidden by the study execution PASS.
+Document/media APIs, existing vector records, authoritative WAL/LSM storage and
+the existing replication lifecycle are retained. Storage-format and Raft protocol
+versions remain 2. Back up data and evaluate upgrades in a separate directory.
 
-[Published report](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v1.2.0-rc.2/BENCHMARK_REPORT_1.2.0-rc.2.txt) and
-[per-query evidence](https://github.com/hitesh-reddy-k/pacificdb-community/releases/download/v1.2.0-rc.2/pacificdb-benchmarks-1.2.0-rc.2-20261101.tar.gz) include
-filter/concurrency/ingestion/resource costs and SIGKILL/rebuild results.
-[Reproduction](docs/releases/v1.2.0-rc.2/BENCHMARK_REPRODUCTION.md) discloses precision,
-protocol and packed-index setup differences. This is a project-run comparison,
-not independent certification, a general speed claim or a promise of identical
-company timings. Full production qualification remains incomplete.
+Native vector/index/hybrid administration is an explicit standalone opt-in:
+`PACIFICDB_VECTOR_PREVIEW_ENABLED=1` before engine startup, or
+`PACIFICDB_WORKBENCH_VECTOR_PREVIEW=1` for the desktop-owned engine. Schema/index
+administration and hybrid requests are SDK/raw-protocol operations; not every
+operation has a graphical control.
 
-## Feedback
+Derived indexes need readiness to be re-established after restart. Strict ANN
+can report unavailability during maintenance; exact fallback depends on the
+requested policy. Large builds and reconstruction take time.
 
-Report product bugs with version/build-info, platform, installation method,
-reproduction, expected/actual outcome, sanitized logs and whether preview was on.
-Use the [company feedback format](COMPANY_TESTING_GUIDE.md). Never include private
-keys, credentials, tokens or customer data. Suspected security vulnerabilities use
-private reporting described in [SECURITY.md](SECURITY.md), not public issues.
+Collection schemas are immutable at creation. Sparse/flat/lexical incremental
+maintenance, automatic graph compaction and distributed sharded vector search
+are outside the current supported vector scope. Physical index history is
+bounded and requires manual maintenance at configured limits.
+
+## Testing, benchmarks and feedback
+
+[TESTING.md](TESTING.md) provides reproducible checks.
+[Benchmark methodology](benchmarks/THREE_DATABASE_REPRODUCTION.md) explains
+matched datasets, durability settings, recall and query-mode comparisons.
+Historical measurements retain their original artifact identities; source
+improvements do not retroactively change published RC.2 results.
+
+Report version, OS/architecture, sanitized reproduction and expected/actual
+behavior through [GitHub issues](https://github.com/hitesh-reddy-k/pacificdb-community/issues).
+Use [private security reporting](SECURITY.md) for vulnerabilities. Exclude
+credentials, customer data and private deployment details.
