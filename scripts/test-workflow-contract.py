@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import json
 import re
 from pathlib import Path
 
@@ -97,6 +98,23 @@ require(
     "contents: read",
     "packages:",
     "uses: ./.github/workflows/prerelease.yml",
+)
+# The protected branch requires packages / linux, windows and both macOS jobs.
+# Keep the native reusable workflow under this caller ID; SDK/Linux-only
+# prerelease qualification cannot supply the missing native platform checks.
+require(
+    ".github/workflows/ci.yml",
+    "  packages:\n    uses: ./.github/workflows/release.yml",
+    "  prerelease:\n    uses: ./.github/workflows/prerelease.yml",
+)
+release_identity = json.loads((ROOT / "release.json").read_text())
+require(".github/workflows/ci.yml", f"      version: {release_identity['releaseVersion']}")
+require(
+    ".github/workflows/release.yml",
+    '$baseVersion = $version.Split(\'-\')[0]',
+    '-DPACIFICDB_ENGINE_VERSION="${version%%-*}"',
+    '-DPACIFICDB_ENGINE_VERSION="$baseVersion"',
+    'PACIFICDB_RELEASE_VERSION=${{ env.IMAGE_VERSION }}',
 )
 forbid(".github/workflows/ci.yml", "secrets: inherit")
 require(
