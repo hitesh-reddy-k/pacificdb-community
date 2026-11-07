@@ -1,0 +1,75 @@
+name: Complete frozen candidate regression
+on:
+  workflow_call:
+    inputs:
+      source_ref:
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  community:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.source_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Install regression dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ liblz4-dev libre2-dev libssl-dev iproute2 util-linux
+          python -m pip install pytest==8.3.5
+          npm ci --ignore-scripts --no-audit --no-fund
+          node scripts/patch-build-tool-compat.mjs
+          mkdir -p build-qualification-evidence
+          git rev-parse HEAD > build-qualification-evidence/SOURCE_REVISION.txt
+          python scripts/release_identity.py > build-qualification-evidence/release.json
+      - name: Complete Community regression including genuine disk-full tests
+        env:
+          PACIFICDB_VECTOR_PREVIEW_ENABLED: '1'
+          PACIFICDB_TEST_NATIVE_VECTOR_PREVIEW: '1'
+          PACIFICDB_TEST_VECTOR_SCHEMA: '1'
+          PACIFICDB_TEST_TYPED_VECTORS: '1'
+          BUILD_JOBS: '2'
+        run: |
+          set -euo pipefail
+          bash scripts/test-community.sh build-community-qualified 2>&1 | tee build-qualification-evidence/community-complete.log
+          ./build-community-qualified/db_engine --build-info > build-qualification-evidence/build-info.json
+      - name: Record exact revision and completion
+        run: |
+          python - <<'PYCODE'
+          import hashlib,json,subprocess
+          from pathlib import Path
+          root=Path('build-qualification-evidence');log=root/'community-complete.log'
+          assert log.stat().st_size>0
+          assert not subprocess.check_output(['git','status','--porcelain','--untracked-files=all'],text=True).strip()
+          info=json.load(open(root/'build-info.json'))
+          assert info['gitCommit']==subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
+          result={'status':'PASS','profile':'complete-community-regression','revision':info['gitCommit'],
+            'releaseVersion':info['releaseVersion'],'sourceClean':True,
+            'logSHA256':hashlib.sha256(log.read_bytes()).hexdigest(),
+            'scope':'document/media/vector/storage/auth/RF3/concurrency/SDK and actual ENOSPC categories exercised by test-community.sh',
+            'mixedVersionUpgrade':'NOT_EXECUTED: exact previous artifact not configured',
+            'physicalPower':'NOT_EXECUTED','independentSecurity':'NOT_EXECUTED','productionReady':False}
+          (root/'summary.json').write_text(json.dumps(result,indent=2)+'\n')
+          PYCODE
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: complete-frozen-candidate-regression
+          path: build-qualification-evidence/
+          if-no-files-found: error

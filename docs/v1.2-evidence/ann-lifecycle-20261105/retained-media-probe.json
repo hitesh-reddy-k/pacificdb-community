@@ -1,0 +1,34 @@
+{
+  "status": "PASS",
+  "scope": "Verify every ready retained media file from earlier corpus and current run after crash; no deleted payloads or credentials in report",
+  "retained_media_verified": 6,
+  "media_types": 3,
+  "copies_per_type": 2,
+  "cases": [
+    {
+      "size_bytes": 1229883,
+      "sha256": "23c00010087da9008a1a4c56a53728ca899047c4b8b4a81977f833969a0ed975"
+    },
+    {
+      "size_bytes": 1058444,
+      "sha256": "ba905b324ed71c60497537f42ba869d41d410924376b62519c3dd4e30ce4a8ea"
+    },
+    {
+      "size_bytes": 1013198,
+      "sha256": "9c2ea8a237eaea127039c681a90e07edb86b2dc482a1cf77e57d7071a230249c"
+    },
+    {
+      "size_bytes": 1229883,
+      "sha256": "23c00010087da9008a1a4c56a53728ca899047c4b8b4a81977f833969a0ed975"
+    },
+    {
+      "size_bytes": 1058444,
+      "sha256": "ba905b324ed71c60497537f42ba869d41d410924376b62519c3dd4e30ce4a8ea"
+    },
+    {
+      "size_bytes": 1013198,
+      "sha256": "9c2ea8a237eaea127039c681a90e07edb86b2dc482a1cf77e57d7071a230249c"
+    }
+  ],
+  "finished_utc": "2026-11-05T17:54:53Z"
+}

@@ -12,7 +12,7 @@ import pytest
 from pacificdb import PacificDBClient, PacificDBError
 
 @contextmanager
-def peer(reply, tls_context=None):
+def peer(reply, tls_context=None, idle_expiry=None):
     class Server(socketserver.ThreadingTCPServer):
         allow_reuse_address = True
         daemon_threads = True
@@ -41,6 +41,14 @@ def peer(reply, tls_context=None):
                     else:
                         data = result if isinstance(result, bytes) else json.dumps(result, ensure_ascii=False).encode()+b'\n'
                         self.wfile.write(data); self.wfile.flush()
+                    if idle_expiry and request['action'] == 'seed':
+                        expire, closed, queued_frame = idle_expiry
+                        assert expire.wait(2)
+                        if queued_frame:
+                            self.wfile.write(b'{"error":"request_incomplete"}\n'); self.wfile.flush()
+                        self.request.shutdown(socket.SHUT_RDWR)
+                        closed.set()
+                        return
                     if not isinstance(result, dict) or result.get('_pacificdb_connection_keepalive') is not True: return
             except (BrokenPipeError, ConnectionResetError): pass
             finally:
@@ -132,6 +140,34 @@ def test_idle_peer_fin_is_not_a_write_retry():
             assert db.request({'action': 'find'}) == {'ok': True}
             assert db.request({'action': 'insert'}) == {'ok': True}
         assert server.connections == 2
+
+
+@pytest.mark.parametrize('encrypted', [False, True], ids=['tcp', 'tls'])
+@pytest.mark.parametrize('queued_frame', [False, True], ids=['fin', 'idle-error-frame'])
+def test_expired_idle_connection_is_replaced_before_dispatch(tmp_path, encrypted, queued_frame):
+    context = None; options = {}
+    if encrypted:
+        key = tmp_path/'key.pem'; cert = tmp_path/'cert.pem'
+        subprocess.run(['openssl','req','-x509','-newkey','rsa:2048','-nodes','-days','1',
+                        '-keyout',str(key),'-out',str(cert),'-subj','/CN=localhost',
+                        '-addext','subjectAltName=DNS:localhost'], check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER); context.load_cert_chain(cert, key)
+        options = {'host': 'localhost', 'use_tls': True, 'ca_file': str(cert)}
+    expire = threading.Event(); closed = threading.Event()
+    with peer(lambda req: {'ok': True, '_pacificdb_connection_keepalive': True},
+              context, (expire, closed, queued_frame)) as server:
+        with PacificDBClient(port=server.port, pool_size=1, **options) as db:
+            assert db.request({'action': 'ping'}) == {'ok': True}
+            assert db.request({'action': 'seed'}) == {'ok': True}
+            assert server.connections == 1, 'healthy TLS/TCP keepalive must remain reusable'
+            expire.set(); assert closed.wait(1)
+            # The peer has finished its idle close before this new dispatch.
+            time.sleep(.02)
+            assert db.request({'action': 'insert', 'data': {'id': 'one-write'}}) == {'ok': True}
+        assert server.connections == 2
+        assert [frame['action'] for frame in server.frames] == ['ping', 'seed', 'insert']
+        assert sum(frame['action'] == 'insert' for frame in server.frames) == 1
 
 
 def test_tls_trust_and_hostname_before_credentials(tmp_path):

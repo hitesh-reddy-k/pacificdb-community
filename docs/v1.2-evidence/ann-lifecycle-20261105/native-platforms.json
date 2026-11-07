@@ -1,0 +1,534 @@
+{
+  "candidate": "337b9ef43300ff27a5c3c663f45b672b8ac3a6b1",
+  "run_id": 42063957429,
+  "scope": "Native and packaged application source qualification; not stable signing/notarization",
+  "jobs": [
+    {
+      "id": 127372852821,
+      "name": "linux",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Resolve Workbench and component versions",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Validate candidate tag identity",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Install native and GUI dependencies",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npm ci --no-audit --no-fund",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npm run test:npm",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npm run test:build-tools",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run node --test scripts/test-workbench-preview-evidence.mjs",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Build native engine and CLI",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run node scripts/test-workbench-e2e.mjs build",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run node scripts/test-desktop-engine.mjs build",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run node scripts/test-workbench-desktop-vector-preview.mjs build",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run node scripts/test-index-low-cardinality.mjs build",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Browser workflow",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Package Workbench for Ubuntu 24.04",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Download and install previous Workbench Debian",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Remove previous Workbench Debian",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install and test candidate Workbench Debian",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Remove candidate Workbench Debian and verify data preservation",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Record Linux platform evidence",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Record Linux preview staging evidence",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/upload-artifact@v6",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 127372853319,
+      "name": "macos (macos-15, arm64)",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Resolve Workbench and component versions",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Validate candidate tag identity",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Run npm ci --no-audit --no-fund",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npm run test:npm",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npm run test:build-tools",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run node --test scripts/test-workbench-preview-evidence.mjs",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Build native engine and CLI",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Require signing and notarization for release tags",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Run node scripts/test-desktop-engine.mjs build",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run node scripts/test-workbench-desktop-vector-preview.mjs build",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Package Workbench for macOS",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Mount and copy previous Workbench DMG",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Remove previous Workbench application",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Mount and test candidate Workbench DMG",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Remove candidate Workbench application and verify data preservation",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Record macOS platform evidence",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Record macOS preview staging evidence",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/upload-artifact@v6",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 127372853368,
+      "name": "windows",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Resolve Workbench and component versions",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Validate candidate tag identity",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Run npm ci --no-audit --no-fund",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npm run test:npm",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npm run test:build-tools",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run node --test scripts/test-workbench-preview-evidence.mjs",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Build static native binaries",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Require signing credentials for release tags",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Verify engine isolation and graceful shutdown",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Sign bundled native executables for release tags",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Package Workbench for Windows x64",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Download and install previous Workbench NSIS",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Uninstall previous Workbench NSIS",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install and test candidate Workbench NSIS",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Uninstall candidate Workbench NSIS and verify data preservation",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Record Windows platform evidence",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Record Windows preview staging evidence",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/upload-artifact@v6",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 127372853526,
+      "name": "macos (macos-15-intel, x64)",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Resolve Workbench and component versions",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Validate candidate tag identity",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Run npm ci --no-audit --no-fund",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npm run test:npm",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run npm run test:build-tools",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run node --test scripts/test-workbench-preview-evidence.mjs",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Build native engine and CLI",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Require signing and notarization for release tags",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Run node scripts/test-desktop-engine.mjs build",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run node scripts/test-workbench-desktop-vector-preview.mjs build",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Package Workbench for macOS",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Mount and copy previous Workbench DMG",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Remove previous Workbench application",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Mount and test candidate Workbench DMG",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Remove candidate Workbench application and verify data preservation",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Record macOS platform evidence",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Record macOS preview staging evidence",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/upload-artifact@v6",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@v7",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ]
+}

@@ -10,6 +10,8 @@ import subprocess
 import tempfile
 import zipfile
 
+from release_identity import load_release_identity
+
 spec=importlib.util.spec_from_file_location('inspect_sdk',Path(__file__).with_name('verify-sdk-packages.py'))
 inspect_sdk=importlib.util.module_from_spec(spec);spec.loader.exec_module(inspect_sdk)
 
@@ -48,7 +50,7 @@ def bundle(target,version,output,fingerprint,manifest=None,sign=False):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--target',type=Path,required=True);parser.add_argument('--version',default='1.1.2')
+    parser.add_argument('--target',type=Path,required=True);parser.add_argument('--version',default=load_release_identity()['javaVersion'])
     parser.add_argument('--output',type=Path,required=True);parser.add_argument('--fingerprint',required=True)
     parser.add_argument('--manifest',type=Path);parser.add_argument('--sign',action='store_true')
     args=parser.parse_args();bundle(args.target,args.version,args.output,args.fingerprint,args.manifest,args.sign)

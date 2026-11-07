@@ -1,3 +1,4 @@
+export { releaseInfo } from './release-info.js';
 import net from 'node:net';
 import tls from 'node:tls';
 import { createHash } from 'node:crypto';
@@ -16,6 +17,24 @@ const REQUEST_RESERVE_BYTES = 64 * 1024;
 const DEFAULT_POOL_SIZE = 16;
 const MAX_POOL_SIZE = 32;
 const MAX_RESPONSE_BYTES = 64 * 1024 * 1024;
+
+function validateVectorValue(vector) {
+  if (Array.isArray(vector)) {
+    if (vector.length && vector.length <= 1_000_000 &&
+        vector.every((value) => typeof value === 'number' && Number.isFinite(value))) return;
+    throw new TypeError('vector must be a non-empty array of finite numbers');
+  }
+  if (!vector || typeof vector !== 'object' || Object.keys(vector).length !== 5 ||
+      vector.format !== 'sparse-v1' || vector.precision !== 'float64' ||
+      !Number.isInteger(vector.dimensions) || vector.dimensions < 1 || vector.dimensions > 1_000_000_000 ||
+      !Array.isArray(vector.indices) || !Array.isArray(vector.values) ||
+      vector.indices.length !== vector.values.length || vector.indices.length > 1_000_000 ||
+      vector.indices.some((index, position) => !Number.isInteger(index) || index < 0 ||
+        index >= vector.dimensions || (position > 0 && index <= vector.indices[position - 1])) ||
+      vector.values.some((value) => typeof value !== 'number' || !Number.isFinite(value))) {
+    throw new TypeError('invalid sparse-v1 vector representation');
+  }
+}
 
 function responseError(value) {
   const code = String(value.error);
@@ -483,7 +502,7 @@ export class PacificDBClient {
     this.database = name;
     return response;
   }
-  async createCollection(name) {
+  async createCollection(name, { vectorSchema } = {}) {
     if (!this.database) throw new Error('select a database before creating a collection');
     const request = this._scopedRequest();
     const database = this.database;
@@ -491,7 +510,8 @@ export class PacificDBClient {
       const response = await request({ action: 'community_database_list', project_id: this.projectId });
       if (!response.databases?.includes(database)) throw new Error('database_not_found');
     }
-    return request({ action: 'createCollection', collection: name });
+    return request({ action: 'createCollection', collection: name,
+      ...(vectorSchema !== undefined ? { vector_schema: vectorSchema } : {}) });
   }
   insert(collection, data) {
     return this.request({ action: 'insert', collection, data });
@@ -746,23 +766,72 @@ export class PacificDBClient {
       await rmdir(temporaryDirectory).catch(() => {});
     }
   }
+  createVectorIndex(collection, options) {
+    return this.request({ action: 'createVectorIndex', collection, options });
+  }
+  listVectorIndexes(collection) {
+    return this.request({ action: 'listVectorIndexes', collection });
+  }
+  vectorIndexStatus(collection, name) {
+    return this.request({ action: 'vectorIndexStatus', collection, name });
+  }
+  rebuildVectorIndex(collection, name) {
+    return this.request({ action: 'rebuildVectorIndex', collection, name });
+  }
+  dropVectorIndex(collection, name) {
+    return this.request({ action: 'dropVectorIndex', collection, name });
+  }
+  queryHybrid(collection, vector, text, { indexName, k = 10, candidates = 100,
+      metric = 'cosine', filter = {}, modality, vectorName, vectorWeight = 1,
+      lexicalWeight = 1, rankConstant = 60, requireAllTerms = false, timeoutMs } = {}) {
+    validateVectorValue(vector);
+    if (timeoutMs !== undefined && (!Number.isInteger(timeoutMs) || timeoutMs < 0 || timeoutMs > 3600000)) throw new TypeError('timeoutMs must be an integer between 0 and 3600000');
+    if (typeof text !== 'string') throw new TypeError('hybrid text must be a string');
+    if (typeof indexName !== 'string' || !indexName) throw new TypeError('hybrid indexName is required');
+    return this.request({ action: 'queryHybrid', collection, vector, text,
+      index_name: indexName, k, candidates, metric, filter,
+      ...(modality !== undefined ? { modality } : {}),
+      ...(vectorName !== undefined ? { vector_name: vectorName } : {}),
+      vector_weight: vectorWeight, lexical_weight: lexicalWeight,
+      rank_constant: rankConstant, require_all_terms: requireAllTerms,
+      ...(timeoutMs !== undefined ? { timeout_ms: timeoutMs } : {}) });
+  }
   putVector(collection, id, vector, metadata = {}) {
     if (typeof id !== 'string' || !id) throw new TypeError('vector id is required');
-    if (!Array.isArray(vector) || !vector.length ||
-        vector.some((value) => typeof value !== 'number' || !Number.isFinite(value))) {
-      throw new TypeError('vector must be a non-empty array of finite numbers');
-    }
+    validateVectorValue(vector);
     return this.request({ action: 'insertVector', collection,
       data: { ...metadata, id, kind: 'vector', vector } });
   }
   queryVector(collection, vector, { k = 10, metric = 'cosine',
-                                    filter = {}, modality } = {}) {
-    if (!Array.isArray(vector) || !vector.length ||
-        vector.some((value) => typeof value !== 'number' || !Number.isFinite(value))) {
-      throw new TypeError('vector must be a non-empty array of finite numbers');
+                                    filter = {}, modality, searchMode, allowExactFallback, vectorName, indexName, requireIndex, timeoutMs, efSearch, indexWaitMs } = {}) {
+    validateVectorValue(vector);
+    if (vectorName !== undefined && (typeof vectorName !== 'string' || !vectorName ||
+        Buffer.byteLength(vectorName) > 128 || vectorName.includes('\0'))) {
+      throw new TypeError('vectorName must be 1-128 bytes without NUL');
     }
+    if (searchMode !== undefined && !['auto', 'exact', 'ann'].includes(searchMode)) {
+      throw new TypeError('searchMode must be auto, exact or ann');
+    }
+    if (allowExactFallback !== undefined && typeof allowExactFallback !== 'boolean') {
+      throw new TypeError('allowExactFallback must be a boolean');
+    }
+    if (indexName !== undefined && (typeof indexName !== 'string' || !indexName || indexName.includes('\0'))) {
+      throw new TypeError('indexName must be a nonempty string without NUL');
+    }
+    if (timeoutMs !== undefined && (!Number.isInteger(timeoutMs) || timeoutMs < 0 || timeoutMs > 3600000)) throw new TypeError('timeoutMs must be an integer between 0 and 3600000');
+    if (efSearch !== undefined && (!Number.isInteger(efSearch) || efSearch <= 0 || efSearch > 100000)) throw new TypeError('efSearch must be an integer between 1 and 100000');
+    if (indexWaitMs !== undefined && (!Number.isInteger(indexWaitMs) || indexWaitMs < 0 || indexWaitMs > 5000)) throw new TypeError('indexWaitMs must be an integer between 0 and 5000');
+    if (requireIndex !== undefined && typeof requireIndex !== 'boolean') throw new TypeError('requireIndex must be a boolean');
     return this.request({ action: 'queryVector', collection, vector, k, metric,
-      filter, ...(modality ? { modality } : {}) });
+      filter, ...(modality ? { modality } : {}),
+      ...(searchMode !== undefined ? { search_mode: searchMode } : {}),
+      ...(vectorName !== undefined ? { vector_name: vectorName } : {}),
+      ...(indexName !== undefined ? { index_name: indexName } : {}),
+      ...(requireIndex !== undefined ? { require_index: requireIndex } : {}),
+      ...(efSearch !== undefined ? { ef_search: efSearch } : {}),
+      ...(indexWaitMs !== undefined ? { index_wait_ms: indexWaitMs } : {}),
+      ...(timeoutMs !== undefined ? { timeout_ms: timeoutMs } : {}),
+      ...(allowExactFallback !== undefined ? { allow_exact_fallback: allowExactFallback } : {}) });
   }
 }
 

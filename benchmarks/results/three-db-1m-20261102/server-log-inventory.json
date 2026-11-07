@@ -1,0 +1,37 @@
+[
+  {
+    "file": "pacific/server-1793644448874341769.log",
+    "sha256": "a39530ae26f9cf91bac4d6de77da685398b386989b10984f2807a8d5c7e2e209",
+    "distribution": "private-retained; omitted from public bundle"
+  },
+  {
+    "file": "pacific/server-1793647044189326876.log",
+    "sha256": "f948dad3af1928217e5f8a3a97051cee4db75f3d1eca5cdb12bcc64b3694f20f",
+    "distribution": "private-retained; omitted from public bundle"
+  },
+  {
+    "file": "postgres/initdb.log",
+    "sha256": "7ee917dfcd72a929a792741938e177a70d8ba55e7bad9d354b7fe3efc05c5964",
+    "distribution": "private-retained; omitted from public bundle"
+  },
+  {
+    "file": "postgres/server-1793643239384093217.log",
+    "sha256": "e71d9a3ff0af4de372f2ae92fffcda81427e71cb00859fb401cd8eb12147481e",
+    "distribution": "private-retained; omitted from public bundle"
+  },
+  {
+    "file": "postgres/server-1793643985304119776.log",
+    "sha256": "9a734790f5f2503a227ed2cd3123a7780b6c591e521ddeae638bb8494c9a0466",
+    "distribution": "private-retained; omitted from public bundle"
+  },
+  {
+    "file": "qdrant/server-1793643988717545542.log",
+    "sha256": "065fffc91256205adf94b59e4c241b4fac705c6984b0330de8fd34e8d5ac4275",
+    "distribution": "private-retained; omitted from public bundle"
+  },
+  {
+    "file": "qdrant/server-1793644439956994895.log",
+    "sha256": "f6fab4150cfa5eb78fda788660d5f626f538008d241ad7dee22ece7d8c3c68e4",
+    "distribution": "private-retained; omitted from public bundle"
+  }
+]

@@ -57,7 +57,11 @@ try {
   const sourcePackage = JSON.parse(await readFile(
     path.join(repositoryRoot, 'cli', 'package.json'), 'utf8'));
   const expectedVersion = process.env.PACIFICDB_P0_EXPECTED_VERSION || sourcePackage.version;
-  assert.equal(version, `PacificDB ${expectedVersion}`);
+  const buildInfo = JSON.parse(await run(path.join(binaryRoot, process.platform === 'win32' ? 'db_engine.exe' : 'db_engine'), ['--build-info']));
+  assert.equal(buildInfo.engineVersion, expectedVersion.split('-')[0]);
+  if (expectedVersion.includes('-')) assert.equal(buildInfo.releaseVersion, expectedVersion);
+  assert.ok(version.startsWith(`PacificDB ${buildInfo.engineVersion}`));
+  if (buildInfo.releaseChannel === 'prerelease') assert.ok(version.includes(buildInfo.releaseVersion));
   evidence.version = version;
   const cases = [
     ['protocol', 'test-p0-protocol-errors.mjs'],

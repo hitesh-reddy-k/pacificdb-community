@@ -15,7 +15,7 @@ test "$(docker image inspect "$image" --format '{{index .Config.Labels "org.open
 test -n "$(docker image inspect "$image" --format '{{index .Config.Labels "org.opencontainers.image.version"}}')"
 test -n "$(docker image inspect "$image" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')"
 embedded=$(docker run --rm "$image" --build-info)
-test "$(jq -r '.engineVersion' <<<"$embedded")" = \
+test "$(jq -r '.releaseVersion // .engineVersion' <<<"$embedded")" = \
   "$(docker image inspect "$image" --format '{{index .Config.Labels "org.opencontainers.image.version"}}')"
 test "$(jq -r '.gitCommit' <<<"$embedded")" = \
   "$(docker image inspect "$image" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')"

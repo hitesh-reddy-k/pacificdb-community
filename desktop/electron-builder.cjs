@@ -6,14 +6,16 @@ module.exports = {
   artifactName: 'PacificDB-Workbench-${version}-${os}-${arch}.${ext}',
   directories: { app: path.join(__dirname, 'stage'),
     output: path.join(root, 'dist', 'desktop'), buildResources: __dirname },
-  files: ['desktop/**', 'cli/**', 'package.json', 'LICENSE', 'LICENSES/**', 'THIRD_PARTY_NOTICES.md'],
+  files: ['desktop/**', 'cli/**', 'package.json', 'release.json', 'LICENSE', 'LICENSES/**', 'THIRD_PARTY_NOTICES.md'],
   extraResources: [{ from: path.join(__dirname, 'resources', 'engine'), to: 'engine' }],
   asar: true,
   npmRebuild: false,
   publish: null,
   linux: { target: ['deb', 'tar.gz'], executableName: 'pacificdb-workbench',
     syncDesktopName: true,
-    category: 'Development', icon: path.join(__dirname, 'icon.png'),
+    // A single 1254px PNG was installed into an unregistered hicolor size,
+    // so desktop launchers could not resolve Icon=pacificdb-workbench.
+    category: 'Development', icon: path.join(__dirname, 'icons'),
     synopsis: 'Desktop workspace for PacificDB',
     description: 'Explore documents, vectors, and media in a local PacificDB database. Includes the database engine.',
     desktop: { entry: { Keywords: 'database;documents;vectors;PacificDB;', Terminal: 'false' } },
@@ -21,9 +23,12 @@ module.exports = {
   deb: { maintainer: 'PacificDB Community', depends: [process.env.PACIFICDB_DESKTOP_UBUNTU_24 === '1' ?
     'libc6 (>= 2.39)' : 'libc6 (>= 2.38)', process.env.PACIFICDB_DESKTOP_UBUNTU_24 === '1' ?
     'libstdc++6 (>= 13)' : 'libstdc++6 (>= 14)', 'libgcc-s1', 'libssl3t64',
+    process.env.PACIFICDB_DESKTOP_UBUNTU_24 === '1' ? 'libre2-10' : 'libre2-11-absl20240722',
     'liblz4-1', 'libxxhash0', 'libzstd1', 'zlib1g', 'libgtk-3-0t64', 'libnss3',
-    'libxss1', 'libasound2t64', 'libgbm1', 'libnotify4', 'libxtst6', 'xdg-utils'],
-    afterInstall: path.join(__dirname, 'after-install.sh') },
+    'libxss1', 'libasound2t64', 'libgbm1', 'libnotify4', 'libxtst6', 'xdg-utils'] },
+  // Keep electron-builder's upstream postinst: it installs the application-only
+  // AppArmor userns profile on Ubuntu24 as well as the terminal launcher. The
+  // previous custom script omitted this and broke sandboxed launches there.
   win: { target: ['nsis'], icon: path.join(__dirname, 'icon.png'),
     ...(process.env.PACIFICDB_DESKTOP_RELEASE === '1' ? { forceCodeSigning: true } : {}) },
   nsis: { oneClick: false, perMachine: false, allowToChangeInstallationDirectory: true,

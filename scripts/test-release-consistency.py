@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import re
+from release_identity import load_release_identity
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -47,6 +48,10 @@ def main() -> None:
         "engine/CMakeLists.txt",
         r'set\(PACIFICDB_ENGINE_VERSION "([^"]+)"',
     )
+    identity = load_release_identity(ROOT)
+    if engine_version != identity["version"]:
+        raise AssertionError("engine base version does not match release.json")
+    component_version = identity["releaseVersion"]
     # The website advertises an independently published release. A development
     # checkout or older main branch must not rename an existing public package.
     published = json.loads((ROOT / "site/release.json").read_text())
@@ -92,40 +97,37 @@ def main() -> None:
         "deploy/helm/pacificdb/Chart.yaml": match_version(
             "deploy/helm/pacificdb/Chart.yaml", r'^appVersion: "([^"]+)"$'
         ),
-        ".github/workflows/release.yml": match_version(
-            ".github/workflows/release.yml", r"^\s+default: ([^\s]+)$"
-        ),
         "sdk/java/pom.xml": match_version(
             "sdk/java/pom.xml",
             r"<artifactId>pacificdb-client</artifactId>\s*<version>([^<]+)</version>",
         ),
     }
     for source, actual in expected.items():
-        if actual != engine_version:
+        if actual != component_version:
             raise AssertionError(
-                f"version mismatch: {source} has {actual}, expected {engine_version}"
+                f"version mismatch: {source} has {actual}, expected {component_version}"
             )
 
     python_version = match_version(
         "sdk/python/pyproject.toml", r'^version = "([^"]+)"$'
     )
-    pep440 = engine_version.replace("-beta.", "b")
+    pep440 = identity["pythonVersion"]
     if python_version != pep440:
         raise AssertionError(
             "version mismatch: sdk/python/pyproject.toml has "
             f"{python_version}, expected {pep440}"
         )
-    if cli["dependencies"]["@pacificdb/client"] != engine_version:
+    if cli["dependencies"]["@pacificdb/client"] != component_version:
         raise AssertionError("CLI dependency must exactly match the Node client version")
 
     lock = json.loads((ROOT / "package-lock.json").read_text())
     for workspace in ("", "cli", "sdk/node"):
-        if lock["packages"][workspace]["version"] != engine_version:
+        if lock["packages"][workspace]["version"] != component_version:
             raise AssertionError(f"lockfile workspace version mismatch: {workspace}")
-    if lock["packages"]["cli"]["dependencies"]["@pacificdb/client"] != engine_version:
+    if lock["packages"]["cli"]["dependencies"]["@pacificdb/client"] != component_version:
         raise AssertionError("lockfile CLI dependency must match the patch")
     require_text("README.md", f"PacificDB Community v{engine_version}")
-    require_text("cli/src/shell.js", "v${shellVersion}")
+    require_text("cli/src/shell.js", "releaseIdentity")
     require_text("engine/src/shell.cpp", '"               v" PACIFICDB_ENGINE_VERSION')
 
     print("RELEASE_CONSISTENCY_PASS")

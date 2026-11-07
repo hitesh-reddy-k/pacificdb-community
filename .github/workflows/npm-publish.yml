@@ -1,38 +1,46 @@
-name: Publish npm release
-
+name: Publish tested npm candidate
 on:
-  push:
-    tags: ["v*.*.*"]
-
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Exact existing prerelease tag
+        required: true
 permissions:
   contents: read
-
 jobs:
+  build:
+    uses: ./.github/workflows/sdk-packages.yml
+    with:
+      ref: ${{ inputs.release_tag }}
   publish:
+    needs: build
     runs-on: ubuntu-22.04
+    environment: npm
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release_tag }}
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '22'
           registry-url: https://registry.npmjs.org
-          cache: npm
-      - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: npm run test:npm
-      - name: Verify tag and package versions
-        shell: bash
-        run: |
-          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          version="${GITHUB_REF_NAME#v}"
-          client_version="$(node -p "require('./sdk/node/package.json').version")"
-          cli_version="$(node -p "require('./cli/package.json').version")"
-          cli_client_version="$(node -p "require('./cli/package.json').dependencies['@pacificdb/client']")"
-          test "$client_version" = "$version"
-          test "$cli_version" = "$version"
-          test "$cli_client_version" = "$version"
-      - name: Publish client then CLI under the latest tag
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: tested-sdk-packages
+          path: release-sdk/
+      - name: Verify exact tested candidate and publish to next
         env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          npm publish --workspace @pacificdb/client --tag latest
-          npm publish --workspace @pacificdb/cli --tag latest
+          set -euo pipefail
+          python scripts/check-sdk-release-tag.py "$RELEASE_TAG" --require-tag --manifest release-sdk/inspection.json
+          test "$(python scripts/release_identity.py --field channel)" = prerelease
+          python scripts/verify-sdk-packages.py --npm-dist release-sdk/npm --hash-manifest release-sdk/inspection.json --output release-sdk/npm-inspected.json
+          version=$(python scripts/release_identity.py --field npmVersion)
+          npm publish "release-sdk/npm/pacificdb-client-$version.tgz" --ignore-scripts --tag next --access public
+          npm publish "release-sdk/npm/pacificdb-cli-$version.tgz" --ignore-scripts --tag next --access public

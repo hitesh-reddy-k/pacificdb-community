@@ -238,6 +238,7 @@ public final class PacificDBClient implements AutoCloseable {
         return response;
     }
     public Object createCollection(String name) { return collectionRequest(name, "createCollection", Map.of()); }
+    public Object createCollection(String name, Map<String,Object> vectorSchema) { return collectionRequest(name,"createCollection",Map.of("vector_schema",vectorSchema)); }
     public Object listCollections() { return databaseRequest(Map.of("action", "listCollections")); }
     public Object dropCollection(String name) { return collectionRequest(name, "dropCollection", Map.of()); }
     public Object insert(String collection, Map<String, Object> document) { return collectionRequest(collection, "insert", Map.of("data", required(document))); }

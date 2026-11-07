@@ -6,6 +6,8 @@ import { createWorkbenchServer } from '../cli/src/workbench.js';
 import { PacificDBClient } from '@pacificdb/client';
 import { startDesktopEngine } from './engine.mjs';
 
+const release = JSON.parse(await readFile(new URL('../release.json', import.meta.url), 'utf8'));
+const releaseLabel = `${release.version}${release.channel === 'prerelease' ? ` (${release.name}; ${release.releaseVersion})` : ''}`;
 const here = path.dirname(fileURLToPath(import.meta.url));
 app.setName('PacificDB Workbench');
 if (process.env.PACIFICDB_WORKBENCH_DATA) app.setPath('userData', path.resolve(process.env.PACIFICDB_WORKBENCH_DATA));
@@ -95,7 +97,7 @@ if (!app.requestSingleInstanceLock()) {
         { type: 'separator' }, { role: 'togglefullscreen' },
         ...(!app.isPackaged ? [{ role: 'toggleDevTools' }] : [])] },
       { role: 'help', submenu: [{ label: 'About PacificDB Workbench', click: () => dialog.showMessageBox(window, {
-        type: 'info', title: 'PacificDB Workbench', message: `PacificDB Workbench ${app.isPackaged ? app.getVersion() : 'development'}`,
+        type: 'info', title: 'PacificDB Workbench', message: `PacificDB Workbench ${releaseLabel}`,
         detail: 'Local desktop database workspace.\n\nDocuments, vectors, and media on your machine.\nEngine: AGPL-3.0 · CLI and SDK: Apache-2.0',
       }) }] },
     ];

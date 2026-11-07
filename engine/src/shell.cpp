@@ -797,7 +797,7 @@ int main(int argc, char** argv) {
             }
         }
         if (showVersion) {
-            std::cout << "PacificDB " << PACIFICDB_ENGINE_VERSION << '\n';
+            std::cout << "PacificDB " << PACIFICDB_VERSION_DISPLAY << '\n';
             return 0;
         }
         if (!urlSupplied) { if (const char* environmentUrl = std::getenv("PACIFICDB_URL")) { url = environmentUrl; urlSupplied = true; } }

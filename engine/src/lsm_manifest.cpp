@@ -1,3 +1,4 @@
+#include "durable_file_ops.hpp"
 #include "lsm_manifest.hpp"
 
 #include "storage_format_v2.hpp"
@@ -50,35 +51,13 @@ bool safeSstName(const std::string& name) {
 }
 
 bool syncPath(const fs::path& path, bool directory = false) {
-#ifdef _WIN32
-    // Win32 has no documented directory-fsync equivalent. File contents are
-    // flushed explicitly, and manifest rename uses MOVEFILE_WRITE_THROUGH.
-    if (directory) return true;
-    HANDLE handle = CreateFileW(path.c_str(), GENERIC_READ | GENERIC_WRITE,
-                                FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                                nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (handle == INVALID_HANDLE_VALUE) return false;
-    const bool ok = FlushFileBuffers(handle) != 0;
-    CloseHandle(handle);
-    return ok;
-#else
-    const int flags = directory ? (O_RDONLY | O_DIRECTORY | O_CLOEXEC)
-                                : (O_RDONLY | O_CLOEXEC);
-    const int fd = ::open(path.c_str(), flags);
-    if (fd < 0) return false;
-    const bool ok = directory ? (::fsync(fd) == 0) : (::fdatasync(fd) == 0);
-    ::close(fd);
-    return ok;
-#endif
+    return directory ? pacificdb::durable_file::syncDirectory(path)
+                     : pacificdb::durable_file::syncFile(path);
 }
 
 bool replaceFile(const fs::path& source, const fs::path& destination) {
-#ifdef _WIN32
-    return MoveFileExW(source.wstring().c_str(), destination.wstring().c_str(),
-                       MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0;
-#else
-    return ::rename(source.c_str(), destination.c_str()) == 0;
-#endif
+    std::error_code error;
+    return pacificdb::durable_file::rename(source, destination, error);
 }
 
 bool validateManifest(const fs::path& directory, LsmManifest& manifest,

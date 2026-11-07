@@ -1,0 +1,26 @@
+{
+  "status": "PASS",
+  "candidate": "704becd1ff8194c5ccd6b6392088f65a3b885ece",
+  "scope": "Python/Javaidle-socketsafety: verifiedunit,integration,runtime andstagedartifactchecks; notreleasecertification",
+  "baseline": {
+    "python": "FAIL4/4targetedTCP/TLSexpired-idle cases",
+    "java": "FAIL4/4targetedTCP/TLSexpired-idle cases; two lost connections and twoqueuederrorresponses"
+  },
+  "local": {
+    "python": "PASS138tests",
+    "java": "PASS34tests",
+    "cross_SDK": "PASSauthenticatedTCP/TLS,160documentseachclient,700000media bytes,SIGKILLrecovery"
+  },
+  "behavior": {
+    "python": "Retire idle sockets with readable bytes/EOF or pending TLSapplicationbytes before dispatch. Healthykeepalive reused.",
+    "java": "Probe leasesidle>=1second with bounded read outsidepoollock before dispatch. Timeoutreuseshealthyconnection;EOF,queuedbytes,IOerrorretiresit.",
+    "write_replay": "None; onlypre-dispatch socketreplacement. Aclose racingdispatchremainsunknown-outcome error.",
+    "public_API": "Unchangednames,constructoroptions,wireformats,roles andpackageversions. Unreleasedsourcefix; publishedregistrypackagesunchanged."
+  },
+  "pending": [
+    "FullproductionreleasegatesremainINCOMPLETE"
+  ],
+  "CIrun": 42073790415,
+  "CIruntime_matrix": "PASS Node18/22/24; Python3.10/3.12 xJava11/17/21 onLinuxandWindows",
+  "staged_artifact_inspection": "PASS; run42073790415"
+}

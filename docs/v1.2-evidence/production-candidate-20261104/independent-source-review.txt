@@ -1,0 +1,6 @@
+Independent source review, gpt-6.1-sol, 2026-11-04. Read-only integrated dirty-tree review against aaf12a913087cf50e46504ac31a90319eb7241ce. Primary astra review unavailable due account usage cap; fallback completed.
+Verdict: No confirmed blocking correctness regression found. Conditional source-review acceptance, not production certification.
+Reviewed SST complete-ID resolution/eligible-before-version/tombstones/ties, staged bounded secondary-index publication/lock order/catalog sync, native durable helper, ANN packed records/checkpoint freshness.
+No critical, important or minor findings reported. No source mutated.
+Declined to judge: final build/checkpoint/Community/SDK/SAN runs; native Windows/macOS; physical-power evidence; independent security; signing/package qualification; 1M synchronous ACK/write-impact threshold; comprehensive race freedom/crash-state exhaustiveness; deferred distributed/PQ production readiness. These remain measurement/external gates, never PASS from review.
+Reviewer template unavailable at previously configured path. No subagents spawned by reviewer.

@@ -1,0 +1,78 @@
+name: Attach company guidance to existing prerelease
+on:
+  workflow_call:
+    inputs:
+      release_tag:
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  attach:
+    runs-on: ubuntu-24.04
+    environment: prerelease-publish
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release_tag }}
+          fetch-depth: 0
+      - name: Verify existing public distribution and unchanged product source
+        run: |
+          set -euo pipefail
+          python3 scripts/check-sdk-release-tag.py "$RELEASE_TAG" --require-tag
+          test "$(gh release view "$RELEASE_TAG" --json isPrerelease --jq .isPrerelease)" = true
+          test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = false
+          git diff --exit-code HEAD "$GITHUB_SHA" -- engine cli sdk release.json package.json package-lock.json
+          mkdir -p build/current-public
+          gh release download "$RELEASE_TAG" --dir build/current-public
+          python3 scripts/verify-prerelease-staging.py --directory build/current-public \
+            --revision "$(git rev-parse HEAD)" --require-qualified
+      - name: Package current guidance from its actual documentation revision
+        run: |
+          set -euo pipefail
+          candidate=$(python3 scripts/release_identity.py --field releaseVersion)
+          filename="pacificdb-company-guide-$candidate-${GITHUB_SHA:0:7}.tar.gz"
+          git show "$GITHUB_SHA:docs/PUBLIC_DOCUMENTATION.json" > build/public-docs.json
+          mapfile -t public_docs < <(python3 -c 'import json; print("\n".join(json.load(open("build/public-docs.json"))["files"]))')
+          git archive --format=tar.gz --output="build/$filename" "$GITHUB_SHA" \
+            "${public_docs[@]}" docs/PUBLIC_DOCUMENTATION.json
+          export GUIDE_FILE="$filename"
+          python3 - <<'PYCODE'
+          import hashlib,json,os,shutil,tarfile
+          from pathlib import Path
+          from scripts.prerelease_qualification import assess
+          root=Path('build/current-public');p=Path('build')/os.environ['GUIDE_FILE']
+          with tarfile.open(p) as archive:
+              for member in archive.getmembers():
+                  assert not member.name.startswith('/') and '..' not in Path(member.name).parts
+                  assert member.isfile() or member.isdir()
+              assert archive.extractfile('docs/releases/v1.2.0-rc.2/COMPANY_HANDOFF.md').read()
+          m=json.load(open(root/'RELEASE-MANIFEST.json'));h=hashlib.sha256(p.read_bytes()).hexdigest()
+          assert not (root/p.name).exists();shutil.copy2(p,root/p.name)
+          m['artifacts'].append({'filename':p.name,'sha256':h,'sizeBytes':p.stat().st_size})
+          m['qualification']['artifacts'].append({'name':p.name,'sha256':h,'platform':'portable company guidance','tested':True})
+          m['currentCompanyGuidance']={'artifact':p.name,'documentationRevision':os.environ['GITHUB_SHA'],
+            'productRevision':m['revision'],'scope':'updated guidance and disclosed status; no released executable bytes replaced'}
+          assert assess(m['qualification'])['decision']=='PREVIEW_QUALIFIED'
+          (root/'RELEASE-MANIFEST.json').write_text(json.dumps(m,indent=2)+'\n')
+          sums={a['filename']:a['sha256'] for a in m['artifacts']};sums['RELEASE-MANIFEST.json']=hashlib.sha256((root/'RELEASE-MANIFEST.json').read_bytes()).hexdigest()
+          (root/'SHA256SUMS').write_text(''.join(h+'  '+n+'\n' for n,h in sorted(sums.items())))
+          PYCODE
+          python3 scripts/verify-prerelease-staging.py --directory build/current-public \
+            --revision "$(git rev-parse HEAD)" --require-qualified
+          gh release upload "$RELEASE_TAG" "build/$filename"
+          gh release upload "$RELEASE_TAG" build/current-public/RELEASE-MANIFEST.json \
+            build/current-public/SHA256SUMS --clobber
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: company-guide-publication-receipts
+          path: |
+            build/pacificdb-company-guide-*.tar.gz
+            build/current-public/RELEASE-MANIFEST.json
+            build/current-public/SHA256SUMS

@@ -1,0 +1,17 @@
+F
+======================================================================
+FAIL: test_default_operations_gate_executes_real_contract_validator (scripts.test_release_qualification.ReleaseQualificationTests.test_default_operations_gate_executes_real_contract_validator)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/scripts/test_release_qualification.py", line 15, in test_default_operations_gate_executes_real_contract_validator
+    self.assertEqual("PASS", result["status"], result)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'PASS' != 'FAIL'
+- PASS
++ FAIL
+ : {'name': 'operations', 'required': True, 'status': 'FAIL', 'reason': 'command_failed', 'duration_ms': 37, 'command': ['python3', 'scripts/validate_operations.py'], 'exit_code': 2}
+
+----------------------------------------------------------------------
+Ran 1 test in 0.038s
+
+FAILED (failures=1)

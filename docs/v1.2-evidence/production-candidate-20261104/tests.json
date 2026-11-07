@@ -1,0 +1,604 @@
+[
+  {
+    "test": "db_engine_wal_private_permissions_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.0037692089990741806
+  },
+  {
+    "test": "db_engine_vector_correctness_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.015940097999191494
+  },
+  {
+    "test": "db_engine_vector_exact_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.16418472300028952
+  },
+  {
+    "test": "db_engine_vector_safety_concurrency_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.3145270499990147
+  },
+  {
+    "test": "db_engine_vector_freshness_storage_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.01603929599878029
+  },
+  {
+    "test": "db_engine_vector_index_catalog_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.032015369999498944
+  },
+  {
+    "test": "db_engine_wal_recovery_admission_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.0077271459995245095
+  },
+  {
+    "test": "db_engine_collection_vector_identity_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.01585749100013345
+  },
+  {
+    "test": "db_engine_vector_named_sparse_storage_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.11434509700120543
+  },
+  {
+    "test": "db_engine_vector_named_sparse_crash_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.03220042200155149
+  },
+  {
+    "test": "db_engine_native_vector_storage_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.9656748850011354
+  },
+  {
+    "test": "db_engine_native_vector_crash_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.8654888289984228
+  },
+  {
+    "test": "db_engine_native_hybrid_storage_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.06422986200050218
+  },
+  {
+    "test": "db_engine_native_flat_storage_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.615306805999353
+  },
+  {
+    "test": "db_engine_flat_vector_index_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.266741051000281
+  },
+  {
+    "test": "db_engine_native_vector_mixed_flow_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.8657070699991891
+  },
+  {
+    "test": "db_engine_lsm_compaction_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.11432658400008222
+  },
+  {
+    "test": "db_engine_strong_read_memtable_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.0641144279998116
+  },
+  {
+    "test": "db_engine_comprehensive_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.7152585690000706
+  },
+  {
+    "test": "db_engine_timeout_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 4.021683197001039
+  },
+  {
+    "test": "db_engine_query_limit_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.11405108799954178
+  },
+  {
+    "test": "db_engine_memory_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 12.087263890000031
+  },
+  {
+    "test": "db_engine_snapshot_e2e",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.016019831000448903
+  },
+  {
+    "test": "db_engine_snapshot_bundle_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 5.174336006999511
+  },
+  {
+    "test": "db_engine_wal_group_commit_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 1.2665934920005384
+  },
+  {
+    "test": "db_engine_wal_segment_recovery_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.031747715000165044
+  },
+  {
+    "test": "db_engine_lsm_manifest_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.0076748339997720905
+  },
+  {
+    "test": "db_engine_lsm_checkpoint_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.03185530399969139
+  },
+  {
+    "test": "db_engine_lsm_verified_point_cache_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.015814975000466802
+  },
+  {
+    "test": "db_engine_native_vector_point_cache_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.11425237600087712
+  },
+  {
+    "test": "db_engine_replica_digest_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.015864101000261144
+  },
+  {
+    "test": "db_engine_lsm_bounded_recovery_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 16.50666700900001
+  },
+  {
+    "test": "db_engine_index_bounded_recovery_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 11.988781971998833
+  },
+  {
+    "test": "db_engine_raft_binary_log_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.1643891209987487
+  },
+  {
+    "test": "db_engine_raft_health_recovery_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 10.039204591999805
+  },
+  {
+    "test": "db_engine_raft_snapshot_metadata_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 4.874675797000236
+  },
+  {
+    "test": "db_engine_storage_format_v2_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.16468211699975654
+  },
+  {
+    "test": "db_engine_storage_root_migration_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.003661560998807545
+  },
+  {
+    "test": "db_engine_partitioned_queue_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.03266277999864542
+  },
+  {
+    "test": "db_engine_work_stealing_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 2.169682546000331
+  },
+  {
+    "test": "db_engine_community_manual_operations_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.01580203900084598
+  },
+  {
+    "test": "db_engine_community_catalog_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.1641256050006632
+  },
+  {
+    "test": "db_engine_database_access_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.015720351999334525
+  },
+  {
+    "test": "db_engine_community_api_key_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.1642014629996993
+  },
+  {
+    "test": "db_engine_security_manager_lockout_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 2.3688453399990976
+  },
+  {
+    "test": "db_engine_security_audit_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.6153392190008162
+  },
+  {
+    "test": "db_engine_community_query_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.00776387099904241
+  },
+  {
+    "test": "db_engine_tenant_auth_recovery_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 2.3687219490002462
+  },
+  {
+    "test": "db_engine_database_metadata_failure_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.015818376999959582
+  },
+  {
+    "test": "db_engine_raft_commit_publication_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.015771884998684982
+  },
+  {
+    "test": "db_engine_vector_schema_storage_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.11404001300070377
+  },
+  {
+    "test": "db_engine_native_incremental_storage_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 1.1166610950003815
+  },
+  {
+    "test": "db_engine_native_vector_checkpoint_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.0320278880008118
+  },
+  {
+    "test": "db_engine_vector_metadata_filter_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.31498437600021134
+  },
+  {
+    "test": "db_engine_vector_cold_filter_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.06422660399948654
+  },
+  {
+    "test": "db_engine_secondary_index_build_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.7154707859990594
+  },
+  {
+    "test": "db_engine_index_visibility_recovery_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.06415279099928739
+  },
+  {
+    "test": "db_engine_durable_file_ops_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.003968835999330622
+  },
+  {
+    "test": "db_engine_sst_version_resolution_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.008034643000428332
+  },
+  {
+    "test": "db_engine_lsm_point_read_flush_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.06641122799919685
+  },
+  {
+    "test": "v11_4_apply_exact_boundary_failpoints_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.0037011069998698076
+  },
+  {
+    "test": "db_engine_startup_delay_failpoint_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.03212966099999903
+  },
+  {
+    "test": "storage_path_security_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.0037967530006426387
+  },
+  {
+    "test": "db_engine_native_shell_parser_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.0076460060008685105
+  },
+  {
+    "test": "db_engine_socket_runtime_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.003578145999199478
+  },
+  {
+    "test": "db_engine_local_engine_state_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.007834890999220079
+  },
+  {
+    "test": "db_engine_env_config_unicode_path_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.003937043000405538
+  },
+  {
+    "test": "db_engine_storage_root_guard_owner_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.0039282140005525434
+  },
+  {
+    "test": "db_engine_structured_event_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.0019361369995749556
+  },
+  {
+    "test": "db_engine_media_upload_state_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.0014510050004901132
+  },
+  {
+    "test": "db_engine_cli_connection_test",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 0.007646674999705283
+  },
+  {
+    "test": "ctest",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 31.593919953000295
+  },
+  {
+    "test": "test-community-e2e.mjs",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 12.14210457399895
+  },
+  {
+    "test": "test-p0-media.mjs",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 5.324732828001288
+  },
+  {
+    "test": "test-engine-auth-boundaries.mjs",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 20.915021662000072
+  },
+  {
+    "test": "test-community-rf3.mjs",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 12.49548981099906
+  },
+  {
+    "test": "test-community-rf3-partition.mjs",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 18.81529006100027
+  },
+  {
+    "test": "test-community-restart-matrix.mjs",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 6.682925819999582
+  },
+  {
+    "test": "test-vector-request-isolation.mjs",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 2.470214472999942
+  },
+  {
+    "test": "test-native-vector-preview.mjs",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 14.603032139999414
+  },
+  {
+    "test": "test-vector-schema.mjs",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 7.439550876000794
+  },
+  {
+    "test": "test-vector-incremental.mjs",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 8.834866496999894
+  },
+  {
+    "test": "test-p0-media-crash.mjs",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 8.937106542000038
+  },
+  {
+    "test": "test-vector-schema-crash.mjs",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 14.952661315999649
+  },
+  {
+    "test": "test-raft-apply-retry.mjs",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 4.6261570589995245
+  },
+  {
+    "test": "test-vector-incremental-crash.mjs",
+    "status": "PASS",
+    "exit_code": 0,
+    "error": null,
+    "seconds": 23.676411231999737
+  }
+]

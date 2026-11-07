@@ -1,6 +1,7 @@
 """Bounded synchronous JSON-line connections with no automatic request replay."""
 from collections import deque
 import json
+import select
 import socket
 import ssl
 import threading
@@ -60,15 +61,30 @@ class ConnectionPool:
         raise last_error
 
     def _acquire(self, deadline):
+        connection = None
         with self._condition:
             while self._leases >= self._size:
                 if self._closed: raise PacificDBError('client_closed')
                 self._condition.wait(_remaining(deadline))
             if self._closed: raise PacificDBError('client_closed')
             self._leases += 1
-            if self._idle: return self._idle.popleft()
-        connection = None
+            if self._idle: connection = self._idle.popleft()
         try:
+            if connection is not None:
+                # This synchronous protocol has no unsolicited messages. EOF,
+                # an idle-timeout frame, or buffered TLS application bytes on
+                # an idle socket must not become the next command's response.
+                # Replace it before dispatch; never replay a sent command.
+                try:
+                    buffered = isinstance(connection, ssl.SSLSocket) and connection.pending() > 0
+                    readable = bool(select.select([connection], [], [], 0)[0])
+                    usable = not buffered and not readable
+                except (OSError, ValueError):
+                    usable = False
+                if usable: return connection
+                with self._condition: self._connections.discard(connection)
+                _dispose(connection)
+                connection = None
             connection = self._connect(deadline)
             # Track connecting sockets too so close() can interrupt a TLS handshake.
             with self._condition:

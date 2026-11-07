@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import json
 import re
 from pathlib import Path
 
@@ -96,32 +97,46 @@ require(
     "source-linux:",
     "contents: read",
     "packages:",
-    "uses: ./.github/workflows/release.yml",
-    "version: 1.1.2",
+    "uses: ./.github/workflows/prerelease.yml",
+)
+# The protected branch requires packages / linux, windows and both macOS jobs.
+# Keep the native reusable workflow under this caller ID; SDK/Linux-only
+# prerelease qualification cannot supply the missing native platform checks.
+require(
+    ".github/workflows/ci.yml",
+    "  packages:\n    uses: ./.github/workflows/release.yml",
+    "  prerelease:\n    uses: ./.github/workflows/prerelease.yml",
+)
+release_identity = json.loads((ROOT / "release.json").read_text())
+require(".github/workflows/ci.yml", f"      version: {release_identity['releaseVersion']}")
+require(
+    ".github/workflows/release.yml",
+    '$baseVersion = $version.Split(\'-\')[0]',
+    '-DPACIFICDB_ENGINE_VERSION="${version%%-*}"',
+    '-DPACIFICDB_ENGINE_VERSION="$baseVersion"',
+    'PACIFICDB_RELEASE_VERSION=${{ env.IMAGE_VERSION }}',
 )
 forbid(".github/workflows/ci.yml", "secrets: inherit")
 require(
     ".github/workflows/npm-publish.yml",
-    'tags: ["v*.*.*"]',
-    "Verify tag and package versions",
-    '[[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\\.[0-9]+\\.[0-9]+$ ]]',
-    'test "$client_version" = "$version"',
-    'test "$cli_version" = "$version"',
-    'test "$cli_client_version" = "$version"',
+    "workflow_dispatch:",
+    "environment:",
+    "check-sdk-release-tag.py",
+    "--tag next",
 )
-forbid(".github/workflows/npm-publish.yml", "workflow_dispatch:")
+forbid(".github/workflows/npm-publish.yml", "--tag latest")
 require(
     ".github/workflows/workbench-desktop.yml",
     "release_tag:",
     "WORKBENCH_RELEASE_TAG:",
     "WORKBENCH_VERSION=$(node -p",
-    "PACIFICDB_COMPONENT_VERSION=$(node -p",
+    "PACIFICDB_COMPONENT_VERSION=$(python3 scripts/release_identity.py --field version)",
     '-DPACIFICDB_ENGINE_VERSION="$PACIFICDB_COMPONENT_VERSION"',
     '-DPACIFICDB_ENGINE_VERSION="$env:PACIFICDB_COMPONENT_VERSION"',
     '--x-install-root="$pwd/build/vcpkg_installed"',
     '-DVCPKG_INSTALLED_DIR="$pwd/build/vcpkg_installed"',
     'test "$version" = "$WORKBENCH_VERSION"',
-    "ref: ${{ env.WORKBENCH_RELEASE_TAG || github.ref }}",
+    "ref: ${{ env.WORKBENCH_RELEASE_TAG || inputs.source_ref || github.ref }}",
     "if ($env:WORKBENCH_RELEASE_TAG -eq 'workbench-v1.1.1')",
     "$env:PACIFICDB_DESKTOP_RELEASE = '0'",
     'if [[ "$WORKBENCH_RELEASE_TAG" == workbench-v1.1.1 ]]',
@@ -134,6 +149,10 @@ require(
     "if: always()",
     'gh release create "$WORKBENCH_RELEASE_TAG"',
 )
+# Every platform must preserve explicit frozen-source qualification, with an
+# existing release tag taking precedence over a manually selected source ref.
+assert (ROOT / ".github/workflows/workbench-desktop.yml").read_text().count(
+    "ref: ${{ env.WORKBENCH_RELEASE_TAG || inputs.source_ref || github.ref }}") == 3
 forbid(
     ".github/workflows/workbench-desktop.yml",
     "-DPACIFICDB_ENGINE_VERSION=1.1.1",

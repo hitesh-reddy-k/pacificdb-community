@@ -1,0 +1,172 @@
+name: Verify public prerelease packages
+
+on:
+  workflow_call:
+    inputs:
+      release_tag:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  public_desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux-x64
+            filename: PacificDB-Workbench-1.2.0-rc.2-linux-amd64.deb
+          - runner: windows-2025
+            platform: windows-x64
+            filename: PacificDB-Workbench-1.2.0-rc.2-win-x64.exe
+          - runner: macos-15
+            platform: macos-arm64
+            filename: PacificDB-Workbench-1.2.0-rc.2-mac-arm64.dmg
+          - runner: macos-15-intel
+            platform: macos-x64
+            filename: PacificDB-Workbench-1.2.0-rc.2-mac-x64.dmg
+    runs-on: ${{ matrix.runner }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+      CANDIDATE_FILE: ${{ matrix.filename }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release_tag }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download public candidate and validate identity and checksums
+        run: |
+          set -euo pipefail
+          python scripts/check-sdk-release-tag.py "$RELEASE_TAG" --require-tag
+          mkdir -p build/public-artifacts
+          gh release view "$RELEASE_TAG" --json isPrerelease,isDraft,url > build/public-release.json
+          gh release download "$RELEASE_TAG" --dir build/public-artifacts \
+            --pattern "$CANDIDATE_FILE" --pattern RELEASE-MANIFEST.json --pattern SHA256SUMS
+          python - <<'PYCODE'
+          import hashlib,json,os,subprocess
+          from pathlib import Path
+          r=json.load(open('build/public-release.json'));assert r['isPrerelease'] and not r['isDraft']
+          root=Path('build/public-artifacts');m=json.load(open(root/'RELEASE-MANIFEST.json'))
+          sums={line.split(None,1)[1].strip():line.split(None,1)[0] for line in (root/'SHA256SUMS').read_text().splitlines()}
+          for name in [os.environ['CANDIDATE_FILE'],'RELEASE-MANIFEST.json']:
+              assert hashlib.sha256((root/name).read_bytes()).hexdigest()==sums[name],name
+          entry=next(a for a in m['artifacts'] if a['filename']==os.environ['CANDIDATE_FILE'])
+          assert entry['sha256']==sums[os.environ['CANDIDATE_FILE']]
+          print('PUBLIC_DOWNLOAD_HASH_PASS',os.environ['CANDIDATE_FILE'],entry['sha256'])
+          PYCODE
+          npm ci --ignore-scripts --no-audit --no-fund
+          node scripts/patch-build-tool-compat.mjs
+          # Use the current diagnostic driver with unchanged assertions. Product
+          # files and packaged-engine identity remain checked against the RC tag.
+          git show "$GITHUB_SHA:scripts/test-workbench-desktop.mjs" > build/public-desktop-driver.mjs
+          mkdir -p build/lib
+          cp scripts/lib/workbench-desktop-lifecycle.mjs build/lib/
+      - name: Install and exercise public Linux package
+        if: runner.os == 'Linux'
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth ./build/public-artifacts/"$CANDIDATE_FILE"
+          PACIFICDB_DESKTOP_DIAGNOSTICS="$PWD/build/public-gui-failure" \
+            PACIFICDB_TEST_DESKTOP='/opt/PacificDB Workbench/pacificdb-workbench' \
+            xvfb-run -a node build/public-desktop-driver.mjs | tee build/public-linux-gui.log
+      - name: Install and exercise public Windows package
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $installed = "$env:RUNNER_TEMP\public-workbench"
+          $candidate = Join-Path "$pwd/build/public-artifacts" $env:CANDIDATE_FILE
+          $process = Start-Process -FilePath $candidate -ArgumentList @('/S', "/D=$installed") -PassThru
+          if (-not $process.WaitForExit(120000)) { Stop-Process -Id $process.Id -Force; throw 'Public installer timed out' }
+          if ($process.ExitCode -ne 0) { throw "Public installer failed: $($process.ExitCode)" }
+          $env:PACIFICDB_TEST_DESKTOP = "$installed\PacificDB Workbench.exe"
+          $env:PACIFICDB_DESKTOP_DIAGNOSTICS = "$pwd/build/public-gui-failure"
+          node build/public-desktop-driver.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Install and exercise public macOS package
+        if: runner.os == 'macOS'
+        run: |
+          set -euo pipefail
+          mount="$RUNNER_TEMP/public-mount"
+          installed="$RUNNER_TEMP/public-workbench/PacificDB Workbench.app"
+          mkdir -p "$mount" "$RUNNER_TEMP/public-workbench"
+          hdiutil attach "build/public-artifacts/$CANDIDATE_FILE" -mountpoint "$mount" -nobrowse
+          ditto "$mount/PacificDB Workbench.app" "$installed"
+          hdiutil detach "$mount"
+          PACIFICDB_DESKTOP_DIAGNOSTICS="$PWD/build/public-gui-failure" \
+            PACIFICDB_TEST_DESKTOP="$installed/Contents/MacOS/PacificDB Workbench" \
+            node build/public-desktop-driver.mjs | tee build/public-macos-gui.log
+      - name: Download complete public distribution and verify qualification
+        if: runner.os == 'Linux'
+        run: |
+          set -euo pipefail
+          mkdir -p build/complete-public-distribution
+          gh release download "$RELEASE_TAG" --dir build/complete-public-distribution
+          python scripts/verify-prerelease-staging.py --directory build/complete-public-distribution \
+            --revision "$(git rev-parse HEAD)" --require-qualified | tee build/public-manifest.log
+      - uses: actions/setup-java@v4
+        if: runner.os == 'Linux'
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install public npm and GitHub SDK packages into clean consumers
+        if: runner.os == 'Linux'
+        run: |
+          set -euo pipefail
+          mkdir -p build/public-npm-consumer
+          cd build/public-npm-consumer
+          npm init -y
+          npm install --ignore-scripts --no-audit --no-fund \
+            @pacificdb/client@1.2.0-rc.2 @pacificdb/cli@1.2.0-rc.2
+          ./node_modules/.bin/pacificdb --version
+          cd ../..
+          export PACIFICDB_TEST_ENGINE_BUILD='/opt/PacificDB Workbench/resources/engine'
+          export PACIFICDB_TEST_NODE_MODULE="file://$PWD/build/public-npm-consumer/node_modules/@pacificdb/client/src/index.js"
+          export PACIFICDB_TEST_CLI_ENTRY="$PWD/build/public-npm-consumer/node_modules/@pacificdb/cli/bin/pacificdb.js"
+          export PACIFICDB_TEST_TYPED_VECTORS=1 PACIFICDB_TEST_NATIVE_VECTOR_PREVIEW=1 PACIFICDB_TEST_VECTOR_SCHEMA=1
+          export PACIFICDB_VECTOR_PREVIEW_ENABLED=1
+          PACIFICDB_TEST_LANGUAGES=node PACIFICDB_TEST_SKIP_JAVA_BUILD=1 \
+            node scripts/test-cross-sdk-e2e.mjs "$PACIFICDB_TEST_ENGINE_BUILD" | tee build/public-node-live.log
+          scripts/test-python-installed-client.sh \
+            build/complete-public-distribution/pacificdb-1.2.0rc2-py3-none-any.whl | tee build/public-python.log
+          scripts/test-java-installed-client.sh build/complete-public-distribution | tee build/public-java.log
+      - name: Record public package verification
+        run: |
+          python - <<'PYCODE'
+          import hashlib,json,os,subprocess,platform
+          from pathlib import Path
+          p=Path('build/public-artifacts')/os.environ['CANDIDATE_FILE']
+          evidence={'profile':'public-prerelease-install-verification','releaseTag':os.environ['RELEASE_TAG'],
+            'productRevision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
+            'verificationWorkflowRevision':os.environ['GITHUB_SHA'],'platform':'${{ matrix.platform }}',
+            'artifact':{'filename':p.name,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()},
+            'checks':['public download/hash','packaged native identity','normal Chromium sandbox','document/media CRUD','restart persistence','bundled CLI backup/restore'],
+            'sdkConsumers':'authenticated TCP/TLS and SIGKILL recovery from registry npm/GitHub wheel/JAR' if platform.system()=='Linux' else 'separate Linux verification',
+            'status':'PASS','signing':'NOT_ASSERTED','productionQualification':'INCOMPLETE'}
+          Path('build/public-${{ matrix.platform }}-verified.json').write_text(json.dumps(evidence,indent=2)+'\n')
+          PYCODE
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: public-package-verification-${{ matrix.platform }}
+          path: |
+            build/public-release.json
+            build/public-artifacts/RELEASE-MANIFEST.json
+            build/public-artifacts/SHA256SUMS
+            build/public-*-verified.json
+            build/public-*.log
+            build/public-gui-failure.*

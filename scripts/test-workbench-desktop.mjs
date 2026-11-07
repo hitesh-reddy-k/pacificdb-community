@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, rm, readFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { listPackage } from '@electron/asar';
 import { _electron as electron } from 'playwright';
+import { validateDesktopIdentity } from '../desktop/release-identity.mjs';
 import { closeDesktopApplication, desktopOperation } from './lib/workbench-desktop-lifecycle.mjs';
 
 const suppliedDirectory = process.env.PACIFICDB_TEST_DESKTOP_DATA;
@@ -32,6 +33,11 @@ if (executablePath) {
   const identity = spawnSync(enginePath, ['--build-info'], { encoding: 'utf8', timeout: 10_000 });
   assert.equal(identity.status, 0, identity.stderr);
   const buildInfo = JSON.parse(identity.stdout);
+  const release = JSON.parse(await readFile('release.json', 'utf8'));
+  const rootPackage = JSON.parse(await readFile('package.json', 'utf8'));
+  const cliPackage = JSON.parse(await readFile('cli/package.json', 'utf8'));
+  validateDesktopIdentity(release, buildInfo, rootPackage.version, cliPackage.version);
+  assert.deepEqual(manifest.release, release);
   const expected = process.env.PACIFICDB_EXPECTED_REVISION || spawnSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).stdout.trim();
   assert.equal(buildInfo.gitCommit, expected, 'packaged engine must contain the latest candidate');
   assert.equal(manifest.sourceRevision, expected);
@@ -50,6 +56,7 @@ async function launch(applicationPath = executablePath) {
   const started = Date.now();
   console.log(`[workbench-desktop] launch ${applicationPath || 'development application'}`);
   desktop = await electron.launch({
+    chromiumSandbox: true,
     ...(applicationPath ? { executablePath: applicationPath } : {}),
     args: [...(!applicationPath ? [path.resolve('desktop/main.mjs')] : [])],
     env, timeout: 60_000,
@@ -72,6 +79,8 @@ const cliDiagnostics = (result) => JSON.stringify({ status: result.status, signa
 try {
   let page = await launch(previousExecutablePath || executablePath);
   assert.equal(await page.evaluate(() => typeof process), 'undefined');
+  const sandboxDisabled = await evaluate(({ app }) => app.commandLine.hasSwitch('no-sandbox'), 'verify OS sandbox enabled');
+  assert.equal(sandboxDisabled, false, 'desktop smoke must exercise the normal Chromium sandbox');
   const preferences = await evaluate(({ BrowserWindow }) => {
     const p = BrowserWindow.getAllWindows()[0].webContents.getLastWebPreferences();
     return { sandbox: p.sandbox, contextIsolation: p.contextIsolation, nodeIntegration: p.nodeIntegration };
@@ -186,6 +195,26 @@ try {
 } catch (error) {
   primaryError = error;
   console.error('[workbench-desktop] original failure:', error);
+  if (desktop && process.env.PACIFICDB_DESKTOP_DIAGNOSTICS) {
+    const prefix = process.env.PACIFICDB_DESKTOP_DIAGNOSTICS;
+    const page = desktop.windows()[0];
+    if (page) {
+      await Promise.allSettled([
+        page.screenshot({ path: prefix + '.png', timeout: 5000 }),
+        page.content().then(html => writeFile(prefix + '.html', html)),
+        page.evaluate(() => ({
+          viewport: { width: innerWidth, height: innerHeight, dpr: devicePixelRatio, scrollX, scrollY },
+          buttons: ['overview-create', 'add-collection', 'add-media'].map(id => {
+            const element = document.getElementById(id);
+            if (!element) return { id, missing: true };
+            const rect = element.getBoundingClientRect();
+            const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+            return { id, rect: rect.toJSON(), hit: hit?.outerHTML.slice(0, 1000) };
+          }),
+        })).then(value => writeFile(prefix + '.json', JSON.stringify(value, null, 2))),
+      ]);
+    }
+  }
   const engineLog = await readFile(path.join(directory, 'database', 'engine.log'), 'utf8').catch(() => '');
   console.error('[workbench-desktop] engine log tail:\n' + engineLog.slice(-8000));
   throw error;

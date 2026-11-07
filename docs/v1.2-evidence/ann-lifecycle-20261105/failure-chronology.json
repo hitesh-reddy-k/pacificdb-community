@@ -1,0 +1,16 @@
+{
+  "status": "FAILURES_RETAINED",
+  "scope": "Historical attempts are not reclassified as passing",
+  "entries": [
+    "f8967f2 Windows startup: POSIX mode check on Windows; live monitor obscured refusal with fatal70",
+    "146a88c Windows unit fixture: unnecessary repeated WRITE_OWNER request after read-only ACL",
+    "0996d5b Windows fixture: PowerShell Set-Acl module discovery; fixed using direct .NET ACL method",
+    "0996d5b ARM strict query: STALE at unchanged freshness deadline",
+    "e3252e8 ARM strict query: repetition5 failed after4passes; immediate diagnosticREADY; prefix-progress fix alone insufficient",
+    "controlled pre-fix prefix starvation regression; initial new test expected similarity instead of private negative-dot distance, corrected after observing actual distances without removing assertions",
+    "Mac Intel invalid dependency-audit response shape: check failed closed; superseded attempts retained",
+    "Overall FAIL: timed phase passed, but adapted harness reused idle administrative session at post-load validation. Corrected attempt closes/reopens control session, preserves failed authority/logs and repeats complete scenario.",
+    "First observer BLOCKED before database access due absent startup status file. Original error retained; bounded startup wait added, unchanged assertions passed after recovery."
+  ],
+  "raw_evidence_policy": "Retain private raw logs/authority snapshots; distribute sanitized receipts and digests without keys, credentials, payloads or private host roots."
+}

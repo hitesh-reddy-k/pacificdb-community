@@ -84,6 +84,13 @@ public:
     bool isLeader() const { return leader_.load(); }
     bool isLeaderEligible() const { return leaderEligible_; }
     bool isEnabled() const { return initialized_.load(); }
+    // Synchronous log I/O failure leaves the advertised tail untrustworthy.
+    // Fence elections, replication acknowledgements and strong reads until restart.
+    void fenceStorageFailure() noexcept {
+        recoveryComplete_.store(false, std::memory_order_release);
+        leader_.store(false, std::memory_order_release);
+        leadershipReady_.store(false, std::memory_order_release);
+    }
     bool isRaftListenerRunning() const { return raftListenerRunning_.load(); }
     void setCleanShutdownRecovery(bool clean) {
         cleanShutdownRecovery_.store(clean, std::memory_order_release);
@@ -374,6 +381,7 @@ private:
     // commit/apply progress must survive a power cut as one coherent record.
     std::mutex consensusStatePersistMutex_;
     bool consensusStateLoaded_ = false;
+    std::atomic<bool> consensusPublicationUncertain_{false};
     uint64_t persistedConsensusTerm_ = 0;
     uint64_t persistedCommitIndex_ = 0;
     uint64_t persistedLastApplied_ = 0;

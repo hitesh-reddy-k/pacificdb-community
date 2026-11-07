@@ -1,0 +1,4 @@
+variant,median_ms,measured_calls,strict_recall,tie_aware_recall
+baseline,7712.047077999841,20,1.0,1.0
+candidate,5745.139750250246,20,1.0,1.0
+baseline-recheck,7247.236624999914,20,1.0,1.0

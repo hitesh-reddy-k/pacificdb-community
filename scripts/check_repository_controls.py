@@ -2,6 +2,7 @@
 """Read effective GitHub rules; fail closed against the production policy."""
 import json
 import os
+from pathlib import Path
 import subprocess
 from urllib.parse import quote
 
@@ -12,7 +13,20 @@ REQUIRED_CHECKS = {
 }
 
 
-def assess(repository, rules):
+def load_review_policy(root):
+    path = Path(root) / '.github' / 'repository-controls.json'
+    if not path.exists():
+        return 'independent'
+    policy = json.loads(path.read_text(encoding='utf-8'))
+    if (not isinstance(policy, dict) or policy.get('schema_version') != 1 or
+            policy.get('review_policy') not in ('independent', 'sole-maintainer')):
+        raise ValueError('invalid_repository_review_policy')
+    return policy['review_policy']
+
+
+def assess(repository, rules, review_policy='independent'):
+    if review_policy not in ('independent', 'sole-maintainer'):
+        raise ValueError('invalid_repository_review_policy')
     reasons = []
     security = repository.get('security_and_analysis') or {}
     for feature in ('secret_scanning', 'secret_scanning_push_protection'):
@@ -24,9 +38,16 @@ def assess(repository, rules):
             reasons.append(required + '_protection_missing')
     reviews = [rule.get('parameters', {}) for rule in rules
                if rule.get('type') == 'pull_request']
-    if not any(p.get('required_approving_review_count', 0) >= 1 and
-               p.get('dismiss_stale_reviews_on_push') is True for p in reviews):
-        reasons.append('independent_approval_and_stale_review_protection_missing')
+    if review_policy == 'independent':
+        if not any(p.get('required_approving_review_count', 0) >= 1 and
+                   p.get('dismiss_stale_reviews_on_push') is True for p in reviews):
+            reasons.append('independent_approval_and_stale_review_protection_missing')
+    elif not any(p.get('required_approving_review_count') == 0 and
+                 p.get('dismiss_stale_reviews_on_push') is True and
+                 p.get('required_review_thread_resolution') is True and
+                 p.get('require_last_push_approval') is not True and
+                 not p.get('required_reviewers') for p in reviews):
+        reasons.append('sole_maintainer_pull_request_protection_missing')
     checks = set()
     for rule in rules:
         if rule.get('type') == 'required_status_checks':
@@ -42,6 +63,7 @@ def assess(repository, rules):
         reasons.append('codeql_high_severity_gate_missing')
     return {'status': 'BLOCKED' if reasons else 'PASS', 'reasons': reasons,
             'default_branch': repository.get('default_branch'),
+            'review_policy': review_policy,
             'required_checks': sorted(REQUIRED_CHECKS),
             'scope': 'Effective default-branch rules; not artifact or production certification'}
 
@@ -58,7 +80,8 @@ def main():
         if not isinstance(branch, str) or not branch:
             raise ValueError('default_branch_unavailable')
         rules = fetch('repos/' + repo + '/rules/branches/' + quote(branch, safe=''))
-        result = assess(repository, rules)
+        review_policy = load_review_policy(Path(__file__).resolve().parents[1])
+        result = assess(repository, rules, review_policy=review_policy)
         result['repository'] = repo
         # A successful empty response is acceptable; lack of access is not.
         fetch('repos/' + repo + '/dependabot/alerts?per_page=1')
@@ -66,7 +89,7 @@ def main():
         if not analyses:
             result['status'] = 'BLOCKED'
             result['reasons'].append('code_scanning_analysis_missing')
-    except (subprocess.CalledProcessError, ValueError, TypeError, KeyError) as error:
+    except (subprocess.CalledProcessError, OSError, ValueError, TypeError, KeyError) as error:
         result = {'status': 'BLOCKED', 'reasons': ['repository_controls_could_not_be_verified'],
                   'error_type': type(error).__name__}
     print(json.dumps(result, indent=2))

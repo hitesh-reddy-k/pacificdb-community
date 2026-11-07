@@ -1,19 +1,27 @@
 {
   "name": "@pacificdb/client",
-  "version": "1.1.2",
+  "version": "1.2.0-rc.2",
   "description": "PacificDB Community Node.js client",
   "license": "Apache-2.0",
   "type": "module",
   "main": "src/index.js",
   "exports": "./src/index.js",
-  "files": ["src", "README.md", "LICENSE"],
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/hitesh-reddy-k/pacificdb-community.git",
     "directory": "sdk/node"
   },
-  "publishConfig": { "access": "public" },
-  "engines": { "node": ">=18" },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "test": "node --test test/*.test.js",
     "prepublishOnly": "npm test"

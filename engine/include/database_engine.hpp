@@ -2,6 +2,7 @@
 #include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
+#include "vector_query_deadline.hpp"
 
 using json = nlohmann::json;
 
@@ -9,6 +10,7 @@ struct QueryNode;
 
 class DatabaseEngine {
 public:
+    using VectorDeadline = pacificdb::vector_query::Deadline;
     // Database types
     enum class DatabaseType {
         BINARY,
@@ -26,7 +28,7 @@ public:
                                const json& security = json::object());
     // Returns true on success (created or already exists), false on failure
     // Returns the generated collection id on success, or empty string on failure
-    static std::string createCollection(const std::string& userId, const std::string& dbName, const std::string& collection);
+    static std::string createCollection(const std::string& userId, const std::string& dbName, const std::string& collection, const json& vectorSchema = nullptr);
     static bool dropCollection(const std::string& userId, const std::string& dbName, const std::string& collection);
     static bool dropDatabase(const std::string& userId, const std::string& dbName);
     static std::vector<std::string> listDatabases(const std::string& userId);
@@ -41,7 +43,28 @@ public:
     static void insertVector(const std::string& userId, const std::string& dbName, const std::string& collection, const json& doc, const json& raftMeta = json::object());
     static std::vector<json> find(const std::string& userId, const std::string& dbName, const std::string& collection, const json& filter, long long limit = -1, long long offset = 0);
     static size_t count(const std::string& userId, const std::string& dbName, const std::string& collection, const json& filter = json::object());
-    static std::vector<json> queryVector(const std::string& userId, const std::string& dbName, const std::string& collection, const json& query);
+    static std::vector<json> queryVector(const std::string& userId, const std::string& dbName, const std::string& collection, const json& query, json* execution = nullptr, VectorDeadline deadline = std::nullopt);
+    // Native derived indexes; standalone RPC preview requires an explicit flag.
+    // Multi-peer catalog creation and production rollout remain gated.
+    static json buildNativeVectorIndex(const std::string& userId, const std::string& dbName,
+        const std::string& collection, const json& options);
+    static json rebuildNativeVectorIndex(const std::string& userId, const std::string& dbName,
+        const std::string& collection, const std::string& name);
+    static json nativeVectorIndexStatus(const std::string& userId, const std::string& dbName,
+        const std::string& collection, const std::string& name);
+    static bool dropNativeVectorIndex(const std::string& userId, const std::string& dbName,
+        const std::string& collection, const std::string& name);
+    static std::vector<json> queryNativeVectorIndex(const std::string& userId, const std::string& dbName,
+        const std::string& collection, const std::string& name, const json& query, json* execution = nullptr, VectorDeadline deadline = std::nullopt);
+    static std::vector<json> queryNativeExactIndex(const std::string& userId, const std::string& dbName,
+        const std::string& collection, const std::string& indexName, const json& query, json* execution = nullptr, VectorDeadline deadline = std::nullopt);
+    static std::vector<json> queryNativeHybridIndex(const std::string& userId, const std::string& dbName,
+        const std::string& collection, const std::string& name, const json& query, json* execution = nullptr, VectorDeadline deadline = std::nullopt);
+    static bool vectorExactFallbackAllowed(const json& query);
+    static void stopNativeVectorIndexes();
+    static void retireNativeVectorIndexes(const std::string& userId, const std::string& dbName, const std::string& collection);
+    static bool nativeVectorReadContextEligible();
+    static bool nativeVectorRowVisible(const std::string& userId, const json& row);
     static bool updateOne(const std::string& userId, const std::string& dbName, const std::string& collection, const json& filter, const json& update, const json& raftMeta = json::object());
     static bool deleteOne(const std::string& userId, const std::string& dbName, const std::string& collection, const json& filter, const json& raftMeta = json::object());
     static bool match(const nlohmann::json& doc,
@@ -79,4 +102,8 @@ public:
                                     const std::string& dbName,
                                     const std::string& collection,
                                     const std::string& id);
+private:
+    static std::string createCollectionWithVectorIdentity(
+        const std::string& userId, const std::string& dbName,
+        const std::string& collection, const std::string& vectorIdentity, const json& vectorSchema = nullptr);
 };

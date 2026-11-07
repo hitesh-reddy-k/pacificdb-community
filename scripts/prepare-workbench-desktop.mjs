@@ -6,9 +6,11 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { validateDesktopIdentity } from '../desktop/release-identity.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const workspace = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
+const release = JSON.parse(await readFile(path.join(root, 'release.json'), 'utf8'));
 const cli = JSON.parse(await readFile(path.join(root, 'cli/package.json'), 'utf8'));
 const executableName = process.platform === 'win32' ? 'db_engine.exe' : 'db_engine';
 const executable = path.resolve(process.env.PACIFICDB_WORKBENCH_ENGINE || path.join(root, 'build', executableName));
@@ -18,7 +20,8 @@ const cliExecutable = path.join(path.dirname(executable), cliName);
 await access(cliExecutable, process.platform === 'win32' ? constants.F_OK : constants.X_OK);
 const engineIdentity = JSON.parse(execFileSync(executable, ['--build-info'], { encoding: 'utf8' }));
 const sourceRevision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
-assert.equal(engineIdentity.engineVersion, cli.version, 'bundled engine component version mismatch');
+validateDesktopIdentity(release, engineIdentity, workspace.version, cli.version);
+assert.equal(engineIdentity.gitCommit, sourceRevision, 'bundled engine source revision mismatch');
 if (process.env.PACIFICDB_DESKTOP_RELEASE === '1') {
   execFileSync('git', ['diff', '--exit-code', 'HEAD'], { cwd: root, stdio: 'pipe' });
   assert.equal(engineIdentity.gitCommit, sourceRevision, 'release engine must match the source revision');
@@ -31,10 +34,14 @@ await rm(resources, { recursive: true, force: true });
 await mkdir(path.join(stage, 'desktop'), { recursive: true });
 await mkdir(path.join(stage, 'cli/src'), { recursive: true });
 await mkdir(path.join(resources, 'engine'), { recursive: true });
-for (const name of ['main.mjs', 'engine.mjs', 'icon.png', 'logo.png', 'loading.html', 'loading.css']) {
+for (const name of ['main.mjs', 'engine.mjs', 'icon.png', 'logo.png', 'loading.html', 'loading.css', 'release-identity.mjs']) {
   await cp(path.join(root, 'desktop', name), path.join(stage, 'desktop', name));
 }
-await cp(path.join(root, 'cli/src/workbench.js'), path.join(stage, 'cli/src/workbench.js'));
+for (const name of ['workbench.js', 'release.js']) {
+  await cp(path.join(root, 'cli/src', name), path.join(stage, 'cli/src', name));
+}
+await cp(path.join(root, 'cli/package.json'), path.join(stage, 'cli/package.json'));
+await cp(path.join(root, 'release.json'), path.join(stage, 'release.json'));
 await cp(path.join(root, 'cli/workbench'), path.join(stage, 'cli/workbench'), { recursive: true });
 const sdk = path.join(stage, 'node_modules/@pacificdb/client');
 await mkdir(sdk, { recursive: true });
@@ -47,7 +54,7 @@ for (const name of ['LICENSE', 'LICENSES', 'THIRD_PARTY_NOTICES.md']) {
 await cp(executable, path.join(resources, 'engine', executableName));
 await cp(cliExecutable, path.join(resources, 'engine', cliName));
 await writeFile(path.join(resources, 'engine', 'manifest.json'), JSON.stringify({
-  schemaVersion: 1, sourceRevision, engineIdentity,
+  schemaVersion: 1, sourceRevision, release, engineIdentity,
   engineSha256: await digest(executable), cliSha256: await digest(cliExecutable),
 }, null, 2) + '\n');
 if (process.platform !== 'win32') await chmod(path.join(resources, 'engine', executableName), 0o755);

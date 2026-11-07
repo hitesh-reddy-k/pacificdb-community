@@ -4,11 +4,18 @@
 
 # PacificDB Node.js client
 
-Version **1.1.2 — prerelease**. Download the matching package from the
-[Community v1.1.2 release](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/1.1.2);
-registry publication is pending.
+Version **1.2.0-rc.2 — prerelease**. Download the matching package from the
+[Community v1.2.0-rc.2 release](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v1.2.0-rc.2);
+the matching prerelease package is also available through npm.
 
 Apache-2.0 client for the Community engine JSON protocol.
+
+Unreleased follow-up: `queryVector` accepts `indexWaitMs` (integer 0–5000;
+default 1000 on the matching engine) for strict incremental ANN freshness waits.
+Zero preserves immediate unavailability errors. The request deadline and scan
+budget remain shared across attempts. This option does not make absent or failed
+indexes ready and does not enable exact fallback. Published RC.2 does not yet
+provide this wait behavior.
 
 ```js
 import { PacificDB } from '@pacificdb/client';

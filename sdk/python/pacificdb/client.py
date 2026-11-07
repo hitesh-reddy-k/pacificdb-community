@@ -276,8 +276,9 @@ class PacificDBClient:
             if self._database == name: self._database = ''
         return response
 
-    def create_collection(self, name: str) -> Any:
-        return self._collection_request(name, 'createCollection')
+    def create_collection(self, name: str, *, vector_schema=None) -> Any:
+        return self._collection_request(name, 'createCollection',
+            **({'vector_schema': vector_schema} if vector_schema is not None else {}))
 
     def list_collections(self):
         return self._database_request({'action': 'listCollections'})

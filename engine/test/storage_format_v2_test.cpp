@@ -1,11 +1,15 @@
 #include "storage_format_v2.hpp"
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <chrono>
 #include <string>
 #include <vector>
+#include <thread>
+#include <random>
+#include <cmath>
 
 namespace fs = std::filesystem;
 using json = nlohmann::json;
@@ -15,12 +19,171 @@ static void require(bool condition, const std::string& message) {
     if (!condition) throw std::runtime_error(message);
 }
 
+static void testScalarFieldDecoding() {
+    // Independent reference: the existing complete MessagePack decoder, including
+    // noncanonical widths that the writer would not normally produce.
+    const auto same = [](const json& actual, const json& expected) {
+        require(actual.type() == expected.type(), "scalar JSON numeric/type contract changed");
+        if (expected.is_number_float()) {
+            const double a = actual.get<double>(), b = expected.get<double>();
+            require((std::isnan(a) && std::isnan(b)) ||
+                    (a == b && std::signbit(a) == std::signbit(b)),
+                    "scalar float value/sign changed");
+        } else require(actual == expected, "scalar value differs from reference decoder");
+    };
+    const auto check = [&](const std::vector<uint8_t>& encoded) {
+        const auto expected = json::from_msgpack(encoded);
+        std::vector<uint8_t> row{0x81, 0xa1, 'v'};
+        row.insert(row.end(), encoded.begin(), encoded.end());
+        for (bool indexed : {false, true}) {
+            const MsgpackRowView view(row.data(), row.size(), indexed);
+            const auto value = view.field("v");
+            require(value.has_value(), "valid scalar field became missing");
+            same(*value, expected);
+            same(view.project({"v", "absent", "v"}).at("v"), expected);
+            require(!view.field("absent"), "scalar lookup returned a missing field");
+        }
+        std::vector<size_t> truncated;
+        for (size_t n = 0; n < std::min<size_t>(encoded.size(), 12); ++n) truncated.push_back(n);
+        if (encoded.size() > 12) truncated.push_back(encoded.size()-1);
+        for (size_t n : truncated) {
+            auto partial = row; partial.resize(3+n);
+            const MsgpackRowView view(partial.data(), partial.size(), true);
+            require(!view.field("v"), "truncated scalar field was accepted");
+            bool rejected = false;
+            try { (void)view.project({"v"}); } catch (const std::exception&) { rejected = true; }
+            require(rejected, "truncated scalar projection was accepted");
+        }
+    };
+    for (unsigned value = 0; value <= 0xff; ++value)
+        if (value <= 0x7f || value >= 0xe0) check({static_cast<uint8_t>(value)});
+    for (const auto tag : {0xc0, 0xc2, 0xc3}) check({static_cast<uint8_t>(tag)});
+    const auto encoded = [](uint8_t tag, uint64_t bits, size_t width) {
+        std::vector<uint8_t> bytes{tag};
+        for (size_t i = width; i > 0; --i) bytes.push_back(static_cast<uint8_t>(bits >> ((i-1)*8)));
+        return bytes;
+    };
+    for (unsigned tag = 0xcc; tag <= 0xd3; ++tag) {
+        const size_t width = size_t{1} << ((tag >= 0xd0) ? tag-0xd0 : tag-0xcc);
+        const uint64_t high = uint64_t{1} << (width*8-1);
+        for (uint64_t value : {uint64_t{0},uint64_t{1},high-1,high,high+1,
+                              std::numeric_limits<uint64_t>::max()})
+            check(encoded(tag,value,width));
+    }
+    for (uint64_t bits : {uint64_t{0},uint64_t{0x80000000},uint64_t{1},
+         uint64_t{0x3f800000},uint64_t{0x7f7fffff},uint64_t{0x7f800000},
+         uint64_t{0xff800000},uint64_t{0x7fc00001}}) check(encoded(0xca,bits,4));
+    for (uint64_t bits : {uint64_t{0},uint64_t{0x8000000000000000},uint64_t{1},
+         uint64_t{0x3ff0000000000000},uint64_t{0x7fefffffffffffff},
+         uint64_t{0x7ff0000000000000},uint64_t{0xfff0000000000000},
+         uint64_t{0x7ff8000000000001}}) check(encoded(0xcb,bits,8));
+    for (const auto width : {size_t{1},size_t{2},size_t{4}}) {
+        for (size_t size : {size_t{0},size_t{1},size_t{31},size_t{32},size_t{255},size_t{256},size_t{65536}}) {
+            if ((width == 1 && size > 255) || (width == 2 && size > 65535)) continue;
+            auto bytes=encoded(width == 1 ? 0xd9 : width == 2 ? 0xda : 0xdb,size,width);
+            for (size_t i = 0; i < size; ++i) bytes.push_back(i%7 ? 'a' : '\0');
+            check(bytes);
+        }
+    }
+    for (const json& value : std::vector<json>{"", "utf8 \xe6\xb5\xb7", json::array({1,true,nullptr}),
+            json{{"nested", json::array({-1,2.5})}}, json::binary({0,1,255})})
+        check(json::to_msgpack(value));
+}
+
+static void testRawDenseScoring() {
+    std::mt19937 random(1923);
+    std::uniform_real_distribution<double> value(-10, 10);
+    for (int example = 0; example < 200; ++example) {
+        json vector = json::array({0, -1, -33, -129, -32769, int64_t(-2147483649LL),
+            std::numeric_limits<int64_t>::min(), uint64_t(255), uint64_t(65535),
+            uint64_t(4294967295ULL), std::numeric_limits<uint64_t>::max(), 1.25, -0.0});
+        for (int i = 0; i < example % 100; ++i) vector.push_back(value(random));
+        std::vector<double> query(vector.size()); double qnorm = 0;
+        for (auto& number : query) { number = value(random); qnorm += number * number; }
+        qnorm = std::sqrt(qnorm);
+        auto bytes = json::to_msgpack(json{{"id", "numeric"}, {"vector", vector}});
+        const MsgpackRowView indexed(bytes.data(), bytes.size(), true);
+        for (const std::string metric : {"cosine", "l2", "euclidean", "dot", "dot_product"}) {
+            double expected = 0, norm = 0;
+            const bool l2 = metric == "l2" || metric == "euclidean";
+            const bool dot = metric == "dot" || metric == "dot_product";
+            for (size_t i = 0; i < query.size(); ++i) {
+                const double number = vector[i].get<double>();
+                if (l2) { const double difference = query[i] - number; expected += difference * difference; }
+                else { expected += query[i] * number; norm += number * number; }
+            }
+            if (l2) expected = -std::sqrt(expected);
+            else if (!dot) expected = qnorm * std::sqrt(norm) < 1e-12 ? 0.0 : expected / (qnorm * std::sqrt(norm));
+            const auto score = indexed.denseScore("vector", query, metric, qnorm);
+            require(score.has_value(), "numeric array did not use raw decoder");
+            require(std::abs(*score - expected) <= 1e-12 * std::max(1.0, std::abs(expected)),
+                    "raw numeric score differs from independent JSON reference");
+        }
+        require(!indexed.denseScore("missing", query, "cosine", qnorm), "raw missing vector accepted");
+        require(!indexed.denseScore("vector", {1.0}, "cosine", 1.0), "raw dimension mismatch accepted");
+    }
+    for (const json vector : {json::array({"1", "2"}), json::array({true, 1}), json::object()}) {
+        const auto bytes = json::to_msgpack(json{{"vector", vector}});
+        require(!MsgpackRowView(bytes.data(), bytes.size(), true).denseScore("vector", {1., 2.}, "dot", 1.),
+                "non-numeric array bypassed legacy decoder");
+    }
+}
+
+static void testIndexedRows() {
+    for (int example = 0; example < 100; ++example) {
+        json document = {{"id", std::to_string(example)}, {"null", nullptr},
+            {"binary", json::binary({0, 1, 2, 255})}, {"vector", {1., -2., 3.}},
+            {"signed", std::numeric_limits<int64_t>::min()},
+            {"unsigned", std::numeric_limits<uint64_t>::max()}};
+        for (int field = 0; field < 50; ++field)
+            document["f" + std::to_string(field)] = {{"nested", {example, field, true, "text"}}};
+        auto bytes = json::to_msgpack(document);
+        const MsgpackRowView plain(bytes.data(), bytes.size());
+        const MsgpackRowView indexed(bytes.data(), bytes.size(), true);
+        std::vector<std::string> names{"absent", "id", "id", "vector", "null"};
+        for (auto it = document.begin(); it != document.end(); ++it) {
+            names.push_back(it.key());
+            require(indexed.field(it.key()) == plain.field(it.key()), "indexed field mismatch");
+        }
+        require(!indexed.field("absent"), "indexed missing field mismatch");
+        require(indexed.project(names) == plain.project(names), "indexed wide projection mismatch");
+        require(indexed.materialize() == document, "indexed materialization mismatch");
+        auto copied = indexed;
+        require(copied.project(names) == indexed.project(names), "copied field spans mismatch");
+        // Immutable spans can be read by multiple workers without shared mutations.
+        if (example == 0) {
+            std::vector<std::thread> readers;
+            for (int worker = 0; worker < 4; ++worker) readers.emplace_back([&] {
+                for (int run = 0; run < 100; ++run)
+                    require(indexed.project(names) == plain.project(names), "concurrent indexed lookup mismatch");
+            });
+            for (auto& reader : readers) reader.join();
+        }
+    }
+    const std::vector<std::vector<uint8_t>> malformed = {{}, {0x81},
+        {0x81, 0xa2, 'i', 'd', 0xd9, 0xff}, {0x80, 0xc0}, {0x91, 0x01}};
+    for (const auto& bytes : malformed) {
+        const MsgpackRowView indexed(bytes.data(), bytes.size(), true);
+        bool failed = false;
+        try { (void)indexed.project({"id"}); } catch (const std::exception&) { failed = true; }
+        require(failed, "malformed indexed map accepted");
+    }
+    const std::vector<uint8_t> duplicate = {0x82, 0xa2, 'i', 'd', 0xa1, 'a', 0xa2, 'i', 'd', 0xa1, 'b'};
+    const MsgpackRowView plain(duplicate.data(), duplicate.size());
+    const MsgpackRowView indexed(duplicate.data(), duplicate.size(), true);
+    require(indexed.field("id") == plain.field("id"), "duplicate field lookup changed");
+    require(indexed.project({"id"}) == plain.project({"id"}), "duplicate field projection changed");
+}
+
 int main() {
     const fs::path root = fs::temp_directory_path() /
         ("pacificdb-storage-v2-" + std::to_string(
             std::chrono::steady_clock::now().time_since_epoch().count()));
     fs::create_directories(root);
     try {
+        testScalarFieldDecoding();
+        testIndexedRows();
+        testRawDenseScoring();
         std::string error;
         require(writeIndexSegment(root / "name.cidx", {
             {IndexMutation::Op::Clear, "", "a"},
@@ -86,10 +249,34 @@ int main() {
             require(!row.field("missing"), "streaming SST returned a missing field");
             require(row.materialize() == documents.at(viewed),
                     "streaming SST materialization mismatch");
+            const auto projected = row.project({"id", "score", "missing", "id"});
+            require(projected == json{{"id", documents.at(viewed).at("id")},
+                                      {"score", documents.at(viewed).at("score")}},
+                    "selective row projection mismatch");
             ++viewed;
             return true;
         }, &error), error);
         require(viewed == documents.size(), "streaming SST row count mismatch");
+        json projectionFixture{{"id", "projection"}, {"null", nullptr},
+            {"vector", {1., 0., -2.}}, {"nested", {{"tags", {"a", "b"}}}},
+            {"unicode", "నమస్తే"}, {"payload", std::string(5000, 'x')}};
+        for (int i = 0; i < 30; ++i) projectionFixture["field" + std::to_string(i)] = i;
+        const auto packedFixture = json::to_msgpack(projectionFixture);
+        const MsgpackRowView projectionView(packedFixture.data(), packedFixture.size());
+        const std::vector<std::string> selectedFields{"id", "null", "vector", "nested", "unicode", "absent"};
+        auto projected = projectionView.project(selectedFields);
+        auto expectedProjection = projectionFixture;
+        for (auto it = expectedProjection.begin(); it != expectedProjection.end();) {
+            if (std::find(selectedFields.begin(), selectedFields.end(), it.key()) == selectedFields.end()) it = expectedProjection.erase(it);
+            else ++it;
+        }
+        require(projected == expectedProjection, "map16/nested/null/unicode projection mismatch");
+        for (const auto& corrupt : std::vector<std::vector<uint8_t>>{{}, {0x81}, {0x90}, {0x80, 0x00}, {0x81, 0xa1, 'x', 0xdd}}) {
+            bool rejected = false;
+            try { MsgpackRowView(corrupt.data(), corrupt.size()).project(selectedFields); }
+            catch (const std::exception&) { rejected = true; }
+            require(rejected, "malformed projected row was not rejected");
+        }
         auto found = findInSst(sst, "b", &error);
         require(found && found->value("name", "") == "bob", "SST point lookup failed");
         require(!findInSst(sst, "missing", &error), "missing SST key was returned");

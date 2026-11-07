@@ -257,7 +257,11 @@ summary { cursor: pointer; }
 
 #explorer[data-view="query"] #document-editor { display: none; }
 
-.sidebar { overflow: hidden; }.side-section { min-height: 0; overflow: auto; scrollbar-width: thin; }
+/* Short desktop windows must scroll the navigation instead of collapsing the
+   database tree behind the fixed actions below it. Keep every control reachable. */
+.sidebar { overflow-y: auto; }
+.sidebar > :not(.side-section) { flex-shrink: 0; }
+.side-section { min-height: 120px; flex-shrink: 0; overflow: auto; scrollbar-width: thin; }
 .metric-report { margin-top: 16px; }.metric-report small { color: var(--muted); font-size: 11px; }
 #monitor-metrics { max-height: 320px; overflow: auto; white-space: pre; font-size: 12px; }
 .media-search { max-width: 400px; margin: 0 0 20px; }.media-search input { margin-top: 8px; }
@@ -268,3 +272,5 @@ summary { cursor: pointer; }
 .tree-toggle:hover { background: #274566; color: #fff; }
 .environment[data-state="connecting"] .environment-dot { background: #e5b967; }
 .environment[data-state="connecting"] .environment-state { color: #e5b967; }
+
+.brand .release-label { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; line-height: 1.5; letter-spacing: normal; }

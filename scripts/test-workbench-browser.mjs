@@ -46,7 +46,7 @@ try {
   workbench = await main(['workbench', '--no-start', '--port', String(port)], {
     input: new PassThrough(), output: new PassThrough(),
   });
-  browser = await chromium.launch({ headless: true, channel: 'chromium' });
+  browser = await chromium.launch({ headless: true, channel: 'chromium', chromiumSandbox: true });
   page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
   page.on('pageerror', (error) => errors.push(error.message));
   const requests = [];
@@ -54,6 +54,9 @@ try {
   await page.goto(workbench.url);
   await page.waitForFunction(() => document.querySelector('#connection').textContent.includes('Connected'));
   assert.equal(await page.locator('#overview').isVisible(), true);
+  const release = JSON.parse(await (await import('node:fs/promises')).readFile(new URL('../release.json', import.meta.url), 'utf8'));
+  assert.ok((await page.locator('.brand .release-label').textContent()).includes(release.version));
+  if (release.channel === 'prerelease') assert.match(await page.locator('.brand .release-label').textContent(), /Pre-release/);
   assert.equal(await page.locator('.brand img').evaluate((image) => image.complete && image.naturalWidth === 210), true);
   if (screenshots) await mkdir(screenshots, { recursive: true });
   await page.locator('#environment-open').click();
@@ -300,6 +303,15 @@ try {
     await page.locator('#query-vector').click();
     await page.locator('#vector-result').filter({ hasText: 'sample-vector' }).waitFor();
   }
+  await page.locator('#vectors details').getByText('Advanced vector search', { exact: true }).click();
+  await page.locator('#vector-mode').selectOption('exact');
+  await page.locator('#vector-fallback').selectOption('false');
+  await page.locator('#vector-timeout').fill('5000');
+  await page.locator('#query-vector').click();
+  await page.waitForFunction(() => !document.querySelector('#query-vector').disabled);
+  assert.ok(requests.some(body => body.op === 'vectors.query' && body.searchMode === 'exact' && body.allowExactFallback === false && body.timeoutMs === 5000));
+  assert.match(await page.locator('#vector-result').textContent(), /sample-vector/);
+  if (screenshots) await page.screenshot({ path: path.join(screenshots, 'vectors-advanced.png'), fullPage: true });
   await page.locator('#vector-filter').fill('{"id":"missing-vector"}');
   await page.locator('#query-vector').click();
   await page.waitForFunction(() => JSON.parse(document.querySelector('#vector-result').textContent).data.length === 0);

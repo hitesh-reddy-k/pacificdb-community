@@ -1,0 +1,115 @@
+name: Assemble qualified frozen prerelease
+on:
+  workflow_call:
+    inputs:
+      release_tag:
+        required: true
+        type: string
+      native_run:
+        required: true
+        type: string
+      platform_run:
+        required: true
+        type: string
+      linux_run:
+        required: true
+        type: string
+      qualification_run:
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  assemble:
+    runs-on: ubuntu-24.04
+    environment: prerelease-publish
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+      NATIVE_RUN: ${{ inputs.native_run }}
+      PLATFORM_RUN: ${{ inputs.platform_run }}
+      LINUX_RUN: ${{ inputs.linux_run }}
+      QUALIFICATION_RUN: ${{ inputs.qualification_run }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release_tag }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Verify tag and successful required jobs
+        run: |
+          set -euo pipefail
+          python3 scripts/check-sdk-release-tag.py "$RELEASE_TAG" --require-tag
+          mkdir -p build/assembly/evidence
+          for role in native platform linux-platform qualification; do
+            case "$role" in native) run="$NATIVE_RUN";; platform) run="$PLATFORM_RUN";; linux-platform) run="$LINUX_RUN";; qualification) run="$QUALIFICATION_RUN";; esac
+            gh run view "$run" --json headSha,status,conclusion,jobs,url > "build/assembly/evidence/$role-run.json"
+          done
+          python3 - <<'PYCODE'
+          import json,subprocess
+          from pathlib import Path
+          root=Path('build/assembly/evidence');rev=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
+          for role in ['native','platform','linux-platform','qualification']:
+              d=json.load(open(root/f'{role}-run.json'))
+              if role in ['native','qualification']:assert d['status']=='completed' and d['conclusion']=='success',(role,d['conclusion'])
+              if role=='native':assert d['headSha']==rev
+              if role=='platform':
+                  required={'windows','macos (macos-15, arm64)','macos (macos-15-intel, x64)'}
+                  assert all(any(j['name']==name and j['conclusion']=='success' for j in d['jobs']) for name in required)
+              if role=='linux-platform':assert any(j['name']=='linux' and j['conclusion']=='success' for j in d['jobs'])
+          PYCODE
+      - name: Download exact tested distributions and evidence
+        run: |
+          set -euo pipefail
+          gh run download "$NATIVE_RUN" --name prerelease-linux-x64 --dir build/assembly/distribution
+          gh run download "$NATIVE_RUN" --name prerelease-linux-x64-evidence --dir build/assembly/evidence/checkpoint
+          gh run download "$NATIVE_RUN" --name prerelease-linux-x64-raw-evidence --dir build/assembly/evidence/native-raw
+          gh run download "$QUALIFICATION_RUN" --name complete-frozen-candidate-regression --dir build/assembly/evidence/community
+          for platform in linux-x64 windows-x64 macos-x64 macos-arm64; do
+            run="$PLATFORM_RUN"; if test "$platform" = linux-x64; then run="$LINUX_RUN"; fi
+            gh run download "$run" --name "workbench-$platform" --dir "build/assembly/platform-$platform"
+          done
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm audit --json > build/assembly/evidence/full-audit.json
+          npm audit --omit=dev --json > build/assembly/evidence/runtime-audit.json
+          node scripts/check-build-tool-advisories.mjs build/assembly/evidence/full-audit.json build/assembly/evidence/runtime-audit.json > build/assembly/evidence/advisory-gate.json
+          git show "$GITHUB_SHA:scripts/assemble-qualified-prerelease.py" > build/assembly/assemble.py
+          python3 build/assembly/assemble.py --root build/assembly
+      - name: Verify complete sealed distribution and publish only prerelease
+        run: |
+          set -euo pipefail
+          python3 scripts/verify-prerelease-staging.py --directory build/assembly/distribution \
+            --revision "$(git rev-parse HEAD)" --require-qualified
+          if gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft > build/assembly/previous-draft-state.txt 2>/dev/null; then
+            test "$(cat build/assembly/previous-draft-state.txt)" = true
+          else
+            gh release create "$RELEASE_TAG" --verify-tag --draft --prerelease --latest=false \
+              --title 'Pre-release v1.2' --notes-file build/assembly/RELEASE_NOTES.md
+          fi
+          gh release upload "$RELEASE_TAG" build/assembly/distribution/* --clobber
+          gh release view "$RELEASE_TAG" --json assets > build/assembly/evidence/remote-draft-assets.json
+          python3 - <<'PYCODE'
+          import json
+          from pathlib import Path
+          root=Path('build/assembly');m=json.load(open(root/'distribution/RELEASE-MANIFEST.json'));assets=json.load(open(root/'evidence/remote-draft-assets.json'))['assets'];byname={a['name']:a for a in assets}
+          assert len(assets)==len(m['artifacts'])+2
+          for a in m['artifacts']:assert byname[a['filename']]['digest']=='sha256:'+a['sha256']
+          PYCODE
+          gh release edit "$RELEASE_TAG" --draft=false --prerelease --latest=false \
+            --title 'Pre-release v1.2' --notes-file build/assembly/RELEASE_NOTES.md
+          gh release view "$RELEASE_TAG" --json isPrerelease,isDraft,url,tagName > build/assembly/evidence/public-release.json
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: frozen-prerelease-assembly-receipts
+          path: |
+            build/assembly/evidence/
+            build/assembly/RELEASE_NOTES.md
+            build/assembly/distribution/RELEASE-MANIFEST.json
+            build/assembly/distribution/SHA256SUMS

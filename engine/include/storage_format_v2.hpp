@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <array>
 #include <filesystem>
 #include <functional>
 #include <memory>
@@ -60,14 +61,34 @@ bool scanSst(const std::filesystem::path& path,
 
 class MsgpackRowView {
 public:
-    MsgpackRowView(const std::uint8_t* data, std::size_t size) : data_(data), size_(size) {}
+    MsgpackRowView(const std::uint8_t* data, std::size_t size, bool indexFields = false)
+        : indexed_(indexFields), data_(data), size_(size) { if (indexed_) buildFieldIndex(); }
 
     std::optional<nlohmann::json> field(std::string_view name) const;
+    // Decode only selected root fields in a single pass. Missing fields are
+    // omitted; malformed encodings fail closed rather than appear absent.
+    nlohmann::json project(const std::vector<std::string>& names) const;
+    // Eligible numeric arrays only; nullopt requests the legacy JSON decoder.
+    std::optional<double> denseScore(std::string_view name, const std::vector<double>& query,
+                                    const std::string& metric, double queryNorm) const;
+    // Native ANN reranking retains the historical long-double accumulator.
+    std::optional<double> densePreciseScore(std::string_view name,const std::vector<double>& query,
+                                          const std::string& metric) const;
     nlohmann::json materialize() const;
     const std::uint8_t* data() const { return data_; }
     std::size_t size() const { return size_; }
 
 private:
+    template<class Accumulator> std::optional<double> denseScoreImpl(std::string_view name,
+        const std::vector<double>& query,const std::string& metric,double queryNorm) const;
+    struct FieldSpan { std::string_view name; const std::uint8_t* begin{nullptr}; const std::uint8_t* end{nullptr}; };
+    // Immutable after construction: const lookups never mutate shared state.
+    // Larger maps use the original lookup path for uncached fields.
+    void buildFieldIndex();
+    std::array<FieldSpan, 32> fields_;
+    std::size_t fieldCount_{0};
+    bool indexed_{false};
+    bool indexValid_{false};
     const std::uint8_t* data_{nullptr};
     std::size_t size_{0};
 };
@@ -75,7 +96,7 @@ private:
 class SstCursor {
 public:
     static std::optional<SstCursor> open(const std::filesystem::path& path,
-                                         std::string* error = nullptr);
+                                         std::string* error = nullptr, bool indexFields = false);
     SstCursor(SstCursor&&) noexcept;
     SstCursor& operator=(SstCursor&&) noexcept;
     ~SstCursor();
@@ -96,7 +117,9 @@ private:
 bool visitLatestSstRows(
     const std::vector<std::filesystem::path>& oldestToNewest,
     const std::function<bool(const MsgpackRowView&)>& visitor,
-    std::string* error = nullptr);
+    std::string* error = nullptr, bool indexFields = false, bool includeDeleted = false,
+    const std::function<void()>& check = {},
+    const std::function<bool(const MsgpackRowView&)>& eligible = {});
 
 bool visitIndexMutations(
     const std::filesystem::path& directory,
@@ -109,7 +132,8 @@ bool scanSstViews(const std::filesystem::path& path,
 
 std::optional<nlohmann::json> findInSst(const std::filesystem::path& path,
                                         const std::string& id,
-                                        std::string* error = nullptr);
+                                        std::string* error = nullptr,
+                                        const std::function<bool(const MsgpackRowView&)>& eligible = {});
 
 bool verifySst(const std::filesystem::path& path,
                std::string* error = nullptr);

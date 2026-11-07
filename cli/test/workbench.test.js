@@ -205,3 +205,26 @@ test('direct database byte limit and percent-encoded upload scope match engine n
   assert.equal(state.media.database, unicode); assert.equal(state.media.collection, collection);
   assert.equal((await send('%not-utf8')).status, 400);
 });
+
+test('vector searches forward only supported advanced SDK options in the selected collection', async t => {
+  const calls = [];
+  const server = await createWorkbenchServer({ clientFactory: () => ({
+    close() {}, queryVector(collection, vector, options) {
+      calls.push({ database: this.database, collection, vector, options });
+      return { status: 'ok', data: [] };
+    },
+  }) });
+  t.after(() => server.close());
+  const html = await (await fetch(server.url)).text();
+  const token = html.match(/name="pacificdb-token" content="([a-f0-9]+)"/)[1];
+  const options = { searchMode: 'ann', indexName: 'ann_1', vectorName: 'image',
+    allowExactFallback: false, requireIndex: true, efSearch: 200, timeoutMs: 500 };
+  const response = await fetch(new URL('/api/execute', server.url), { method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-PacificDB-Workbench-Token': token },
+    body: JSON.stringify({ op: 'vectors.query', database: 'app', collection: 'vectors',
+      vector: [1, 0], k: 3, metric: 'l2', filter: { kind: 'image' }, ...options,
+      ignored: 'must not forward' }) });
+  assert.equal(response.status, 200);
+  assert.deepEqual(calls, [{ database: 'app', collection: 'vectors', vector: [1, 0],
+    options: { k: 3, metric: 'l2', filter: { kind: 'image' }, ...options } }]);
+});

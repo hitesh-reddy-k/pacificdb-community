@@ -2,12 +2,12 @@
 
 # PacificDB Python client
 
-Version **1.1.2 — prerelease**. Download the matching package from the
-[Community v1.1.2 release](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/1.1.2);
-registry publication is pending.
+Version **1.2.0rc2 — prerelease**. Download the matching package from the
+[Community v1.2.0-rc.2 release](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v1.2.0-rc.2);
+or install from PyPI with `python -m pip install pacificdb==1.2.0rc2`.
 
 A database-first client for the Community engine. Requires Python 3.10 or later;
-no runtime dependencies. These examples describe the 1.1.2 prerelease. The new
+no runtime dependencies. These examples describe the 1.2.0-rc.2 prerelease. The new
 APIs require its published wheel or tagged-source build, not an older registry release.
 
 Start a PacificDB server, then connect to a database directly:
@@ -72,6 +72,11 @@ unchanged. A disconnect/timeout after sending a write can have an unknown
 outcome: **writes are never silently retried**. The deadline covers pool waiting
 and socket I/O; OS DNS resolution can exceed it. `close()` is idempotent and
 wakes queued calls; always use a context manager or close explicitly.
+
+Before reusing an idle connection, the pool retires sockets with buffered input
+or an observable close. This happens before dispatch, without replaying a sent
+command. A close racing the dispatch still returns an explicit unknown-outcome
+error. Healthy TCP/TLS connections remain reusable.
 
 
 ## Media and backups

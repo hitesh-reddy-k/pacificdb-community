@@ -1,0 +1,18 @@
+Internal ctest changing into directory: <repository>/build-v1.2-pressure-asan
+Test project <repository>/build-v1.2-pressure-asan
+    Start  7: db_engine_vector_generation_test
+1/6 Test  #7: db_engine_vector_generation_test ...............   Passed    0.03 sec
+    Start  8: db_engine_vector_freshness_test
+2/6 Test  #8: db_engine_vector_freshness_test ................   Passed    0.02 sec
+    Start 17: db_engine_native_vector_index_service_test
+3/6 Test #17: db_engine_native_vector_index_service_test .....   Passed    0.20 sec
+    Start 50: db_engine_hnsw_incremental_test
+4/6 Test #50: db_engine_hnsw_incremental_test ................   Passed   34.77 sec
+    Start 51: db_engine_vector_change_journal_test
+5/6 Test #51: db_engine_vector_change_journal_test ...........   Passed    0.36 sec
+    Start 52: db_engine_vector_incremental_generation_test
+6/6 Test #52: db_engine_vector_incremental_generation_test ...   Passed    1.16 sec
+
+100% tests passed, 0 tests failed out of 6
+
+Total Test time (real) =  36.55 sec

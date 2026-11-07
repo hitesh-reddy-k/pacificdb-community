@@ -1,0 +1,51 @@
+name: Native vector concurrency diagnostics
+on:
+  workflow_call:
+    inputs:
+      source_ref:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Exact existing source revision to exercise
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  macos-arm64:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.source_ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Build the native engine and CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$VCPKG_INSTALLATION_ROOT/vcpkg" install --triplet arm64-osx --x-install-root="$PWD/build/vcpkg_installed"
+          cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" \
+            -DVCPKG_TARGET_TRIPLET=arm64-osx -DVCPKG_INSTALLED_DIR="$PWD/build/vcpkg_installed"
+          cmake --build build --target db_engine pacificdb -j2
+      - name: Repeat strict ANN concurrency without retries or fallback
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/vector-diagnostics
+          git rev-parse HEAD > build/vector-diagnostics/source.txt
+          build/db_engine --build-info > build/vector-diagnostics/build-info.json
+          for attempt in $(seq 1 10); do
+            node scripts/test-vector-incremental.mjs build 2>&1 | tee "build/vector-diagnostics/attempt-$attempt.log"
+          done
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: native-vector-diagnostics-macos-arm64
+          path: build/vector-diagnostics/*
+          if-no-files-found: warn

@@ -31,7 +31,7 @@ on:
       version:
         description: Version to build without publishing
         required: true
-        default: 1.1.2
+        default: 1.2.0
   push:
     tags: ["v*"]
 
@@ -40,6 +40,7 @@ permissions:
 
 jobs:
   linux:
+    if: ${{ !startsWith(github.ref, 'refs/tags/v') || !contains(github.ref_name, '-') }}
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v7
@@ -53,7 +54,7 @@ jobs:
         run: |
           version="${GITHUB_REF_NAME#v}"
           if [[ "$GITHUB_REF" != refs/tags/v* ]]; then version="${{ inputs.version }}"; fi
-          cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION="$version"
+          cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION="${version%%-*}"
           cmake --build build --config Release --target db_engine pacificdb -j2
           cpack --config build/CPackConfig.cmake -G DEB -B dist
           mv dist/*.deb "dist/pacificdb-community-$version-linux-amd64.deb"
@@ -73,6 +74,7 @@ jobs:
             dist/p0-evidence-linux-amd64.json
 
   windows:
+    if: ${{ !startsWith(github.ref, 'refs/tags/v') || !contains(github.ref_name, '-') }}
     runs-on: windows-2025
     steps:
       - uses: actions/checkout@v7
@@ -90,12 +92,13 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $version = $env:GITHUB_REF_NAME.TrimStart('v')
           if (-not $env:GITHUB_REF.StartsWith('refs/tags/v')) { $version = '${{ inputs.version }}' }
+          $baseVersion = $version.Split('-')[0]
           cmake -S engine -B build -A x64 `
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
             -DVCPKG_TARGET_TRIPLET=x64-windows-static `
             -DVCPKG_INSTALLED_DIR="$pwd/vcpkg_installed" `
             -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded `
-            -DPACIFICDB_ENGINE_VERSION="$version"
+            -DPACIFICDB_ENGINE_VERSION="$baseVersion"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cmake --build build --config Release --target db_engine pacificdb
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -253,6 +256,7 @@ jobs:
             dist/p0-evidence-windows-x64.json
 
   macos:
+    if: ${{ !startsWith(github.ref, 'refs/tags/v') || !contains(github.ref_name, '-') }}
     strategy:
       fail-fast: false
       matrix:
@@ -341,7 +345,7 @@ jobs:
             -DCMAKE_TOOLCHAIN_FILE="$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" \
             -DVCPKG_TARGET_TRIPLET="$triplet" \
             -DVCPKG_INSTALLED_DIR="$PWD/build/vcpkg_installed" \
-            -DPACIFICDB_ENGINE_VERSION="$version"
+            -DPACIFICDB_ENGINE_VERSION="${version%%-*}"
           cmake --build build --target db_engine pacificdb -j2
           export PACIFICDB_ENVIRONMENT=development
           export PACIFICDB_HOME="$RUNNER_TEMP/package-test"
@@ -443,6 +447,7 @@ jobs:
             dist/p0-evidence-macos-${{ matrix.arch }}.json
 
   container:
+    if: ${{ !startsWith(github.ref, 'refs/tags/v') || !contains(github.ref_name, '-') }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -460,6 +465,7 @@ jobs:
           created=$(git show -s --format=%cI HEAD)
           printf 'IMAGE_VERSION=%s\nIMAGE_CREATED=%s\nLOCAL_IMAGE=pacificdb-community:ci-%s\n' \
             "$version" "$created" "$GITHUB_SHA" >> "$GITHUB_ENV"
+          printf 'IMAGE_ENGINE_VERSION=%s\n' "${version%%-*}" >> "$GITHUB_ENV"
       - name: Build local validation image
         uses: docker/build-push-action@v7
         with:
@@ -469,7 +475,8 @@ jobs:
           load: true
           tags: ${{ env.LOCAL_IMAGE }}
           build-args: |
-            PACIFICDB_ENGINE_VERSION=${{ env.IMAGE_VERSION }}
+            PACIFICDB_ENGINE_VERSION=${{ env.IMAGE_ENGINE_VERSION }}
+            PACIFICDB_RELEASE_VERSION=${{ env.IMAGE_VERSION }}
             PACIFICDB_GIT_COMMIT=${{ github.sha }}
             PACIFICDB_BUILD_TIMESTAMP=${{ env.IMAGE_CREATED }}
       - name: Smoke-test local validation image
@@ -485,7 +492,7 @@ jobs:
             dist/p0-evidence-linux-amd64-container.json
 
   container_publish:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
     needs: [container]
     runs-on: ubuntu-24.04
     permissions:
@@ -520,6 +527,7 @@ jobs:
           sbom: true
           build-args: |
             PACIFICDB_ENGINE_VERSION=${{ env.IMAGE_VERSION }}
+            PACIFICDB_RELEASE_VERSION=${{ env.IMAGE_VERSION }}
             PACIFICDB_GIT_COMMIT=${{ github.sha }}
             PACIFICDB_BUILD_TIMESTAMP=${{ env.IMAGE_CREATED }}
       - name: Smoke-test exact release digest
@@ -539,7 +547,7 @@ jobs:
             dist/p0-evidence-linux-amd64-container.json
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
     needs: [linux, windows, macos, container_publish]
     runs-on: ubuntu-24.04
     permissions:

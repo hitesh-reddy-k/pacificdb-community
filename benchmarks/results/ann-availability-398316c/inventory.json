@@ -1,0 +1,43 @@
+{
+  "scope": "self-run single-system availability/recovery qualification, not production certification or paired PostgreSQL benchmark",
+  "driver_commit": "9de39d9",
+  "one_million": "PASS for stated configuration and scope; not production certification",
+  "receipts": [
+    {
+      "rows": 10000,
+      "status": "PASS",
+      "file": "10k.json.gz",
+      "sha256": "5c7c9ffec0da5e9d75f1f801561d7b7418a2bc28df9312a5b2f3af1b01b2f20e",
+      "engine_sha256": "1a8af994212d4a27e1a4dfebc6bd1a23dbb6b3c887d736cd92e6ff6e64118b2e",
+      "engine_revision": "398316ce68bbff73a4446b4fe0f531a24f4601fd",
+      "driver_sha256": "f5143a4dad2446675ab389b59aa92643cc7d0006951e2b77fc1a32e4e8298d66",
+      "mixed_reads": 360,
+      "static_recall_at_10": 1.0,
+      "recovery_recall_at_10": 1.0
+    },
+    {
+      "rows": 100000,
+      "status": "PASS",
+      "file": "100k.json.gz",
+      "sha256": "1300882bd9d17cc329bb3016af296c49a597ad1136ee502be86759142c485afb",
+      "engine_sha256": "1a8af994212d4a27e1a4dfebc6bd1a23dbb6b3c887d736cd92e6ff6e64118b2e",
+      "engine_revision": "398316ce68bbff73a4446b4fe0f531a24f4601fd",
+      "driver_sha256": "f5143a4dad2446675ab389b59aa92643cc7d0006951e2b77fc1a32e4e8298d66",
+      "mixed_reads": 360,
+      "static_recall_at_10": 1.0,
+      "recovery_recall_at_10": 1.0
+    },
+    {
+      "rows": 1000000,
+      "status": "PASS",
+      "file": "1m.json.gz",
+      "sha256": "b8cdc9cfb953a65e478ced14978aa385eafc01267cb1139358e5c4824c818915",
+      "engine_sha256": "1a8af994212d4a27e1a4dfebc6bd1a23dbb6b3c887d736cd92e6ff6e64118b2e",
+      "engine_revision": "398316ce68bbff73a4446b4fe0f531a24f4601fd",
+      "driver_sha256": "f5143a4dad2446675ab389b59aa92643cc7d0006951e2b77fc1a32e4e8298d66",
+      "mixed_reads": 360,
+      "static_recall_at_10": 0.993,
+      "recovery_recall_at_10": 0.96
+    }
+  ]
+}

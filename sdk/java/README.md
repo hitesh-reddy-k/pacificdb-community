@@ -2,12 +2,12 @@
 
 # PacificDB Java client
 
-Version **1.1.2 — prerelease**. Download the matching package from the
-[Community v1.1.2 release](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/1.1.2);
+Version **1.2.0-rc.2 — prerelease**. Download the matching package from the
+[Community v1.2.0-rc.2 release](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v1.2.0-rc.2);
 registry publication is pending.
 
 A database-first client for the Community engine. Requires Java 11 or later;
-Jackson is the only runtime dependency. These examples describe the 1.1.2
+Jackson is the only runtime dependency. These examples describe the 1.2.0-rc.2
 prerelease and require its published JAR or tagged-source build, not an older
 registry release.
 
@@ -80,6 +80,12 @@ diagnostics; successful values are unchanged. A disconnect/timeout after a
 write send can have an unknown outcome: **no automatic write retry**. Deadlines
 cover pool wait/connect/TLS/read and stalled writes; the OS DNS resolver can
 exceed them. `close()` is idempotent, closes active sockets and wakes waiters.
+
+For leases idle at least one second, the pool checks for EOF or unsolicited
+input with a short bounded read before dispatch, outside the pool lock. It
+replaces an expired socket before sending a command; a healthy idle socket is
+reused. A close racing a send still produces an explicit unknown-outcome error.
+This does not retry a sent write.
 
 
 ## Media and backups

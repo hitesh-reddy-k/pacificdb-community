@@ -1,3 +1,5 @@
+#include "database_engine.hpp"
+#include "query_limiter.hpp"
 #include "db_task_queue.hpp"
 #include "request_timing.hpp"
 #include "metrics_exporter.hpp"
@@ -15,6 +17,11 @@
 #endif
 
 namespace {
+struct WorkerReadContextScope {
+    WorkerReadContextScope() { DatabaseEngine::clearReadContext(); }
+    ~WorkerReadContextScope() { DatabaseEngine::clearReadContext(); }
+};
+
 std::chrono::milliseconds resolveDbqEnqueueWaitBudget() {
     long long waitMs = 40;
     if (const char* env = std::getenv("DBQ_ENQUEUE_WAIT_MS")) {
@@ -77,7 +84,7 @@ bool DBTaskQueue::enqueue(Task task, Priority priority, const std::string& colle
     }
 
     TaskEnvelope envelope;
-    envelope.task = std::move(task);
+    envelope.task = QueryLimiter::bind(std::move(task));
     envelope.priority = priority;
     envelope.collection = collection.empty() ? "__default__" : collection;
     envelope.costHint = std::max<size_t>(1, costHint);
@@ -223,6 +230,7 @@ void DBTaskQueue::workerThread() {
 
         for (auto& task : batch) {
             if (!task.task) continue;
+            WorkerReadContextScope readContext;
             try {
                 if (task.enqueuedAtUs > 0) {
                     const uint64_t nowUs = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(

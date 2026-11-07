@@ -1,0 +1,422 @@
+[
+  {
+    "path": "ground-truth.json.gz",
+    "sha256": "875ec81ddc03ae3ba94369bb5ca6ae61241bc18950a0dbaba2cd16e8ccecc272",
+    "raw_sha256": "5697b1f9a791b945b26e903d979f7e817f495aa774468d0ad9245dc8d10bd24e",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "methodology.json.gz",
+    "sha256": "8ac26568be5bff2289f3f4b381973ab56b9ccccaec86f315d4f78217e4ca44f5",
+    "raw_sha256": "7c9f7d5552491b1d874802dc3b41ce6bf06448d09310540b61540aa9160e171b",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "pacific/ann-attempts.jsonl.gz",
+    "sha256": "a3dad6426c7b218eeeb37ee054acd18e2e584b61a903a38e0dc60aed6fec00c7",
+    "raw_sha256": "34522420852ccbba5445157b4334f7164087c3591c875d376de9d77a3b8d4f2b",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "pacific/ann-rounds.json.gz",
+    "sha256": "34b2af191b34ae06c8dd37319217f388e08dab0de7d17665cdebfa2076e99390",
+    "raw_sha256": "8f23dc64988cd83f4a78ca30c8ca2248b62ccd6af74dfd01f9a84ebd1fef89bc",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "pacific/concurrency-worker-0-attempts.jsonl.gz",
+    "sha256": "8769df78a7f931bd237190732ab155930cd723bb2385cb99eacaf46725a908f2",
+    "raw_sha256": "5a59ba281e64e3f93e7ad182749722d30631abe26763f1a08aa108c50d6363bb",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "pacific/concurrency-worker-1-attempts.jsonl.gz",
+    "sha256": "5c994a9e2f7b941c34938e1e1b88625125315fbd3c54905899534505b76dbff9",
+    "raw_sha256": "c59cead4f80d67c4b4ad1bf911ada04eb890793bd07c8384234ecc582ef849cb",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "pacific/concurrency-worker-2-attempts.jsonl.gz",
+    "sha256": "8a97af20bf1f16de5eb923f5954e9a3cee815128e2809ee49998104a745fc350",
+    "raw_sha256": "06bd4175fae8159bbda9957e573c49045b1645f1c88e015a5cac950a9323f674",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "pacific/concurrency-worker-3-attempts.jsonl.gz",
+    "sha256": "a64a513b6f97388bc82df8e50e64ef02453eebd3d68651c3bbaca501d0f9a48b",
+    "raw_sha256": "27ca6b308fe4e95c142924e59f9a587f366e8649bb0cdfc78f7116cada0417fa",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "pacific/concurrency4.json.gz",
+    "sha256": "c976ffeafa11392ceb150669a1785eac3ce90adbb5ffb466528b254b7c99d803",
+    "raw_sha256": "6106fd5c62be69e837d563cc84673a8f5043505c298298176eb67e7afb4a935d",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "pacific/exact-attempts.jsonl.gz",
+    "sha256": "b96051e17eeb847232428597db3f1aa8dba6d7f57eb3b71c5d653851ae65b78b",
+    "raw_sha256": "d5abf82e2dad66fa6bac1cf6a5e03853357eab9aed3cf6cef84eb807f3be0551",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "pacific/exact-rounds.json.gz",
+    "sha256": "2997afce49df0bc80f28cdfa564ff413b7c5eb6afafcec14254df228549a3b32",
+    "raw_sha256": "ddeadc2ecca95b84177062bd51a5dc4b4cbe49663eca33f3d49997661a38a994",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "pacific/filtered-exact-attempts.jsonl.gz",
+    "sha256": "f21443d4905d6ee3896932b243bb9e601eb9f45ef3fb54a921d6b534d4166f72",
+    "raw_sha256": "a50631df2fcdd7179fac15550f555cbd517aea5f6b9027df66e90a2aadefe183",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "pacific/lifecycle.json.gz",
+    "sha256": "342f0b1de7adc6b30de325357d8dd9d396b8006992bad0393bcb9d6f3549555f",
+    "raw_sha256": "9e7eb63e654e5167f4a1eff6f84bcabce68695b10fc81e4b96ce5a11110b4cbc",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "pacific/load-acknowledgements.jsonl.gz",
+    "sha256": "b55b438406142e0216ddc00cd0e23cb163e20af9d318d9e94ec9ba0367b71d05",
+    "raw_sha256": "9ec039820f2a131d425102455e7ee07cfd05ff26a50e16e2f4068ffdcd6c7299",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "pacific/mixed-worker-0.jsonl.gz",
+    "sha256": "9d850005303bf7912524c0ceb3afffac02c11f6ca738857f4aa1e06a629c4ec5",
+    "raw_sha256": "85973dee964a0d4dc181ab6c87cef5808a58af260bc4399494c1c03af9122462",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "pacific/mixed-worker-1.jsonl.gz",
+    "sha256": "c4eb43b74dfdf297f9d42112cf7f29d006ddd4d0c23770d17f10516a1a8cff5a",
+    "raw_sha256": "39d198bb81dba9ec32b2350c235cceb7a3e88c30bb614f16c9c3731f8b2bd9ef",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "pacific/mixed-worker-2.jsonl.gz",
+    "sha256": "31bfd9a61298b62653c47320c9981880bbe6639439caa3d513c747bc091a46f2",
+    "raw_sha256": "09debe1a89e48ce200958983840acb4f81d1fcb8831ab09bd2c835f7c9f1e10a",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "pacific/mixed-worker-3.jsonl.gz",
+    "sha256": "63ea1d0729be80aaf2917af82db5e510f33ba4304108bca8fc72777aebd1a663",
+    "raw_sha256": "f3522f563d6d575ee29fd0ba4b12badfec21b41b156d351c87c1a7a8775293c6",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "pacific/recovery-attempts.jsonl.gz",
+    "sha256": "f9fec342d6859d288e7cfdda648214fdd161a3f1a21432d9458cde0417fab5d3",
+    "raw_sha256": "a1dd28451a783d73a3cf505ea26876433b0aacad03cf826fb7c51755080028dc",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "pacific/tuning-attempts.jsonl.gz",
+    "sha256": "d8dcd45eb0bccd1bb349f351609c4aaf4f4ef3f81ad8d22563935ce9fe3bbef8",
+    "raw_sha256": "89664905ae37c6ceeb285642e8dcc72ddad54d331348ae2377be93bb114e6453",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "pacific/tuning.json.gz",
+    "sha256": "3e7a846d73e3fad2c65494212781502b6a236bb43ef67b93c3e5e73ab6f5d8cf",
+    "raw_sha256": "4c063ae6c326ea8311446c6e09e439148d93d19bfcaeff53fd2ab16c4c254e48",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "postgres/ann-attempts.jsonl.gz",
+    "sha256": "914074eb64e7316cfea6cb8e6930ca59a8657455a2294260f0d934090b078330",
+    "raw_sha256": "6481ad660ef49a1c4f023292f63e8ef0c97f6ccdeb3e84b10467654d6d9af1d2",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "postgres/ann-rounds.json.gz",
+    "sha256": "7b256e18e7091e7c416a43f346d3969d7da63194b24a3bc616897bba343b085c",
+    "raw_sha256": "bb0a152c6cbe39ba54aa605d7fd9f09bed2103d1102ecd7ac2d498ed0c31b4b5",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "postgres/concurrency-worker-0-attempts.jsonl.gz",
+    "sha256": "a1f6b8797b800404e8804f1b94125c3918f091d11da19b1d4f3b383233e69cbf",
+    "raw_sha256": "61e6183bc367c1718bbb3a030d66b573d88bf04d8e8a6109b61ef7121aa9325a",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "postgres/concurrency-worker-1-attempts.jsonl.gz",
+    "sha256": "7aa4736b6e5aefc1e0ffe2b7ba040391df4ca6e271de2cb727b02f172c848620",
+    "raw_sha256": "7eb58b3d48a78c1a1da1ee34f73ffa41ddb0336972df6e7e9305adf98486920f",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "postgres/concurrency-worker-2-attempts.jsonl.gz",
+    "sha256": "899f52a97c83c60d6e541f95a4ce368f6893bd82d696f7e47621835df02aa599",
+    "raw_sha256": "febad6c99ae16631886bead6eb7015f0513f9317f96d3b438dba18509a73ceb8",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "postgres/concurrency-worker-3-attempts.jsonl.gz",
+    "sha256": "124a7644dc525ce53fa2754b3aafb34ebec5ca26ee819ae9ee395f6e991a22ea",
+    "raw_sha256": "777ce635fcd674f689aa16e30f11ce64e7580e7a38c62a07c7a219ed4f087e50",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "postgres/concurrency4.json.gz",
+    "sha256": "2ef8b24a66be0be60e037e4dd29507564b801760bd0d4e3962228060da6e7f11",
+    "raw_sha256": "d19d05c998487ae7b0cca986f25187b24cee5f3e9f1af4ac6e37690f20d68b22",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "postgres/exact-attempts.jsonl.gz",
+    "sha256": "a38615387455e2bd3fdd06cd60dcdbfbd96cf88789d568aca67ba302469a82fa",
+    "raw_sha256": "cd757fe7502059dd94c966c3fb2c4c12cd045aa296a0d80af00300b5a50b4d1a",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "postgres/exact-rounds.json.gz",
+    "sha256": "2e92d4f50cccc584fd8af136b0e6d602fc9ee06a6797c9ebb7748d69a756ff9a",
+    "raw_sha256": "0b6bd103b77768cb0941af80daf6e728d715c3a66c56a86771f5b2606e44628c",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "postgres/filtered-exact-attempts.jsonl.gz",
+    "sha256": "ab0533b167707d8c8ace480a394b4365515d1e5b5261a28a0ac1da5213b71cee",
+    "raw_sha256": "69b86829d8b9d05fe6803dfe76e4db57fb73e3fdbe526d6e2aab4823212b66a1",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "postgres/lifecycle.json.gz",
+    "sha256": "61f37c8cf0b9eadb4455ef03f682be818ccd7ebf3cf8295dd954c3da571efae0",
+    "raw_sha256": "526091e7cd3e168c6812908ab5843f1597a524020711982f5819033e77415b81",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "postgres/load-acknowledgements.jsonl.gz",
+    "sha256": "083baf1f8cb4d3ba934d5f7a40af0a8d477436bdd225e2cb4b238b8333deeeed",
+    "raw_sha256": "3f9632ec61996c20daced1757f376e7e19e4448815c2fa6dc47a9f60358d0d1c",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "postgres/mixed-worker-0.jsonl.gz",
+    "sha256": "14451fd58a6a54f1ed0aa6ad87b351aa8e34de853574f77efe7c379cf4f65418",
+    "raw_sha256": "7e4178b7770a9452f65599643004bb5ff67edfa80d21f7a94d9adc78dabd1872",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "postgres/mixed-worker-1.jsonl.gz",
+    "sha256": "4b8fa1882baf7520a88c07ac321e3d8c9f9cd3edd27b3c8af406532a88014cce",
+    "raw_sha256": "d6dd06b6cab3de86fc15d25a2e1928621ed71580ee3e83969b0568d4a15caea5",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "postgres/mixed-worker-2.jsonl.gz",
+    "sha256": "ff0cc9956947168474e666aa1e64a99e576814ee168b3947e6e9f1e9c2a5ede6",
+    "raw_sha256": "1a0d2e9b6135888729030f63513348f34fa059c0a4b01748e9b6a98bbe0837c2",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "postgres/mixed-worker-3.jsonl.gz",
+    "sha256": "66705ca718fe63a7fd86893146237ee95201e3fa03c2022742f1f0a436cb93b8",
+    "raw_sha256": "cbf30e9b542379836198ea48c32cb3bf933a402c5a5aa1462e2c77e9cb35eb72",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "postgres/recovery-attempts.jsonl.gz",
+    "sha256": "5c6c5abaec15c1e38d5cdbb43882db2c0bdbdf993b9d733a3f38279ed4400cc1",
+    "raw_sha256": "c250bb9a2d7dfb158f0096047d84931199d45687a088d76ff8db263b7e53e33c",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "postgres/tuning-attempts.jsonl.gz",
+    "sha256": "c968d64c8d97dfd4a5f0aafc82dfeb63cf8ddd39e92f25214161d27ae1194efe",
+    "raw_sha256": "ac520ec31a27201a8491278ef805a00640229983b5391608cc847b2df4382bba",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "postgres/tuning.json.gz",
+    "sha256": "5c6e6dc8b9a389823afaa93e11fc30b2c4207749c964364c0a4973c911110ecf",
+    "raw_sha256": "98abacb6f41a718b84785a3812c7f933304a1c5abaef419b15ae2d450d3f280f",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "qdrant/ann-attempts.jsonl.gz",
+    "sha256": "059096a942b989ef851326189e6d9ae844746662cf0afb00c3856087f1875d88",
+    "raw_sha256": "039b6c2c25da00d01b25f5d551d6076b5d3c28a7199b937eb3611ad8f2987c33",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "qdrant/ann-rounds.json.gz",
+    "sha256": "cbaeaa441611d2fedacb754d686e6e9a91319c164746e1cf09e19ca7c10c903f",
+    "raw_sha256": "0fcb1ff35c3575cfd01127c3e76459506266b9d7534f4f24bd92237f2e27a8f2",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "qdrant/concurrency-worker-0-attempts.jsonl.gz",
+    "sha256": "683153e12c2ec2785cb422fe589f0a67b06e79bc83d4a3b52996a26bdcbe9bee",
+    "raw_sha256": "f86e9045b3df615ef6a2e3408d3595d16ef93543cef92605915742209e9a2be9",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "qdrant/concurrency-worker-1-attempts.jsonl.gz",
+    "sha256": "6f0b3343811132327c450f89925547a77c64f95cd5d780052427e915c5b192b5",
+    "raw_sha256": "6da1f254ff3e1490bf1b54e9cde85fe991f2d1a7b58376e14cf170eb610eba47",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "qdrant/concurrency-worker-2-attempts.jsonl.gz",
+    "sha256": "1d2125885a54b536e13e03d42f6d9cfa2815c620938169d53e3d97bbe41bc813",
+    "raw_sha256": "f7d5beef37f30271e86369be7106e77a696a08f6ad0b063c90a556f36ca451aa",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "qdrant/concurrency-worker-3-attempts.jsonl.gz",
+    "sha256": "6a43ec256cca7b9b0aacd032f1886ea3e2d807c920581a1681bc17bf114133f2",
+    "raw_sha256": "77ecd3d883d4930fc2ce16e04e0d1cd0cf969367575f6d5c7668d52b01b1ccdd",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "qdrant/concurrency4.json.gz",
+    "sha256": "47919d53410099de781f99cad2922e6ce2bd1703bcf678954c17f5e287769d15",
+    "raw_sha256": "45ce68199684a05fc60bd0e765bec3e29acdf4837b7e1f91afd81a9f3de3e9f9",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "qdrant/exact-attempts.jsonl.gz",
+    "sha256": "0210c08aa9ea2353d700fcd4d2b546f714081c50aa42d7dd5b82183fb77f5a6c",
+    "raw_sha256": "88e7a0a732019f94d4e6ac070f52db0874fa10b4aa2d8651daf1bc6cafb825aa",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "qdrant/exact-rounds.json.gz",
+    "sha256": "de9aa96c95c5c13c81c46cfa158ec6236c8069bbf930c69c85e674acd6849050",
+    "raw_sha256": "93d5e523d7018fb710cbbd6ef0cdd932d01151d382c253aeec06161270dd902d",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "qdrant/filtered-exact-attempts.jsonl.gz",
+    "sha256": "86c99a51ec1ca2081a2d2a844dfcd107e466df822940b1554548c85817103b5b",
+    "raw_sha256": "2b610333fc6bb7b382587499c8c25d3676811c5c5032401df4226e0df619cd67",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "qdrant/lifecycle.json.gz",
+    "sha256": "9d2c2306ae38e9e3a0630cb654c594bed28417ec4c4e1015096fac16e81f492b",
+    "raw_sha256": "51583c942ee65df89aea70c3c48da9ba6440df9434d97efc9438f2d47b4300fc",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "qdrant/load-acknowledgements.jsonl.gz",
+    "sha256": "cb1a2905d8bcf0493bd56b69e7f8cf2779910c7ea1dd3994dad3f452c610a7e3",
+    "raw_sha256": "a869f519b41b70ffeafaf90dc06d94e703f441297492afadf7f257510bbe2db0",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "qdrant/mixed-worker-0.jsonl.gz",
+    "sha256": "96713c7238ebfda94feb46b27801831c0928ae2a7bacf9e3bd915f15818acf2e",
+    "raw_sha256": "fbd61dcb401fdd02e9bd651fd7ed506f927d61a254dfda480b3e431221fa19ea",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "qdrant/mixed-worker-1.jsonl.gz",
+    "sha256": "7cdcfefd386b6c25854b680e3ebea6c39bb2a995ce25fdd7ddb9749a933dfca2",
+    "raw_sha256": "9a55f5b9bfb35a4dd977f23a4d0684c880bf72ce92044ce4b7637748a16f75fe",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "qdrant/mixed-worker-2.jsonl.gz",
+    "sha256": "0064f88cb0751793cb2b87dfca125a24c2baeee210c28143e72fecb871fd2a48",
+    "raw_sha256": "8008b741375431be2f8bc0ef2bb3430c1c76332e87cb3c578417dba9c90720e2",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "qdrant/mixed-worker-3.jsonl.gz",
+    "sha256": "20544f775f2fc3b4be15b2846cd640130404d7e2c6da0993c7484800d68c45d6",
+    "raw_sha256": "ff7c50bfd08307d6d66016a7090851e469ada6bdadd348d7be8c8aa16bdb75b3",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "qdrant/optimizer-resume.json.gz",
+    "sha256": "1830ecf57ce729e1c37a721843b2bc97bef6cf8d7525b1a4a3ad98c65fdc803b",
+    "raw_sha256": "60493a86e98e537650ae3bcaaab70ab977f50a83b4dd1b7391776efe60fc01aa",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "qdrant/recovery-attempts.jsonl.gz",
+    "sha256": "e0d0a19e3cb70c993e1694fb94a7b5fa1adca9bff003975ba627927f20e2efe7",
+    "raw_sha256": "6a3baa70b9109417244c54206a39d56669ea57d2ff2e8bea1009b926c693fefc",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "qdrant/tuning-attempts.jsonl.gz",
+    "sha256": "89855aa93d2b6eb6af3d0dc926a41c5bcab71ce1c7f85b4b1fa2d34b632c9932",
+    "raw_sha256": "b6e9274e4e106f9092d5b0ba7fd2b5f52f3b58e29413695b6bfc8b129c4a3657",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "qdrant/tuning.json.gz",
+    "sha256": "aa74b602d8cb369b332c07d5a637e12027d1c339d18415f4d816f1e6a61bd8fe",
+    "raw_sha256": "0d53db54b8b4be9fde003fa85b62409bc39e9bb290696372567caa52131523fb",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "summary.json.gz",
+    "sha256": "45624266864142c1e3b80d22ce6ae1304e5cfb7b9fd8ca18d7a92ead3d595ae3",
+    "raw_sha256": "52a33ce39fd8655192e692ec1639a8d2c3f96901579a3a21ce5d82b94333a0e6",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "provenance/three-db-fair-1m-attempt2-exit.json.gz",
+    "sha256": "3154a94490e67a250c3e34695f072bcc15fd69f21ea7136f8d93e363d29d31b7",
+    "raw_sha256": "2f8368249bb3711739d4e688d4db460d52bfba8df11f311b8ba614a3ea741117",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "provenance/three-db-fair-1m-attempt2-process.json.gz",
+    "sha256": "7be78a2b39ecedc412168ceb4f694a6c2576afe5279d413f53c73e0cbde64402",
+    "raw_sha256": "c915e3852eeebfc8c43b39424fa6ba4d8ee054a057cf81112f365a53ce63b488",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "provenance/three-db-final-provenance-inputs.json.gz",
+    "sha256": "d34dede784df550cf1d36bd1e6d5c70318e841711f3d4282cdc0cc976a72821b",
+    "raw_sha256": "e16c9385ee7c92fd967ed29756a50520398224f59c349c7d6791a58d9bd5f4ad",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "provenance/three-db-runner-freeze.json.gz",
+    "sha256": "85dec25dac1f44744e618e8de1dd14f87e487fc6fa616e296e9eb186784e93db",
+    "raw_sha256": "8cc84d4a9e8bbe5e06a0ef4a84411dd252de2156c50e663b359caa09f06061f8",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "provenance/qdrant-provenance.json.gz",
+    "sha256": "f03d65769ab29a1ae388a4298b285d919a719396773eea12907ef2a22b2ade18",
+    "raw_sha256": "1b890d9e4432508bdbc5402db6ef621d178c85ce5324f4915ed68672bb95b8ed",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "provenance/durability-source-sha256.json.gz",
+    "sha256": "6c318dde6053b8eef9d9fd94fea377929a8d95f0f5cb5eaa366c27767d108dc1",
+    "raw_sha256": "79b38715fab605a110a332c4658ed930e606bf04aebce3619fb462b93c228483",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "provenance/pacific-provenance.json.gz",
+    "sha256": "cb60beac41222f08ffc3c4e3ee4bf2f94cc57a707adcc0dcd72e686ab3183ecc",
+    "raw_sha256": "8a505012fb3b5f47b94590f9863ecb21582f0dc1f3133d7ca17c9fb3a1448839",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "prior-attempt/interruption.json.gz",
+    "sha256": "172ec3b5b8b309cc58e9afe045e597167cd1ceea608817cd9f7332a286fa4c57",
+    "raw_sha256": "6bb36dccdc4f263c106e4fa9fb29c6973de3c6bcd79ee63d180ffc42b8e16075",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  },
+  {
+    "path": "prior-attempt/summary.json.gz",
+    "sha256": "3a3438df31465f18231345482bcd1e31c7c40177c38c6e4dd211e7f4a5344417",
+    "raw_sha256": "ef92baf8fa050e36445a370e246beaf26ec3f31019e72dbd5575907faae92cae",
+    "note": "Exported text has local paths replaced; raw original retained privately"
+  }
+]

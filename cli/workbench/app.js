@@ -956,6 +956,23 @@ for (const view of ['cards', 'compact', 'table']) click(`view-${view}`, () => {
 });
 click('new-document', async () => { selectTab('documents'); await refreshActive(); openEditor(); });
 for (const operation of ['insert', 'update', 'delete']) click(`${operation}-doc`, () => writeDocument(operation));
+function vectorSearchOptions() {
+  const options = {};
+  for (const [id, key] of [['vector-mode', 'searchMode'], ['vector-name', 'vectorName'], ['vector-index', 'indexName']]) {
+    const value = $(id).value.trim(); if (value) options[key] = value;
+  }
+  for (const [id, key, minimum, maximum] of [['vector-timeout', 'timeoutMs', 0, 3600000], ['vector-ef', 'efSearch', 1, 100000]]) {
+    const value = $(id).value.trim();
+    if (value) {
+      const number = Number(value);
+      if (!Number.isInteger(number) || number < minimum || number > maximum) throw new Error(`${key} must be an integer between ${minimum} and ${maximum}.`);
+      options[key] = number;
+    }
+  }
+  if ($('vector-fallback').value) options.allowExactFallback = $('vector-fallback').value === 'true';
+  if ($('vector-require-index').checked) options.requireIndex = true;
+  return options;
+}
 for (const operation of ['put', 'query']) click(`${operation}-vector`, async () => {
   const selected = scope();
   const vector = jsonField('vector-values', 'Vector', true);
@@ -964,7 +981,8 @@ for (const operation of ['put', 'query']) click(`${operation}-vector`, async () 
   if (operation === 'query' && (!Number.isInteger(k) || k < 1 || k > 100)) throw new Error('Results must be between 1 and 100.');
   const result = await request(`vectors.${operation}`, { ...selected, vector, k,
     ...(operation === 'put' ? { id: $('vector-id').value, metadata: jsonField('vector-metadata', 'Metadata') } :
-      { metric: $('vector-metric').value, filter: jsonField('vector-filter', 'Vector filter') }) });
+      { metric: $('vector-metric').value, filter: jsonField('vector-filter', 'Vector filter'),
+        ...vectorSearchOptions() }) });
   if (operation === 'put') invalidateSummary(selected);
   if (scopeKey(selected) === scopeKey()) $('vector-result').textContent = JSON.stringify(result, null, 2);
   addActivity(operation === 'put' ? 'write' : 'query', operation === 'put' ? 'Vector stored' : 'Vector search', selected.collection);

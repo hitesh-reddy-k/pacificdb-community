@@ -5,6 +5,7 @@ import { PacificDBClient, parseConnectionUrl } from '@pacificdb/client';
 import { SHELL_HELP, printResponse, runShell } from './shell.js';
 import { ensureLocalEngine } from './local-engine.js';
 import { startWorkbench } from './workbench.js';
+import { releaseIdentity } from './release.js';
 
 function parseJson(text) {
   try { return JSON.parse(text); }
@@ -35,9 +36,7 @@ export async function main(args, streams = { input: stdin, output: stdout }) {
     else positional.push(args[i]);
   }
   if (options.version) {
-    const packageJson = parseJson(await readFile(
-      new URL('../package.json', import.meta.url), 'utf8'));
-    streams.output.write(`PacificDB ${packageJson.version}\n`);
+    streams.output.write(`PacificDB ${releaseIdentity.label}\n`);
     return;
   }
   if (options.help) {

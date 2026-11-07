@@ -6,6 +6,8 @@ namespace {
 }
 
 namespace QueryCancel {
+    Scope::Scope(CancellationTokenPtr token) : previous_(tls_token) { tls_token = std::move(token); }
+    Scope::~Scope() { tls_token = std::move(previous_); }
     void setToken(const CancellationTokenPtr& t) {
         tls_token = t;
     }

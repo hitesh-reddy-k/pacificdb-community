@@ -1,0 +1,15 @@
+{
+  "os": "Linux",
+  "kernel": "6.12.113+deb13-amd64",
+  "architecture": "x86_64",
+  "cpu_model": "Intel(R) Core(TM) i7-10850H CPU @ 2.70GHz",
+  "logical_cpu_count": 12,
+  "physical_memory_bytes": 16354639872,
+  "filesystem": "ext4",
+  "compiler": "c++ (Debian 14.2.0-19) 14.2.0",
+  "build_type": "Release",
+  "power_profile_during_each_trial": "performance; original balanced profile restored in controller finally",
+  "memory_guard": "6GiB sampled PSS at250ms; not a hard kernel quota",
+  "cache_policy": "no OS cache drop; baseline then candidate; independent initialized/restore destinations",
+  "samples": "1 index build/runtime; 2 warmup +5 measured OR exact queries/runtime; no tail claims"
+}

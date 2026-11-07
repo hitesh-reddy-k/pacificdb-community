@@ -1,0 +1,47 @@
+{
+  "status": "PASS",
+  "scope": "Local Community regression; not production or all-workload qualification",
+  "engine_identity": {
+    "product": "PacificDB Engine",
+    "engineVersion": "1.2.0",
+    "releaseVersion": "1.2.0-rc.2",
+    "releaseChannel": "prerelease",
+    "releaseName": "Pre-release v1.2",
+    "releaseTag": "v1.2.0-rc.2",
+    "gitCommit": "18ba1ddc69d089a5039bd75fb9163f47042547d3",
+    "storageFormatVersion": "2",
+    "raftProtocolVersion": "2",
+    "buildTimestamp": "2026-11-02T21:21:46+05:30",
+    "compiler": "GNU-14.2.0"
+  },
+  "engine_sha256": "2057d05220a1f68b4e6b906fe510d998c81892364f2d59888eb578651b78bc52",
+  "command": "BUILD_JOBS=2 scripts/test-community.sh build-v1.2-security-fixes",
+  "local_dependency_toolchain_used": true,
+  "exit_code": 0,
+  "log_sha256": "07cef24f5f545b9d8a3e156fd12f72b3a8015cfe74733a5e464556a82a9a9cf5",
+  "scope_checks": [
+    "native document/vector/media/storage/auth tests",
+    "new timestamp and private WAL tests",
+    "six LSM checkpoint crash phases",
+    "21 actual ENOSPC categories",
+    "RF3 replication, partition and restart",
+    "64/128-client sustained smoke",
+    "134 Python tests",
+    "Maven Java tests",
+    "live Python/Java TCP/TLS and SIGKILL recovery",
+    "npm client and CLI tests",
+    "release, deployment and workflow contracts",
+    "nine negative repository-control tests",
+    "ten monitor private-file tests"
+  ],
+  "external_security_review": "BLOCKED",
+  "physical_power_loss": "INCOMPLETE",
+  "prior_attempt": {
+    "status": "FAIL",
+    "reason": "Final Community branding check found future-edition wording in website",
+    "log_sha256": "184439b8eadf349c298b89e1a704b997addd5d78932f03809efbcac1e0e583b3",
+    "fix": "18ba1ddc69d089a5039bd75fb9163f47042547d3"
+  },
+  "mixed_version_note": "Skipped in generic Community script; separate exact-artifact rf3-upgrade.json is PASS",
+  "working_tree_note": "Release-note edits were in progress; receipt is development evidence, not a sealed release artifact."
+}

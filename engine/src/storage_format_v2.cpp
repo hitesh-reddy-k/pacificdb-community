@@ -1,3 +1,4 @@
+#include "durable_file_ops.hpp"
 #include "storage_format_v2.hpp"
 
 #include "data_durability.hpp"
@@ -7,6 +8,7 @@
 #include <cerrno>
 #include <chrono>
 #include <cstring>
+#include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <limits>
@@ -88,18 +90,8 @@ bool writeAll(std::ofstream& out, const std::string& bytes) {
 }
 
 bool syncFile(const fs::path& path, bool directory = false) {
-#ifdef _WIN32
-    (void)path;
-    (void)directory;
-    return true;
-#else
-    int flags = directory ? (O_RDONLY | O_DIRECTORY | O_CLOEXEC) : (O_RDONLY | O_CLOEXEC);
-    const int fd = ::open(path.c_str(), flags);
-    if (fd < 0) return false;
-    const bool ok = directory ? (::fsync(fd) == 0) : (::fdatasync(fd) == 0);
-    ::close(fd);
-    return ok;
-#endif
+    return directory ? pacificdb::durable_file::syncDirectory(path)
+                     : pacificdb::durable_file::syncFile(path);
 }
 
 std::string rowId(const json& row) {
@@ -535,6 +527,54 @@ bool readMsgpackString(const std::uint8_t*& cursor, const std::uint8_t* end,
     return true;
 }
 
+// Field spans have already been bounded by skipMsgpack. Scalar metadata is the
+// common scan case; constructing a full binary reader/SAX adapter per value is
+// unnecessary. Keep exactly the reference decoder's signed/unsigned/float types.
+// Containers, binary and extension values retain the existing generic decoder.
+json decodeMsgpackField(const std::uint8_t* begin, const std::uint8_t* end) {
+    if (begin != end) {
+        const auto tag = *begin;
+        auto cursor = begin + 1;
+        if (cursor == end) {
+            if (tag <= 0x7f) return json(static_cast<json::number_unsigned_t>(tag));
+            if (tag >= 0xe0) return json(static_cast<json::number_integer_t>(tag) - 256);
+            if (tag == 0xc0) return nullptr;
+            if (tag == 0xc2 || tag == 0xc3) return tag == 0xc3;
+        }
+        if ((tag >= 0xcc && tag <= 0xcf) || (tag >= 0xd0 && tag <= 0xd3)) {
+            const bool isSigned = tag >= 0xd0;
+            const auto width = size_t{1} << (tag - (isSigned ? 0xd0 : 0xcc));
+            uint64_t bits = 0;
+            if (readBigEndian(cursor, end, width, bits) && cursor == end) {
+                if (!isSigned) return json(static_cast<json::number_unsigned_t>(bits));
+                if (width < 8 && (bits & (uint64_t{1} << (width * 8 - 1))))
+                    bits |= std::numeric_limits<uint64_t>::max() << (width * 8);
+                int64_t number = 0;
+                std::memcpy(&number, &bits, sizeof(number));
+                return json(static_cast<json::number_integer_t>(number));
+            }
+        } else if (tag == 0xca || tag == 0xcb) {
+            uint64_t bits = 0;
+            if (readBigEndian(cursor, end, tag == 0xca ? 4 : 8, bits) && cursor == end) {
+                double number = 0;
+                if (tag == 0xca) {
+                    const uint32_t encoded = static_cast<uint32_t>(bits);
+                    float value = 0;
+                    std::memcpy(&value, &encoded, sizeof(value));
+                    number = value;
+                } else std::memcpy(&number, &bits, sizeof(number));
+                return json(static_cast<json::number_float_t>(number));
+            }
+        } else if ((tag & 0xe0) == 0xa0 || tag == 0xd9 || tag == 0xda || tag == 0xdb) {
+            cursor = begin;
+            std::string_view value;
+            if (readMsgpackString(cursor, end, value) && cursor == end)
+                return json(std::string(value));
+        }
+    }
+    return json::from_msgpack(begin, end, true, true);
+}
+
 std::uint64_t fnv1a(const std::string& value, std::uint64_t seed) {
     std::uint64_t hash = 1469598103934665603ULL ^ seed;
     for (unsigned char byte : value) {
@@ -631,9 +671,55 @@ std::shared_ptr<const BloomView> mapBloom(const fs::path& path) {
     return view;
 }
 
+std::optional<long long> rowVersion(const MsgpackRowView& row) {
+        for (const char* name : {"_mvcc_version", "version", "deleted_txn",
+                                 "created_txn", "_timestamp"}) {
+            const auto value = row.field(name);
+            if (!value) continue;
+            try {
+                if (value->is_number_integer() || value->is_number_unsigned()) {
+                    return value->get<long long>();
+                }
+                if (value->is_string()) return std::stoll(value->get<std::string>());
+            } catch (...) {}
+        }
+        return std::nullopt;
+}
+
 }  // namespace
 
+void MsgpackRowView::buildFieldIndex() {
+    if (!data_ || !size_) return;
+    const auto* cursor = data_;
+    const auto* end = data_ + size_;
+    std::uint64_t count = 0;
+    const auto tag = *cursor++;
+    if ((tag & 0xf0) == 0x80) count = tag & 0x0f;
+    else if (tag == 0xde || tag == 0xdf) {
+        if (!readBigEndian(cursor, end, tag == 0xde ? 2 : 4, count)) return;
+    } else return;
+    for (std::uint64_t i = 0; i < count; ++i) {
+        std::string_view name;
+        if (!readMsgpackString(cursor, end, name)) return;
+        const auto* begin = cursor;
+        if (!skipMsgpack(cursor, end)) return;
+        if (fieldCount_ < fields_.size()) fields_[fieldCount_++] = {name, begin, cursor};
+    }
+    indexValid_ = cursor == end;
+}
+
 std::optional<json> MsgpackRowView::field(std::string_view name) const {
+    if (indexed_) {
+        if (!indexValid_) return std::nullopt;
+        for (std::size_t i = 0; i < fieldCount_; ++i) {
+            const auto& span = fields_[i];
+            if (span.name == name) {
+                try { return decodeMsgpackField(span.begin, span.end); }
+                catch (...) { return std::nullopt; }
+            }
+        }
+        if (fieldCount_ < fields_.size()) return std::nullopt;
+    }
     if (!data_ || size_ == 0) return std::nullopt;
     const std::uint8_t* cursor = data_;
     const std::uint8_t* end = data_ + size_;
@@ -655,13 +741,123 @@ std::optional<json> MsgpackRowView::field(std::string_view name) const {
         if (!skipMsgpack(cursor, end)) return std::nullopt;
         if (key == name) {
             try {
-                return json::from_msgpack(valueBegin, cursor, true, true);
+                return decodeMsgpackField(valueBegin, cursor);
             } catch (...) {
                 return std::nullopt;
             }
         }
     }
     return std::nullopt;
+}
+
+json MsgpackRowView::project(const std::vector<std::string>& names) const {
+    if (indexed_) {
+        if (!indexValid_) throw std::runtime_error("invalid indexed MessagePack row");
+        json selected = json::object();
+        for (const auto& name : names) {
+            if (auto value = field(name)) selected[name] = std::move(*value);
+        }
+        return selected;
+    }
+    if (!data_ || size_ == 0) throw std::runtime_error("empty MessagePack row");
+    const std::uint8_t* cursor = data_;
+    const std::uint8_t* end = data_ + size_;
+    std::uint64_t count = 0;
+    const std::uint8_t tag = *cursor++;
+    if ((tag & 0xf0) == 0x80) count = tag & 0x0f;
+    else if (tag == 0xde || tag == 0xdf) {
+        if (!readBigEndian(cursor, end, tag == 0xde ? 2 : 4, count)) {
+            throw std::runtime_error("invalid MessagePack row map");
+        }
+    } else throw std::runtime_error("MessagePack row must be an object");
+    json selected = json::object();
+    for (std::uint64_t i = 0; i < count; ++i) {
+        std::string_view key;
+        if (!readMsgpackString(cursor, end, key)) throw std::runtime_error("invalid MessagePack field name");
+        const auto* value = cursor;
+        if (!skipMsgpack(cursor, end)) throw std::runtime_error("invalid MessagePack field value");
+        const auto found = std::find_if(names.begin(), names.end(), [&](const std::string& name) { return name == key; });
+        if (found != names.end() && !selected.contains(*found)) {
+            selected[*found] = decodeMsgpackField(value, cursor);
+        }
+    }
+    if (cursor != end) throw std::runtime_error("trailing MessagePack row bytes");
+    return selected;
+}
+
+template<class Accumulator>
+std::optional<double> MsgpackRowView::denseScoreImpl(std::string_view name,
+        const std::vector<double>& query, const std::string& metric, double queryNorm) const {
+    if (!indexed_ || !indexValid_ || query.empty()) return std::nullopt;
+    const FieldSpan* selected = nullptr;
+    for (std::size_t i = 0; i < fieldCount_; ++i)
+        if (fields_[i].name == name) { selected = &fields_[i]; break; }
+    if (!selected) return std::nullopt;
+    const auto* cursor = selected->begin;
+    const auto* end = selected->end;
+    if (cursor == end) return std::nullopt;
+    const auto tag = *cursor++;
+    uint64_t count = 0;
+    if ((tag & 0xf0) == 0x90) count = tag & 15;
+    else if (tag == 0xdc || tag == 0xdd) {
+        if (!readBigEndian(cursor, end, tag == 0xdc ? 2 : 4, count)) return std::nullopt;
+    } else return std::nullopt;
+    if (count != query.size()) return std::nullopt;
+    const bool euclidean = metric == "l2" || metric == "euclidean";
+    const bool dot = metric == "dot" || metric == "dot_product";
+    Accumulator sum = 0, norm = 0, querySquare = 0;
+    for (std::size_t i = 0; i < query.size(); ++i) {
+        if (cursor == end) return std::nullopt;
+        const uint8_t kind = *cursor++;
+        double number;
+        if (kind <= 0x7f) number = kind;
+        else if (kind >= 0xe0) number = -double(256 - kind);
+        else {
+            uint64_t bits = 0;
+            if (kind == 0xca || kind == 0xcb) {
+                if (!readBigEndian(cursor, end, kind == 0xca ? 4 : 8, bits)) return std::nullopt;
+                if (kind == 0xca) {
+                    uint32_t raw = static_cast<uint32_t>(bits); float value;
+                    std::memcpy(&value, &raw, sizeof(value)); number = value;
+                } else std::memcpy(&number, &bits, sizeof(number));
+            } else if (kind >= 0xcc && kind <= 0xd3) {
+                const bool negativeType = kind >= 0xd0;
+                const std::size_t width = std::size_t(1) << (negativeType ? kind - 0xd0 : kind - 0xcc);
+                if (!readBigEndian(cursor, end, width, bits)) return std::nullopt;
+                if (negativeType && (bits & (uint64_t(1) << (width * 8 - 1)))) {
+                    const uint64_t mask = width == 8 ? UINT64_MAX : (uint64_t(1) << (width * 8)) - 1;
+                    number = -static_cast<double>((~bits & mask) + 1);
+                } else number = static_cast<double>(bits);
+            } else return std::nullopt;
+        }
+        const Accumulator x=query[i],y=number;
+        if (euclidean) { const Accumulator difference = x-y; sum += difference * difference; }
+        else { sum += x*y; if (!dot) {norm += y*y;querySquare += x*x;} }
+    }
+    if (cursor != end) return std::nullopt;
+    if constexpr(std::is_same_v<Accumulator,long double>){
+        const long double result=euclidean?-std::sqrt(sum):dot?sum:
+            querySquare==0||norm==0?0.L:std::clamp(sum/std::sqrt(querySquare*norm),-1.L,1.L);
+        if(!std::isfinite(result)||std::abs(result)>std::numeric_limits<double>::max())throw std::runtime_error("vector_score_out_of_range");
+        return static_cast<double>(result);
+    }
+    // Let the selective JSON path use wider intermediates for rare ranges;
+    // never report a finite zero caused by an overflowing norm product.
+    if(!std::isfinite(sum))return std::nullopt;
+    if (euclidean) return -std::sqrt(sum);
+    if (dot) return sum;
+    const double denominator = queryNorm * std::sqrt(norm);
+    if(!std::isfinite(denominator))return std::nullopt;
+    return denominator < 1e-12 ? 0.0 : sum / denominator;
+}
+
+std::optional<double> MsgpackRowView::denseScore(std::string_view name,const std::vector<double>& query,
+    const std::string& metric,double queryNorm) const {
+    return denseScoreImpl<double>(name,query,metric,queryNorm);
+}
+std::optional<double> MsgpackRowView::densePreciseScore(std::string_view name,const std::vector<double>& query,
+    const std::string& metric) const {
+    return denseScoreImpl<long double>(name,query,metric,0.);
 }
 
 json MsgpackRowView::materialize() const {
@@ -733,7 +929,7 @@ bool writeIndexSegment(const fs::path& directory, std::vector<IndexMutation> mut
             return false;
         }
         std::error_code ec;
-        fs::rename(temporary, finalPath, ec);
+        pacificdb::durable_file::rename(temporary, finalPath, ec);
         if (ec || !syncFile(directory, true)) {
             setError(error, "cannot publish column-index segment: " + ec.message());
             return false;
@@ -959,7 +1155,7 @@ bool writeSst(const fs::path& path,
             setError(error, "cannot fdatasync SST");
             return false;
         }
-        fs::rename(temporary, path, ec);
+        pacificdb::durable_file::rename(temporary, path, ec);
         if (ec || !syncFile(path.parent_path(), true)) {
             setError(error, "cannot publish SST: " + ec.message());
             return false;
@@ -1012,6 +1208,7 @@ struct SstCursor::Impl {
     fs::path path;
     std::ifstream input;
     bool binary{true};
+    bool indexFields{false};
     std::uint64_t rowCount{0};
     std::uint64_t rowsRead{0};
     std::uint64_t indexOffset{0};
@@ -1049,7 +1246,7 @@ struct SstCursor::Impl {
                     setError(error, std::string("invalid legacy SST row: ") + exception.what());
                     return false;
                 }
-                current = MsgpackRowView(legacyRow.data(), legacyRow.size());
+                current = MsgpackRowView(legacyRow.data(), legacyRow.size(), indexFields);
                 break;
             }
             if (input.bad()) {
@@ -1078,7 +1275,7 @@ struct SstCursor::Impl {
             setError(error, "invalid SST cursor row");
             return false;
         }
-        current = MsgpackRowView(reinterpret_cast<const std::uint8_t*>(cursor), size);
+        current = MsgpackRowView(reinterpret_cast<const std::uint8_t*>(cursor), size, indexFields);
         cursor += size;
         ++rowIndex;
         ++rowsRead;
@@ -1104,9 +1301,10 @@ SstCursor::SstCursor(SstCursor&&) noexcept = default;
 SstCursor& SstCursor::operator=(SstCursor&&) noexcept = default;
 SstCursor::~SstCursor() = default;
 
-std::optional<SstCursor> SstCursor::open(const fs::path& path, std::string* error) {
+std::optional<SstCursor> SstCursor::open(const fs::path& path, std::string* error, bool indexFields) {
     auto impl = std::make_unique<Impl>();
     impl->path = path;
+    impl->indexFields = indexFields;
     impl->input.open(path, std::ios::binary);
     if (!impl->input) {
         setError(error, "cannot open SST cursor");
@@ -1133,66 +1331,73 @@ bool SstCursor::next(std::string* error) { return impl_ && impl_->advance(error)
 
 bool visitLatestSstRows(const std::vector<fs::path>& oldestToNewest,
                         const std::function<bool(const MsgpackRowView&)>& visitor,
-                        std::string* error) {
+                        std::string* error, bool indexFields, bool includeDeleted,
+                        const std::function<void()>& check,
+                        const std::function<bool(const MsgpackRowView&)>& eligible) {
+    if (check) check();
     struct Item { std::string id; std::size_t index; };
     struct LaterId {
         bool operator()(const Item& left, const Item& right) const {
             if (left.id != right.id) return left.id > right.id;
-            return left.index > right.index;
+            return left.index < right.index;
         }
     };
     std::vector<SstCursor> cursors;
     cursors.reserve(oldestToNewest.size());
     std::priority_queue<Item, std::vector<Item>, LaterId> heap;
     for (const auto& path : oldestToNewest) {
-        auto cursor = SstCursor::open(path, error);
+        if (check) check();
+        auto cursor = SstCursor::open(path, error, indexFields);
         if (!cursor) return false;
         cursors.push_back(std::move(*cursor));
         if (cursors.back().valid()) {
             heap.push({std::string(cursors.back().id()), cursors.size() - 1});
         }
     }
-    const auto versionOf = [](const MsgpackRowView& row) -> std::optional<long long> {
-        for (const char* name : {"_mvcc_version", "version", "deleted_txn",
-                                 "created_txn", "_timestamp"}) {
-            const auto value = row.field(name);
-            if (!value) continue;
-            try {
-                if (value->is_number_integer() || value->is_number_unsigned()) {
-                    return value->get<long long>();
-                }
-                if (value->is_string()) return std::stoll(value->get<std::string>());
-            } catch (...) {}
-        }
-        return std::nullopt;
-    };
+    std::vector<std::uint8_t> newestBytes;
     while (!heap.empty()) {
+        if (check) check();
         const std::string id = heap.top().id;
         std::vector<std::size_t> matching;
         while (!heap.empty() && heap.top().id == id) {
             matching.push_back(heap.top().index);
             heap.pop();
         }
-        auto newest = matching.front();
-        for (const auto candidate : matching) {
-            const auto candidateVersion = versionOf(cursors[candidate].row());
-            const auto newestVersion = versionOf(cursors[newest].row());
-            if ((candidateVersion && newestVersion && *candidateVersion > *newestVersion) ||
-                (candidateVersion.has_value() != newestVersion.has_value() && candidateVersion) ||
-                (candidateVersion == newestVersion && candidate > newest)) {
-                newest = candidate;
+        bool found = false;
+        std::optional<long long> newestVersion;
+        std::size_t newestFile = 0;
+        // Consume the entire equal-ID run in every SST, including runs spanning
+        // compressed blocks. Retain only one winning encoded row, never a
+        // collection-sized document map or references into advanced cursors.
+        for (const auto file : matching) {
+            while (cursors[file].valid() && cursors[file].id() == id) {
+                if (check) check();
+                const auto& row = cursors[file].row();
+                const auto version = rowVersion(row);
+                const bool replace = !found ||
+                    (version && newestVersion && *version > *newestVersion) ||
+                    (version.has_value() != newestVersion.has_value() && version) ||
+                    (version == newestVersion && file >= newestFile);
+                // Newer files are considered first for equal IDs. Once an
+                // eligible winner exists, an inferior version cannot win even
+                // if visible; avoid decoding its visibility metadata. Higher
+                // versions in older files still pass full eligibility checks.
+                if (replace && (!eligible || eligible(row))) {
+                    newestBytes.assign(row.data(), row.data() + row.size());
+                    newestVersion = version; newestFile = file; found = true;
+                }
+                if (!cursors[file].next(error)) return false;
             }
+            if (cursors[file].valid()) heap.push({std::string(cursors[file].id()), file});
         }
-        const auto deleted = cursors[newest].row().field("_deleted");
-        if (!(deleted && deleted->is_boolean() && deleted->get<bool>()) &&
-            !visitor(cursors[newest].row())) return true;
-        for (const auto index : matching) {
-            if (!cursors[index].next(error)) return false;
-            if (cursors[index].valid()) {
-                heap.push({std::string(cursors[index].id()), index});
-            }
+        if (found) {
+            const MsgpackRowView selected(newestBytes.data(), newestBytes.size(), indexFields);
+            const auto deleted = selected.field("_deleted");
+            if ((includeDeleted || !(deleted && deleted->is_boolean() && deleted->get<bool>())) &&
+                !visitor(selected)) return true;
         }
     }
+    if (check) check();
     return true;
 }
 
@@ -1210,33 +1415,40 @@ bool visitIndexMutations(const fs::path& directory,
 }
 
 std::optional<json> findInSst(const fs::path& path, const std::string& id,
-                              std::string* error) {
+                              std::string* error,
+                              const std::function<bool(const MsgpackRowView&)>& eligible) {
     auto metadata = loadMetadata(path, error);
     if (!metadata) return std::nullopt;
-    auto candidate = std::lower_bound(metadata->blocks.begin(), metadata->blocks.end(), id,
-        [](const BlockIndexEntry& block, const std::string& key) {
-            return block.lastKey < key;
-        });
-    if (candidate == metadata->blocks.end() || candidate->firstKey > id) return std::nullopt;
-    std::ifstream in(path, std::ios::binary);
-    std::string plain;
-    std::uint32_t count = 0;
-    if (!in || !readBlockPayload(in, *candidate, plain, count, error)) return std::nullopt;
+    auto block = std::lower_bound(metadata->blocks.begin(), metadata->blocks.end(), id,
+        [](const BlockIndexEntry& entry, const std::string& key) { return entry.lastKey < key; });
+    std::ifstream input(path, std::ios::binary);
+    if (!input) { setError(error, "cannot open binary SST"); return std::nullopt; }
     std::optional<json> found;
+    std::optional<long long> newestVersion;
+    std::string plain; std::uint32_t count = 0;
     try {
-        bool stopped = false;
-        if (!visitBlockRows(plain, count, [&](const std::uint8_t* data, std::size_t size) {
-                const MsgpackRowView row(data, size);
-                const auto idValue = row.field("id");
-                const std::string key = idValue
-                    ? (idValue->is_string() ? idValue->get<std::string>() : idValue->dump())
-                    : rowId(row.materialize());
-                if (key == id) {
-                    found = row.materialize();
-                    return false;
-                }
-                return key <= id;
-            }, error, &stopped)) return std::nullopt;
+        // An equal-ID run may cross block boundaries. Inspect every matching
+        // block, preserving the engine-version/later-row tie-breaking rule.
+        for (; block != metadata->blocks.end() && block->firstKey <= id; ++block) {
+            if (!readBlockPayload(input, *block, plain, count, error)) return std::nullopt;
+            bool stopped = false;
+            if (!visitBlockRows(plain, count, [&](const std::uint8_t* data, std::size_t size) {
+                    const MsgpackRowView row(data, size, true);
+                    const auto idValue = row.field("id");
+                    const std::string key = idValue
+                        ? (idValue->is_string() ? idValue->get<std::string>() : idValue->dump())
+                        : rowId(row.materialize());
+                    if (key == id && (!eligible || eligible(row))) {
+                        const auto version = rowVersion(row);
+                        if (!found || (version && newestVersion && *version >= *newestVersion) ||
+                            (version.has_value() != newestVersion.has_value() && version) ||
+                            version == newestVersion) {
+                            found = row.materialize(); newestVersion = version;
+                        }
+                    }
+                    return key <= id;
+                }, error, &stopped)) return std::nullopt;
+        }
     } catch (const std::exception& e) {
         setError(error, std::string("invalid SST MessagePack row: ") + e.what());
         return std::nullopt;
@@ -1353,11 +1565,11 @@ bool buildBloom(const fs::path& sstPath, const std::vector<std::string>& keys,
             return false;
         }
         std::error_code ec;
-        fs::rename(temporary, finalPath, ec);
+        pacificdb::durable_file::rename(temporary, finalPath, ec);
         if (ec) {
             fs::remove(finalPath, ec);
             ec.clear();
-            fs::rename(temporary, finalPath, ec);
+            pacificdb::durable_file::rename(temporary, finalPath, ec);
         }
         if (ec || !syncFile(finalPath.parent_path(), true)) {
             setError(error, "cannot publish bloom sidecar: " + ec.message());

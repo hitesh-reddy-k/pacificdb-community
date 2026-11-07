@@ -1,0 +1,22 @@
+{
+  "python_baseline": {
+    "bytes": 13665,
+    "sha256": "c5bd255ab4caa5e5b0c20d355ef630945a464aec05b23e9bbdcc0597483f3f97"
+  },
+  "python_candidate": {
+    "bytes": 181,
+    "sha256": "76e9c41cc4e93d7bcc77b983ca95280d32b89b90af21a3db9a0d2704b2214401"
+  },
+  "java_baseline": {
+    "bytes": 22968,
+    "sha256": "524f75b04cfa9018aee5e5f71f0c49d3e2cace9a70602cda2cdb06f721e1e0ac"
+  },
+  "java_candidate": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "cross_sdk": {
+    "bytes": 769,
+    "sha256": "867603cf2e9fdeac8781409cbae60613c67abbb6906c1b0d17d7e66b0c42ce2e"
+  }
+}

@@ -1,0 +1,55 @@
+PACIFICDB / POSTGRESQL + PGVECTOR / QDRANT — RECORDED BENCHMARK
+Dataset: 1000000 vectors, cosine, 25 dimensions, K=10.
+Held-out queries per round: 1000; rounds: 3.
+Qualification: PASS for this measured workload
+This is a self-run standalone warm-cache trial, not independent certification or production approval.
+
+Metric                                       | PacificDB    | PostgreSQL + pgvector | Qdrant
+---------------------------------------------+--------------+-----------------------+-------------
+System qualification status                  | PASS         | PASS                  | PASS
+Load rows/s (to last durable ACK)            | 3859.9273    | 32140.1081            | 25282.0712
+Post-load finalization seconds (separate)    | 0.3565       | 1.0559                | 0
+Exact plan build seconds                     | 11.8365      | 0                     | 0
+Exact p50 ms (median of round medians)       | 37.8610      | 90.3103               | 36.3451
+Exact p95 ms (median of round p95)           | 48.8483      | 114.6516              | 46.7271
+Exact p99 ms (median of round p99)           | 58.7783      | 130.4937              | 53.9171
+ANN source/build seconds                     | 2040.6604    | 417.4460              | 279.6916
+Chosen ef_search                             | 200          | 100                   | 100
+ANN p50 ms (median of round medians)         | 19.8338      | 2.1876                | 0.9118
+ANN p95 ms (median of round p95)             | 25.6479      | 3.0284                | 1.4778
+ANN p99 ms (median of round p99)             | 30.9160      | 3.8211                | 2.3197
+ANN Recall@10 (mean across rounds)           | 0.9787       | 0.9900                | 0.9868
+1% filter exact p50 ms (10 queries)          | 6644.8721    | 63.5257               | 867.0063
+Four-client static ANN wall QPS              | 138.8003     | 773.2654              | 1017.2152
+Four-client static ANN Recall@10             | 0.9805       | 0.9920                | 0.9880
+Strict mixed ANN reads succeeded             | 360/360      | 360/360               | 360/360
+Mixed successful read p50 ms                 | 37.9015      | 2.6886                | 1.6350
+Mixed write ACK p50 ms                       | 40.1650      | 7.9422                | 3.6365
+Crash restart to connection seconds          | 116.4020     | 0.7178                | 0.4031
+Recovered acknowledged changed records       | 45           | 45                    | 45
+ANN reconstruction seconds                   | 2441.0653    | 0                     | NOT MEASURED
+Post-restart index readiness wait seconds    | NOT MEASURED | NOT MEASURED          | 5.5251
+Post-recovery sampled Recall@10 (10 queries) | 0.9600       | 0.9900                | 0.9900
+Peak sampled PSS MiB (whole lifecycle)       | 2340.7480    | 1310.6973             | 1478.6123
+Peak sampled RSS MiB (whole lifecycle)       | 2348.1172    | 4042.2461             | 1707.3320
+Live data-directory MiB (includes WAL)       | 687.8136     | 1088.5592             | 908.9825
+
+READ BEFORE COMPARING
+- Exact and ANN are separate workloads. ANN tuning uses disjoint100queries; target held-out Recall@10 >=0.95.
+- p50/p95/p99 cells are medians of the recorded per-round statistics, not pooled independent samples or best runs.
+- Three query rounds reuse the same held-out queries/index. There is one full ingest/build per system, fixed sequential order.
+- Ingestion throughput ends at the last acknowledged batch for every database. Final flush/checkpoint/analyze is separate.
+- Same float32 inputs; PacificDB preserves legacy float64 numeric storage. Qdrant cosine returns normalized vectors.
+- Full vector and common metadata are requested. Native TCP/SQL/HTTP protocol and client parsing costs differ.
+- Four server CPUs/two client CPUs and a sampled6GiB PSS guard; no hard-cgroup equivalence claim.
+- Shared active workstation; background load, caches, build ordering and library differences can affect results.
+- PostgreSQL/PacificDB fsync+commit enabled. Qdrant1.20wait=true explicitly flushes WAL before applying updates.
+- SIGKILL/restart is process-crash testing, not physical power-loss proof.
+- PacificDB graph reconstruction is explicit. Qdrant persists graphs; its readiness wait and any extra idempotent metadata ACK are recorded.
+- Qdrant collection counts are approximate; readiness/healthyoptimizer are checked, but exact=false permits planner choice without a per-query graph trace.
+- Qdrant reconstruction NOT MEASURED means not independently isolated; use measured readiness wait, not an invented zero.
+- PostgreSQL summed RSS can count shared pages multiple times; use PSS for cross-process memory comparison.
+- Disk totals are live data directories incl preallocated WAL. They exclude forensic copies; PacificDB ANN graph remains in memory.
+- Filter/recovery samples are small (10); do not infer tail latency or broad recall confidence from them.
+- A25Dworkload does not establish768/1536Dbehavior, RF3/distributed performance, complete feature parity or production readiness.
+- All failed smoke attempts and validation controls are retained separately. These are not substituted for completed1Mresults.

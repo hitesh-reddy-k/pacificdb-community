@@ -2,7 +2,8 @@
 set -euo pipefail
 
 package=${1:?usage: test-native-package.sh PACKAGE.deb}
-expected_version=${2:-1.1.2}
+expected_version=${2:-$(python3 scripts/release_identity.py --field releaseVersion)}
+base_version=${expected_version%%-*}
 root=$(mktemp -d /tmp/pacificdb-package-root-XXXXXX)
 home=$(mktemp -d /tmp/pacificdb-package-home-XXXXXX)
 port=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1]); s.close()')
@@ -23,8 +24,17 @@ test -x "$root/usr/bin/db_engine"
 test -x "$root/usr/bin/pacificdb"
 test ! -e "$root/usr/bin/pacificdb-local"
 test -s "$root/usr/share/pacificdb/pacificdb-logo.png"
-test "$("$root/usr/bin/pacificdb" --version)" = "PacificDB $expected_version"
-test "$("$root/usr/bin/pacificdb" -V)" = "PacificDB $expected_version"
+identity=$("$root/usr/bin/db_engine" --build-info)
+IDENTITY="$identity" python3 - "$expected_version" "$base_version" <<'PY_IDENTITY'
+import os,json,sys
+v=json.loads(os.environ["IDENTITY"])
+assert v["engineVersion"]==sys.argv[2]
+assert v.get("releaseVersion",v["engineVersion"])==sys.argv[1]
+PY_IDENTITY
+version_output=$("$root/usr/bin/pacificdb" --version)
+test "$("$root/usr/bin/pacificdb" -V)" = "$version_output"
+[[ "$version_output" == "PacificDB $base_version"* ]]
+if [[ "$expected_version" == *-* ]]; then [[ "$version_output" == *"$expected_version"* ]]; fi
 
 export PACIFICDB_HOME="$home" ENGINE_PORT="$port" RAFT_LISTEN_PORT="$raft_port"
 "$root/usr/bin/pacificdb" --port "$port" ping >"$home/ping-one.out" &
@@ -41,7 +51,7 @@ done
 server_pid=$(cat "$home/engine.pid")
 printf 'help\nquit\n' | "$root/usr/bin/pacificdb" --port "$port" >"$home/shell.out"
 grep -q 'PacificDB' "$home/shell.out"
-grep -q "v$expected_version" "$home/shell.out"
+grep -q "v$base_version" "$home/shell.out"
 
 for _ in {1..60}; do
   if "$root/usr/bin/pacificdb" --port "$port" ping >/dev/null 2>&1; then break; fi

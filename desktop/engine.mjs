@@ -5,6 +5,11 @@ import net from 'node:net';
 import path from 'node:path';
 import { PacificDBClient } from '@pacificdb/client';
 
+export function desktopVectorPreviewEnvironment(environment) {
+  return environment.PACIFICDB_WORKBENCH_VECTOR_PREVIEW === '1' ?
+    { PACIFICDB_VECTOR_PREVIEW_ENABLED: '1' } : {};
+}
+
 async function freePort() {
   const server = net.createServer();
   await new Promise((resolve, reject) => {
@@ -35,13 +40,14 @@ export async function startDesktopEngine({ executable, directory, signal, timeou
     logPath = path.join(directory, `engine-${randomUUID()}.log`);
     log = await open(logPath, 'ax+', 0o600);
   }
+  const vectorPreview = desktopVectorPreviewEnvironment(process.env);
   const inherited = { ...process.env };
   // Desktop configuration must not import a terminal's engine configuration.
-  const configuration = /^(?:PACIFICDB_|PACIFIC_|ENGINE_|DATA_|WAL_|LSM_|SST_|SNAPSHOT_|BACKUP_|RESTORE_|TMP_|LOG_|RAFT_|TLS_|RBAC_|JWT_|API_KEYS_|AUDIT_|ENCRYPTION_|MEMTABLE_|BLOCK_CACHE_|COLUMN_|INDEX_|MAX_|LEVEL_|COMPACTION_|BLOOM_|QUERY_|SLOW_|CONN_|DBQ_|MULTI_|TENANT_|DEFAULT_TENANT_|PROMETHEUS_|TRACING_|HEALTH_|READY_|LIVE_|STRUCTURED_|REQUEST_|ADMISSION_|ANTI_|DEGRADED_|OOM_|DISK_|TXN_|ENABLE_|MIN_QUORUM_|PRESIGNED_|FAILURE_DETECTOR_|HEARTBEAT_MESH_|REGION|ZONE|NODE_NAME|CLUSTER_NAME|READ_ONLY_MODE|IN_MEMORY_OLTP|MEMORY_PRESSURE_THRESHOLD_PCT|MEMORY_BACKPRESSURE_ENABLED|METRICS_PORT|METRICS_INTERVAL_MS|NODE_ENV)/i;
+  const configuration = /^(?:PACIFICDB_|PACIFIC_|VECTOR_|ENGINE_|DATA_|WAL_|LSM_|SST_|SNAPSHOT_|BACKUP_|RESTORE_|TMP_|LOG_|RAFT_|TLS_|RBAC_|JWT_|API_KEYS_|AUDIT_|ENCRYPTION_|MEMTABLE_|BLOCK_CACHE_|COLUMN_|INDEX_|MAX_|LEVEL_|COMPACTION_|BLOOM_|QUERY_|SLOW_|CONN_|DBQ_|MULTI_|TENANT_|DEFAULT_TENANT_|PROMETHEUS_|TRACING_|HEALTH_|READY_|LIVE_|STRUCTURED_|REQUEST_|ADMISSION_|ANTI_|DEGRADED_|OOM_|DISK_|TXN_|ENABLE_|MIN_QUORUM_|PRESIGNED_|FAILURE_DETECTOR_|HEARTBEAT_MESH_|REGION|ZONE|NODE_NAME|CLUSTER_NAME|READ_ONLY_MODE|IN_MEMORY_OLTP|MEMORY_PRESSURE_THRESHOLD_PCT|MEMORY_BACKPRESSURE_ENABLED|METRICS_PORT|METRICS_INTERVAL_MS|NODE_ENV)/i;
   for (const name of Object.keys(inherited)) if (configuration.test(name)) delete inherited[name];
   const child = spawn(executable, [], {
     cwd: directory, windowsHide: true, stdio: ['ignore', log.fd, log.fd],
-    env: { ...inherited,
+    env: { ...inherited, ...vectorPreview,
       PACIFICDB_HOME: directory, PACIFICDB_ENVIRONMENT: 'development',
       DATA_ROOT: path.join(directory, 'data'), BACKUP_ROOT: path.join(directory, 'backup'),
       RESTORE_DIR: path.join(directory, 'restore'), ENGINE_BIND_HOST: '127.0.0.1',

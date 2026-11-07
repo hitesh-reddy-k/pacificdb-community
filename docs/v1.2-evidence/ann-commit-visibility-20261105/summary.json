@@ -1,0 +1,65 @@
+{
+  "status": "PASS",
+  "scope": "local development software checks only; not full production certification",
+  "base_revision": "cfa6da754ab03c25ee53aeec280dbadda664a722",
+  "tested_source": "working-tree source files identified by source-sha256.json; build identity cfa6da7-pressure-fix-working-tree",
+  "source_clean_at_test": false,
+  "release_eligible": false,
+  "checkpoint": {
+    "status": "PASS",
+    "checks": 86,
+    "ctest_cases": 59,
+    "engine_sha256": "14eb3d8504fe7ad0f288d62bec9e968cb0ba2d059db788fdad422b038864f196",
+    "failpoint_engine_sha256": "4c9e13ecd95626e3cc7b6a6de97ca59f6a040ce2aac588fcd403753b8271e3f9"
+  },
+  "full_community": {
+    "status": "PASS",
+    "python_tests": 134,
+    "checked_SDK_dispatch_bindings": 141,
+    "auth_transport": [
+      "TCP",
+      "TLS"
+    ],
+    "SDK_recovery": "SIGKILL",
+    "mixed_version_rf3": "distinct published RC.2 to candidate",
+    "engine_sha256": "14eb3d8504fe7ad0f288d62bec9e968cb0ba2d059db788fdad422b038864f196"
+  },
+  "controlled_regressions": {
+    "baseline_binary_sha256": "be8f4b7dc93fd2ea88b10697ae85b0f5aa7deb73fddc91d7955dbd46e820e89a",
+    "baseline_new_unrelated_commit_case": "FAIL: unnecessary STALE after a fully applied unrelated document commit (expected baseline reproduction)",
+    "baseline_raft_commit_index": 6,
+    "baseline_raft_last_applied": 6,
+    "candidate_unrelated_commits_no_wait": {
+      "attempts": 30,
+      "successes": 30,
+      "graph_generation_changes": 0,
+      "exact_fallback": false
+    },
+    "candidate_mixed_vector_write_reads": {
+      "attempts": 360,
+      "successes": 360
+    },
+    "stalled_final_validation": {
+      "simulated_scheduler_pause_ms": 1100,
+      "default_index_wait_ms": 1000,
+      "unrelated_document_commit": "PASS: correct ANN success without exact fallback",
+      "actual_vector_commit": "PASS: rejects old candidates"
+    },
+    "paused_maintenance": "PASS: timeout/cancellation isolation, bounded waits and strict ANN recovery",
+    "incremental_mutation_crash_points": 4,
+    "reconstructions_per_crash": 2
+  },
+  "sanitizers": {
+    "ASAN_UBSAN": "PASS: 6/6 selected graph/journal/generation targets and their vector libraries",
+    "TSAN": "PASS: same 6/6; no suppressions",
+    "retained_first_TSAN_failure": "test mock source held its certificate mutex across Emit; fixed producer snapshot handoff; no assertions removed",
+    "not_claimed": "fully sanitized engine or third-party security assessment"
+  },
+  "environment_failure_retained": "first full Community attempt could not configure the temporary source-archive fixture without extracted OpenSSL development dependencies; rerun supplied existing CMAKE_TOOLCHAIN_FILE and enabled vector SDK paths without relaxing assertions",
+  "pending": {
+    "new_candidate_1m_load": "INCOMPLETE",
+    "new_candidate_native_platform_jobs": "INCOMPLETE",
+    "eight_hour_soak": "INCOMPLETE: user chose short qualification instead",
+    "production_readiness": "INCOMPLETE: independent exact-candidate assessment, physical-power and stable signing/UI gates remain separate"
+  }
+}

@@ -3,3 +3,11 @@ benchmarks/results/**/*.log whitespace=-trailing-space
 benchmarks/results/**/hosted-p0/*.json whitespace=-trailing-space
 # npm normalizes bin shebangs; keep checkout bytes stable on Windows.
 cli/bin/*.js text eol=lf
+
+# Local/private operational material must never enter source distributions.
+build* export-ignore
+.worktrees export-ignore
+.superpowers export-ignore
+private-release export-ignore
+docs/superpowers export-ignore
+docs/evidence export-ignore

@@ -1,0 +1,13 @@
+variant,case,ms,validated_queries
+baseline,metadata_cold_first_query_ms,5746.7385060003835,45
+baseline,indexed_first_payload_cold_ms,5976.491476999854,45
+baseline,non_index_eligible_or,6128.795318750008,45
+baseline,indexed_equality,115.13057674994798,45
+candidate,metadata_cold_first_query_ms,3906.4032739997856,45
+candidate,indexed_first_payload_cold_ms,4188.929689999895,45
+candidate,non_index_eligible_or,3859.6127480000177,45
+candidate,indexed_equality,70.19183725014955,45
+baseline-recheck,metadata_cold_first_query_ms,6375.892614999884,45
+baseline-recheck,indexed_first_payload_cold_ms,6518.279742000232,45
+baseline-recheck,non_index_eligible_or,6153.777080250052,45
+baseline-recheck,indexed_equality,121.56903124980545,45

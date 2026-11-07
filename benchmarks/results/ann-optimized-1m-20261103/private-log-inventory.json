@@ -1,0 +1,835 @@
+[
+  {
+    "path": "pacific/server-1793720627727440026.log",
+    "sha256": "4f374ba3033973064446143983cd6af485d01a7e041dc6390f40652c88937e41",
+    "distribution": "private retained"
+  },
+  {
+    "path": "pacific/server-1793721995953547525.log",
+    "sha256": "86b0a2347ab5a8ed2f6aa83a7597fc4adef82d9eda0f5c983038938b4b2c490c",
+    "distribution": "private retained"
+  },
+  {
+    "path": "postgres/initdb.log",
+    "sha256": "54c40afd21df3dffb6e6d61bc53799d38eca184d661e9b2ae5470ebe84753d0b",
+    "distribution": "private retained"
+  },
+  {
+    "path": "postgres/server-1793719607917556499.log",
+    "sha256": "ea3aadea957776fe626225064aa61aaebf9ee9789b90637099dadb87e9a4605a",
+    "distribution": "private retained"
+  },
+  {
+    "path": "postgres/server-1793720253561552069.log",
+    "sha256": "848398027d21bae7745da9418d5b2e7ff52c3c6316617401d610ff30558aee94",
+    "distribution": "private retained"
+  },
+  {
+    "path": "qdrant/server-1793720256012490539.log",
+    "sha256": "3cb72abb40267ab8b84db38d080dfaa9c0d0bb4e9765559b3b3764e750fc0632",
+    "distribution": "private retained"
+  },
+  {
+    "path": "qdrant/server-1793720620465505791.log",
+    "sha256": "a1893abad24f069d492586c37f937306b7b35c1fea27435f83cc40f165a34c35",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "asan-build.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "asan-run.log",
+    "sha256": "5ee363d7eef5378ac0c852d72dfc31d2bf333a306d1dd4cbb0f2f3018a587e08",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "benchmark-contract.log",
+    "sha256": "60c6bb5c8ac971d56c16f191a0ddf3067de66f57634027e936be419133734a6c",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "benchmark-detached-2.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "benchmark-detached-3.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "benchmark-detached.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "checkpoint-scale-reuse.log",
+    "sha256": "57fed2fb7b1c1ba585d2428ff833c31929c463b32249b564f3e303c30e92ce62",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "cross-sdk-qualified.log",
+    "sha256": "2c94e31eb3315250a8a4beda5c93e28a680c5ae96d042900bb9fb2e401aabc19",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "ctest-corrected.log",
+    "sha256": "057bbecaa4a84935f36c234c679ad801a78c8c53c0053cf107ad52e58ebe9b4b",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "failpoint-build-resumed.log",
+    "sha256": "3670f0f944460fc21edcad282a2ed648b8416cc21ac0da07ec93e61862b66ea3",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "failpoint-build.log",
+    "sha256": "615c88d77e8336e1c62d2465736244f7a6ae26e105cdc2539d164ffa1023a778",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "failpoint-configure.log",
+    "sha256": "1819f3c914d6615f76dedafbe0e9c998b10c250ff8fd14e80e7a41e2a9cd2924",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "hnsw-core-checkpoint.log",
+    "sha256": "5ee363d7eef5378ac0c852d72dfc31d2bf333a306d1dd4cbb0f2f3018a587e08",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "hnsw-core-green.log",
+    "sha256": "5ee363d7eef5378ac0c852d72dfc31d2bf333a306d1dd4cbb0f2f3018a587e08",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "hnsw-core-staging.log",
+    "sha256": "5ee363d7eef5378ac0c852d72dfc31d2bf333a306d1dd4cbb0f2f3018a587e08",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "hnsw-diverse-core.log",
+    "sha256": "5ee363d7eef5378ac0c852d72dfc31d2bf333a306d1dd4cbb0f2f3018a587e08",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "optimized-build-2.log",
+    "sha256": "3db139ec897cee2d79a84159f18b5412bd5272677b6187885c935196869406bc",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "optimized-build-3.log",
+    "sha256": "b279a501292e74f4924016e4710eaaa5ea69540e1cd4284c8d022c42552799d8",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "optimized-build-4.log",
+    "sha256": "881936c44001627b85f0f506fde8de7b1930f14c3e9429cba2fedca0c0509466",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "optimized-build.log",
+    "sha256": "9d8898f07389a8faed650967f77655b8389cf712d81c577edcd3f84067c6dac2",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "optimized-configure-final.log",
+    "sha256": "2a7131def0e0c1ca7fddeb27b78b65bdf881f87f9cc30de16f2e633d17739df1",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "optimized-configure.log",
+    "sha256": "15134f1868f11eebc3112ade5b1edb19096cb9f74eb2c0f2e70b14ba25a7db3c",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "optimized-full-build-final-2.log",
+    "sha256": "d60e23644f2b4690a1102c3e7fcbff3a9053733059c8145602b68615f8a3cc81",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "optimized-full-build-final.log",
+    "sha256": "58d79edac0f19d04558508f48487e39aac7e8701e81f7cc06f39f85e3c6efe6a",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "optimized-full-build.log",
+    "sha256": "3f4b5195cdcf6542acb610177673cb7206a87e589f2284ec156f48d999ef3625",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "optimized-profile-100k.log",
+    "sha256": "dfe6518adcae2a4a17b16ea9aad86b335d3bb71b5a03b5e6e3fe98b4bcf93c80",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "optimized-targeted-tests-2.log",
+    "sha256": "864070a3bde7aa64d15c30cb80006de77b0c8db36ff0d9d02d6f9fa0b3c26040",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "optimized-targeted-tests.log",
+    "sha256": "8221cb23becfe38103dc2e803ec6ef94a11abe72ed87133c7079e7e5393be04c",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "paired-benchmark-contract.log",
+    "sha256": "4784c448796f80cab2b7625b9fd54f88cd35bbe61c44536e88108801b85243f3",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "precision-checkpoint-test.log",
+    "sha256": "c5aaecc141054902b5e8659df934322c00aaf970848aa1fd2d3469f1cfcab01c",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "precision-target-build.log",
+    "sha256": "bb1c133d6fe8ead0af4a71fcc8d2e5eb9cee1af353ef7dcd11935273570faf38",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "production-build-qualified.log",
+    "sha256": "bf41db500191e5def6428d9a94452ddde11705398ec01c8fbfa4b805295b170f",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "profile-100k.log",
+    "sha256": "bb464ef26ef835f9f9908b044b03a0751ac61c0b107dc80fe3a6931e82770aa8",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "profile-build.log",
+    "sha256": "2d5686b7284847894ee1ff15b344f5837727c19035f7d283a5d6f1b994eda62b",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "profile-configure.log",
+    "sha256": "d9fb38747598df5bcf4fe459614c4775d9710b0b4b4460673bdab57487970607",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "profile-corrected-100k.log",
+    "sha256": "5b4c4cdad164d6c8d4493b3a18dafccfb3ef8507684eed2a62f0f4abf307a59c",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "profile-test-compile.log",
+    "sha256": "0cc124485328927c553f80a8e28ed4522c07d2885c9ae63fb3b0c2eb33bd86c4",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "profile-test-green.log",
+    "sha256": "4965a1175a1815bc2fc059176c58cd9eea006dab0e813a9cb6dfe7cbf88e457a",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "profile-test-red.log",
+    "sha256": "6e996f42b22f887fc9de012493e8847a939562c8c4972df4ffe023cfae2a1bde",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/ctest.log",
+    "sha256": "23ce10a6592dd8dbb430d46140d54a9767cc7cd960b444a944788948b74fa6d4",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_cli_connection_test.log",
+    "sha256": "61e6da37df6c6913d5bfc80d3be71da1bcc59fc3336c83f01b4fef6302f3f83a",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_collection_vector_identity_test.log",
+    "sha256": "abb79ab5d99454a694709f43546bd68d2465936c5a3f9cb69e22d5710741fbb4",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_community_api_key_test.log",
+    "sha256": "90401a99120434602a4ca775a9e824d36bfd2584ea5cd351f967ca0ac9085373",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_community_catalog_test.log",
+    "sha256": "533231d2b5307809df7ec8228d2889dcbc1ddf0e30bdbfad31743973d84b4271",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_community_manual_operations_test.log",
+    "sha256": "9a91109ba5052f2cb7a5069c0a9b33e13f9548b0bbb61e6549779888f4e6149e",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_community_query_test.log",
+    "sha256": "6d83835d47ce4d50f264dbfd39e82692010c6defb8c7c5263c6b9e60c28444e5",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_comprehensive_test.log",
+    "sha256": "f638d516ea24da7b909bdb6407f5456f6a77300636359ee7f2f17c993d82fced",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_database_access_test.log",
+    "sha256": "be8ac0d90e9474924a51c0d0f7074f14e59219ab46809f24f63d1e7775d43f02",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_database_metadata_failure_test.log",
+    "sha256": "86657876580f8fd29efb4b37ba0ca4d2366a046f0142ae071f7b153d3c30d946",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_env_config_unicode_path_test.log",
+    "sha256": "b56f8154d70efafa1868e06765912665dd71f2bd77aa24c3791e5cf0a9bd053a",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_flat_vector_index_test.log",
+    "sha256": "e16f6cf71204373dca1db96bec6e837b19b5051daf7fff9838b925941de55063",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_index_bounded_recovery_test.log",
+    "sha256": "1ac6660a17992434c913a24c54a7be6a7678aae8d01088f7e62ec928faa9a463",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_local_engine_state_test.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_lsm_bounded_recovery_test.log",
+    "sha256": "be20178c6cb7e407cb3cf150e2736267226054eaf775bcc2853a7cebac833a3c",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_lsm_checkpoint_test.log",
+    "sha256": "119fbb83dbca53a59a5056f468825a44ba38608fbd317cc5bda8ed16cf19bbfd",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_lsm_compaction_test.log",
+    "sha256": "1c08be0bb18ce81bbab25b50bab5753773aa1dce9e081c1f2bbc452d3fb7250e",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_lsm_manifest_test.log",
+    "sha256": "676509fd27dbdf79a0e280a309e7f2e56775be78ecd34ff5526f53dc89788903",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_lsm_point_read_flush_test.log",
+    "sha256": "e6a4fe8694a7d30c1fa90952906f63a9ccec4b4b9143fb5740a9b595e2765bf9",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_lsm_verified_point_cache_test.log",
+    "sha256": "f96e1e32ab1eab97f32761bf52299d6c66438e0808ff6b7d492a3beaab6ea31d",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_media_upload_state_test.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_memory_test.log",
+    "sha256": "e42f9ba7a54ad802551e9802ec9aa43e44d715800f95aece8402ce7abf0d5547",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_native_flat_storage_test.log",
+    "sha256": "fa5fb774d153963b65b7e2584a3e8ab64d1bdfcc466636945cef11b5bf8c2b23",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_native_hybrid_storage_test.log",
+    "sha256": "48423fb95d5c5addbfe77690691b56719ae69b158d0147f01ac988c2b9241c93",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_native_incremental_storage_test.log",
+    "sha256": "a7fd3460ec6d4f9aa147819d3c9ff9d4755db57a858dbc622ce5134722eb15df",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_native_shell_parser_test.log",
+    "sha256": "455f860bae48a8378d1341956b207c54e8ae801d24f11a364419e8a050afe629",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_native_vector_checkpoint_test.log",
+    "sha256": "c5aaecc141054902b5e8659df934322c00aaf970848aa1fd2d3469f1cfcab01c",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_native_vector_crash_test.log",
+    "sha256": "40cf1706800d99f6b5bc7bffeb3dac3081bfc85daf35c04549cd3236016cdf14",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_native_vector_mixed_flow_test.log",
+    "sha256": "6643224fd474ed1979b9b44a6e195760ec11a377ac905acd6d511d6644d84f96",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_native_vector_point_cache_test.log",
+    "sha256": "7ba7c8594e30dd3a0c8dc7df21a9ebf246911448a2c7aadcf3a4356d1aa5084e",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_native_vector_storage_test.log",
+    "sha256": "54c91986d459d1cb1db5f543daf8898f0a9c6f97bc703b1de738de8f47421a63",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_partitioned_queue_test.log",
+    "sha256": "59c9e1da6aec06ff72441b48e71c6f4b8c934330770207fa3b8aff8c998d2a3b",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_query_limit_test.log",
+    "sha256": "3b6454529c3ec2ad3a255c76a032fcb9c139dbf38bd8b6a9a417b670851ede5d",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_raft_binary_log_test.log",
+    "sha256": "915dfbf42901c22e1f06c9fa3790ce59153ce14fc759c1c7877a6159533ef885",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_raft_commit_publication_test.log",
+    "sha256": "bbc1ae5ce764ae810258cb33c8fc1774a86ca06008b0be12cbe6c2e10959d2ef",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_raft_health_recovery_test.log",
+    "sha256": "d48cdc05c74dc571b2cf6b1483e7bcf64e223c588bf8a286d72334ffeda12e7c",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_raft_snapshot_metadata_test.log",
+    "sha256": "70a7caa417a2ad831fd1d49cfc4a6e5d6c5cf293dc3ebf8f5e133b0ad9b2a8c0",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_replica_digest_test.log",
+    "sha256": "d5c928bd3f8d9e57fae46dda1e2ba7ac2070bd0819409e43a19cc954df613e8a",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_security_audit_test.log",
+    "sha256": "596352bcfe89336447ec1a54d44f143a742b9e4617580ff9044bb8dc9b553d90",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_security_manager_lockout_test.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_snapshot_bundle_test.log",
+    "sha256": "948932937560f42d388ebab67269965743dc5fc99673209cd4e38025b921510b",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_snapshot_e2e.log",
+    "sha256": "8d7336e4115cf5f19a5fbb757f1253f72dac0559e120c60a17668ae5eb8610b3",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_socket_runtime_test.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_startup_delay_failpoint_test.log",
+    "sha256": "41086ca8b2153f41fe82578f7cc3709bbf3e0a227888e8ecfd4e5265d93e5259",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_storage_format_v2_test.log",
+    "sha256": "620991d749a1d777043306233d618b1b26b492cc7f6b5ba18491cc32b053c123",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_storage_root_guard_owner_test.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_storage_root_migration_test.log",
+    "sha256": "2d57b68da82f86a8cb11d20bd6e0228f9ded62c8e171a0eb42511760c5b34590",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_strong_read_memtable_test.log",
+    "sha256": "8620eda15a90e4110e99d90c96dacf2009c6978c5c157bf366ed1a7f2749898e",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_structured_event_test.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_tenant_auth_recovery_test.log",
+    "sha256": "1a72f5110cf0b89c38902815dc7dffdc140aaf2ded8d3c1f894b7e4c18161dc5",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_timeout_test.log",
+    "sha256": "01f7e5285b0a7c0a58cc826a16408f3fd27753621336281e4f719476a0ef625c",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_vector_correctness_test.log",
+    "sha256": "112ed9181b1fe87fe9218dec4e6a610825a4e7e4c90b581dd830093d92109a8e",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_vector_exact_test.log",
+    "sha256": "c5eec0a3862321b597483073006e615749f958befbc026915dedfc1021b01016",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_vector_freshness_storage_test.log",
+    "sha256": "5f33ea4633cdfbd104fe5ffd81fd5b074c4c782e77ef1ff616299b13542d0c7b",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_vector_index_catalog_test.log",
+    "sha256": "8967448b6e46e712ee70b24bb091d20579415009f5ab74b88464659ace3266a8",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_vector_named_sparse_crash_test.log",
+    "sha256": "abe0e6a4b108947a4ad5021da288258767ebce8cf78bb61a177ccdb48cac1702",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_vector_named_sparse_storage_test.log",
+    "sha256": "739ea9e430571f6898d39a2ad0b8c607b14ffa93c164680f8f17143ae00e5246",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_vector_safety_concurrency_test.log",
+    "sha256": "a219bf85ca7c7825b4a6f07554921fd5ba3c3faf5cfcb4f92a777dff7785b632",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_vector_schema_storage_test.log",
+    "sha256": "a1052544e42a09edb94f8578216b33965de3902936bd572e4d08d64a2424db9e",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_wal_group_commit_test.log",
+    "sha256": "af2af7cd88a1c89a5ae6d9806bec9c9977ce9edd38f036c3c4309438e2240563",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_wal_private_permissions_test.log",
+    "sha256": "630b9e4781a52fe2e8d3899fdb6c1d7911c77683298a311f2f6beab5bd58ec34",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_wal_recovery_admission_test.log",
+    "sha256": "2baa98b0e4a367ec644c2a56a9a559e7124def9794f6a7b8274190fda2059d48",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_wal_segment_recovery_test.log",
+    "sha256": "d668a77784ebfa1ee66aca3f2d248c2a9e6ba7da38d662e3b073c2fb0ebf9b6c",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/db_engine_work_stealing_test.log",
+    "sha256": "1bf6acce703d1da9858752a297c3c91b2e1f6c9924e60fc710727acfdd471094",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/storage_path_security_test.log",
+    "sha256": "8a7a4a9455d300d597031da3a8f2a34bd94220d0f3906d88d647ff0297123b3e",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/test-community-e2e.mjs.log",
+    "sha256": "cccd3234bd44fdcd5f3447e903d6b18349926ff265b4b3805ee930cf52ef4cea",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/test-community-restart-matrix.mjs.log",
+    "sha256": "ea98e568b2d60893c0053eb6a3bf40515444d38932681dc70c6b902d35ffcd9a",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/test-community-rf3-partition.mjs.log",
+    "sha256": "7fe587f5e23bc74d0705d77f2e2449ac74fb8af1afb137d5255702737651719e",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/test-community-rf3.mjs.log",
+    "sha256": "240cbfbf0373d2843dad849988915aba7982c6a9037255e2ae5fa74be2884704",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/test-engine-auth-boundaries.mjs.log",
+    "sha256": "0e98967f889360cd1ae8a71d80f39e2f833a9eca340b836f35acb84c24f9065c",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/test-native-vector-preview.mjs.log",
+    "sha256": "3edd7cd91d5730a5f46fe8d697348cd4ee82c363140c3d41b047f5834cada4f6",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/test-p0-media-crash.mjs.log",
+    "sha256": "89d37baed49a7049d06d2bacb26460023482752a8c6a750e07f15f1810780f5e",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/test-p0-media.mjs.log",
+    "sha256": "5ad585beb0c48b98826b4786503cea920dfc3781d3de0aba32db001285a45aec",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/test-raft-apply-retry.mjs.log",
+    "sha256": "000e5b61a6b9d8f5a741166742e43b5684a0cdb0e5adc19850df7cf0f09e17bf",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/test-vector-incremental-crash.mjs.log",
+    "sha256": "fc08405cfc32ab687419f943b4358c0ba8c0306db4edce1ee5a462544c2bbe95",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/test-vector-incremental.mjs.log",
+    "sha256": "bf9afc8f1ec3cd819fc8ceee7d2b94538372e91fcaf2f14ea18968b9baa62b93",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/test-vector-request-isolation.mjs.log",
+    "sha256": "23dd814ec20cba5ae477cc6dc9118df7c66f2f8a46c092195d1aa1ca1ae23ad7",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/test-vector-schema-crash.mjs.log",
+    "sha256": "82947124fd82f168ce0446845836dbd4739780ed3a481e0e4146353df0c04964",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/test-vector-schema.mjs.log",
+    "sha256": "fb19a4b95d16f195e243ee593f71174fcef37dfc78641a374e6d266fbe7dbb68",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified/v11_4_apply_exact_boundary_failpoints_test.log",
+    "sha256": "ecccbce74da4f4c0f450b61875352a6959c3a6b66b4c72a95f46d8b96eb2ace1",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/checkpoint-qualified.log",
+    "sha256": "a7266942ad675cb84170261b835c860dd8ee8279f8080e8ce381b92beac10265",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/failpoint-build-qualified.log",
+    "sha256": "162d0213d06c62a546d08ea89b413fa0e6b978214b7677e4eddb00e5a9ad041f",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-3/production-build-qualified.log",
+    "sha256": "f94dd491badc1b4fbf918c0f7052a3faac6a09f84c0cde3315a7be047ff2358d",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-detached-2.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "qualification-detached.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "report-contract-final.log",
+    "sha256": "256e590ba9183f73cc663d8cfa132c3c8611787f5bb806ea54e951f3d8a7d3ca",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "report-contract.log",
+    "sha256": "e5e369dd8e58ac1828a0976a24a9bc28e27189e3b1743b2f71c5845924b0a7e2",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "sdk-capability-contract.log",
+    "sha256": "35bb21bec6c3a1368c0ac49b8f6e1a9f923c67df763c66acb51a32b67eba8d4a",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "targeted-raw.log",
+    "sha256": "6f3e48a590e03b12e70d935c0a70190f277acf961f2550873284bc622c5d4953",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "three-db-optimized-1m-performance.log",
+    "sha256": "0829c5d7af9f4f4b543d2a9c2b7b28b591a21d043b51b09a8b710f96e2ebbf07",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "three-db-optimized-1m.log",
+    "sha256": "1232dd8c8f37e870c80871ae22c9a38014c51cbde68747ac9ddf54cf59c875b0",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "tsan-build.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "optimization qualification and prior attempts",
+    "path": "tsan-run.log",
+    "sha256": "5ee363d7eef5378ac0c852d72dfc31d2bf333a306d1dd4cbb0f2f3018a587e08",
+    "distribution": "private retained"
+  },
+  {
+    "scope": "separate unchanged 1M checkpoint reuse",
+    "path": "server-1793723144757975234.log",
+    "sha256": "395ccce1d086b0e3352c52d93bed07fd4e67a1d4ea997e5dc9d567a7af8578cc",
+    "distribution": "private retained"
+  }
+]

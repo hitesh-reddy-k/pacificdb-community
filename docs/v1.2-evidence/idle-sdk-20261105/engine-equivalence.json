@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "scope": "Tracked engine source tree equivalence only; SDKs separately tested",
+  "qualified_engine_revision": "337b9ef43300ff27a5c3c663f45b672b8ac3a6b1",
+  "SDK_followup_revision": "704becd1ff8194c5ccd6b6392088f65a3b885ece",
+  "tracked_engine_files": 297,
+  "changed_engine_files": [],
+  "git_tree_hash_engine_337": "9780e33fc629331a005ded49f49ae7138cea2643",
+  "git_tree_hash_engine_704": "9780e33fc629331a005ded49f49ae7138cea2643",
+  "does_not_claim": "A337binaryreports704; newSDKruntimeisqualifiedbyitsownunitandintegration/CIresults."
+}

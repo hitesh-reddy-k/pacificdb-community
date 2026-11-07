@@ -1,0 +1,10 @@
+{
+  "README.md": "bc40df6e21982c5409aecf97a39df2764fc1cb95916ba5e709b364a5b8f3017b",
+  "engine-equivalence.json": "a230604a4e62cc7895be45bb8522b3ca2c40a7d5e11c91301f7d00bc1ab10a05",
+  "native-CI.json": "e38ebb0a11a757eceb860182dcfccd07a9c86a3d8a2143c4caad3e10f4cdd6a1",
+  "required-CI.json": "9cb0807e3218fc2c18d6fc481cc5d7d36657cf617a4553af51dc09ca97e0c2a4",
+  "retained-log-digests.json": "bf4b63fa19189c1a26b567d1a25a3ff49146b4ce47944700fe9a0f1d7e12c3fc",
+  "runtime-CI.json": "8660c42ec3228aeae637edc5527e07b87587f64eea2dae4356e57df4d16cb3cf",
+  "source-sha256.json": "11dbb14e7572e64c20235ef765faeb75f8e8ec7ed1e0fb129807b03a387c58d9",
+  "summary.json": "a55835ece218b92700ee8a911ecbd6e4138eb3a705ae57d1420b273591266843"
+}

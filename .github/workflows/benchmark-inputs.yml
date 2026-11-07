@@ -1,0 +1,117 @@
+name: Reproduce frozen public benchmark inputs
+on:
+  workflow_call:
+    inputs:
+      release_tag:
+        type: string
+        required: true
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    environment: prerelease-publish
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+      # Match the original AVX2 host's BLAS kernel for byte-frozen truth scores.
+      OPENBLAS_CORETYPE: Haswell
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release_tag }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare independent input reproduction
+        run: |
+          set -euo pipefail
+          python scripts/check-sdk-release-tag.py "$RELEASE_TAG" --require-tag
+          test "$(gh release view "$RELEASE_TAG" --json isPrerelease --jq .isPrerelease)" = true
+          test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = false
+          python -m pip install numpy==2.5.4 h5py==3.16.0 threadpoolctl==3.7.0
+          mkdir -p build/benchmark-input-evidence
+          python -m pip freeze > build/benchmark-input-evidence/python-environment.txt
+          curl -fL --retry 3 --max-time 240 https://ann-benchmarks.com/glove-25-angular.hdf5 -o build/glove-25-angular.hdf5
+          python scripts/prepare-community-benchmark.py --source build/glove-25-angular.hdf5 \
+            --publication build/published-workload 2>&1 | tee build/benchmark-input-evidence/preparation.log
+          python scripts/prepare-community-benchmark.py --publication build/published-workload \
+            --verify-only > build/benchmark-input-evidence/verification.json
+      - name: Package exact prepared numeric inputs and provenance
+        run: |
+          set -euo pipefail
+          python - <<'PYCODE'
+          import hashlib,json,tarfile,os
+          from pathlib import Path
+          root=Path('build/published-workload');data=root/'data'
+          notice=root/'DATA_NOTICE.md'
+          notice.write_text('''# Frozen public GloVe25 benchmark inputs
+
+          Source: ANN-Benchmarks GloVe25 angular, https://ann-benchmarks.com/glove-25-angular.hdf5
+          Dataset catalogue: https://github.com/erikbern/ann-benchmarks
+          Underlying GloVe vectors: Jeffrey Pennington, Richard Socher, Christopher D. Manning.
+          https://nlp.stanford.edu/projects/glove/ identifies the vector data as PDDL1.0.
+          License: https://opendatacommons.org/licenses/pddl/1-0/
+
+          PacificDB's preparation selects the first1M training rows, normalizes through
+          float64 to float32, selects1100 test queries with seed20261029 and computes
+          independent exhaustive float64 cosine truth. The manifest records all numeric
+          file hashes; this CI independently reproduced every frozen source/array/truth hash.
+          The original source HDF5 is not included in this prepared-input archive.
+
+          Extract the archive and pass its published-workload directory as --publication
+          to the released benchmark harness. It verifies base.npy, queries.npy and truth.npz
+          before execution. DATA_SHA256SUMS covers the prepared package. The preparation
+          helper's --verify-only checks the full source set and expects the source HDF5 too.
+          This is benchmark input data, not a database snapshot or performance certification.
+          100 tuning queries and1000 held-out queries; K=10; cosine25D. Timings depend on host.
+          ''')
+          paths=[data/name for name in ['base.npy','queries.npy','query-source-indices.npy','truth.npz','manifest.json']]+[notice]
+          (root/'DATA_SHA256SUMS').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+str(p.relative_to(root))+'\n' for p in paths))
+          archive=Path('build/pacificdb-benchmark-glove25-1m-inputs-20261029.tar.gz')
+          with tarfile.open(archive,'w:gz',compresslevel=1) as stream:
+              for p in [*paths,root/'DATA_SHA256SUMS']:stream.add(p,arcname=Path('published-workload')/p.relative_to(root))
+          result={'status':'PASS','scope':'independent byte-frozen input/truth reproduction only; no query/production certification',
+            'releaseTag':os.environ['RELEASE_TAG'],'workflowRevision':os.environ['GITHUB_SHA'],
+            'manifest':json.load(open(data/'manifest.json')),'archiveSHA256':hashlib.sha256(archive.read_bytes()).hexdigest()}
+          Path('build/benchmark-input-evidence/summary.json').write_text(json.dumps(result,indent=2)+'\n')
+          PYCODE
+      - name: Bind independently verified input package to existing distribution
+        run: |
+          set -euo pipefail
+          mkdir -p build/current-public
+          gh release download "$RELEASE_TAG" --dir build/current-public
+          python scripts/verify-prerelease-staging.py --directory build/current-public \
+            --revision "$(git rev-parse HEAD)" --require-qualified
+          python - <<'PYCODE'
+          import hashlib,json,shutil
+          from pathlib import Path
+          from scripts.prerelease_qualification import assess
+          root=Path('build/current-public');p=Path('build/pacificdb-benchmark-glove25-1m-inputs-20261029.tar.gz')
+          m=json.load(open(root/'RELEASE-MANIFEST.json'));h=hashlib.sha256(p.read_bytes()).hexdigest();assert not(root/p.name).exists();shutil.copy2(p,root/p.name)
+          m['artifacts'].append({'filename':p.name,'sha256':h,'sizeBytes':p.stat().st_size})
+          m['qualification']['artifacts'].append({'name':p.name,'sha256':h,'platform':'independently verified public benchmark input data','tested':True})
+          m['benchmarkInputs']={'artifact':p.name,'source':'ANN-Benchmarks GloVe25 angular','license':'GloVe vector data PDDL1.0',
+            'verification':'all frozen source/base/query/source-index/truth SHA256 values independently reproduced'}
+          assert assess(m['qualification'])['decision']=='PREVIEW_QUALIFIED'
+          (root/'RELEASE-MANIFEST.json').write_text(json.dumps(m,indent=2)+'\n')
+          sums={a['filename']:a['sha256'] for a in m['artifacts']};sums['RELEASE-MANIFEST.json']=hashlib.sha256((root/'RELEASE-MANIFEST.json').read_bytes()).hexdigest()
+          (root/'SHA256SUMS').write_text(''.join(h+'  '+n+'\n' for n,h in sorted(sums.items())))
+          PYCODE
+          python scripts/verify-prerelease-staging.py --directory build/current-public \
+            --revision "$(git rev-parse HEAD)" --require-qualified
+          gh release upload "$RELEASE_TAG" build/pacificdb-benchmark-glove25-1m-inputs-20261029.tar.gz
+          gh release upload "$RELEASE_TAG" build/current-public/RELEASE-MANIFEST.json build/current-public/SHA256SUMS --clobber
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: frozen-benchmark-input-reproduction
+          path: |
+            build/benchmark-input-evidence/
+            build/published-workload/data/manifest.json
+            build/current-public/RELEASE-MANIFEST.json
+            build/current-public/SHA256SUMS

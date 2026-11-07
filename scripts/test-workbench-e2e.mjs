@@ -127,7 +127,9 @@ try {
     filter: { id: 'one' } })).data[0].value, 2);
   await post('vectors.put', { ...scope, id: 'vector-one', vector: [1, 0] });
   assert.equal((await post('vectors.query', { ...scope,
-    vector: [1, 0], k: 1 })).data[0].id, 'vector-one');
+    vector: [1, 0], k: 1, searchMode: 'exact', allowExactFallback: false, timeoutMs: 5000 })).data[0].id, 'vector-one');
+  assert.ok(frames.some(frame => frame.action === 'queryVector' && frame.search_mode === 'exact' &&
+    frame.allow_exact_fallback === false && frame.timeout_ms === 5000));
   await post('documents.delete', { ...scope, filter: { id: 'one' } });
   assert.equal((await post('documents.find', { ...scope,
     filter: { id: 'one' } })).count, 0);

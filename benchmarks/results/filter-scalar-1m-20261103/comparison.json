@@ -1,0 +1,24 @@
+{
+  "status": "PASS",
+  "scope": "Matched baseline/candidate filtered exact diagnostic on the same recovered 1M fixture; 20 measured calls over 10 unique queries, not a fresh three-database trial",
+  "baseline_control_median_ms": 7432.278660249722,
+  "candidate_median_ms": 5745.139750250246,
+  "latency_reduction_percent": 22.70015680416897,
+  "variant_medians_ms": {
+    "baseline": 7712.047077999841,
+    "candidate": 5745.139750250246,
+    "baseline-recheck": 7247.236624999914
+  },
+  "engine_sha256": {
+    "baseline": "8c293646b8a9ddb54c286268f5e021b660c95e0c2255bb8da1251539b7b1338f",
+    "candidate": "3fbe2f226b5d262aed4ce20faafafcb763b5ef52fc6ef295fb103fc87b77008e",
+    "baseline-recheck": "8c293646b8a9ddb54c286268f5e021b660c95e0c2255bb8da1251539b7b1338f"
+  },
+  "measured_calls": {
+    "baseline": 20,
+    "candidate": 20,
+    "baseline-recheck": 20
+  },
+  "minimum_strict_recall": 1.0,
+  "minimum_tie_aware_recall": 1.0
+}

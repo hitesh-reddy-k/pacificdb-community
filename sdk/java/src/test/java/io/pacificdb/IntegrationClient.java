@@ -51,6 +51,50 @@ public final class IntegrationClient {
             for(Object item:(List<?>)state.get("expected")){Map<String,Object> row=map(item),actual=db.findOne("docs",Map.of("id",row.get("id")));for(String key:row.keySet())check(Objects.equals(row.get(key),actual.get(key)));}
             for(int i=0;i<32;i++)check(db.findOne("docs",Map.of("id","concurrent-"+i)).get("value").equals(i));
             Path target=root.resolve("java-"+phase+"-download.bin");db.media().downloadFile((String)state.get("media_id"),target,"assets");check(Arrays.equals(source,Files.readAllBytes(target)));check(Arrays.equals(new byte[]{0,(byte)255},(byte[])db.media().get("assets","tiny").get("data")));check(db.backups().verify(Map.of("backup_id",state.get("backup_id")))!=null);
+            if("1".equals(System.getenv("PACIFICDB_TEST_TYPED_VECTORS"))){
+                Map<String,Object> terms=Map.of("format","sparse-v1","precision","float64",
+                    "dimensions",1000000,"indices",List.of(3,999999),"values",List.of(0.125,-2.0));
+                if(phase.equals("prepare"))db.vectors().insert(Map.of("collection","vectors","data",
+                    Map.of("id","named-typed","vectors",Map.of("dense",List.of(0.123456789012345,1.0),"terms",terms))));
+                List<?> hits=(List<?>)map(db.vectors().query(Map.of("collection","vectors","vector",terms,
+                    "vector_name","terms","metric","dot","k",10,"search_mode","exact"))).get("data");
+                check(hits.size()==1);Map<String,Object> hit=map(hits.get(0));check(hit.get("id").equals("named-typed"));
+                check(map(map(hit.get("vectors")).get("terms")).equals(terms));
+                check(Math.abs(((Number)hit.get("score")).doubleValue()-4.015625)<1e-12);
+            }
+            if("1".equals(System.getenv("PACIFICDB_TEST_NATIVE_VECTOR_PREVIEW"))){
+                if(phase.equals("prepare")){
+                    if("1".equals(System.getenv("PACIFICDB_TEST_VECTOR_SCHEMA")))
+                        db.createCollection("preview",Map.of("default",Map.of("dimensions",2,"metric","dot","required",true)));
+                    else db.createCollection("preview");
+                    db.vectors().insert(Map.of("collection","preview","data",Map.of("id","preview-one","vector",List.of(1,0),"title","rare ocean")));
+                    db.vectors().insert(Map.of("collection","preview","data",Map.of("id","preview-two","vector",List.of(0,1),"title","ocean")));
+                }
+                if("1".equals(System.getenv("PACIFICDB_TEST_VECTOR_SCHEMA")))
+                    refused(()->db.insert("preview",Map.of("id","bad-schema","vector",List.of(1))));
+                db.vectors().createIndex(Map.of("collection","preview","options",Map.of("name","flat","algorithm","flat",
+                    "dimensions",2,"metric","dot","text_field","title","max_elements",100,
+                    "max_source_bytes",1048576,"max_index_bytes",4194304,"max_lexical_bytes",1048576)));
+                long deadline=System.nanoTime()+30_000_000_000L;
+                while(true){
+                    Map<String,Object> indexState=map(map(db.vectors().indexStatus(Map.of("collection","preview","name","flat"))).get("index"));
+                    if(indexState.get("state").equals("READY"))break;
+                    check(!indexState.get("state").equals("FAILED")&&System.nanoTime()<deadline);Thread.sleep(10);
+                }
+                check(((List<?>)map(db.vectors().listIndexes(Map.of("collection","preview"))).get("indexes")).size()==1);
+                Map<String,Object> result=map(db.vectors().query(Map.of("collection","preview","vector",List.of(1,0),"metric","dot",
+                    "k",1,"index_name","flat","require_index",true,"search_mode","exact")));
+                check(map(((List<?>)result.get("data")).get(0)).get("id").equals("preview-one"));
+                check(map(result.get("search")).get("index_type").equals("flat"));
+                Map<String,Object> hybrid=map(db.vectors().queryHybrid(Map.of("collection","preview","index_name","flat",
+                    "vector",List.of(1,0),"text","rare","metric","dot","k",1,"candidates",2)));
+                check(map(((List<?>)hybrid.get("data")).get(0)).get("id").equals("preview-one"));
+                db.vectors().rebuildIndex(Map.of("collection","preview","name","flat"));
+                if(phase.equals("tls")){
+                    db.vectors().dropIndex(Map.of("collection","preview","name","flat"));
+                    check(((Number)map(db.count("preview")).get("count")).intValue()==2);
+                }
+            }
         }
         System.out.println("{\"status\":\"PASS\",\"language\":\"java\",\"phase\":\""+phase+"\",\"exact_documents\":160,\"media_bytes\":700000}");
     }

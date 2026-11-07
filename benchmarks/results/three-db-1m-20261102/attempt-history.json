@@ -1,0 +1,114 @@
+{
+  "scope": "All smoke/controller attempts retained; manual interventions in paused-optimizer diagnosis were not final qualification",
+  "attempts": [
+    {
+      "attempt": "three-db-smoke-10k",
+      "status": "FAIL",
+      "systems": {
+        "qdrant": {
+          "status": "FAIL",
+          "error": "Traceback (most recent call last):\n  File \"$REPOSITORY/scripts/benchmark-three-vector-databases.py\", line 275, in run_system\n    server.start();record['startup_seconds']=server.start_seconds;server.setup();checkpoint('ingestion')\n    ~~~~~~~~~~~~^^\n  File \"$REPOSITORY/scripts/benchmark-three-vector-databases.py\", line 106, in start\n    if self.proc.poll() is not None:raise RuntimeError(f'Qdrant startup exited {self.proc.returncode}')\n                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nRuntimeError: Qdrant startup exited 0\n"
+        },
+        "postgres": {
+          "status": "PASS",
+          "error": null
+        },
+        "pacific": {
+          "status": "PASS",
+          "error": null
+        }
+      },
+      "raw_sha256": "aaa2a35221c0a5f7d1df10f1844b0173cb0726744ba9c12c904b50a91a154052"
+    },
+    {
+      "attempt": "three-db-smoke-qdrant-attempt2",
+      "status": "FAIL",
+      "systems": {
+        "qdrant": {
+          "status": "FAIL",
+          "error": "Traceback (most recent call last):\n  File \"$REPOSITORY/scripts/benchmark-three-vector-databases.py\", line 281, in run_system\n    server.start();record['startup_seconds']=server.start_seconds;server.setup();checkpoint('ingestion')\n                                                                  ~~~~~~~~~~~~^^\n  File \"$REPOSITORY/scripts/benchmark-three-vector-databases.py\", line 121, in setup\n    self.connection.call('PUT','/collections/vectors',{\n    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n      'vectors':{'size':self.dimensions,'distance':'Cosine','on_disk':False},\n      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n      'shard_number':1,'replication_factor':1,'write_consistency_factor':1,'on_disk_payload':False,\n      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n      'hnsw_config':{'m':16,'ef_construct':200,'max_indexing_threads':4,'full_scan_threshold':0},\n      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n      'optimizers_config':{'indexing_threshold':0,'default_segment_number':1,'max_optimization_threads':1}})\n      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"$REPOSITORY/scripts/benchmark-three-vector-databases.py\", line 80, in call\n    if r.status>=400:raise RuntimeError(f'Qdrant HTTP {r.status}: {str(value)[:1000]}')\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nRuntimeError: Qdrant HTTP 422: {'status': {'error': 'Validation error in JSON body: [hnsw_config.full_scan_threshold: value 0 invalid, must be 10 or larger]'}, 'time': 0.0}\n"
+        }
+      },
+      "raw_sha256": "a049be7f356a3ec4aa785d2bb78f95e026e1dfa4c92db0457e40ef4f777d90e3"
+    },
+    {
+      "attempt": "three-db-smoke-qdrant-attempt3",
+      "status": "PASS",
+      "systems": {
+        "qdrant": {
+          "status": "PASS",
+          "error": null
+        }
+      },
+      "raw_sha256": "9b0bbc0772643328dcfca243f532b1a6a42932aacc6185a16eac1e3ff6e2fcd2"
+    },
+    {
+      "attempt": "three-db-smoke-final-10k",
+      "status": "PASS",
+      "systems": {
+        "postgres": {
+          "status": "PASS",
+          "error": null
+        },
+        "qdrant": {
+          "status": "PASS",
+          "error": null
+        },
+        "pacific": {
+          "status": "PASS",
+          "error": null
+        }
+      },
+      "raw_sha256": "8ddd99b81a3f9fc9dfa013ccd785e3d63151df1a16f3175d0e96f493f04ee5ad"
+    },
+    {
+      "attempt": "three-db-smoke-reviewed-10k",
+      "status": "FAIL",
+      "systems": {
+        "qdrant": {
+          "status": "FAIL",
+          "error": "Traceback (most recent call last):\n  File \"$REPOSITORY/scripts/benchmark-three-vector-databases.py\", line 395, in run_system\n    elapsed=time.perf_counter()-begin\n    \n  File \"$REPOSITORY/scripts/benchmark-three-vector-databases.py\", line 308, in lifecycle\n    state=server.connection.request({'action':'vectorIndexStatus','collection':'vectors','name':'ann'})['index'];assert state['state']=='ABSENT',state\n                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"$REPOSITORY/scripts/benchmark-three-vector-databases.py\", line 205, in wait_graph\n    info=self.connection.call('GET','/collections/vectors')['result']\n         ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"$REPOSITORY/scripts/benchmark-three-vector-databases.py\", line 137, in call\n    r=self.c.getresponse();data=r.read();value=json.loads(data)\n  File \"/usr/lib/python3.13/http/client.py\", line 1459, in getresponse\n    response.begin()\n    ~~~~~~~~~~~~~~^^\n  File \"/usr/lib/python3.13/http/client.py\", line 336, in begin\n    version, status, reason = self._read_status()\n                              ~~~~~~~~~~~~~~~~~^^\n  File \"/usr/lib/python3.13/http/client.py\", line 305, in _read_status\n    raise RemoteDisconnected(\"Remote end closed connection without\"\n                             \" response\")\nhttp.client.RemoteDisconnected: Remote end closed connection without response\n"
+        },
+        "postgres": {
+          "status": "PASS",
+          "error": null
+        },
+        "pacific": {
+          "status": "PASS",
+          "error": null
+        }
+      },
+      "raw_sha256": "5f8165ed0f2961e6b45da2150f4989a0f3d1984de303e74efb9244f590088868"
+    },
+    {
+      "attempt": "three-db-smoke-qdrant-reviewed-final",
+      "status": "PASS",
+      "systems": {
+        "qdrant": {
+          "status": "PASS",
+          "error": null
+        }
+      },
+      "raw_sha256": "4cd7ec442fb2ed71af2652504963c842c18404856dcb7e047751f8a3e3edeb59"
+    },
+    {
+      "attempt": "three-db-final-smoke-10k",
+      "status": "PASS",
+      "systems": {
+        "qdrant": {
+          "status": "PASS",
+          "error": null
+        },
+        "postgres": {
+          "status": "PASS",
+          "error": null
+        },
+        "pacific": {
+          "status": "PASS",
+          "error": null
+        }
+      },
+      "raw_sha256": "816d7168c210f77d329aef863417f13a4e53228323117ee8a5e9e3a20409cb3f"
+    }
+  ]
+}

@@ -9,14 +9,19 @@ on:
       - 'sdk/node/**'
       - 'engine/**'
       - 'scripts/test-workbench-*.mjs'
+      - 'scripts/test-workbench-linux-icons.py'
       - 'scripts/test-desktop-engine.mjs'
       - 'scripts/test-index-low-cardinality.mjs'
+      - 'scripts/test-vector-incremental.mjs'
       - 'scripts/prepare-workbench-desktop.mjs'
+      - 'release.json'
+      - 'scripts/release_identity.py'
+      - 'scripts/workbench-preview-evidence.mjs'
       - 'package.json'
       - 'package-lock.json'
   push:
-    branches: [main]
-    tags: ['workbench-v*']
+    branches: [main, v1.2]
+    tags: ['workbench-v*', 'v*-rc.*']
     paths:
       - '.github/workflows/workbench-desktop.yml'
       - 'desktop/**'
@@ -24,13 +29,78 @@ on:
       - 'sdk/node/**'
       - 'engine/**'
       - 'scripts/test-workbench-*.mjs'
+      - 'scripts/test-workbench-linux-icons.py'
       - 'scripts/test-desktop-engine.mjs'
       - 'scripts/test-index-low-cardinality.mjs'
+      - 'scripts/test-vector-incremental.mjs'
       - 'scripts/prepare-workbench-desktop.mjs'
+      - 'release.json'
+      - 'scripts/release_identity.py'
+      - 'scripts/workbench-preview-evidence.mjs'
       - 'package.json'
       - 'package-lock.json'
   workflow_dispatch:
     inputs:
+      verify_publication:
+        description: Download and install-test the public RC packages on all desktop platforms
+        type: boolean
+        default: false
+      publish_desktop:
+        description: Build Linux RC and publish tested desktop installers
+        type: boolean
+        default: false
+      desktop_source_run:
+        description: Exact successful source-build run containing Windows and macOS installers
+        required: false
+        type: string
+      source_ref:
+        description: Existing source commit to qualify without changing its identity
+        required: false
+        type: string
+      native_diagnostics:
+        description: Repeat standalone strict ANN concurrency on macOS ARM64; no publication or installer qualification
+        type: boolean
+        default: false
+      qualify_candidate:
+        description: Run complete Community regressions and real ENOSPC on the frozen source
+        type: boolean
+        default: false
+      assemble_candidate:
+        description: Qualify and publish the existing RC tag from successful frozen-source CI artifacts
+        type: boolean
+        default: false
+      attach_company_guide:
+        description: Attach current company guidance without replacing released program bytes
+        type: boolean
+        default: false
+      prepare_benchmark_inputs:
+        description: Independently reproduce and attach the checksum-frozen public 1M workload
+        type: boolean
+        default: false
+      verify_assets:
+        description: Independently download and hash-check all public prerelease assets
+        type: boolean
+        default: false
+      verify_sanitizers:
+        description: Run targeted durability and vector concurrency sanitizer tests on frozen source
+        type: boolean
+        default: false
+      native_source_run:
+        description: Successful native and SDK prerelease qualification run
+        required: false
+        type: string
+      linux_source_run:
+        description: Exact-source successful Linux installer job when rerun separately
+        required: false
+        type: string
+      qualification_run:
+        description: Successful complete frozen Community regression run
+        required: false
+        type: string
+      publish_container:
+        description: Publish only the qualified public RC container
+        type: boolean
+        default: false
       release_tag:
         description: Exact existing workbench-vMAJOR.MINOR.PATCH tag to retry
         required: false
@@ -42,17 +112,86 @@ permissions:
   contents: read
 
 concurrency:
-  group: workbench-${{ github.ref }}
-  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+  group: workbench-${{ github.ref }}-${{ inputs.verify_sanitizers && 'candidate-sanitizers' || inputs.verify_assets && 'public-asset-integrity' || inputs.prepare_benchmark_inputs && 'benchmark-inputs' || inputs.attach_company_guide && 'company-guide' || inputs.assemble_candidate && 'assembly' || inputs.qualify_candidate && 'qualification' || inputs.publish_desktop && 'desktop-publication' || inputs.verify_publication && 'public-consumer' || (inputs.native_diagnostics && format('native-diagnostics-{0}', inputs.source_ref)) || (inputs.source_ref && format('native-platform-{0}', inputs.source_ref)) || 'platform' }}
+  cancel-in-progress: false
 
 jobs:
+  native_vector_diagnostics:
+    if: github.event_name == 'workflow_dispatch' && inputs.native_diagnostics
+    uses: ./.github/workflows/vector-native-diagnostics.yml
+    permissions:
+      contents: read
+    with:
+      source_ref: ${{ inputs.source_ref }}
+  candidate_sanitizers:
+    if: github.event_name == 'workflow_dispatch' && inputs.verify_sanitizers
+    uses: ./.github/workflows/candidate-sanitizers.yml
+    permissions:
+      contents: read
+    with:
+      release_tag: ${{ inputs.release_tag }}
+  public_asset_integrity:
+    if: github.event_name == 'workflow_dispatch' && inputs.verify_assets
+    uses: ./.github/workflows/public-asset-integrity.yml
+    permissions:
+      contents: read
+    with:
+      release_tag: ${{ inputs.release_tag }}
+  benchmark_inputs:
+    if: github.event_name == 'workflow_dispatch' && inputs.prepare_benchmark_inputs
+    uses: ./.github/workflows/benchmark-inputs.yml
+    permissions:
+      contents: write
+    with:
+      release_tag: ${{ inputs.release_tag }}
+  company_guide:
+    if: github.event_name == 'workflow_dispatch' && inputs.attach_company_guide
+    uses: ./.github/workflows/company-guide.yml
+    permissions:
+      contents: write
+    with:
+      release_tag: ${{ inputs.release_tag }}
+  assemble_frozen_candidate:
+    if: github.event_name == 'workflow_dispatch' && inputs.assemble_candidate
+    uses: ./.github/workflows/assemble-prerelease.yml
+    permissions:
+      contents: write
+      actions: read
+    with:
+      release_tag: ${{ inputs.release_tag }}
+      native_run: ${{ inputs.native_source_run }}
+      platform_run: ${{ inputs.desktop_source_run }}
+      linux_run: ${{ inputs.linux_source_run || inputs.desktop_source_run }}
+      qualification_run: ${{ inputs.qualification_run }}
+  qualify_frozen_candidate:
+    if: github.event_name == 'workflow_dispatch' && inputs.qualify_candidate
+    uses: ./.github/workflows/qualify-candidate.yml
+    permissions:
+      contents: read
+    with:
+      source_ref: ${{ inputs.source_ref }}
+  verify_prerelease_publication:
+    if: github.event_name == 'workflow_dispatch' && inputs.verify_publication
+    uses: ./.github/workflows/verify-prerelease.yml
+    permissions:
+      contents: read
+    with:
+      release_tag: ${{ inputs.release_tag }}
+  prerelease_container:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_container
+    uses: ./.github/workflows/container-prerelease.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      release_tag: ${{ inputs.release_tag }}
   linux:
-    if: inputs.release_tag == ''
+    if: inputs.release_tag == '' && !inputs.qualify_candidate && !inputs.native_diagnostics
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ env.WORKBENCH_RELEASE_TAG || github.ref }}
+          ref: ${{ env.WORKBENCH_RELEASE_TAG || inputs.source_ref || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -60,33 +199,53 @@ jobs:
       - name: Resolve Workbench and component versions
         run: |
           echo "WORKBENCH_VERSION=$(node -p 'require("./package.json").version')" >> "$GITHUB_ENV"
-          echo "PACIFICDB_COMPONENT_VERSION=$(node -p 'require("./cli/package.json").version')" >> "$GITHUB_ENV"
+          echo "PACIFICDB_COMPONENT_VERSION=$(python3 scripts/release_identity.py --field version)" >> "$GITHUB_ENV"
+      - name: Validate candidate tag identity
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: test "$GITHUB_REF_NAME" = "$(node -p 'require("./release.json").tag')"
       - name: Install native and GUI dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake g++ liblz4-dev libre2-dev libssl-dev xvfb \
-            xauth libgtk-3-0t64 libnss3 libasound2t64 libgbm1 libxss1
+            xauth libgtk-3-0t64 libnss3 libasound2t64 libgbm1 libxss1 python3-gi gir1.2-gtk-3.0
       - run: npm ci --no-audit --no-fund
       - run: npm run test:npm
       - run: npm run test:build-tools
+      - run: node --test scripts/test-workbench-preview-evidence.mjs
       - name: Build native engine and CLI
         run: |
           cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release \
             -DPACIFICDB_ENGINE_VERSION="$PACIFICDB_COMPONENT_VERSION"
-          cmake --build build --target db_engine pacificdb -j2
+          cmake --build build --target db_engine pacificdb db_engine_durable_file_ops_test db_engine_secondary_index_build_test db_engine_index_visibility_recovery_test db_engine_sst_version_resolution_test db_engine_vector_incremental_generation_test db_engine_vector_freshness_test -j2
+          ctest --test-dir build --output-on-failure -R 'db_engine_(durable_file_ops|secondary_index_build|index_visibility_recovery|sst_version_resolution|vector_incremental_generation|vector_freshness)_test'
+          cmake --build build --target db_engine_private_credentials_test -j2
+          ctest --test-dir build --output-on-failure -R '^db_engine_private_credentials_test$'
+          node scripts/test-vector-incremental.mjs build
       - run: node scripts/test-workbench-e2e.mjs build
       - run: node scripts/test-desktop-engine.mjs build
+      - run: node scripts/test-workbench-desktop-vector-preview.mjs build
       - run: node scripts/test-index-low-cardinality.mjs build
       - name: Browser workflow
         run: |
           npx playwright install --with-deps chromium
-          npm run test:workbench:browser -- build
+          # The runner no longer consistently installs Google Chrome's helper.
+          # Install the helper from the pinned Playwright Chrome download into a
+          # root-owned directory, preserving the normal Chromium OS sandbox.
+          bundled_helper=$(node --input-type=module -e 'import {chromium} from "playwright";import path from "node:path";process.stdout.write(path.join(path.dirname(chromium.executablePath()),"chrome_sandbox"))')
+          test -f "$bundled_helper"
+          sudo install -d -m 0755 /usr/local/libexec/pacificdb-ci
+          helper=/usr/local/libexec/pacificdb-ci/chrome-sandbox
+          sudo install -o root -g root -m 4755 "$bundled_helper" "$helper"
+          test "$(stat -c '%u:%a' "$helper")" = 0:4755
+          CHROME_DEVEL_SANDBOX="$helper" npm run test:workbench:browser -- build
+          CHROME_DEVEL_SANDBOX="$helper" node scripts/test-workbench-short-window.mjs
       - name: Package Workbench for Ubuntu 24.04
         env:
           PACIFICDB_DESKTOP_UBUNTU_24: '1'
           PACIFICDB_DESKTOP_RELEASE: '1'
           ELECTRON_BUILDER_COMPRESSION_LEVEL: '1'
-        run: npm run desktop:build -- --linux deb tar.gz --x64
+        run: npm run desktop:build -- --linux deb tar.gz --x64 --publish never
       - name: Download and install previous Workbench Debian
         shell: bash
         run: |
@@ -106,10 +265,13 @@ jobs:
           candidate="$PWD/dist/desktop/PacificDB-Workbench-${WORKBENCH_VERSION}-linux-amd64.deb"
           test -f "$candidate"
           sudo apt-get install -y "$candidate"
+          /usr/bin/python3 scripts/test-workbench-linux-icons.py
           mkdir -p "$RUNNER_TEMP/workbench-data-linux"
           PACIFICDB_TEST_DESKTOP_PREVIOUS="$RUNNER_TEMP/workbench-previous-linux/pacificdb-workbench" \
             PACIFICDB_TEST_DESKTOP="/opt/PacificDB Workbench/pacificdb-workbench" \
             PACIFICDB_TEST_DESKTOP_DATA="$RUNNER_TEMP/workbench-data-linux" \
+            xvfb-run -a npm run test:workbench:desktop
+          PACIFICDB_TEST_DESKTOP="/opt/PacificDB Workbench/pacificdb-workbench" \
             xvfb-run -a npm run test:workbench:desktop
       - name: Remove candidate Workbench Debian and verify data preservation
         shell: bash
@@ -118,6 +280,7 @@ jobs:
           sudo apt-get remove -y pacificdb-workbench
           test -d "$RUNNER_TEMP/workbench-data-linux/database"
       - name: Record Linux platform evidence
+        if: ${{ !contains(env.WORKBENCH_VERSION, '-') }}
         run: |
           python3 scripts/workbench_release_qualification.py platform \
             --name linux-x64 --version "$WORKBENCH_VERSION" \
@@ -126,6 +289,12 @@ jobs:
           mkdir -p build/workbench-upload
           cp "dist/desktop/PacificDB-Workbench-${WORKBENCH_VERSION}-linux-amd64.deb" \
             build/workbench-linux-x64.json build/workbench-upload/
+      - name: Record Linux preview staging evidence
+        if: contains(env.WORKBENCH_VERSION, '-')
+        run: |
+          node scripts/workbench-preview-evidence.mjs linux-x64 "dist/desktop/PacificDB-Workbench-${WORKBENCH_VERSION}-linux-amd64.deb" build/workbench-linux-x64-preview.json
+          mkdir -p build/workbench-upload
+          cp "dist/desktop/PacificDB-Workbench-${WORKBENCH_VERSION}-linux-amd64.deb" build/workbench-linux-x64-preview.json build/workbench-upload/
       - uses: actions/upload-artifact@v6
         with:
           name: workbench-linux-x64
@@ -133,7 +302,7 @@ jobs:
           path: build/workbench-upload/*
 
   windows:
-    if: inputs.release_tag == ''
+    if: inputs.release_tag == '' && !inputs.qualify_candidate && !inputs.native_diagnostics
     runs-on: windows-2025
     env:
       CSC_LINK: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
@@ -142,7 +311,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ env.WORKBENCH_RELEASE_TAG || github.ref }}
+          ref: ${{ env.WORKBENCH_RELEASE_TAG || inputs.source_ref || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -151,10 +320,15 @@ jobs:
         shell: pwsh
         run: |
           "WORKBENCH_VERSION=$(node -p 'require("./package.json").version')" >> $env:GITHUB_ENV
-          "PACIFICDB_COMPONENT_VERSION=$(node -p 'require("./cli/package.json").version')" >> $env:GITHUB_ENV
+          "PACIFICDB_COMPONENT_VERSION=$(python scripts/release_identity.py --field version)" >> $env:GITHUB_ENV
+      - name: Validate candidate tag identity
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: test "$GITHUB_REF_NAME" = "$(node -p 'require("./release.json").tag')"
       - run: npm ci --no-audit --no-fund
       - run: npm run test:npm
       - run: npm run test:build-tools
+      - run: node --test scripts/test-workbench-preview-evidence.mjs
       - name: Build static native binaries
         shell: pwsh
         run: |
@@ -168,7 +342,15 @@ jobs:
             -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded `
             -DPACIFICDB_ENGINE_VERSION="$env:PACIFICDB_COMPONENT_VERSION"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cmake --build build --config Release --target db_engine pacificdb
+          cmake --build build --config Release --target db_engine pacificdb db_engine_durable_file_ops_test db_engine_secondary_index_build_test db_engine_index_visibility_recovery_test db_engine_sst_version_resolution_test db_engine_vector_incremental_generation_test db_engine_vector_freshness_test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ctest --test-dir build -C Release --output-on-failure -R 'db_engine_(durable_file_ops|secondary_index_build|index_visibility_recovery|sst_version_resolution|vector_incremental_generation|vector_freshness)_test'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build build --config Release --target db_engine_private_credentials_test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ctest --test-dir build -C Release --output-on-failure -R '^db_engine_private_credentials_test$'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/test-vector-incremental.mjs build/Release
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require signing credentials for release tags
         if: env.WORKBENCH_RELEASE_TAG != '' && env.WORKBENCH_RELEASE_TAG != 'workbench-v1.1.1'
@@ -181,6 +363,8 @@ jobs:
         shell: pwsh
         run: |
           node scripts/test-desktop-engine.mjs build/Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/test-workbench-desktop-vector-preview.mjs build/Release
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Sign bundled native executables for release tags
         if: env.WORKBENCH_RELEASE_TAG != '' && env.WORKBENCH_RELEASE_TAG != 'workbench-v1.1.1'
@@ -256,6 +440,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           npm run test:workbench:desktop
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Remove-Item Env:PACIFICDB_TEST_DESKTOP_PREVIOUS,Env:PACIFICDB_TEST_DESKTOP_DATA -ErrorAction SilentlyContinue
+          npm run test:workbench:desktop
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Uninstall candidate Workbench NSIS and verify data preservation
         shell: pwsh
         run: |
@@ -267,6 +454,7 @@ jobs:
             throw 'Workbench data directory was removed by uninstall.'
           }
       - name: Record Windows platform evidence
+        if: ${{ !contains(env.WORKBENCH_VERSION, '-') }}
         shell: pwsh
         run: |
           git status --porcelain --untracked-files=all
@@ -278,6 +466,14 @@ jobs:
           New-Item -ItemType Directory -Force -Path build/workbench-upload | Out-Null
           Copy-Item "dist/desktop/PacificDB-Workbench-$env:WORKBENCH_VERSION-win-x64.exe", `
             build/workbench-windows-x64.json -Destination build/workbench-upload
+      - name: Record Windows preview staging evidence
+        if: contains(env.WORKBENCH_VERSION, '-')
+        shell: pwsh
+        run: |
+          node scripts/workbench-preview-evidence.mjs windows-x64 "dist/desktop/PacificDB-Workbench-$env:WORKBENCH_VERSION-win-x64.exe" build/workbench-windows-x64-preview.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Force -Path build/workbench-upload | Out-Null
+          Copy-Item "dist/desktop/PacificDB-Workbench-$env:WORKBENCH_VERSION-win-x64.exe", build/workbench-windows-x64-preview.json -Destination build/workbench-upload
       - uses: actions/upload-artifact@v6
         with:
           name: workbench-windows-x64
@@ -285,7 +481,7 @@ jobs:
           path: build/workbench-upload/*
 
   macos:
-    if: inputs.release_tag == ''
+    if: inputs.release_tag == '' && !inputs.qualify_candidate && !inputs.native_diagnostics
     strategy:
       fail-fast: false
       matrix:
@@ -305,7 +501,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ env.WORKBENCH_RELEASE_TAG || github.ref }}
+          ref: ${{ env.WORKBENCH_RELEASE_TAG || inputs.source_ref || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -313,10 +509,15 @@ jobs:
       - name: Resolve Workbench and component versions
         run: |
           echo "WORKBENCH_VERSION=$(node -p 'require("./package.json").version')" >> "$GITHUB_ENV"
-          echo "PACIFICDB_COMPONENT_VERSION=$(node -p 'require("./cli/package.json").version')" >> "$GITHUB_ENV"
+          echo "PACIFICDB_COMPONENT_VERSION=$(python3 scripts/release_identity.py --field version)" >> "$GITHUB_ENV"
+      - name: Validate candidate tag identity
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: test "$GITHUB_REF_NAME" = "$(node -p 'require("./release.json").tag')"
       - run: npm ci --no-audit --no-fund
       - run: npm run test:npm
       - run: npm run test:build-tools
+      - run: node --test scripts/test-workbench-preview-evidence.mjs
       - name: Build native engine and CLI
         shell: bash
         run: |
@@ -329,7 +530,11 @@ jobs:
             -DVCPKG_TARGET_TRIPLET="$triplet" \
             -DVCPKG_INSTALLED_DIR="$PWD/build/vcpkg_installed" \
             -DPACIFICDB_ENGINE_VERSION="$PACIFICDB_COMPONENT_VERSION"
-          cmake --build build --target db_engine pacificdb -j2
+          cmake --build build --target db_engine pacificdb db_engine_durable_file_ops_test db_engine_secondary_index_build_test db_engine_index_visibility_recovery_test db_engine_sst_version_resolution_test db_engine_vector_incremental_generation_test db_engine_vector_freshness_test -j2
+          ctest --test-dir build --output-on-failure -R 'db_engine_(durable_file_ops|secondary_index_build|index_visibility_recovery|sst_version_resolution|vector_incremental_generation|vector_freshness)_test'
+          cmake --build build --target db_engine_private_credentials_test -j2
+          ctest --test-dir build --output-on-failure -R '^db_engine_private_credentials_test$'
+          node scripts/test-vector-incremental.mjs build
           if otool -L build/db_engine build/pacificdb | grep -E '/(opt/homebrew|usr/local)/(opt|Cellar)/'; then
             echo 'Native binaries must not depend on Homebrew libraries at runtime.' >&2
             exit 1
@@ -341,6 +546,7 @@ jobs:
             if [[ -z "${!name}" ]]; then echo "Missing $name" >&2; exit 1; fi
           done
       - run: node scripts/test-desktop-engine.mjs build
+      - run: node scripts/test-workbench-desktop-vector-preview.mjs build
       - name: Package Workbench for macOS
         env:
           ELECTRON_BUILDER_COMPRESSION_LEVEL: '1'
@@ -388,6 +594,7 @@ jobs:
             PACIFICDB_TEST_DESKTOP="$executable" \
             PACIFICDB_TEST_DESKTOP_DATA="$RUNNER_TEMP/workbench-data-macos" \
             npm run test:workbench:desktop
+          PACIFICDB_TEST_DESKTOP="$executable" npm run test:workbench:desktop
           if [[ "$PACIFICDB_DESKTOP_RELEASE" == 1 && "$WORKBENCH_RELEASE_TAG" != workbench-v1.1.1 ]]; then
             contents="$installed/Contents"
             codesign --verify --deep --strict --verbose=2 "$installed"
@@ -401,6 +608,7 @@ jobs:
           rm -rf "$RUNNER_TEMP/workbench-candidate"
           test -d "$RUNNER_TEMP/workbench-data-macos/database"
       - name: Record macOS platform evidence
+        if: ${{ !contains(env.WORKBENCH_VERSION, '-') }}
         run: |
           python3 scripts/workbench_release_qualification.py platform \
             --name macos-${{ matrix.arch }} --version "$WORKBENCH_VERSION" \
@@ -409,6 +617,12 @@ jobs:
           mkdir -p build/workbench-upload
           cp "dist/desktop/PacificDB-Workbench-${WORKBENCH_VERSION}-mac-${{ matrix.arch }}.dmg" \
             "build/workbench-macos-${{ matrix.arch }}.json" build/workbench-upload/
+      - name: Record macOS preview staging evidence
+        if: contains(env.WORKBENCH_VERSION, '-')
+        run: |
+          node scripts/workbench-preview-evidence.mjs macos-${{ matrix.arch }} "dist/desktop/PacificDB-Workbench-${WORKBENCH_VERSION}-mac-${{ matrix.arch }}.dmg" build/workbench-macos-${{ matrix.arch }}-preview.json
+          mkdir -p build/workbench-upload
+          cp "dist/desktop/PacificDB-Workbench-${WORKBENCH_VERSION}-mac-${{ matrix.arch }}.dmg" build/workbench-macos-${{ matrix.arch }}-preview.json build/workbench-upload/
       - uses: actions/upload-artifact@v6
         with:
           name: workbench-macos-${{ matrix.arch }}
@@ -436,7 +650,7 @@ jobs:
       - name: Resolve Workbench and component versions
         run: |
           echo "WORKBENCH_VERSION=$(node -p 'require("./package.json").version')" >> "$GITHUB_ENV"
-          echo "PACIFICDB_COMPONENT_VERSION=$(node -p 'require("./cli/package.json").version')" >> "$GITHUB_ENV"
+          echo "PACIFICDB_COMPONENT_VERSION=$(python3 scripts/release_identity.py --field version)" >> "$GITHUB_ENV"
       - name: Check release version
         shell: bash
         run: |
@@ -444,6 +658,7 @@ jobs:
           version="${WORKBENCH_RELEASE_TAG#workbench-v}"
           test "$WORKBENCH_RELEASE_TAG" = "workbench-v$version"
           test "$version" = "$WORKBENCH_VERSION"
+          test "$(python3 scripts/release_identity.py --field channel)" = stable
       - name: Download installers from tag build
         if: inputs.release_tag == ''
         uses: actions/download-artifact@v4
@@ -549,5 +764,121 @@ jobs:
           gh release create "$WORKBENCH_RELEASE_TAG" dist/desktop/PacificDB-Workbench-*.deb \
             dist/desktop/PacificDB-Workbench-*.exe \
             dist/desktop/PacificDB-Workbench-*.dmg dist/desktop/SHA256SUMS \
-            --title "PacificDB Workbench ${WORKBENCH_RELEASE_TAG#workbench-v}" \
+            --latest=false --title "PacificDB Workbench ${WORKBENCH_RELEASE_TAG#workbench-v}" \
             --notes "Desktop Workbench with bundled engine and CLI for Linux, Windows, and macOS."
+
+  prerelease_desktop_packages:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_desktop
+    runs-on: ubuntu-24.04
+    environment: prerelease-publish
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+      PLATFORM_RUN_ID: ${{ inputs.desktop_source_run || '41302007858' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release_tag }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Verify public RC and build prerequisites
+        run: |
+          set -euo pipefail
+          python3 scripts/check-sdk-release-tag.py "$RELEASE_TAG" --require-tag
+          test "$(gh release view "$RELEASE_TAG" --json isPrerelease --jq .isPrerelease)" = true
+          test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = false
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ liblz4-dev libre2-dev libssl-dev xvfb xauth libgtk-3-0t64 libnss3 libasound2t64 libgbm1 libxss1
+          npm ci --no-audit --no-fund
+          npm run test:build-tools
+      - name: Build exact RC engine and Debian Workbench
+        env:
+          PACIFICDB_DESKTOP_UBUNTU_24: '1'
+          PACIFICDB_DESKTOP_RELEASE: '1'
+          ELECTRON_BUILDER_COMPRESSION_LEVEL: '1'
+        run: |
+          set -euo pipefail
+          cmake -S engine -B build -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.2.0
+          cmake --build build --target db_engine pacificdb -j2
+          # Restore upstream's application-scoped AppArmor setup on Ubuntu24.
+          # The RC's custom postinst omitted it, making Chromium's SUID fallback
+          # fail on the space in /opt/PacificDB Workbench. Keep the OS sandbox.
+          npm run desktop:build -- --linux deb tar.gz --x64 --publish never \
+            --config.deb.afterInstall="$PWD/node_modules/app-builder-lib/templates/linux/after-install.tpl"
+      - name: Install candidate and test its GUI with normal sandbox
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y ./dist/desktop/PacificDB-Workbench-1.2.0-rc.2-linux-amd64.deb
+          stat -c '%U:%G %a %n' '/opt/PacificDB Workbench/chrome-sandbox'
+          DEBUG=pw:browser PACIFICDB_TEST_DESKTOP='/opt/PacificDB Workbench/pacificdb-workbench' xvfb-run -a npm run test:workbench:desktop
+          mkdir -p build/release-platforms
+          cp dist/desktop/PacificDB-Workbench-1.2.0-rc.2-linux-amd64.deb build/release-platforms/
+          node scripts/workbench-preview-evidence.mjs linux-x64 build/release-platforms/PacificDB-Workbench-1.2.0-rc.2-linux-amd64.deb build/release-platforms/workbench-linux-x64-preview.json
+          python3 - <<'PYCODE'
+          import json,hashlib,os
+          from pathlib import Path
+          p=Path('build/release-platforms/workbench-linux-x64-preview.json');d=json.loads(p.read_text())
+          d['packagingOverride']={'afterInstall':'electron-builder upstream templates/linux/after-install.tpl',
+            'sha256':hashlib.sha256(Path('node_modules/app-builder-lib/templates/linux/after-install.tpl').read_bytes()).hexdigest(),
+            'workflowRevision':os.environ['GITHUB_SHA'],'reason':'restore app-scoped AppArmor userns setup; keep normal Chromium sandbox'}
+          p.write_text(json.dumps(d,indent=2)+'\n')
+          PYCODE
+      - name: Get Windows/macOS installers from successful exact-source jobs
+        run: |
+          set -euo pipefail
+          gh run view "$PLATFORM_RUN_ID" --json headSha,jobs > build/platform-run.json
+          python3 - <<'PYCODE'
+          import json,subprocess
+          d=json.load(open('build/platform-run.json'))
+          assert d['headSha']==subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
+          names={'windows','macos (macos-15, arm64)','macos (macos-15-intel, x64)'}
+          assert all(any(j['name']==n and j['conclusion']=='success' for j in d['jobs']) for n in names)
+          PYCODE
+          for platform in windows-x64 macos-x64 macos-arm64; do
+            gh run download "$PLATFORM_RUN_ID" --name "workbench-$platform" --dir "build/downloaded-$platform"
+            cp "build/downloaded-$platform/"* build/release-platforms/
+          done
+      - name: Bind tested packages to qualified release manifest
+        run: |
+          set -euo pipefail
+          mkdir -p build/release-staged
+          gh release download "$RELEASE_TAG" --dir build/release-staged
+          python3 scripts/verify-prerelease-staging.py --directory build/release-staged --revision "$(git rev-parse HEAD)" --require-qualified
+          python3 - <<'PYCODE'
+          import json,hashlib,shutil,subprocess
+          from pathlib import Path
+          from scripts.prerelease_qualification import assess
+          root=Path('build/release-staged');m=json.load(open(root/'RELEASE-MANIFEST.json'));revision=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
+          for p in Path('build/release-platforms').glob('*preview.json'):
+              receipt=json.load(open(p));assert receipt['revision']==revision and not receipt['sourceDirty']
+              artifact=Path('build/release-platforms')/Path(receipt['artifact']['path']).name
+              assert hashlib.sha256(artifact.read_bytes()).hexdigest()==receipt['artifact']['sha256']
+              for f,platform in [(artifact,receipt['platform']),(p,'portable-platform-receipt')]:
+                  assert not (root/f.name).exists();shutil.copy2(f,root/f.name);h=hashlib.sha256(f.read_bytes()).hexdigest()
+                  m['artifacts'].append({'filename':f.name,'sha256':h,'sizeBytes':f.stat().st_size})
+                  m['qualification']['artifacts'].append({'name':f.name,'sha256':h,'platform':platform,'tested':True})
+          m['desktopDistribution']='Linux x64 Ubuntu24, Windows x64, macOS x64/arm64 installers attached; tested by exact-source CI jobs, prerelease signing limitations apply'
+          m['pendingDistributionArtifacts']=['portable Linux archive and offline container archive; GHCR available']
+          assert assess(m['qualification'])['decision']=='PREVIEW_QUALIFIED'
+          (root/'RELEASE-MANIFEST.json').write_text(json.dumps(m,indent=2)+'\n')
+          sums={a['filename']:a['sha256'] for a in m['artifacts']};sums['RELEASE-MANIFEST.json']=hashlib.sha256((root/'RELEASE-MANIFEST.json').read_bytes()).hexdigest()
+          (root/'SHA256SUMS').write_text(''.join(h+'  '+n+'\n' for n,h in sorted(sums.items())))
+          PYCODE
+          python3 scripts/verify-prerelease-staging.py --directory build/release-staged --revision "$(git rev-parse HEAD)" --require-qualified
+          gh release upload "$RELEASE_TAG" build/release-platforms/*
+          gh release upload "$RELEASE_TAG" build/release-staged/RELEASE-MANIFEST.json build/release-staged/SHA256SUMS --clobber
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: desktop-publication-receipts
+          path: |
+            build/platform-run.json
+            build/release-platforms/*preview.json
+            build/release-staged/RELEASE-MANIFEST.json
+            build/release-staged/SHA256SUMS

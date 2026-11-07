@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1.7
 FROM debian:bookworm-slim@sha256:99c0b25c46d0214d5a2091092e7908907dcaecd6a962cde0ac700acee222b6f3 AS builder
 
-ARG PACIFICDB_ENGINE_VERSION=dev
+ARG PACIFICDB_ENGINE_VERSION=1.2.0
+ARG PACIFICDB_RELEASE_VERSION=1.2.0-rc.2
 ARG PACIFICDB_GIT_COMMIT=unknown
 ARG PACIFICDB_BUILD_TIMESTAMP=unknown
 ARG PACIFICDB_SOURCE_URL=https://github.com/hitesh-reddy-k/pacificdb-community
@@ -12,6 +13,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 COPY LICENSE ./LICENSE
+COPY release.json ./release.json
 COPY engine/ ./engine/
 RUN cmake -S engine -B /build \
       -DCMAKE_BUILD_TYPE=Release \
@@ -28,12 +30,13 @@ RUN cmake -S engine -B /build \
 
 FROM debian:bookworm-slim@sha256:99c0b25c46d0214d5a2091092e7908907dcaecd6a962cde0ac700acee222b6f3 AS runtime
 
-ARG PACIFICDB_ENGINE_VERSION=dev
+ARG PACIFICDB_ENGINE_VERSION=1.2.0
+ARG PACIFICDB_RELEASE_VERSION=1.2.0-rc.2
 ARG PACIFICDB_GIT_COMMIT=unknown
 ARG PACIFICDB_BUILD_TIMESTAMP=unknown
 ARG PACIFICDB_SOURCE_URL=https://github.com/hitesh-reddy-k/pacificdb-community
 LABEL org.opencontainers.image.title="PacificDB Engine" \
-      org.opencontainers.image.version="${PACIFICDB_ENGINE_VERSION}" \
+      org.opencontainers.image.version="${PACIFICDB_RELEASE_VERSION}" \
       org.opencontainers.image.revision="${PACIFICDB_GIT_COMMIT}" \
       org.opencontainers.image.created="${PACIFICDB_BUILD_TIMESTAMP}" \
       org.opencontainers.image.source="${PACIFICDB_SOURCE_URL}" \
