@@ -75,11 +75,19 @@ Official references: [existing project publisher](https://docs.pypi.org/trusted-
 
 ## 2. Maven Central: verify namespace, signing and token
 
+Current-source Java builds use **`in.pacificdb:pacificdb-client`**, corresponding
+to the owner's `pacificdb.in` domain. Existing RC.2 GitHub assets/tag retain their
+original `io.pacificdb` metadata. Publish the new namespace only from a newly
+approved, consistently versioned tag; do not move or republish RC.2 to include
+these source changes. Java imports remain `io.pacificdb.*`.
+
 1. Sign in to [Central Publisher Portal](https://central.sonatype.com/).
-2. Check **Namespaces**. Your account must be authorized for **`io.pacificdb`**,
-   matching `io.pacificdb:pacificdb-client`. Complete Sonatype's ownership/DNS
-   verification if required. If you do not own that namespace, stop and report it;
-   do not rename the public coordinates or assume GitHub access grants ownership.
+2. Open **View Namespaces → Add Namespace**, enter **`in.pacificdb`**, and copy
+   the assigned verification key. In the DNS provider for **`pacificdb.in`**,
+   add an apex TXT record (usually host `@`) containing that exact key. Preserve
+   existing TXT records. Wait for it to resolve, then request verification and
+   confirm Central displays **Verified**. GitHub access alone does not grant
+   this namespace. `io.pacificdb` would require a separate `pacificdb.io` grant.
 3. Open [User Tokens](https://central.sonatype.com/usertoken), generate a Portal
    user token and retain its username/password privately. `CENTRAL_TOKEN` for the
    repository's API uploader is **Base64 of `tokenUsername:tokenPassword`**, not
@@ -141,13 +149,16 @@ Official references: [existing project publisher](https://docs.pypi.org/trusted-
    rmdir "$signing_dir"
    ```
 
-7. Once the validated tag exists, run Actions → **Validate tested Java SDK on Central**
-   with branch `v1.2` and release tag `v1.2.0-rc.2`:
+7. After the namespace changes are merged and a new qualified tag exists, run
+   Actions → **Validate tested Java SDK on Central** with that exact tag.
+   The example below is for `v1.2.0` **after** it has been created with matching
+   SDK versions; it is not a claim that this tag currently exists:
 
    ```sh
+   release_tag=v1.2.0
    gh workflow run java-publish.yml \
-     --repo hitesh-reddy-k/pacificdb-community --ref v1.2 \
-     -f release_tag=v1.2.0-rc.2
+     --repo hitesh-reddy-k/pacificdb-community --ref main \
+     -f release_tag="$release_tag"
    gh run list --repo hitesh-reddy-k/pacificdb-community \
      --workflow java-publish.yml --limit 3
    ```
@@ -159,9 +170,10 @@ Official references: [existing project publisher](https://docs.pypi.org/trusted-
 9. Verify public dependency resolution in a fresh Maven consumer/repository:
 
    ```sh
-   mvn -U -Dmaven.repo.local=/tmp/pacificdb-central-rc-consumer \
+   java_version="${release_tag#v}"
+   mvn -U -Dmaven.repo.local=/tmp/pacificdb-central-consumer \
      org.apache.maven.plugins:maven-dependency-plugin:3.8.1:get \
-     -Dartifact=io.pacificdb:pacificdb-client:1.2.0-rc.2
+     -Dartifact="in.pacificdb:pacificdb-client:$java_version"
    ```
 
    Then execute the Java example in SDK_GUIDE.md against the candidate engine.

@@ -75,6 +75,13 @@ requires namespace ownership, an owner token and GPG identity; its USER_MANAGED
 upload does not publish. Registry workflows are manual and protected by their
 configured environments. npm candidates publish only to `next`.
 
+Current-source Java builds use Maven group **`in.pacificdb`**, matching the
+`pacificdb.in` domain. For those locally staged artifacts, replace the dependency
+group above with `in.pacificdb`; retain the version from the accompanying POM.
+Published RC.2 downloads retain `io.pacificdb` and are unchanged. Java API imports
+remain `io.pacificdb.*`. New Central publication requires a new approved release
+tag and the [owner publishing setup](PUBLISHING_OWNER_GUIDE.md).
+
 ## Equivalent database and document operations
 
 Set `PACIFICDB_URL` to a protected credential-bearing URL such as

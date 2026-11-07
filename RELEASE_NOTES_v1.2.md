@@ -40,6 +40,8 @@ version before distribution as an updated release:
 - Cross-platform private credential-file validation and startup cleanup.
 - Standard-size Linux launcher icons and installer integration.
 - Lower storage-iterator overhead for visibility-correct vector scans.
+- Prepare Maven Central coordinates `in.pacificdb:pacificdb-client` for the
+  `pacificdb.in` domain; Java API packages and published RC.2 assets are retained.
 
 ## Installation and packages
 

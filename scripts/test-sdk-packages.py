@@ -65,6 +65,25 @@ class Artifacts(unittest.TestCase):
                 else:verify.python_sdist(path,'1.1.2')
 
 class JavaArtifacts(unittest.TestCase):
+    def test_java_coordinates_use_owned_pacificdb_in_namespace(self):
+        import xml.etree.ElementTree as ET
+        source=Path(__file__).resolve().parents[1]/'sdk/java/pom.xml'
+        ns={'m':'http://maven.apache.org/POM/4.0.0'}
+        with tempfile.TemporaryDirectory() as d:
+            file=Path(d)/'client.pom'
+            pom=ET.parse(source)
+            pom.getroot().find('m:groupId',ns).text='in.pacificdb'
+            pom.write(file)
+            verify.java_pom(file,'1.2.0-rc.2')
+            pom.getroot().find('m:groupId',ns).text='io.pacificdb'
+            pom.write(file)
+            with self.assertRaisesRegex(ValueError,'coordinates mismatch'):
+                verify.java_pom(file,'1.2.0-rc.2')
+
+    def test_central_repository_prefix_uses_maven_group_not_java_packages(self):
+        self.assertEqual(verify.java_repository_prefix('1.2.0-rc.2'),
+                         'in/pacificdb/pacificdb-client/1.2.0-rc.2/')
+
     def test_central_upgrade_keeps_publication_guards_strict(self):
         import xml.etree.ElementTree as ET
         root=Path(__file__).resolve().parents[1]
@@ -127,7 +146,7 @@ class ExactBytes(unittest.TestCase):
                         archive.writestr('io/pacificdb/'+cls+extension,data)
             with zipfile.ZipFile(root/'central-publishing/bundle.zip','w') as archive:
                 for suffix in ['.pom','.jar','-sources.jar','-javadoc.jar']:
-                    name='io/pacificdb/pacificdb-client/'+version+'/'+base+suffix
+                    name='in/pacificdb/pacificdb-client/'+version+'/'+base+suffix
                     data=(root/(base+suffix)).read_bytes() if suffix!='.pom' else b'tampered dependency metadata'
                     archive.writestr(name,data);archive.writestr(name+'.asc',b'BEGIN PGP SIGNATURE')
                     for algorithm in ['md5','sha1','sha256','sha512']:

@@ -68,12 +68,17 @@ def python_sdist(path,version):
     return inventory(path,names)
 
 JAVA_CLASSES=('PacificDB','PacificDBClient','ConnectionOptions','Operations','PacificDBException','MediaUploadException','ReleaseInfo')
+JAVA_GROUP_ID='in.pacificdb'
+JAVA_ARTIFACT_ID='pacificdb-client'
+
+def java_repository_prefix(version):
+    return JAVA_GROUP_ID.replace('.','/')+'/'+JAVA_ARTIFACT_ID+'/'+version+'/'
 
 def java_pom(path,version):
     import xml.etree.ElementTree as ET
     root=ET.parse(path).getroot();ns={'m':'http://maven.apache.org/POM/4.0.0'}
     def text(field):return root.findtext('m:'+field,None,ns)
-    require(text('groupId')=='io.pacificdb' and text('artifactId')=='pacificdb-client' and text('version')==version,'Java coordinates mismatch')
+    require(text('groupId')==JAVA_GROUP_ID and text('artifactId')==JAVA_ARTIFACT_ID and text('version')==version,'Java coordinates mismatch')
     for field in ['name','description','url','licenses/m:license/m:name','licenses/m:license/m:url','licenses/m:license/m:distribution','developers/m:developer/m:id','developers/m:developer/m:name','developers/m:developer/m:url','scm/m:connection','scm/m:developerConnection','scm/m:url']:
         require(text(field),'missing Java metadata: '+field)
     require(text('properties/m:maven.compiler.release')=='11','Java release floor mismatch')
@@ -114,7 +119,7 @@ def java_artifacts(target,version,require_bundle=True):
     require(len(bundles)==1,'exactly one signed Central bundle required')
     bundle=bundles[0]
     with zipfile.ZipFile(bundle) as archive:
-        names=archive.namelist();names_valid(names);prefix='io/pacificdb/pacificdb-client/'+version+'/'
+        names=archive.namelist();names_valid(names);prefix=java_repository_prefix(version)
         for suffix in ['.pom','.jar','-sources.jar','-javadoc.jar']:
             name=prefix+base+suffix;require(name in names,'missing bundled artifact')
             data=archive.read(name)
