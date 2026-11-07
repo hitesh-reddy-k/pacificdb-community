@@ -6,8 +6,9 @@ A self-hosted C++17 database for documents, vectors and media, using shared
 WAL/LSM storage and the existing replication infrastructure.
 
 Published v1.2 packages: **Pre-release v1.2 (`1.2.0-rc.2`)**. This branch also
-contains follow-up improvements; published packages retain their original
-source and version identity.
+prepares version **1.2.0** with follow-up improvements; published packages retain
+their original source and version identity. See the installation guide for the
+1.2.0 unsigned Windows/macOS installer policy.
 
 [Downloads](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v1.2.0-rc.2) · [Installation](INSTALLATION.md) · [SDK guide](SDK_GUIDE.md) · [Documentation](docs/README.md) · [v1.2 changes](RELEASE_NOTES_v1.2.md)
 

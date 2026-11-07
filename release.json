@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "version": "1.2.0",
-  "releaseVersion": "1.2.0-rc.2",
-  "name": "Pre-release v1.2",
-  "channel": "prerelease",
+  "releaseVersion": "1.2.0",
+  "name": "PacificDB 1.2.0",
+  "channel": "stable",
   "branch": "v1.2",
-  "tag": "v1.2.0-rc.2",
-  "npmVersion": "1.2.0-rc.2",
-  "pythonVersion": "1.2.0rc2",
-  "javaVersion": "1.2.0-rc.2"
+  "tag": "v1.2.0",
+  "npmVersion": "1.2.0",
+  "pythonVersion": "1.2.0",
+  "javaVersion": "1.2.0"
 }

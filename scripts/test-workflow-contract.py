@@ -104,11 +104,12 @@ require(
 # prerelease qualification cannot supply the missing native platform checks.
 require(
     ".github/workflows/ci.yml",
-    "  packages:\n    uses: ./.github/workflows/release.yml",
-    "  prerelease:\n    uses: ./.github/workflows/prerelease.yml",
+    "  packages:\n    needs: identity\n    uses: ./.github/workflows/release.yml",
+    "  prerelease:\n    needs: identity\n    if: needs.identity.outputs.channel == 'prerelease'\n    uses: ./.github/workflows/prerelease.yml",
 )
 release_identity = json.loads((ROOT / "release.json").read_text())
-require(".github/workflows/ci.yml", f"      version: {release_identity['releaseVersion']}")
+require(".github/workflows/ci.yml", "      version: ${{ needs.identity.outputs.version }}\n",
+        'python3 scripts/release_identity.py --field releaseVersion')
 require(
     ".github/workflows/release.yml",
     '$baseVersion = $version.Split(\'-\')[0]',
@@ -122,7 +123,8 @@ require(
     "workflow_dispatch:",
     "environment:",
     "check-sdk-release-tag.py",
-    "--tag next",
+    '--tag "$dist_tag"',
+    "npm_publication_policy.py",
 )
 forbid(".github/workflows/npm-publish.yml", "--tag latest")
 require(
@@ -137,9 +139,9 @@ require(
     '-DVCPKG_INSTALLED_DIR="$pwd/build/vcpkg_installed"',
     'test "$version" = "$WORKBENCH_VERSION"',
     "ref: ${{ env.WORKBENCH_RELEASE_TAG || inputs.source_ref || github.ref }}",
-    "if ($env:WORKBENCH_RELEASE_TAG -eq 'workbench-v1.1.1')",
+    "if ($env:WORKBENCH_RELEASE_TAG -in @('workbench-v1.1.1', 'workbench-v1.2.0'))",
     "$env:PACIFICDB_DESKTOP_RELEASE = '0'",
-    'if [[ "$WORKBENCH_RELEASE_TAG" == workbench-v1.1.1 ]]',
+    'if [[ "$WORKBENCH_RELEASE_TAG" == workbench-v1.1.1 || "$WORKBENCH_RELEASE_TAG" == workbench-v1.2.0 ]]',
     "export PACIFICDB_DESKTOP_RELEASE=0",
     "workbench_release_qualification.py platform",
     "workbench_release_qualification.py aggregate",
@@ -188,3 +190,17 @@ forbid(
     "ghcr.io/hitesh-reddy-k/pacificdb-community:beta",
 )
 print("WORKFLOW_CONTRACT_PASS")
+
+# Unsigned publishing is an explicit owner decision for named historical tags.
+# Never turn it into an arbitrary stable-version or wildcard exemption.
+release_workflow = (ROOT / '.github/workflows/release.yml').read_text()
+require('.github/workflows/release.yml',
+        "$env:GITHUB_REF_NAME -in @('v1.0.0', 'v1.1.1', 'v1.2.0')")
+assert release_workflow.count('"$GITHUB_REF_NAME" == v1.2.0') == 2
+workbench_workflow = (ROOT / '.github/workflows/workbench-desktop.yml').read_text()
+assert workbench_workflow.count("env.WORKBENCH_RELEASE_TAG != 'workbench-v1.2.0'") == 3
+require('.github/workflows/workbench-desktop.yml',
+        '"$WORKBENCH_RELEASE_TAG" != workbench-v1.2.0')
+forbid('.github/workflows/release.yml', "'v1.2.*'", '== v1.2.*')
+forbid('.github/workflows/workbench-desktop.yml', '== workbench-v1.2.*')
+print('UNSIGNED_VERSION_EXCEPTION_PASS')

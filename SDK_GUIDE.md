@@ -1,4 +1,9 @@
-# Pre-release v1.2 SDK guide
+# PacificDB v1.2 SDK guide
+
+Source packages prepare **1.2.0** (Java coordinates `in.pacificdb:pacificdb-client`).
+The published commands below still select RC.2. Do not expect source changes in
+those downloads. Maven Central publication is deferred; use the JAR with its
+matching POM from the chosen release, retaining the `io.pacificdb` Java imports.
 
 The engine base version is `1.2.0`; the candidate is `v1.2.0-rc.2` (Pre-release
 v1.2). Node and Java packages use `1.2.0-rc.2`; Python uses PEP 440 `1.2.0rc2`.

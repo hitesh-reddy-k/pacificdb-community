@@ -29,8 +29,8 @@ listed separately below and do not replace the published RC.2 packages.
 
 ## Follow-up source improvements
 
-These changes are on the readiness development branch and require a new package
-version before distribution as an updated release:
+These changes are merged into the source tree and are staged for **1.2.0**;
+they do not change the existing RC.2 downloads:
 
 - Incremental ANN maintains complete coverage during concurrent and unrelated
   commits, preserving source and applied-commit visibility checks.
@@ -42,6 +42,13 @@ version before distribution as an updated release:
 - Lower storage-iterator overhead for visibility-correct vector scans.
 - Prepare Maven Central coordinates `in.pacificdb:pacificdb-client` for the
   `pacificdb.in` domain; Java API packages and published RC.2 assets are retained.
+
+- Align source package identities at 1.2.0 and select CI packaging versions from
+  the canonical release identity.
+- Allow unsigned Windows/macOS 1.2.0 installers by explicit owner decision;
+  checksums and installation/runtime validation remain required.
+- Keep npm prereleases on `next`; stable publication to `latest` requires a
+  matching public stable GitHub release. Maven Central publication is deferred.
 
 ## Installation and packages
 
