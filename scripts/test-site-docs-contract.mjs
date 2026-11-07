@@ -43,7 +43,7 @@ test('website validation rejects missing files, fragments, assets, versions and 
     [`${tag}/PacificDB-Workbench-${version}-mac-x64.dmg`, `${tag}/missing-x64.dmg`, 'Workbench must link the published mac-x64.dmg installer'],
     ['<select id="mac-arch">', '<select id="mac-arch" disabled>', 'AssertionError'],
   ]) {
-    const changed = index.replace(original, replacement);
+    const changed = index.replaceAll(original, replacement);
     assert.notEqual(changed, index, 'fixture must change the rendered HTML');
     await writeFile(indexPath, changed);
     await assert.rejects(execute(process.execPath, [script]), e => e.code === 1 && e.stderr.includes(expected));
