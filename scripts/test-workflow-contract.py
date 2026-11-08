@@ -217,3 +217,10 @@ require('.github/workflows/ci.yml',
         '\"$archive\" | sha256sum -c -',
         '--connect-timeout 10 --max-time 120')
 print('PINNED_TOOL_DOWNLOAD_FALLBACK_CONTRACT_PASS')
+
+require('.github/workflows/release.yml',
+        'https://api.github.com/repos/StrawberryPerl/Perl-Dist-Strawberry/releases/assets/390497423',
+        'e37c541bb6c4f1c0187bf8ba22b19ce9ead87f6bd1e68c05e7fc4eb2c10a4183c3ee732bf1b26071939f525861fae62b6bef04100b31504ab50fffe7526f84e3',
+        '(Get-FileHash $perlArchive -Algorithm SHA512).Hash -ine $perlSha512',
+        "Contains('set(program_version 5.42.2.1)')")
+print('WINDOWS_PINNED_BUILD_TOOL_CONTRACT_PASS')
