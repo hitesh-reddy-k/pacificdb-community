@@ -1,4 +1,31 @@
-# RC.2 current company-testing delivery
+# v1.2 Release — source and distribution evidence
+
+Version **1.2.0**, tag **v1.2.0**, qualified source
+`0e8beb270444be93f954df3a27098bf37f3f9424`.
+
+| Check | Result | Evidence and scope |
+| --- | --- | --- |
+| Source, storage and native package qualification | Passed | [42393281900](https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/42393281900): source/Community regressions and native package checks on Ubuntu24 x64, Windows x64 and macOS15 Intel/Apple Silicon |
+| SDK runtimes and exact packaged clients | Passed | [42393281290](https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/42393281290): Node18/22/24, Python3.10/3.12, Java11/17/21; installed packages, authenticated TCP/TLS and crash recovery |
+| Workbench install, upgrade, launch and uninstall | Passed | [42393284657](https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/42393284657): all four platform targets, bundled CLI version and Windows CMD command discovery |
+| Source security analysis | Passed | [42393281901](https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/42393281901): configured CodeQL checks for this source |
+| Published Python package | Passed | [42439513376](https://github.com/hitesh-reddy-k/pacificdb-community/actions/runs/42439513376): PyPI1.2.0; public file hashes match the tested publisher artifacts |
+
+The [GitHub release](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v1.2.0)
+contains the distribution manifest and checksums for the exact downloadable files.
+Registry publication is separate from GitHub attachments; select version1.2.0
+explicitly when reproducing a deployment. Windows/macOS installers are unsigned
+and macOS is not notarized, by the release owner's decision. Java is supplied as a
+JAR/POM download; Maven Central publication is deferred.
+
+This matrix records the checks and configurations actually exercised. It does
+not turn historical tests into new measurements or qualify unsupported vector
+features. See the release notes for standalone vector scope and index maintenance.
+Historical delivery records below keep their original status and revision.
+
+---
+
+# Historical RC.2 company-testing delivery
 
 Version `1.2.0`, candidate/tag `v1.2.0-rc.2`, source
 `e3d70761f03341acc13130d17b75fed2bc758a29`. RC.1 stays published unchanged.
