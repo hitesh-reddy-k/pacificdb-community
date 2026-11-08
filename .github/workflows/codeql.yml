@@ -26,8 +26,24 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake g++ liblz4-dev libre2-dev libssl-dev
+      - name: Fetch checksum-pinned CodeQL bundle
+        id: codeql-tools
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/codeql-bundle-linux64.tar.zst"
+          curl --fail --location --silent --show-error --connect-timeout 10 --max-time 300 \
+            --retry 2 --header 'Accept: application/octet-stream' \
+            --header "Authorization: Bearer $GH_TOKEN" --output "$archive" \
+            https://api.github.com/repos/github/codeql-action/releases/assets/692235033
+          printf '%s  %s\n' \
+            da3e952c7fe978a0b6b93e75d9cbabbdf8535667ca0810bd4b2ae37bc840ffee \
+            "$archive" | sha256sum -c -
+          printf 'path=%s\n' "$archive" >> "$GITHUB_OUTPUT"
       - uses: github/codeql-action/init@v4
         with:
+          tools: ${{ steps.codeql-tools.outputs.path }}
           languages: cpp,javascript-typescript
           queries: security-extended
       - name: Build C++ engine

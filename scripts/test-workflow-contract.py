@@ -224,3 +224,11 @@ require('.github/workflows/release.yml',
         '(Get-FileHash $perlArchive -Algorithm SHA512).Hash -ine $perlSha512',
         "Contains('set(program_version 5.42.2.1)')")
 print('WINDOWS_PINNED_BUILD_TOOL_CONTRACT_PASS')
+
+require('.github/workflows/codeql.yml',
+        'https://api.github.com/repos/github/codeql-action/releases/assets/692235033',
+        'da3e952c7fe978a0b6b93e75d9cbabbdf8535667ca0810bd4b2ae37bc840ffee',
+        'tools: ${{ steps.codeql-tools.outputs.path }}',
+        'languages: cpp,javascript-typescript', 'queries: security-extended',
+        '\"$archive\" | sha256sum -c -')
+print('CODEQL_BUNDLE_INTEGRITY_CONTRACT_PASS')
