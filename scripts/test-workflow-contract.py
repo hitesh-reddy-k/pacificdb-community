@@ -210,3 +210,10 @@ print('UNSIGNED_VERSION_EXCEPTION_PASS')
 require('.github/workflows/release.yml',
         "  linux:\n    if: ${{ !startsWith(github.ref, 'refs/tags/v') || !contains(github.ref_name, '-') }}\n    runs-on: ubuntu-24.04")
 print('LINUX_PACKAGE_ABI_CONTRACT_PASS')
+
+require('.github/workflows/ci.yml',
+        'https://api.github.com/repos/yannh/kubeconform/releases/assets/438612666',
+        '9bc2bffbf71f261128533edaf912153948b7ff238f9a531ae6d34466ec287883',
+        '\"$archive\" | sha256sum -c -',
+        '--connect-timeout 10 --max-time 120')
+print('PINNED_TOOL_DOWNLOAD_FALLBACK_CONTRACT_PASS')

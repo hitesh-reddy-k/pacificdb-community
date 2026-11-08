@@ -66,11 +66,21 @@ jobs:
           sudo apt-get install -y cmake g++ liblz4-dev libre2-dev libssl-dev
           python -m pip install pytest
       - name: Install kubeconform
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           archive="$RUNNER_TEMP/kubeconform-linux-amd64.tar.gz"
-          curl --fail --location --silent --show-error --output "$archive" \
-            https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-amd64.tar.gz
+          if ! curl --fail --location --silent --show-error --connect-timeout 10 --max-time 60 \
+              --retry 2 --output "$archive" \
+              https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-amd64.tar.gz; then
+            # The public release-download route can fail independently of the asset API.
+            # Asset438612666 is the same pinned v0.8.0 Linux archive; verify its SHA below.
+            curl --fail --location --silent --show-error --connect-timeout 10 --max-time 120 \
+              --retry 2 --header 'Accept: application/octet-stream' \
+              --header "Authorization: Bearer $GH_TOKEN" --output "$archive" \
+              https://api.github.com/repos/yannh/kubeconform/releases/assets/438612666
+          fi
           printf '%s  %s\n' \
             9bc2bffbf71f261128533edaf912153948b7ff238f9a531ae6d34466ec287883 \
             "$archive" | sha256sum -c -
