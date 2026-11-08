@@ -1,10 +1,11 @@
-# Vector usage — v1.2.0-rc.2
+# Vector usage — v1.2
 
-Native vectors are an opt-in standalone preview. Authoritative records share
-PacificDB's WAL/LSM storage. ANN and lexical indexes are derived structures.
-Full production qualification and distributed vector completeness are incomplete.
+Native vector administration uses an explicit standalone configuration.
+Authoritative records share PacificDB's WAL/LSM storage. ANN and lexical indexes
+are derived, rebuildable structures. Distributed sharded vector search is outside
+the supported scope of this release.
 
-## Enable the preview
+## Configure native vectors
 
 Before starting a separately managed engine set
 `PACIFICDB_VECTOR_PREVIEW_ENABLED=1`. For desktop, quit the app and set
@@ -86,7 +87,9 @@ Lifecycle methods are `createVectorIndex`, `vectorIndexStatus`,
 Dropping an index does not delete authoritative records.
 
 Build once and reuse eligible indexes. Strict ANN can reject queries during
-mutation lag. Incremental dense maintenance is opt-in; physical history includes
+mutation lag. Set `indexWaitMs` to bound freshness waiting (0–5000 ms, default1000);
+zero requests immediate failure. The query deadline, cancellation and scan budget
+still apply; waiting does not make absent or failed indexes ready. Incremental dense maintenance is opt-in; physical history includes
 tombstones and requires manual rebuilding at its configured limit. Sparse,
 flat and lexical incremental maintenance are unsupported. After restart, durable
 index definitions remain but graphs require explicit rebuilding. Large builds
@@ -104,7 +107,8 @@ index and text field; use the SDK hybrid options. This differs from the legacy
 substring TEXT predicate. Hybrid and schema/index administration are SDK/raw
 operations; every option is not exposed as a Workbench button.
 
-Use [the SDK operation matrix](../SDK_GUIDE.md#native-vector-preview) and
+Use [the SDK operation matrix](../SDK_GUIDE.md#native-vector-operations) and
 [company test scenarios](../COMPANY_TESTING_GUIDE.md). Unsupported distributed
-search, automatic graph compaction, advanced compression/disk ANN and complete
-upgrade/power-loss/security qualification remain limitations of this prerelease.
+search, automatic graph compaction and advanced compression/disk ANN remain
+outside the supported scope. Use the testing and operations guides to validate
+upgrades, recovery and deployment settings for your environment.

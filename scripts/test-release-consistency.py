@@ -52,6 +52,12 @@ def main() -> None:
     if engine_version != identity["version"]:
         raise AssertionError("engine base version does not match release.json")
     component_version = identity["releaseVersion"]
+    dockerfile = (ROOT / "deploy/docker/Dockerfile").read_text()
+    for argument, version in (("PACIFICDB_ENGINE_VERSION", identity["version"]),
+                              ("PACIFICDB_RELEASE_VERSION", component_version)):
+        declarations = re.findall(rf"(?m)^ARG {argument}=([^\n]+)$", dockerfile)
+        if declarations != [version, version]:
+            raise AssertionError(f"Docker builder/runtime {argument} defaults must match release.json")
     # The website advertises an independently published release. A development
     # checkout or older main branch must not rename an existing public package.
     published = json.loads((ROOT / "site/release.json").read_text())

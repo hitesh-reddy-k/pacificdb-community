@@ -127,7 +127,9 @@ Java exposes `PacificDBException`; Node rejects requests with sanitized errors.
 After a disconnected write its outcome can be unknown: automatic write retry is
 not provided. Close clients after use.
 
-## Native vector preview
+<a id="native-vector-preview"></a>
+
+## Native vector operations
 
 Native flat/HNSW index lifecycle and lexical/hybrid search remain opt-in through
 `PACIFICDB_VECTOR_PREVIEW_ENABLED=1` on the engine. Standalone preview performance

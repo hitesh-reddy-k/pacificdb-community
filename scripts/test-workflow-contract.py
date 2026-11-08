@@ -210,3 +210,25 @@ print('UNSIGNED_VERSION_EXCEPTION_PASS')
 require('.github/workflows/release.yml',
         "  linux:\n    if: ${{ !startsWith(github.ref, 'refs/tags/v') || !contains(github.ref_name, '-') }}\n    runs-on: ubuntu-24.04")
 print('LINUX_PACKAGE_ABI_CONTRACT_PASS')
+
+require('.github/workflows/ci.yml',
+        'https://api.github.com/repos/yannh/kubeconform/releases/assets/438612666',
+        '9bc2bffbf71f261128533edaf912153948b7ff238f9a531ae6d34466ec287883',
+        '\"$archive\" | sha256sum -c -',
+        '--connect-timeout 10 --max-time 120')
+print('PINNED_TOOL_DOWNLOAD_FALLBACK_CONTRACT_PASS')
+
+require('.github/workflows/release.yml',
+        'https://api.github.com/repos/StrawberryPerl/Perl-Dist-Strawberry/releases/assets/390497423',
+        'e37c541bb6c4f1c0187bf8ba22b19ce9ead87f6bd1e68c05e7fc4eb2c10a4183c3ee732bf1b26071939f525861fae62b6bef04100b31504ab50fffe7526f84e3',
+        '(Get-FileHash $perlArchive -Algorithm SHA512).Hash -ine $perlSha512',
+        "Contains('set(program_version 5.42.2.1)')")
+print('WINDOWS_PINNED_BUILD_TOOL_CONTRACT_PASS')
+
+require('.github/workflows/codeql.yml',
+        'https://api.github.com/repos/github/codeql-action/releases/assets/692235033',
+        'da3e952c7fe978a0b6b93e75d9cbabbdf8535667ca0810bd4b2ae37bc840ffee',
+        'tools: ${{ steps.codeql-tools.outputs.path }}',
+        'languages: cpp,javascript-typescript', 'queries: security-extended',
+        '\"$archive\" | sha256sum -c -')
+print('CODEQL_BUNDLE_INTEGRITY_CONTRACT_PASS')

@@ -1,4 +1,4 @@
-# PacificDB architecture — Pre-release v1.2
+# PacificDB architecture — v1.2
 
 PacificDB is a C++17 unified database engine. Documents, vectors and media share
 authoritative storage and committed mutation infrastructure. Clients speak JSON
@@ -47,11 +47,11 @@ writes. This release does not add complete distributed vector fan-out/record han
 
 Community media uploads use reserved metadata collections for manifests/chunks;
 legacy media file paths also remain. Database and tenant authorization, backup,
-snapshot/recovery and quotas are shared infrastructure. Native storage is not
-silently encrypted by a flag: production requires the existing reviewed encrypted
-storage/deployment evidence. This preview does not certify a production deployment.
+snapshot/recovery and quotas are shared infrastructure. Storage encryption is a deployment setting; enabling a vector/index option does
+not encrypt existing storage. Configure and verify encryption, authentication and
+TLS for the environment where you deploy.
 
 See [the vector usage guide](docs/VECTORS.md),
-[release scope](docs/V1.2_COMMUNITY_SCOPE.md), [installation](INSTALLATION.md) and
+[release scope](RELEASE_NOTES_v1.2.md#compatibility-and-operation), [installation](INSTALLATION.md) and
 [testing](TESTING.md). Historical benchmark results retain their original dev
-binary identities and do not automatically qualify release-candidate packages.
+binary identities and do not automatically qualify a different release artifact.

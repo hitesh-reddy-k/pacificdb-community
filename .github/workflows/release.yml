@@ -80,9 +80,33 @@ jobs:
       - uses: actions/checkout@v7
       - name: Install packaging dependencies
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          $ErrorActionPreference = 'Stop'
           choco install nsis -y --no-progress
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Recover the exact tool archive when GitHub's release-download route is unavailable.
+          # vcpkg still independently validates the same SHA512 before using it.
+          $perlDescriptor = Join-Path $env:VCPKG_INSTALLATION_ROOT 'scripts/cmake/vcpkg_find_acquire_program(PERL).cmake'
+          if ((Test-Path $perlDescriptor) -and
+              (Get-Content $perlDescriptor -Raw).Contains('set(program_version 5.42.2.1)')) {
+            $perlSha512 = 'e37c541bb6c4f1c0187bf8ba22b19ce9ead87f6bd1e68c05e7fc4eb2c10a4183c3ee732bf1b26071939f525861fae62b6bef04100b31504ab50fffe7526f84e3'
+            $downloads = Join-Path $env:VCPKG_INSTALLATION_ROOT 'downloads'
+            New-Item -ItemType Directory -Force -Path $downloads | Out-Null
+            $perlArchive = Join-Path $downloads 'strawberry-perl-5.42.2.1-64bit-portable.zip'
+            if (-not (Test-Path $perlArchive) -or
+                (Get-FileHash $perlArchive -Algorithm SHA512).Hash -ine $perlSha512) {
+              Invoke-WebRequest -Uri 'https://api.github.com/repos/StrawberryPerl/Perl-Dist-Strawberry/releases/assets/390497423' `
+                -Headers @{ Accept = 'application/octet-stream'; Authorization = "Bearer $env:GH_TOKEN" } `
+                -OutFile $perlArchive -TimeoutSec 300 -MaximumRetryCount 2 -RetryIntervalSec 2
+            }
+            if ((Get-FileHash $perlArchive -Algorithm SHA512).Hash -ine $perlSha512) {
+              throw 'Strawberry Perl archive differs from the checksum pinned by vcpkg'
+            }
+          }
           vcpkg install --triplet x64-windows-static
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build Windows installer
         shell: pwsh
         env:
