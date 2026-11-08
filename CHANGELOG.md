@@ -1,4 +1,34 @@
-# Unreleased v1.2 follow-up
+# 1.2.0 — v1.2 Release
+
+## Added
+
+- Persistent dense, sparse and named vectors with creation-time collection schemas.
+- Bounded exact KNN, opt-in standalone HNSW lifecycle and dense incremental indexing.
+- Metadata filtering and lexical/vector hybrid ranking with BM25 and reciprocal rank fusion.
+- Workbench terminal-command setup, including Windows installer PATH registration.
+
+## Improved and fixed
+
+- Request-local query limits and visibility-aware ranking with bounded candidate retention.
+- Incremental ANN eligibility during concurrent commits and bounded freshness waits.
+- Native and npm version reporting without contacting the engine.
+- SDK connection expiry handling, private credential-file validation and Linux launcher icons.
+- Matched 1.2.0 package identities, Java `in.pacificdb` Maven coordinates and source-compatible imports.
+
+## Distribution and scope
+
+- Ubuntu24.04 x64, Windows x64 and macOS15 Intel/Apple Silicon packages.
+- Windows/macOS packages are unsigned; macOS is not notarized. Java JAR/POM downloads
+  are provided separately from deferred Maven Central publication.
+- Existing WAL/LSM record formats and document/media APIs are retained. Vector
+  administration remains an explicit standalone configuration; collection schemas
+  are creation-time and index history requires bounded manual maintenance.
+- Historical measurements and verification notes below keep their original versions
+  and scope; they do not certify every deployment or describe new benchmark runs.
+
+---
+
+# v1.2 development history
 
 - Verify incremental ANN lifecycle fixes with 87 checkpoint / 60 CTest checks,
   selected sanitizers, repeated ARM64 strict reads, four platform installer jobs,

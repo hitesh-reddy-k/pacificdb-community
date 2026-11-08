@@ -1,14 +1,10 @@
-# Company testing guide — Pre-release v1.2
+# Company testing guide — v1.2 Release
 
-PacificDB is a self-hosted unified document/vector/media database. This candidate
-is for professional evaluation and feedback, not a production-readiness claim.
-Base version `1.2.0`, candidate/tag `v1.2.0-rc.2`, branch `v1.2`, title
-**Pre-release v1.2**. Check the exact artifact/publication/platform outcomes in
-[RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) before using a download or registry.
-
-Publication/platform status belongs to the final release manifest and checklist.
-The release checklist records verified storage/recovery fixes and test scope.
-Use disposable evaluation data only.
+PacificDB is a self-hosted unified document/vector/media database. Test version
+**1.2.0**, tag **v1.2.0**, using matching engine, Workbench, CLI and SDK packages.
+Use the release's checksum manifest and record `db_engine --build-info` and
+`pacificdb --version` with each report. Use an isolated data directory and copies
+of representative company data for these test scenarios.
 
 ## Requirements and first installation
 
@@ -19,14 +15,14 @@ matching OpenSSL/LZ4/RE2/C++ runtime dependencies. Workbench needs a graphical
 session and Electron dependencies; SDK clients require Node>=18, Python>=3.10 or
 Java>=11 metadata, with actually tested versions listed separately.
 
-1. Obtain the selected candidate assets, `SHA256SUMS`, release notes and manifest
-   from the verified staging location or the actual published GitHub prerelease.
+1. Obtain the release assets, `SHA256SUMS`, release notes and manifest
+   from the GitHub release.
 2. Verify `sha256sum -c SHA256SUMS` before installing. The manifest binds exact
-   bytes, candidate version, source revision and verification status.
+   bytes, release version, source revision and verification status.
 3. Follow [INSTALLATION.md](INSTALLATION.md). Prefer extracted/staged packages and
    new test directories first; do not upgrade a live database for this evaluation.
 4. Record `db_engine --build-info` and `pacificdb --version`. Expect base 1.2.0 with
-   explicit 1.2.0-rc.2 prerelease metadata. npm/Java use 1.2.0-rc.2; Python 1.2.0rc2.
+   version `1.2.0` for native tools, npm, Java and Python packages.
 
 ## Native CLI quickstart
 
@@ -59,7 +55,7 @@ than assuming SQL syntax. Use only test passwords/tokens, never customer secrets
 
 Start the packaged desktop Workbench, or install the npm CLI and run
 `pacificdb workbench` with the engine available. The native CLI does not implement
-that npm browser subcommand. Confirm the displayed base/candidate prerelease
+that npm browser subcommand. Confirm the displayed release
 identity, select/create a database and collection, insert/query a document, explore
 media upload/download and run vector queries. For media, compare downloaded bytes
 with the input (`sha256sum`) rather than only viewing a thumbnail.
@@ -151,7 +147,7 @@ reporting as described in [SECURITY.md](SECURITY.md); never a public issue.
 
 ```text
 Title:
-Candidate version and build-info (sanitized):
+Release version and build-info (sanitized):
 Artifact filename and SHA-256:
 OS / architecture / runtime versions:
 Install method:

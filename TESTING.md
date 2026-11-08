@@ -1,22 +1,22 @@
-# Test Pre-release v1.2
+# Test PacificDB v1.2
 
 Tests must run against a fresh build and isolated data, never production roots.
 Every release artifact needs its own identity/hash/install evidence. Historical
-1.2.0-dev benchmark/checkpoint logs are retained but do not count as RC installation.
+1.2.0-dev benchmark/checkpoint logs are retained but do not count as current artifact installation.
 See [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for current outcomes.
 
 ## Core and vector qualification
 
 ```sh
-cmake -S engine -B build-rc -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.2.0
-cmake --build build-rc -j2
-ctest --test-dir build-rc --output-on-failure
-cmake -S engine -B build-rc-failpoints -DCMAKE_BUILD_TYPE=Release \
+cmake -S engine -B build-v1.2 -DCMAKE_BUILD_TYPE=Release -DPACIFICDB_ENGINE_VERSION=1.2.0
+cmake --build build-v1.2 -j2
+ctest --test-dir build-v1.2 --output-on-failure
+cmake -S engine -B build-v1.2-failpoints -DCMAKE_BUILD_TYPE=Release \
   -DPACIFICDB_ENGINE_VERSION=1.2.0 -DPACIFICDB_ENABLE_TEST_FAILPOINTS=ON
-cmake --build build-rc-failpoints --target db_engine -j2
-python3 scripts/test-vector-checkpoint.py --build build-rc \
-  --failpoint-build build-rc-failpoints --expected-version 1.2.0 \
-  --evidence /absolute/path/to/empty-rc-evidence
+cmake --build build-v1.2-failpoints --target db_engine -j2
+python3 scripts/test-vector-checkpoint.py --build build-v1.2 \
+  --failpoint-build build-v1.2-failpoints --expected-version 1.2.0 \
+  --evidence /absolute/path/to/empty-v1.2-evidence
 ```
 
 The checkpoint runner records each attempted test, failure/timeout, binary hashes
@@ -35,12 +35,12 @@ python3 scripts/test-sdk-capability-matrix.py
 PACIFICDB_EXPECTED_ENGINE_VERSION=1.2.0 \
 PACIFICDB_VECTOR_PREVIEW_ENABLED=1 PACIFICDB_TEST_NATIVE_VECTOR_PREVIEW=1 \
 PACIFICDB_TEST_VECTOR_SCHEMA=1 PACIFICDB_TEST_TYPED_VECTORS=1 \
-  node scripts/test-cross-sdk-e2e.mjs build-rc
-node scripts/test-workbench-e2e.mjs build-rc
-node scripts/test-desktop-engine.mjs build-rc
-node scripts/test-workbench-desktop-vector-preview.mjs build-rc
-npm run test:workbench:browser -- build-rc
-PACIFICDB_WORKBENCH_ENGINE="$PWD/build-rc/db_engine" npm run test:workbench:desktop
+  node scripts/test-cross-sdk-e2e.mjs build-v1.2
+node scripts/test-workbench-e2e.mjs build-v1.2
+node scripts/test-desktop-engine.mjs build-v1.2
+node scripts/test-workbench-desktop-vector-preview.mjs build-v1.2
+npm run test:workbench:browser -- build-v1.2
+PACIFICDB_WORKBENCH_ENGINE="$PWD/build-v1.2/db_engine" npm run test:workbench:desktop
 ```
 
 Browser/Electron checks need the appropriate installed browser/runtime/GUI surface.
@@ -88,7 +88,7 @@ physical power-loss evidence. Cross-platform CI must execute installer/runtime
 checks before support is marked verified; source targets or emulation are insufficient.
 The strict stable-release audit remains separate from scoped preview staging.
 
-## Exact prerelease receipts
+## Historical release-candidate receipts
 
 `stage-prerelease.py` stages/tests packages and remains BLOCKED by default. After
 reviewing the final core, disk-full, SDK, GUI and security receipts, the release

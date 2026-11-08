@@ -5,12 +5,9 @@
 A self-hosted C++17 database for documents, vectors and media, using shared
 WAL/LSM storage and the existing replication infrastructure.
 
-Published v1.2 packages: **Pre-release v1.2 (`1.2.0-rc.2`)**. This branch also
-prepares version **1.2.0** with follow-up improvements; published packages retain
-their original source and version identity. See the installation guide for the
-1.2.0 unsigned Windows/macOS installer policy.
+**v1.2 Release · Version 1.2.0**
 
-[Downloads](https://github.com/hitesh-reddy-k/pacificdb-community/releases/tag/v1.2.0-rc.2) · [Installation](INSTALLATION.md) · [SDK guide](SDK_GUIDE.md) · [Documentation](docs/README.md) · [v1.2 changes](RELEASE_NOTES_v1.2.md)
+[Releases](https://github.com/hitesh-reddy-k/pacificdb-community/releases) · [Installation](INSTALLATION.md) · [SDK guide](SDK_GUIDE.md) · [Documentation](docs/README.md) · [v1.2 changes](RELEASE_NOTES_v1.2.md)
 
 ## Install
 
@@ -22,13 +19,13 @@ Read [INSTALLATION.md](INSTALLATION.md) for dependencies and platform instructio
 Node.js client and CLI:
 
 ```sh
-npm install @pacificdb/client@1.2.0-rc.2 @pacificdb/cli@1.2.0-rc.2
+npm install @pacificdb/client@1.2.0 @pacificdb/cli@1.2.0
 ```
 
 Python client:
 
 ```sh
-python -m pip install pacificdb==1.2.0rc2
+python -m pip install pacificdb==1.2.0
 ```
 
 SDKs connect to a running engine; installing an SDK does not install the engine.
@@ -63,7 +60,7 @@ TLS, authentication and access controls before providing network access.
 The npm CLI also provides a browser Workbench:
 
 ```sh
-npx @pacificdb/cli@1.2.0-rc.2 workbench
+npx @pacificdb/cli@1.2.0 workbench
 ```
 
 This needs an installed native engine for managed startup, or connection settings
@@ -94,8 +91,8 @@ its supported scope. Index history has configured bounds and manual maintenance.
 - Cross-platform credential-file validation and launcher integration.
 - Compatible document/media APIs and shared durable mutation paths.
 
-Read [the release notes](RELEASE_NOTES_v1.2.md) to distinguish published RC.2
-changes from subsequent source improvements.
+Read [the release notes](RELEASE_NOTES_v1.2.md) for the changes, supported scope
+and compatibility guidance in v1.2.
 
 ## Build and test
 
