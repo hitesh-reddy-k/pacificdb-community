@@ -2,8 +2,15 @@
 
 # PacificDB Community v1.2.0
 
-A self-hosted C++17 database for documents, vectors and media, using shared
-WAL/LSM storage and the existing replication infrastructure.
+**Open-source, self-hosted database for JSON documents, vector search, and media storage.**
+
+PacificDB is a multi-model database engine built in C++17. It brings document
+records, vector embeddings, and media files together in one system, using
+WAL/LSM persistence and the existing replication infrastructure.
+
+For developers exploring AI and RAG applications or general-purpose data
+workloads. Run locally, query JSON documents, and evaluate the supported
+standalone vector search options.
 
 **v1.2 Release · Version 1.2.0**
 
